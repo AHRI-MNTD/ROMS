@@ -1,0 +1,22 @@
+{
+  "name": "@roms/iot",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "simulate": "tsx src/simulator.ts"
+  },
+  "dependencies": {
+    "@roms/db": "workspace:*",
+    "aedes": "^0.51.0",
+    "mqtt": "^5.8.0",
+    "pino": "^9.2.0",
+    "pino-pretty": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5"
+  }
+}

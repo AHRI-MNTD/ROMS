@@ -1,0 +1,92 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ROMS API",
+    "version": "0.1.0",
+    "description": "Research Operations Management System REST API",
+    "contact": { "name": "ROMS Team" }
+  },
+  "servers": [{ "url": "http://localhost:4000", "description": "Development" }],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Health check",
+        "tags": ["System"],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login",
+        "tags": ["Auth"],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "JWT tokens" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get current user",
+        "tags": ["Auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "User object" } }
+      }
+    },
+    "/catalog/domains": {
+      "get": {
+        "summary": "List all domains",
+        "tags": ["Catalog"],
+        "responses": { "200": { "description": "Domain list" } }
+      }
+    },
+    "/catalog/domains/{slug}": {
+      "get": {
+        "summary": "Get domain by slug",
+        "tags": ["Catalog"],
+        "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Domain with subfunctions and tasks" }, "404": { "description": "Not found" } }
+      }
+    },
+    "/architecture/c4": {
+      "get": {
+        "summary": "Get C4 architecture model",
+        "tags": ["Architecture"],
+        "responses": { "200": { "description": "C4 model JSON" } }
+      }
+    },
+    "/domains/biospecimen": {
+      "get": { "summary": "List samples", "tags": ["Biospecimen"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Paginated samples" } } },
+      "post": { "summary": "Create sample", "tags": ["Biospecimen"], "security": [{ "bearerAuth": [] }], "responses": { "201": { "description": "Created sample" } } }
+    },
+    "/domains/qms/sops": {
+      "get": { "summary": "List SOPs", "tags": ["QMS"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Paginated SOPs" } } },
+      "post": { "summary": "Create SOP", "tags": ["QMS"], "security": [{ "bearerAuth": [] }], "responses": { "201": { "description": "Created SOP" } } }
+    },
+    "/domains/finance/grants": {
+      "get": { "summary": "List grants", "tags": ["Finance"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Paginated grants" } } },
+      "post": { "summary": "Create grant", "tags": ["Finance"], "security": [{ "bearerAuth": [] }], "responses": { "201": { "description": "Created grant" } } }
+    },
+    "/domains/participant": {
+      "get": { "summary": "List participants", "tags": ["Participant"], "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Paginated participants" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 6 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@roms/db",
+  "version": "0.1.0",
+  "main": "./index.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "tsc --project tsconfig.json --watch",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx seed.ts",
+    "db:reset": "prisma migrate reset --force && tsx seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.14.0",
+    "@roms/shared": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "tsx": "^4.11.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.0.0",
+    "prisma": "^5.14.0",
+    "typescript": "^5.4.5"
+  }
+}

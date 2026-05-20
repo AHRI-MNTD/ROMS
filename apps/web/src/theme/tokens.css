@@ -1,0 +1,289 @@
+/*
+ * ROMS Design Tokens
+ * Merged from:
+ *   - roms-c4-architecture.html       (:root, [data-theme="dark"])
+ *   - research-operations-domains-and-sub-functions.html (:root/light, [data-theme="dark"])
+ *
+ * The operations HTML uses --color-* naming; the C4 HTML uses short --bg/--text/--accent
+ * naming. Both sets are preserved here so legacy component class styles still work.
+ */
+
+/* ── Fonts ─────────────────────────────────────────────────────────────────── */
+:root {
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+
+  --fs-xs:   11px;
+  --fs-sm:   12px;
+  --fs-base: 13.5px;
+  --fs-md:   14px;
+  --fs-lg:   18px;
+  --fs-xl:   22px;
+
+  --radius-sm: 5px;
+  --radius:    8px;
+  --radius-lg: 12px;
+  --r:         5px;    /* alias for C4 HTML compat */
+  --r-lg:      12px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* ── Light theme (default) ─────────────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  /* Operations HTML naming */
+  --color-bg:              #f7f6f2;
+  --color-surface:         #f9f8f5;
+  --color-surface-2:       #ffffff;
+  --color-surface-offset:  #f0eeea;
+  --color-border:          #d8d5ce;
+  --color-divider:         #e2dfd9;
+  --color-text:            #28251d;
+  --color-text-muted:      #7a7974;
+  --color-text-faint:      #bab9b4;
+  --color-primary:         #01696f;
+  --color-primary-hover:   #0c4e54;
+  --color-primary-highlight: #d0dedd;
+  --color-primary-soft:    #e8f2f1;
+
+  /* C4 HTML naming (alias to same palette) */
+  --bg:        var(--color-bg);
+  --surface:   var(--color-surface);
+  --surface2:  var(--color-surface-2);
+  --surface3:  var(--color-surface-offset);
+  --border:    var(--color-border);
+  --divider:   var(--color-divider);
+  --text:      var(--color-text);
+  --muted:     var(--color-text-muted);
+  --faint:     var(--color-text-faint);
+  --primary:   var(--color-primary);
+  --primary-hl: var(--color-primary-highlight);
+  --primary-soft: var(--color-primary-soft);
+
+  /* C4 level colors — light */
+  --c4-ctx:         #0d6f89;
+  --c4-ctx-border:  #9ed6e8;
+  --c4-ctx-bg:      #edf8fc;
+  --c4-con:         #01696f;
+  --c4-con-border:  #9ed4d6;
+  --c4-con-bg:      #edf6f6;
+  --c4-cmp:         #6b46c1;
+  --c4-cmp-border:  #c8b4f0;
+  --c4-cmp-bg:      #f5f0ff;
+  --c4-cod:         #b45309;
+  --c4-cod-border:  #f0c07a;
+  --c4-cod-bg:      #fff8ec;
+  --ext:            #6b7280;
+  --ext-border:     #d1d5db;
+  --ext-bg:         #f9fafb;
+}
+
+/* ── Dark theme ─────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* Operations HTML naming */
+  --color-bg:              #141312;
+  --color-surface:         #1a1917;
+  --color-surface-2:       #1f1e1c;
+  --color-surface-offset:  #1d1c1a;
+  --color-border:          #333230;
+  --color-divider:         #252422;
+  --color-text:            #cccbc9;
+  --color-text-muted:      #767573;
+  --color-text-faint:      #555452;
+  --color-primary:         #4f98a3;
+  --color-primary-hover:   #3a8590;
+  --color-primary-highlight: #253535;
+  --color-primary-soft:    #1e2e2e;
+
+  /* C4 HTML naming (aliases) */
+  --bg:        var(--color-bg);
+  --surface:   var(--color-surface);
+  --surface2:  var(--color-surface-2);
+  --surface3:  var(--color-surface-offset);
+  --border:    var(--color-border);
+  --divider:   var(--color-divider);
+  --text:      var(--color-text);
+  --muted:     var(--color-text-muted);
+  --faint:     var(--color-text-faint);
+  --primary:   var(--color-primary);
+  --primary-hl: var(--color-primary-highlight);
+  --primary-soft: var(--color-primary-soft);
+
+  /* C4 level colors — dark */
+  --c4-ctx:         #5bbbd4;
+  --c4-ctx-border:  #2a5a6b;
+  --c4-ctx-bg:      #0e2028;
+  --c4-con:         #4f98a3;
+  --c4-con-border:  #2a4e54;
+  --c4-con-bg:      #0e2428;
+  --c4-cmp:         #a78bfa;
+  --c4-cmp-border:  #4c3879;
+  --c4-cmp-bg:      #1a1028;
+  --c4-cod:         #fbbf24;
+  --c4-cod-border:  #78500c;
+  --c4-cod-bg:      #201500;
+  --ext:            #9ca3af;
+  --ext-border:     #374151;
+  --ext-bg:         #1a1c1e;
+}
+
+/* ── Global reset / base ────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ── Animations ──────────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.anim {
+  animation: fadeUp 0.22s ease both;
+}
+
+/* ── Node cards (C4 architecture page) ───────────────────────────────────────── */
+.node {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: box-shadow 0.14s, transform 0.12s;
+}
+
+.node:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.node.ext  { background: var(--ext-bg);     border-color: var(--ext-border); cursor: default; }
+.node.ctx  { background: var(--c4-ctx-bg);  border-color: var(--c4-ctx-border); }
+.node.con  { background: var(--c4-con-bg);  border-color: var(--c4-con-border); }
+.node.cmp  { background: var(--c4-cmp-bg);  border-color: var(--c4-cmp-border); }
+.node.cod  { background: var(--c4-cod-bg);  border-color: var(--c4-cod-border); }
+.node.sys  { background: var(--primary-soft); border-color: var(--primary-hl); border-width: 2px; }
+
+.node-icon { font-size: 1.3rem; }
+.node-kind { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.node-name { font-size: var(--fs-md); font-weight: 600; line-height: 1.25; color: var(--text); }
+.node-tech { font-size: var(--fs-xs); color: var(--muted); font-style: italic; }
+.node-desc { font-size: var(--fs-xs); color: var(--muted); line-height: 1.45; margin-top: 2px; }
+.node-arrow { font-size: var(--fs-xs); color: var(--primary); margin-top: 4px; }
+
+.node.ext .node-kind  { color: var(--ext); }
+.node.ctx .node-kind  { color: var(--c4-ctx); }
+.node.con .node-kind  { color: var(--c4-con); }
+.node.cmp .node-kind  { color: var(--c4-cmp); }
+.node.sys .node-kind  { color: var(--primary); }
+
+.nodes-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.system-boundary {
+  border: 2px dashed var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  position: relative;
+  margin: 10px 0;
+}
+
+.boundary-label {
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  background: var(--bg);
+  padding: 0 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.c4-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.c4-desc {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  margin-bottom: 20px;
+  max-width: 80ch;
+  line-height: 1.55;
+}
+
+.sec-header {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+.relations { display: flex; flex-direction: column; gap: 4px; }
+
+.rel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--r);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.rel-from  { font-weight: 600; color: var(--text); white-space: nowrap; }
+.rel-arrow { color: var(--primary); flex-shrink: 0; }
+.rel-to    { font-weight: 600; color: var(--text); white-space: nowrap; }
+.rel-label { flex: 1; }

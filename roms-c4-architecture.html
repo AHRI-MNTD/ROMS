@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROMS — C4 System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4f0;--surface:#faf9f7;--surface2:#ffffff;--surface3:#f0eeea;
+  --border:#d5d2cb;--divider:#e2dfd9;
+  --text:#26231c;--muted:#797670;--faint:#b5b4af;
+  --primary:#01696f;--primary-h:#0c4e54;--primary-hl:#cfdedd;--primary-soft:#e6f1f0;
+  --c4-ctx:#2e6da4;--c4-ctx-bg:#e8f0f9;--c4-ctx-border:#b8d0ea;
+  --c4-con:#1e7a3c;--c4-con-bg:#e5f4eb;--c4-con-border:#a8d9b8;
+  --c4-cmp:#7b4fa0;--c4-cmp-bg:#f0e8f8;--c4-cmp-border:#cdb5e4;
+  --c4-cod:#c46d00;--c4-cod-bg:#fdf0e0;--c4-cod-border:#f0c98a;
+  --ext:#555;--ext-bg:#f0f0f0;--ext-border:#c8c8c8;
+  --shadow:0 2px 8px rgba(0,0,0,0.07);--shadow-lg:0 8px 28px rgba(0,0,0,0.11);
+  --r:6px;--r-lg:10px;
+  --fs-xs:0.58rem;--fs-sm:0.67rem;--fs-base:0.72rem;--fs-md:0.82rem;--fs-lg:1rem;--fs-xl:1.15rem;--fs-2xl:1.4rem;
+}
+[data-theme="dark"]{
+  --bg:#131211;--surface:#191816;--surface2:#1f1e1c;--surface3:#1c1b19;
+  --border:#323130;--divider:#232220;
+  --text:#cac9c7;--muted:#757473;--faint:#525150;
+  --primary:#4f98a3;--primary-h:#3a8590;--primary-hl:#243535;--primary-soft:#1d2d2d;
+  --c4-ctx:#5b9bd5;--c4-ctx-bg:#1a2535;--c4-ctx-border:#2e4a6a;
+  --c4-con:#3da85e;--c4-con-bg:#172a1f;--c4-con-border:#2a5e3a;
+  --c4-cmp:#a87fd4;--c4-cmp-bg:#251830;--c4-cmp-border:#4a2f68;
+  --c4-cod:#e09040;--c4-cod-bg:#2a1e0a;--c4-cod-border:#6a4510;
+  --ext:#999;--ext-bg:#242322;--ext-border:#3a3937;
+  --shadow:0 2px 8px rgba(0,0,0,0.3);--shadow-lg:0 8px 28px rgba(0,0,0,0.4);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',sans-serif;font-size:var(--fs-base);color:var(--text);background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+svg text{font-family:'Inter',sans-serif}
+
+/* ── TOP BAR ── */
+.topbar{height:42px;min-height:42px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:100}
+.tb-logo{display:flex;align-items:center;gap:8px}
+.tb-title{font-family:'Instrument Serif',Georgia,serif;font-size:var(--fs-md);color:var(--text)}
+.tb-badge{font-size:var(--fs-xs);font-weight:700;letter-spacing:0.07em;text-transform:uppercase;padding:2px 7px;border-radius:20px;background:var(--primary-hl);color:var(--primary)}
+.tb-spacer{flex:1}
+.tb-breadcrumb{display:flex;align-items:center;gap:5px;font-size:var(--fs-xs);color:var(--muted)}
+.tb-bc-item{cursor:pointer;transition:color 0.14s}
+.tb-bc-item:hover{color:var(--primary)}
+.tb-bc-item.active{color:var(--text);font-weight:600;cursor:default}
+.tb-bc-sep{opacity:0.4}
+.theme-btn{width:28px;height:28px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--muted);transition:background 0.14s,color 0.14s;margin-left:6px}
+.theme-btn:hover{background:var(--surface3);color:var(--text)}
+
+/* ── MAIN CANVAS ── */
+.canvas{flex:1;overflow:auto;padding:24px;display:flex;flex-direction:column;align-items:center}
+.canvas::-webkit-scrollbar{width:5px;height:5px}
+.canvas::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── LEVEL INDICATOR ── */
+.level-tabs{display:flex;gap:6px;margin-bottom:20px;align-self:flex-start}
+.lvl-tab{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:1.5px solid transparent;transition:all 0.15s}
+.lvl-tab.c1{color:var(--c4-ctx);border-color:var(--c4-ctx-border);background:var(--c4-ctx-bg)}
+.lvl-tab.c2{color:var(--c4-con);border-color:var(--c4-con-border);background:var(--c4-con-bg)}
+.lvl-tab.c3{color:var(--c4-cmp);border-color:var(--c4-cmp-border);background:var(--c4-cmp-bg)}
+.lvl-tab.c4{color:var(--c4-cod);border-color:var(--c4-cod-border);background:var(--c4-cod-bg)}
+.lvl-tab.inactive{opacity:0.38;cursor:not-allowed}
+.lvl-tab.clickable:hover{filter:brightness(0.92);transform:translateY(-1px)}
+
+/* ── DIAGRAM WRAPPERS ── */
+.diagram{width:100%;max-width:1100px;animation:fadeUp 0.22s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── C4 NODES ── */
+.c4-wrap{position:relative}
+.c4-title{font-family:'Instrument Serif',Georgia,serif;font-size:var(--fs-xl);color:var(--text);margin-bottom:4px}
+.c4-desc{font-size:var(--fs-sm);color:var(--muted);margin-bottom:20px;max-width:80ch;line-height:1.55}
+
+/* GRID LAYOUTS */
+.grid-outer{display:flex;flex-direction:column;gap:0}
+.system-boundary{border:2px dashed var(--border);border-radius:var(--r-lg);padding:20px;position:relative;margin:10px 0}
+.boundary-label{position:absolute;top:-10px;left:14px;background:var(--bg);padding:0 6px;font-size:var(--fs-xs);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+
+.nodes-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.nodes-col{display:flex;flex-direction:column;gap:12px}
+
+/* NODE CARD */
+.node{
+  border-radius:var(--r-lg);border:1.5px solid;padding:12px 14px;
+  cursor:pointer;transition:box-shadow 0.14s,transform 0.14s,filter 0.14s;
+  display:flex;flex-direction:column;gap:4px;min-width:160px;
+  box-shadow:var(--shadow);
+}
+.node:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.node.ext{background:var(--ext-bg);border-color:var(--ext-border);cursor:default}
+.node.ext:hover{transform:none;box-shadow:var(--shadow)}
+.node.ctx{background:var(--c4-ctx-bg);border-color:var(--c4-ctx-border)}
+.node.con{background:var(--c4-con-bg);border-color:var(--c4-con-border)}
+.node.cmp{background:var(--c4-cmp-bg);border-color:var(--c4-cmp-border)}
+.node.cod{background:var(--c4-cod-bg);border-color:var(--c4-cod-border)}
+.node.sys{background:var(--primary-soft);border-color:var(--primary-hl);border-width:2px}
+.node-kind{font-size:var(--fs-xs);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;opacity:0.7}
+.node.ctx .node-kind{color:var(--c4-ctx)}
+.node.con .node-kind{color:var(--c4-con)}
+.node.cmp .node-kind{color:var(--c4-cmp)}
+.node.cod .node-kind{color:var(--c4-cod)}
+.node.sys .node-kind{color:var(--primary)}
+.node.ext .node-kind{color:var(--ext)}
+.node-icon{font-size:1.2rem;margin-bottom:2px}
+.node-name{font-size:var(--fs-md);font-weight:600;line-height:1.25;color:var(--text)}
+.node-tech{font-size:var(--fs-xs);color:var(--muted);font-style:italic}
+.node-desc{font-size:var(--fs-xs);color:var(--muted);line-height:1.45;margin-top:2px}
+.node-arrow{font-size:var(--fs-xs);color:var(--primary);margin-top:4px;display:flex;align-items:center;gap:3px}
+
+/* ARROWS / RELATIONS */
+.relations{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.rel{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--divider);border-radius:var(--r);font-size:var(--fs-xs);color:var(--muted)}
+.rel-from{font-weight:600;color:var(--text);white-space:nowrap}
+.rel-arrow{color:var(--primary);flex-shrink:0}
+.rel-to{font-weight:600;color:var(--text);white-space:nowrap}
+.rel-label{flex:1;font-style:italic}
+
+/* SECTION HEADERS */
+.sec-header{font-size:var(--fs-xs);font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;margin-top:16px}
+
+/* DOMAIN GRID (L2) */
+.domain-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%}
+.domain-grid-inner{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%}
+
+/* DETAIL PANEL */
+.detail-panel{
+  position:fixed;right:0;top:42px;bottom:0;width:320px;
+  background:var(--surface2);border-left:1px solid var(--border);
+  transform:translateX(100%);transition:transform 0.22s cubic-bezier(0.16,1,0.3,1);
+  display:flex;flex-direction:column;z-index:200;
+  box-shadow:-4px 0 20px rgba(0,0,0,0.08);
+}
+.detail-panel.open{transform:translateX(0)}
+.dp-header{padding:14px 14px 10px;border-bottom:1px solid var(--divider);flex-shrink:0;display:flex;align-items:flex-start;gap:8px}
+.dp-close{width:24px;height:24px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0;margin-left:auto}
+.dp-close:hover{background:var(--surface3);color:var(--text)}
+.dp-kind{font-size:var(--fs-xs);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px}
+.dp-name{font-family:'Instrument Serif',Georgia,serif;font-size:var(--fs-lg);color:var(--text);line-height:1.2}
+.dp-tech{font-size:var(--fs-xs);color:var(--muted);font-style:italic;margin-top:2px}
+.dp-body{flex:1;overflow-y:auto;padding:14px}
+.dp-body::-webkit-scrollbar{width:3px}
+.dp-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.dp-section{margin-bottom:14px}
+.dp-section-title{font-size:var(--fs-xs);font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.dp-desc{font-size:var(--fs-sm);color:var(--muted);line-height:1.6}
+.dp-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+.dp-list li{font-size:var(--fs-xs);color:var(--muted);display:flex;align-items:flex-start;gap:6px;line-height:1.5}
+.dp-list li::before{content:'›';color:var(--primary);flex-shrink:0;margin-top:1px}
+.dp-drill{margin-top:4px;font-size:var(--fs-xs);color:var(--primary);cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:600}
+.dp-drill:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="tb-logo">
+    <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="8" fill="var(--primary)"/>
+      <rect x="7" y="8" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
+      <rect x="15" y="8" width="10" height="6" rx="1.5" fill="white" opacity="0.55"/>
+      <rect x="7" y="16" width="10" height="6" rx="1.5" fill="white" opacity="0.55"/>
+      <rect x="19" y="16" width="6" height="6" rx="1.5" fill="white" opacity="0.9"/>
+    </svg>
+    <span class="tb-title">ROMS</span>
+    <span class="tb-badge">C4 Architecture</span>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-breadcrumb" id="breadcrumb">
+    <span class="tb-bc-item active" data-level="1">System Context</span>
+  </div>
+  <button class="theme-btn" id="themeBtn" aria-label="Toggle theme">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<div class="canvas" id="canvas">
+  <!-- Level tabs -->
+  <div class="level-tabs">
+    <div class="lvl-tab c1 clickable" data-level="1">C1 — System Context</div>
+    <div class="lvl-tab c2 clickable inactive" id="tab2" data-level="2">C2 — Containers</div>
+    <div class="lvl-tab c3 clickable inactive" id="tab3" data-level="3">C3 — Components</div>
+    <div class="lvl-tab c4 inactive" id="tab4" data-level="4">C4 — Code / Detail</div>
+  </div>
+
+  <div class="diagram" id="diagram"></div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detailPanel">
+  <div class="dp-header">
+    <div>
+      <div class="dp-kind" id="dpKind"></div>
+      <div class="dp-name" id="dpName"></div>
+      <div class="dp-tech" id="dpTech"></div>
+    </div>
+    <button class="dp-close" id="dpClose">✕</button>
+  </div>
+  <div class="dp-body" id="dpBody"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA MODEL
+// ─────────────────────────────────────────────
+const SYSTEM = {
+  name: "ROMS",
+  fullName: "Research Operations Management System",
+  desc: "A unified digital platform that orchestrates all 10 domains of biomedical & life-science research operations — from biospecimen management and data capture to regulatory compliance and grant finance.",
+  tech: "Web Application / SaaS",
+  users: [
+    { icon:"👩‍🔬", name:"Laboratory Scientists", desc:"Manage samples, experiments, assays, and instrument workflows" },
+    { icon:"📋", name:"Data Managers", desc:"Capture, validate, and govern research data across studies" },
+    { icon:"👔", name:"Research Administrators", desc:"Oversee HR, finance, grants, and regulatory submissions" },
+    { icon:"🏛️", name:"Principal Investigators", desc:"Monitor study progress, budgets, and compliance across domains" },
+    { icon:"🛡️", name:"Quality & Compliance Officers", desc:"Manage SOPs, audits, CAPA, and regulatory filings" },
+    { icon:"👥", name:"Community Engagement Staff", desc:"Recruit, consent, and retain study participants" },
+  ],
+  externals: [
+    { icon:"🏥", name:"REDCap / EDC", desc:"Electronic Data Capture platform for clinical data", tech:"REDCap / OpenClinica" },
+    { icon:"🧬", name:"LIMS", desc:"Laboratory Information Management System for sample tracking", tech:"LabVantage / STARLIMS" },
+    { icon:"📡", name:"ELN", desc:"Electronic Lab Notebook for raw experimental data", tech:"Benchling / LabArchives" },
+    { icon:"💳", name:"Financial ERP", desc:"Institutional enterprise resource planning for finance", tech:"SAP / QuickBooks" },
+    { icon:"🏛️", name:"Ethics Portal", desc:"IRB/REC submission and approval tracking", tech:"iRIS / Cayuse" },
+    { icon:"🌐", name:"Regulatory Registries", desc:"Clinical trial registration databases", tech:"ClinicalTrials.gov / PACTR" },
+    { icon:"📦", name:"Procurement System", desc:"Purchase orders, vendors, and goods receipt", tech:"SAP MM / Coupa" },
+    { icon:"☁️", name:"HPC / Cloud", desc:"High-performance compute for bioinformatics pipelines", tech:"AWS / Azure / On-Prem HPC" },
+  ]
+};
+
+const CONTAINERS = [
+  { id:"web", icon:"🌐", name:"Web Application", kind:"Container", tech:"React + TypeScript", color:"con",
+    desc:"Single-page application serving all 10 ROMS domain UIs. Role-based views render the appropriate domain modules per user.",
+    responsibilities:["Domain navigation and three-panel UI","Role-based access rendering","Real-time form validation","Dark/light theme and responsive layout"],
+    drillTo:3 },
+  { id:"api", icon:"⚙️", name:"API Gateway & Backend", kind:"Container", tech:"Node.js / REST + GraphQL", color:"con",
+    desc:"Stateless API layer handling all business logic, data transformations, and cross-domain orchestration.",
+    responsibilities:["Authentication & authorisation (OAuth2/JWT)","Domain service routing","Audit trail generation","Integration orchestration"],
+    drillTo:3 },
+  { id:"db", icon:"🗄️", name:"Core Database", kind:"Container", tech:"PostgreSQL + TimescaleDB", color:"con",
+    desc:"Primary relational store for all ROMS transactional data including samples, SOPs, HR records, finance, and participant data.",
+    responsibilities:["Multi-tenant data isolation","ALCOA+ audit columns on all tables","Time-series for temperature/sensor data","GDPR-compliant data partitioning"],
+    drillTo:null },
+  { id:"docstore", icon:"📂", name:"Document Store", kind:"Container", tech:"S3-compatible Object Storage", color:"con",
+    desc:"Stores all binary assets: SOP PDFs, consent form scans, raw instrument data files, ELN attachments, and TMF documents.",
+    responsibilities:["Versioned document storage","Controlled copy distribution","Encrypted at-rest storage","Retention policy enforcement"],
+    drillTo:null },
+  { id:"notify", icon:"🔔", name:"Notification Service", kind:"Container", tech:"Event Bus + Email/SMS", color:"con",
+    desc:"Asynchronous notification engine dispatching alerts for temperature excursions, expiry warnings, CAPA deadlines, and audit reminders.",
+    responsibilities:["Email & SMS dispatch","In-app notification feed","Escalation rules engine","Alert audit logging"],
+    drillTo:null },
+  { id:"iot", icon:"📡", name:"IoT Integration Layer", kind:"Container", tech:"MQTT Broker + Stream Processor", color:"con",
+    desc:"Ingests real-time sensor streams from cold-chain monitors, biosafety systems, and laboratory environment sensors.",
+    responsibilities:["MQTT message ingestion","Temperature excursion detection","Time-series storage pipeline","Sensor health monitoring"],
+    drillTo:null },
+  { id:"auth", icon:"🔒", name:"Identity & Access", kind:"Container", tech:"Keycloak / OAuth2 + RBAC", color:"con",
+    desc:"Manages authentication, role-based access control, and SSO across all ROMS modules and integrated systems.",
+    responsibilities:["SSO with institutional IdP","Role & permission management","MFA enforcement","Session and token lifecycle"],
+    drillTo:null },
+  { id:"int", icon:"🔗", name:"Integration Hub", kind:"Container", tech:"REST / HL7 FHIR / APIs", color:"con",
+    desc:"Mediates data exchange between ROMS and external systems including LIMS, EDC, ERP, ethics portals, and regulatory registries.",
+    responsibilities:["Bi-directional LIMS sync","REDCap data push/pull","Financial ERP posting","Ethics portal status polling"],
+    drillTo:3 },
+];
+
+const COMPONENTS = {
+  web:[
+    { icon:"🧬", name:"Biospecimen Module", kind:"Component", tech:"React", color:"cmp", desc:"Three-panel UI for sample collection, processing, storage mapping, and retrieval workflows." },
+    { icon:"📊", name:"Data Management Module", kind:"Component", tech:"React + REDCap Embed", color:"cmp", desc:"CRF design, EDC data entry, query management, and database lock workflows." },
+    { icon:"📄", name:"QMS / SOP Module", kind:"Component", tech:"React", color:"cmp", desc:"Document authoring, version control, training assignment, and audit management." },
+    { icon:"💰", name:"Finance Module", kind:"Component", tech:"React", color:"cmp", desc:"Grant pre/post-award dashboards, budget tracking, funder report generation." },
+    { icon:"🛡️", name:"Regulatory Module", kind:"Component", tech:"React", color:"cmp", desc:"Ethics submissions, protocol tracking, SAE reporting, and TMF management." },
+    { icon:"👥", name:"Participant Module", kind:"Component", tech:"React", color:"cmp", desc:"Recruitment tracking, consent management, scheduling, and CAB coordination." },
+    { icon:"👤", name:"HR Module", kind:"Component", tech:"React", color:"cmp", desc:"Staff onboarding, training records, competency assessments, and scheduling." },
+    { icon:"📦", name:"Inventory Module", kind:"Component", tech:"React", color:"cmp", desc:"Reagent stock, equipment register, procurement workflows, and waste records." },
+    { icon:"🧪", name:"Lab Workflow Module", kind:"Component", tech:"React", color:"cmp", desc:"Protocol tracking, instrument booking, result capture, and batch management." },
+    { icon:"📡", name:"Infrastructure Module", kind:"Component", tech:"React", color:"cmp", desc:"Platform admin, IoT monitoring dashboards, HPC job tracking, and IT support." },
+  ],
+  api:[
+    { icon:"🔐", name:"Auth Service", kind:"Component", tech:"Node.js", color:"cmp", desc:"Validates JWT tokens, enforces RBAC policies, and manages session state." },
+    { icon:"📋", name:"Domain Service Router", kind:"Component", tech:"Node.js", color:"cmp", desc:"Routes API calls to appropriate domain microservice handlers." },
+    { icon:"🔎", name:"Audit Trail Engine", kind:"Component", tech:"Node.js + PostgreSQL", color:"cmp", desc:"Captures all data mutations with user, timestamp, before/after values for ALCOA+ compliance." },
+    { icon:"📤", name:"Report Generator", kind:"Component", tech:"Node.js + PDF/Excel", color:"cmp", desc:"Generates funder reports, financial statements, QC summaries, and regulatory filings." },
+    { icon:"🔁", name:"Workflow Engine", kind:"Component", tech:"Node.js + BullMQ", color:"cmp", desc:"Manages multi-step approval workflows: SOP sign-off, CAPA actions, consent processes." },
+  ],
+  int:[
+    { icon:"🧬", name:"LIMS Connector", kind:"Component", tech:"REST / HL7 FHIR", color:"cmp", desc:"Synchronises sample metadata and result data between ROMS and the institution's LIMS." },
+    { icon:"📋", name:"REDCap Connector", kind:"Component", tech:"REDCap API", color:"cmp", desc:"Pushes CRF definitions to REDCap and pulls completed records back into ROMS." },
+    { icon:"💳", name:"ERP Connector", kind:"Component", tech:"SAP BAPI / REST", color:"cmp", desc:"Posts purchase orders, grant journal entries, and cost allocations to the financial ERP." },
+    { icon:"🏛️", name:"Ethics Portal Connector", kind:"Component", tech:"REST / iRIS API", color:"cmp", desc:"Submits ethics applications and polls approval status from the institutional REC portal." },
+    { icon:"🌐", name:"Registry Connector", kind:"Component", tech:"ClinicalTrials.gov API", color:"cmp", desc:"Registers and updates clinical trials on ClinicalTrials.gov, PACTR, and ISRCTN." },
+  ],
+};
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let currentLevel = 1;
+let currentContainer = null;
+let levelHistory = [1];
+
+// ─────────────────────────────────────────────
+//  RENDER FUNCTIONS
+// ─────────────────────────────────────────────
+function render(level, containerId){
+  currentLevel = level;
+  currentContainer = containerId || null;
+  updateBreadcrumb();
+  updateTabs();
+  const diag = document.getElementById('diagram');
+  diag.innerHTML = '';
+  if(level===1) renderL1(diag);
+  else if(level===2) renderL2(diag);
+  else if(level===3) renderL3(diag, containerId);
+  closePanel();
+}
+
+function renderL1(el){
+  el.innerHTML = `
+  <div class="c4-title">C1 — System Context</div>
+  <div class="c4-desc">ROMS sits at the centre of the research operations ecosystem, serving six user types and integrating with eight external systems across data capture, finance, compliance, and laboratory infrastructure.</div>
+  <div class="sec-header">Users & Actors</div>
+  <div class="nodes-row" style="margin-bottom:20px">
+    ${SYSTEM.users.map(u=>`
+      <div class="node ext" style="min-width:130px;max-width:160px">
+        <div class="node-icon">${u.icon}</div>
+        <div class="node-kind">Person</div>
+        <div class="node-name">${u.name}</div>
+        <div class="node-desc">${u.desc}</div>
+      </div>`).join('')}
+  </div>
+  <div class="system-boundary">
+    <div class="boundary-label">System Boundary — ROMS</div>
+    <div class="nodes-row" style="justify-content:center">
+      <div class="node sys" style="min-width:280px;max-width:340px;cursor:pointer" onclick="render(2)">
+        <div class="node-icon">🔬</div>
+        <div class="node-kind">Software System</div>
+        <div class="node-name">${SYSTEM.fullName}</div>
+        <div class="node-tech">${SYSTEM.tech}</div>
+        <div class="node-desc">${SYSTEM.desc}</div>
+        <div class="node-arrow">▶ Drill into Containers (C2)</div>
+      </div>
+    </div>
+  </div>
+  <div class="sec-header" style="margin-top:20px">External Systems</div>
+  <div class="nodes-row">
+    ${SYSTEM.externals.map(e=>`
+      <div class="node ext" style="min-width:130px;max-width:160px">
+        <div class="node-icon">${e.icon}</div>
+        <div class="node-kind">External System</div>
+        <div class="node-name">${e.name}</div>
+        <div class="node-tech">${e.tech}</div>
+        <div class="node-desc">${e.desc}</div>
+      </div>`).join('')}
+  </div>
+  <div class="sec-header" style="margin-top:20px">Key Relationships</div>
+  <div class="relations">
+    ${[
+      ["Laboratory Scientists","→","ROMS","Submit samples, log experiments, run assays"],
+      ["Data Managers","→","ROMS","Capture and validate study data via EDC/ELN"],
+      ["Research Administrators","→","ROMS","Manage HR, grants, SOPs, and regulatory filings"],
+      ["ROMS","→","REDCap / EDC","Push CRF definitions; pull completed data records"],
+      ["ROMS","→","LIMS","Sync sample metadata and assay result data"],
+      ["ROMS","→","Financial ERP","Post purchase orders and grant journal entries"],
+      ["ROMS","→","Ethics Portal","Submit IRB applications and retrieve approval status"],
+      ["ROMS","→","Regulatory Registries","Register and update clinical trials"],
+      ["IoT Sensors","→","ROMS","Stream real-time temperature and environmental data"],
+    ].map(r=>`<div class="rel"><span class="rel-from">${r[0]}</span><span class="rel-arrow">${r[1]}</span><span class="rel-to">${r[2]}</span><span class="rel-label">— ${r[3]}</span></div>`).join('')}
+  </div>`;
+}
+
+function renderL2(el){
+  el.innerHTML = `
+  <div class="c4-title">C2 — Containers</div>
+  <div class="c4-desc">ROMS is composed of eight containers: a React web application, a Node.js API gateway, PostgreSQL database, document store, notification service, IoT integration layer, identity provider, and an integration hub for external systems.</div>
+  <div class="system-boundary">
+    <div class="boundary-label">ROMS — System Boundary</div>
+    <div class="nodes-row" style="flex-wrap:wrap">
+      ${CONTAINERS.map(c=>`
+        <div class="node ${c.color}" style="min-width:160px;max-width:200px" onclick="openPanel(${JSON.stringify(c).split('"').join("'")})">
+          <div class="node-icon">${c.icon}</div>
+          <div class="node-kind">${c.kind} · ${c.tech}</div>
+          <div class="node-name">${c.name}</div>
+          <div class="node-desc">${c.desc.substring(0,80)}…</div>
+          ${c.drillTo?`<div class="node-arrow">▶ View Components (C3)</div>`:''}
+        </div>`).join('')}
+    </div>
+  </div>
+  <div class="sec-header" style="margin-top:20px">Container Interactions</div>
+  <div class="relations">
+    ${[
+      ["Web App","→","API Gateway","HTTPS/REST + GraphQL — all domain operations"],
+      ["API Gateway","→","Core Database","SQL — reads/writes all transactional domain data"],
+      ["API Gateway","→","Document Store","S3 API — stores and retrieves SOP PDFs and raw data files"],
+      ["API Gateway","→","Notification Service","Internal events — triggers alerts and reminders"],
+      ["API Gateway","→","Integration Hub","Internal API — routes data to/from external systems"],
+      ["IoT Layer","→","Core Database","Time-series writes — temperature and sensor readings"],
+      ["IoT Layer","→","Notification Service","Excursion events — cold-chain and safety alerts"],
+      ["Identity & Access","→","Web App","OAuth2 tokens — authenticates and authorises all users"],
+      ["Identity & Access","→","API Gateway","JWT validation — enforces RBAC on every request"],
+      ["Integration Hub","→","REDCap / LIMS / ERP","REST / HL7 FHIR — bi-directional data exchange"],
+    ].map(r=>`<div class="rel"><span class="rel-from">${r[0]}</span><span class="rel-arrow">${r[1]}</span><span class="rel-to">${r[2]}</span><span class="rel-label">— ${r[3]}</span></div>`).join('')}
+  </div>`;
+}
+
+function renderL3(el, cid){
+  const comps = COMPONENTS[cid] || [];
+  const container = CONTAINERS.find(c=>c.id===cid) || {};
+  el.innerHTML = `
+  <div class="c4-title">C3 — Components: ${container.name||''}</div>
+  <div class="c4-desc">${container.desc||''} The components below represent the major functional modules or services within this container.</div>
+  <div class="system-boundary">
+    <div class="boundary-label">${container.name||''} — Container Boundary</div>
+    <div class="nodes-row" style="flex-wrap:wrap">
+      ${comps.map(c=>`
+        <div class="node ${c.color}" style="min-width:160px;max-width:210px" onclick="openPanelObj(${escObj(c)})">
+          <div class="node-icon">${c.icon}</div>
+          <div class="node-kind">${c.kind} · ${c.tech}</div>
+          <div class="node-name">${c.name}</div>
+          <div class="node-desc">${c.desc}</div>
+        </div>`).join('')}
+    </div>
+  </div>
+  ${cid==='web'?`
+  <div class="sec-header" style="margin-top:20px">Domain Coverage per Module</div>
+  <div class="relations">
+    ${[
+      ["Biospecimen Module","→","Domain 1","Biospecimen & Biorepository Management"],
+      ["Inventory Module","→","Domain 2","Laboratory Inventory & Supply Chain Management"],
+      ["QMS / SOP Module","→","Domain 3","Standard Operating Procedures & Quality Management"],
+      ["Lab Workflow Module","→","Domain 4","Laboratory Workflow & Experiment Management"],
+      ["Data Management Module","→","Domain 5","Research Data Management"],
+      ["Infrastructure Module","→","Domain 6","Research Infrastructure & IT Services"],
+      ["HR Module","→","Domain 7","Human Resources Administration & Staff Operations"],
+      ["Finance Module","→","Domain 8","Research Finance & Grant Management"],
+      ["Participant Module","→","Domain 9","Participant & Community Engagement"],
+      ["Regulatory Module","→","Domain 10","Regulatory, Ethics & Compliance"],
+    ].map(r=>`<div class="rel"><span class="rel-from">${r[0]}</span><span class="rel-arrow">${r[1]}</span><span class="rel-to">${r[2]}</span><span class="rel-label">— ${r[3]}</span></div>`).join('')}
+  </div>`:''}`
+  ;
+}
+
+function escObj(obj){
+  return "'" + JSON.stringify(obj).replace(/'/g,"\\'") + "'";
+}
+
+// ─────────────────────────────────────────────
+//  DETAIL PANEL
+// ─────────────────────────────────────────────
+function openPanel(raw){
+  const obj = typeof raw === 'string' ? JSON.parse(raw.replace(/'/g,'"')) : raw;
+  openPanelObj(obj);
+}
+function openPanelObj(obj){
+  document.getElementById('dpKind').textContent = obj.kind||'';
+  document.getElementById('dpName').textContent = obj.name||'';
+  document.getElementById('dpTech').textContent = obj.tech||'';
+  const body = document.getElementById('dpBody');
+  let html = '';
+  if(obj.desc){ html += `<div class="dp-section"><div class="dp-section-title">Description</div><div class="dp-desc">${obj.desc}</div></div>`; }
+  if(obj.responsibilities && obj.responsibilities.length){
+    html += `<div class="dp-section"><div class="dp-section-title">Responsibilities</div><ul class="dp-list">${obj.responsibilities.map(r=>`<li>${r}</li>`).join('')}</ul></div>`;
+  }
+  if(obj.drillTo===3 && obj.id){
+    html += `<div class="dp-drill" onclick="render(3,'${obj.id}');closePanel()">▶ Drill into Components (C3)</div>`;
+  }
+  body.innerHTML = html;
+  document.getElementById('detailPanel').classList.add('open');
+}
+function closePanel(){ document.getElementById('detailPanel').classList.remove('open'); }
+document.getElementById('dpClose').addEventListener('click', closePanel);
+
+// ─────────────────────────────────────────────
+//  BREADCRUMB & TABS
+// ─────────────────────────────────────────────
+const LEVEL_NAMES = {1:'System Context', 2:'Containers', 3:'Components', 4:'Code/Detail'};
+function updateBreadcrumb(){
+  const bc = document.getElementById('breadcrumb');
+  let items = [{level:1,label:'System Context'}];
+  if(currentLevel>=2) items.push({level:2,label:'Containers'});
+  if(currentLevel>=3){ const c = CONTAINERS.find(x=>x.id===currentContainer); items.push({level:3,label:'Components'+(c?': '+c.name:'')}); }
+  bc.innerHTML = items.map((it,i)=>{
+    const isLast = i===items.length-1;
+    return `${i>0?'<span class="tb-bc-sep">›</span>':''}<span class="tb-bc-item${isLast?' active':''}" ${!isLast?`onclick="render(${it.level},null)"`:''} >${it.label}</span>`;
+  }).join('');
+}
+function updateTabs(){
+  document.querySelectorAll('.lvl-tab').forEach(t=>{
+    const lv = parseInt(t.dataset.level);
+    if(lv===currentLevel) t.classList.add('clickable'); else t.classList.remove('active');
+  });
+  const tab2 = document.getElementById('tab2');
+  const tab3 = document.getElementById('tab3');
+  if(currentLevel>=2) tab2.classList.remove('inactive'); else tab2.classList.add('inactive');
+  if(currentLevel>=3) tab3.classList.remove('inactive'); else tab3.classList.add('inactive');
+}
+
+// Tab click
+document.querySelectorAll('.lvl-tab.clickable').forEach(t=>{
+  t.addEventListener('click',()=>{ if(!t.classList.contains('inactive')) render(parseInt(t.dataset.level)); });
+});
+document.querySelectorAll('.lvl-tab').forEach(t=>{
+  t.addEventListener('click',()=>{ if(!t.classList.contains('inactive')) render(parseInt(t.dataset.level)); });
+});
+
+// ─────────────────────────────────────────────
+//  THEME
+// ─────────────────────────────────────────────
+(function(){
+  const btn = document.getElementById('themeBtn');
+  const root = document.documentElement;
+  let dark = matchMedia('(prefers-color-scheme:dark)').matches;
+  root.setAttribute('data-theme',dark?'dark':'light');
+  function upd(){ btn.innerHTML = dark?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>':'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'; }
+  upd(); btn.addEventListener('click',()=>{dark=!dark;root.setAttribute('data-theme',dark?'dark':'light');upd();});
+})();
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+render(1);
+</script>
+</body>
+</html>

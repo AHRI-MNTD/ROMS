@@ -1,0 +1,617 @@
+// Prisma schema for ROMS (Research Operations Management System)
+// Provider: PostgreSQL 16 (plain; TimescaleDB is recommended for production sensor data)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Core / Cross-cutting ──────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  hashedPassword String
+  displayName    String
+  roles          String[]  // Role enum values stored as strings
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastLoginAt    DateTime?
+
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  ownedSOPs       SOP[]          @relation("SOPOwner")
+  staffProfile    StaffProfile?
+  trainings       Training[]
+  capaItems       CAPA[]         @relation("CAPAOwner")
+  instrumentBookings InstrumentBooking[]
+  documents       Document[]
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  ipAddress  String?
+  userAgent  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entityType String
+  entityId   String
+  action     String   // CREATE, UPDATE, DELETE, READ_SENSITIVE
+  beforeJson Json?
+  afterJson  Json?
+  timestamp  DateTime @default(now())
+  ip         String?
+  userAgent  String?
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String    // EMAIL, SMS, IN_APP, ESCALATION
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+model Document {
+  id             String    @id @default(cuid())
+  kind           String    // SOP_PDF, CONSENT_FORM, RAW_DATA, TMF, REPORT
+  s3Key          String    @unique
+  version        String    @default("1.0")
+  ownerId        String
+  owner          User      @relation(fields: [ownerId], references: [id])
+  retentionUntil DateTime?
+  sizeBytes      Int?
+  mimeType       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([kind])
+}
+
+model SensorReading {
+  id         String   @id @default(cuid())
+  sensorId   String
+  value      Float
+  unit       String   // celsius, percent, etc.
+  recordedAt DateTime @default(now())
+  kind       String   // temperature, humidity, co2
+
+  @@index([sensorId, recordedAt])
+  @@index([kind])
+}
+
+// ─── Domain catalog (read-only, seeded from HTML spec) ────────────────────────
+
+model DomainCatalog {
+  id           String              @id @default(cuid())
+  domainId     Int                 @unique
+  slug         String              @unique
+  emoji        String
+  name         String
+  subfunctions SubFunctionCatalog[]
+  createdAt    DateTime            @default(now())
+}
+
+model SubFunctionCatalog {
+  id        String          @id @default(cuid())
+  domainId  String
+  domain    DomainCatalog   @relation(fields: [domainId], references: [id])
+  name      String
+  order     Int
+  tasks     TaskCatalog[]
+  createdAt DateTime        @default(now())
+}
+
+model TaskCatalog {
+  id             String             @id @default(cuid())
+  subfunctionId  String
+  subfunction    SubFunctionCatalog @relation(fields: [subfunctionId], references: [id])
+  text           String
+  order          Int
+  createdAt      DateTime           @default(now())
+}
+
+// ─── 1. Biospecimen & Biorepository ──────────────────────────────────────────
+
+enum SampleStatus {
+  REGISTERED
+  IN_PROCESSING
+  STORED
+  DISPATCHED
+  DEPLETED
+  DESTROYED
+}
+
+model StorageLocation {
+  id          String   @id @default(cuid())
+  freezer     String
+  rack        String
+  box         String
+  position    String
+  tempCelsius Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  samples Sample[]
+}
+
+model Sample {
+  id                String          @id @default(cuid())
+  accessionId       String          @unique
+  participantId     String
+  participant       Participant     @relation(fields: [participantId], references: [id])
+  collectedAt       DateTime
+  status            SampleStatus    @default(REGISTERED)
+  storageLocationId String?
+  storageLocation   StorageLocation? @relation(fields: [storageLocationId], references: [id])
+  studyCode         String?
+  collectorId       String?
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([participantId])
+  @@index([status])
+}
+
+// ─── 2. Lab Inventory & Supply Chain ──────────────────────────────────────────
+
+enum EquipmentStatus {
+  ACTIVE
+  UNDER_MAINTENANCE
+  DECOMMISSIONED
+  QUARANTINED
+}
+
+model StockItem {
+  id           String    @id @default(cuid())
+  sku          String    @unique
+  name         String
+  lotNumber    String?
+  expiryDate   DateTime?
+  quantity     Int       @default(0)
+  minThreshold Int       @default(5)
+  unit         String    @default("units")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([expiryDate])
+}
+
+model Equipment {
+  id               String          @id @default(cuid())
+  serial           String          @unique
+  model            String
+  manufacturer     String?
+  location         String?
+  purchaseDate     DateTime?
+  warrantyExpires  DateTime?
+  lastCalibratedAt DateTime?
+  status           EquipmentStatus @default(ACTIVE)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  bookings InstrumentBooking[]
+}
+
+// ─── 3. QMS / SOPs ────────────────────────────────────────────────────────────
+
+enum SOPStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  RETIRED
+}
+
+enum CAPAStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  OVERDUE
+}
+
+model SOP {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  title       String
+  version     String    @default("1.0")
+  status      SOPStatus @default(DRAFT)
+  ownerId     String
+  owner       User      @relation("SOPOwner", fields: [ownerId], references: [id])
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  trainings Training[]
+}
+
+model Training {
+  id          String    @id @default(cuid())
+  sopId       String
+  sop         SOP       @relation(fields: [sopId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([sopId, userId])
+  @@index([userId])
+}
+
+model CAPA {
+  id        String     @id @default(cuid())
+  finding   String
+  ownerId   String
+  owner     User       @relation("CAPAOwner", fields: [ownerId], references: [id])
+  dueDate   DateTime
+  status    CAPAStatus @default(OPEN)
+  sopId     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([status])
+  @@index([dueDate])
+}
+
+// ─── 4. Lab Workflow & Experiments ────────────────────────────────────────────
+
+enum AssayRunStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Protocol {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  title     String
+  version   String   @default("1.0")
+  studyCode String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assayRuns AssayRun[]
+}
+
+model InstrumentBooking {
+  id           String    @id @default(cuid())
+  instrumentId String
+  instrument   Equipment @relation(fields: [instrumentId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  startAt      DateTime
+  endAt        DateTime
+  purpose      String?
+  createdAt    DateTime  @default(now())
+
+  @@index([instrumentId, startAt])
+}
+
+model AssayRun {
+  id          String         @id @default(cuid())
+  protocolId  String
+  protocol    Protocol       @relation(fields: [protocolId], references: [id])
+  status      AssayRunStatus @default(SCHEDULED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  operatorId  String?
+  batchId     String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([protocolId])
+  @@index([status])
+}
+
+// ─── 5. Research Data Management ─────────────────────────────────────────────
+
+enum StudyStatus {
+  SETUP
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CLOSED
+}
+
+enum DataQueryStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+model Study {
+  id        String      @id @default(cuid())
+  code      String      @unique
+  title     String
+  status    StudyStatus @default(SETUP)
+  pi        String?
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  crfs               CRF[]
+  participants       Participant[]
+  ethicsSubmissions  EthicsSubmission[]
+  adverseEvents      AdverseEvent[]
+  grants             Grant[]
+}
+
+model CRF {
+  id        String   @id @default(cuid())
+  studyId   String
+  study     Study    @relation(fields: [studyId], references: [id])
+  name      String
+  version   String   @default("1.0")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dataQueries DataQuery[]
+
+  @@index([studyId])
+}
+
+model DataQuery {
+  id        String          @id @default(cuid())
+  crfId     String
+  crf       CRF             @relation(fields: [crfId], references: [id])
+  field     String
+  status    DataQueryStatus @default(OPEN)
+  queryText String?
+  response  String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([crfId, status])
+}
+
+// ─── 6. Infrastructure ───────────────────────────────────────────────────────
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model IntegrationJob {
+  id          String    @id @default(cuid())
+  system      String
+  direction   String    // INBOUND, OUTBOUND
+  payloadSize Int?
+  status      JobStatus @default(PENDING)
+  ranAt       DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([system, ranAt])
+}
+
+model BackupJob {
+  id        String    @id @default(cuid())
+  target    String
+  status    JobStatus @default(PENDING)
+  ranAt     DateTime?
+  sizeBytes BigInt?
+  error     String?
+  createdAt DateTime  @default(now())
+
+  @@index([ranAt])
+}
+
+// ─── 7. HR & Staff Operations ────────────────────────────────────────────────
+
+model StaffProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department String
+  jobTitle   String
+  startDate  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model TrainingRecord {
+  id          String    @id @default(cuid())
+  userId      String
+  courseCode  String
+  completedAt DateTime
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─── 8. Finance & Grant Management ───────────────────────────────────────────
+
+enum GrantStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  AWARDED
+  ACTIVE
+  CLOSED
+  REJECTED
+}
+
+model Grant {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  title         String
+  funder        String
+  awardedAmount Decimal     @db.Decimal(18, 2)
+  currency      String      @default("USD")
+  startDate     DateTime
+  endDate       DateTime
+  status        GrantStatus @default(DRAFT)
+  studyId       String?
+  study         Study?      @relation(fields: [studyId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  budgets   Budget[]
+  subawards SubAward[]
+
+  @@index([status])
+}
+
+model Budget {
+  id       String  @id @default(cuid())
+  grantId  String
+  grant    Grant   @relation(fields: [grantId], references: [id])
+  category String
+  planned  Decimal @db.Decimal(18, 2)
+  spent    Decimal @default(0) @db.Decimal(18, 2)
+
+  @@index([grantId])
+}
+
+model SubAward {
+  id        String   @id @default(cuid())
+  grantId   String
+  grant     Grant    @relation(fields: [grantId], references: [id])
+  partner   String
+  amount    Decimal  @db.Decimal(18, 2)
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+
+  @@index([grantId])
+}
+
+// ─── 9. Participant & Community Engagement ────────────────────────────────────
+
+enum ParticipantStatus {
+  SCREENED
+  ENROLLED
+  ACTIVE
+  COMPLETED
+  WITHDRAWN
+  LOST_TO_FOLLOWUP
+}
+
+model Participant {
+  id          String            @id @default(cuid())
+  pseudonymId String            @unique
+  studyId     String
+  study       Study             @relation(fields: [studyId], references: [id])
+  status      ParticipantStatus @default(SCREENED)
+  enrolledAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  consents      Consent[]
+  visits        Visit[]
+  samples       Sample[]
+  adverseEvents AdverseEvent[]
+
+  @@index([studyId, status])
+}
+
+model Consent {
+  id            String    @id @default(cuid())
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id])
+  version       String    @default("1.0")
+  signedAt      DateTime
+  withdrawnAt   DateTime?
+  witnessId     String?
+  createdAt     DateTime  @default(now())
+
+  @@index([participantId])
+}
+
+model Visit {
+  id            String      @id @default(cuid())
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id])
+  scheduledAt   DateTime
+  completedAt   DateTime?
+  visitType     String?
+  notes         String?
+  createdAt     DateTime    @default(now())
+
+  @@index([participantId, scheduledAt])
+}
+
+// ─── 10. Regulatory, Ethics & Compliance ─────────────────────────────────────
+
+enum EthicsStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_REVIEW
+  APPROVED
+  CONDITIONALLY_APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum AESeverity {
+  MILD
+  MODERATE
+  SEVERE
+  LIFE_THREATENING
+  FATAL
+}
+
+model EthicsSubmission {
+  id          String       @id @default(cuid())
+  studyId     String
+  study       Study        @relation(fields: [studyId], references: [id])
+  committee   String
+  status      EthicsStatus @default(DRAFT)
+  submittedAt DateTime?
+  decidedAt   DateTime?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([studyId, status])
+}
+
+model AdverseEvent {
+  id            String      @id @default(cuid())
+  studyId       String
+  study         Study       @relation(fields: [studyId], references: [id])
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id])
+  severity      AESeverity
+  description   String
+  seriousness   String      // SERIOUS, NON_SERIOUS
+  reportedAt    DateTime
+  resolvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([studyId, severity])
+}
