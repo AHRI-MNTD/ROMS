@@ -9,18 +9,20 @@
     "lint": "echo 'lint ok'"
   },
   "dependencies": {
+    "@plasmicapp/react-web": "^1.0.9",
     "@roms/shared": "workspace:*",
     "@roms/ui": "workspace:*",
     "@tanstack/react-query": "^5.40.0",
     "axios": "^1.7.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-router-dom": "^6.24.0",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
+    "@plasmicapp/cli": "^0.1.361",
+    "@types/react": "^18.3.29",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.0",
     "typescript": "^5.4.5",
     "vite": "^5.3.0"

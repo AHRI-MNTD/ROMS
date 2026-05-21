@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { AuthProvider } from "./auth/AuthProvider";
 import { routes } from "./routes";
+import PlasmicHost from "./plasmic-host";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,6 +17,7 @@ const queryClient = new QueryClient({
 
 const router = createBrowserRouter([
   ...routes,
+  { path: "/plasmic-host", element: <PlasmicHost /> },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
