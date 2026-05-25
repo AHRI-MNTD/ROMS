@@ -63,6 +63,14 @@ function toNumberOrUndefined(value: unknown): number | undefined {
 router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 20;
+  const all = String(req.query.all ?? "").toLowerCase() === "true";
+
+  if (all) {
+    const data = await prisma.stockItem.findMany({ orderBy: { name: "asc" } });
+    res.json({ data, total: data.length, page: 1, pageSize: data.length });
+    return;
+  }
+
   const [data, total] = await Promise.all([
     prisma.stockItem.findMany({ skip: (page - 1) * pageSize, take: pageSize, orderBy: { name: "asc" } }),
     prisma.stockItem.count(),
@@ -121,6 +129,13 @@ router.get("/master-data", requireAuth, requirePermission("inventory:read"), asy
   res.json({ data, total, page, pageSize, summary });
 });
 
+// GET /master-data/projects - return distinct project names from master data
+router.get("/master-data/projects", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
+  const rows = await prisma.inventoryMasterData.findMany({ select: { project: true } });
+  const projects = Array.from(new Set(rows.map((r: any) => String(r.project ?? "")).filter((p: string) => p.trim().length > 0)));
+  res.json({ projects });
+});
+
 router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req, res) => {
   const item = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
   if (!item) { res.status(404).json({ code: "NOT_FOUND" }); return; }
@@ -130,6 +145,15 @@ router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req,
 router.post("/", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "CREATE"), async (req, res) => {
   const parsed = CreateStockItemSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
+  // enforce projectFor exists in master-data
+  const projectForValue = String(req.body.projectFor ?? parsed.data.projectFor ?? "ROMS Inventory").trim();
+  if (projectForValue.length > 0) {
+    const found = await prisma.inventoryMasterData.findFirst({ where: { project: projectForValue } });
+    if (!found) {
+      res.status(400).json({ code: "INVALID_PROJECT", message: "projectFor must exist in inventory master data" });
+      return;
+    }
+  }
   try {
     const item = await prisma.$transaction(async (tx) => {
       const movementTx = tx as typeof tx & InventoryMovementPrisma;
@@ -191,6 +215,15 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
       if (minThreshold !== undefined) stockUpdate.minThreshold = Math.max(0, Math.floor(minThreshold));
       if (quantityUpdate !== undefined) stockUpdate.quantity = Math.max(0, Math.floor(quantityUpdate));
 
+      // If projectFor provided, validate it exists in master-data
+      const projectForProvided = toStringOrUndefined(req.body.projectFor);
+      if (projectForProvided) {
+        const foundProject = await tx.inventoryMasterData.findFirst({ where: { project: projectForProvided } });
+        if (!foundProject) {
+          throw new Error("INVALID_PROJECT");
+        }
+      }
+
       const previousQuantity = Number(existing.quantity ?? 0);
       const nextQuantity = stockUpdate.quantity !== undefined ? Number(stockUpdate.quantity) : previousQuantity;
       const difference = nextQuantity - previousQuantity;
@@ -232,6 +265,10 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
 
     res.json(item);
   } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_PROJECT") {
+      res.status(400).json({ code: "INVALID_PROJECT", message: "projectFor must exist in inventory master data" });
+      return;
+    }
     logger.error(error);
     res.status(500).json({ code: "INTERNAL_ERROR" });
   }

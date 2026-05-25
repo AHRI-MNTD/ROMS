@@ -20,6 +20,42 @@ export default function InventoryDashboardPage() {
     .filter((row) => Number(row.quantity ?? 0) === 0)
     .slice(0, 10);
 
+  const statCardStyle = (tone: string): React.CSSProperties => ({
+    padding: 16,
+    borderRadius: 18,
+    border: `1px solid ${tone}22`,
+    background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
+    boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)",
+  });
+
+  const statIconStyle = (tone: string): React.CSSProperties => ({
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+    background: `${tone}18`,
+    color: tone,
+    fontSize: 18,
+    lineHeight: 1,
+  });
+
+  const panelHeaderStyle: React.CSSProperties = {
+    padding: "12px 14px",
+    fontSize: "var(--fs-md)",
+    fontWeight: 800,
+    color: "var(--color-text)",
+    borderBottom: "1px solid var(--color-divider)",
+    textAlign: "center",
+    letterSpacing: "0.02em",
+  };
+
+  const rowStyle: React.CSSProperties = {
+    borderBottom: "1px solid var(--color-divider)",
+  };
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
@@ -33,65 +69,70 @@ export default function InventoryDashboardPage() {
       {!isLoading && !error && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 12 }}>
-            <div style={{ padding: 16, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6 }}>Total Items</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{data?.total ?? 0}</div>
+            <div style={statCardStyle("#01696f")}>
+              <div style={statIconStyle("#01696f")} aria-hidden="true">📦</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Items</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{data?.total ?? 0}</div>
             </div>
-            <div style={{ padding: 16, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6 }}>Total Check In</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{totalCheckIn}</div>
+            <div style={statCardStyle("#0d6f89")}>
+              <div style={statIconStyle("#0d6f89")} aria-hidden="true">⬆️</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Check In</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalCheckIn}</div>
             </div>
-            <div style={{ padding: 16, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6 }}>Total Check Out</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{totalCheckOut}</div>
+            <div style={statCardStyle("#b45309")}>
+              <div style={statIconStyle("#b45309")} aria-hidden="true">⬇️</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Check Out</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalCheckOut}</div>
             </div>
-            <div style={{ padding: 16, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6 }}>Total Stock</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{totalStock}</div>
+            <div style={statCardStyle("#0c4e54")}>
+              <div style={statIconStyle("#0c4e54")} aria-hidden="true">🧪</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Stock</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalStock}</div>
             </div>
-            <div style={{ padding: 16, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6 }}>Low Stock</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{lowStockCount}</div>
+            <div style={statCardStyle("#92400e")}>
+              <div style={statIconStyle("#92400e")} aria-hidden="true">⚠️</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Low Stock</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{lowStockCount}</div>
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
-            <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", overflow: "hidden" }}>
-              <div style={{ padding: "12px 14px", fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", borderBottom: "1px solid var(--color-divider)" }}>Top Used Items</div>
+            <div style={{ borderRadius: 18, border: "1px solid rgba(34, 197, 94, 0.16)", background: "linear-gradient(180deg, rgba(240, 253, 244, 0.98), rgba(255,255,255,0.94))", overflow: "hidden", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.05)" }}>
+              <div style={panelHeaderStyle}>Top Used Items</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody>
                   {topUsedItems.map((item, index) => (
-                    <tr key={`${item.id ?? item.sku ?? item.name ?? index}`} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <tr key={`${item.id ?? item.sku ?? item.name ?? index}`} style={rowStyle}>
                       <td style={{ padding: "9px 12px" }}>
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>{item.name ?? item.sku ?? "Unknown item"}</div>
+                        <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700 }}>{item.name ?? item.sku ?? "Unknown item"}</div>
                         <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 2 }}>{item.sourceCode ?? item.sku ?? "No code"} · Used {Number(item.checkOutTotal ?? 0)} · Qty {Number(item.quantity ?? 0)}</div>
                       </td>
                     </tr>
                   ))}
                   {topUsedItems.length === 0 && (
                     <tr>
-                      <td style={{ padding: "9px 12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No stock items available yet.</td>
+                      <td style={{ padding: "12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No stock items available yet.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
 
-            <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", overflow: "hidden" }}>
-              <div style={{ padding: "12px 14px", fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", borderBottom: "1px solid var(--color-divider)" }}>Out of Stock Items</div>
+            <div style={{ borderRadius: 18, border: "1px solid rgba(239, 68, 68, 0.18)", background: "linear-gradient(180deg, rgba(254, 242, 242, 0.98), rgba(255, 255, 255, 0.95))", overflow: "hidden", boxShadow: "0 14px 28px rgba(185, 28, 28, 0.05)" }}>
+              <div style={{ ...panelHeaderStyle, color: "#991b1b", borderBottom: "1px solid rgba(239, 68, 68, 0.14)" }}>Out of Stock Items</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody>
                   {outOfStockItems.map((item, index) => (
-                    <tr key={`${item.id ?? item.sku ?? item.name ?? index}`} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                      <td style={{ padding: "9px 12px" }}>
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>{item.name ?? item.sku ?? "Unknown item"}</div>
-                        <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 2 }}>{item.sourceCode ?? item.sku ?? "No code"}</div>
+                    <tr key={`${item.id ?? item.sku ?? item.name ?? index}`} style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.12)", background: "rgba(254, 242, 242, 0.65)" }}>
+                      <td style={{ padding: "10px 12px" }}>
+                        <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700 }}>{item.name ?? item.sku ?? "Unknown item"}</div>
+                        <div style={{ fontSize: "11px", color: "#991b1b", marginTop: 2 }}>{item.sourceCode ?? item.sku ?? "No code"}</div>
                       </td>
                     </tr>
                   ))}
                   {outOfStockItems.length === 0 && (
                     <tr>
-                      <td style={{ padding: "9px 12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No out-of-stock items right now.</td>
+                      <td style={{ padding: "12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No out-of-stock items right now.</td>
                     </tr>
                   )}
                 </tbody>

@@ -28,17 +28,20 @@ export interface InventoryListResult {
 interface UseInventoryDataOptions {
   page?: number;
   pageSize?: number;
+  all?: boolean;
 }
 
 export function useInventoryData(options?: UseInventoryDataOptions) {
   const page = options?.page ?? 1;
   const pageSize = options?.pageSize ?? 20;
+  const all = options?.all ?? false;
 
   return useQuery({
-    queryKey: ["inventory-list", page, pageSize],
+    queryKey: ["inventory-list", page, pageSize, all],
     queryFn: async () => {
       const resp = await apiClient.get("/domains/inventory", {
         params: {
+          all: all ? "true" : undefined,
           page,
           pageSize,
         },

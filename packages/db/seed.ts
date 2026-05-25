@@ -840,6 +840,7 @@ async function main() {
   if (stockItems.length > 0) {
     await stockPrisma.stockItem.createMany({
       data: stockItems,
+      skipDuplicates: true,
     });
   }
   console.log(`✅ Seeded ${stockItems.length} current inventory stock items from CSV`);
@@ -881,7 +882,8 @@ async function main() {
   await movementPrisma.inventoryMovement.deleteMany();
   if (seededMovements.length > 0) {
     await movementPrisma.inventoryMovement.createMany({
-      data: seededMovements,
+      data: seededMovements.map(({ sku, ...m }) => ({ ...m })),
+      skipDuplicates: true,
     });
   }
   console.log(`✅ Seeded ${seededMovements.length} inventory movement records from CSV`);

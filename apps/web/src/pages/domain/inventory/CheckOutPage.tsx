@@ -29,6 +29,7 @@ export default function CheckOutPage() {
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
   const [logs, setLogs] = React.useState<CheckOutLogEntry[]>([]);
   const [statusByRowKey, setStatusByRowKey] = React.useState<Record<string, "APPROVED" | "PENDING" | "REJECTED">>({});
+  const [projects, setProjects] = React.useState<string[]>([]);
 
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
   const currentQty = Number(selectedItem?.quantity ?? 0);
@@ -82,6 +83,21 @@ export default function CheckOutPage() {
       return next;
     });
   }, [inventoryReferenceRows]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    apiClient
+      .get("/domains/inventory/master-data/projects")
+      .then((resp) => {
+        const list = resp.data?.projects ?? [];
+        if (!mounted) return;
+        setProjects(list);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const quickLinkStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",

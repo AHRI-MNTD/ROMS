@@ -11,6 +11,7 @@ export default function CurrentInventoryPage() {
   const [pageSize, setPageSize] = React.useState(20);
 
   const { data, isLoading, error, isFetching } = useInventoryData({ page, pageSize });
+  const { data: allInventoryData } = useInventoryData({ all: true });
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredRows = (data?.data ?? []).filter((row) => {
@@ -44,14 +45,15 @@ export default function CurrentInventoryPage() {
     return true;
   });
 
-  const lowStockCount = (data?.data ?? []).filter((row) => {
+  const inventoryRows = allInventoryData?.data ?? [];
+  const lowStockCount = inventoryRows.filter((row) => {
     const quantity = Number(row.quantity ?? 0);
     const minThreshold = Number(row.minThreshold ?? 0);
     return quantity > 0 && quantity <= minThreshold;
   }).length;
 
-  const outOfStockCount = (data?.data ?? []).filter((row) => Number(row.quantity ?? 0) <= 0).length;
-  const totalStock = (data?.data ?? []).reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
+  const outOfStockCount = inventoryRows.filter((row) => Number(row.quantity ?? 0) <= 0).length;
+  const totalStock = inventoryRows.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / pageSize));
 
   React.useEffect(() => {
@@ -65,100 +67,153 @@ export default function CurrentInventoryPage() {
   }, [pageSize]);
 
   const quickLinkStyle: React.CSSProperties = {
-    border: "1px solid var(--color-border)",
-    background: "var(--color-surface-2)",
+    border: "1px solid rgba(1, 105, 111, 0.18)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,246,241,0.92))",
     color: "var(--color-text)",
     borderRadius: "999px",
-    padding: "8px 12px",
+    padding: "10px 14px",
     fontSize: "var(--fs-xs)",
     textDecoration: "none",
     fontWeight: 600,
     display: "inline-flex",
     alignItems: "center",
+    boxShadow: "0 10px 22px rgba(16, 24, 40, 0.06)",
+  };
+
+  const panelStyle: React.CSSProperties = {
+    border: "1px solid rgba(1, 105, 111, 0.12)",
+    borderRadius: 20,
+    background: "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
+    boxShadow: "0 18px 45px rgba(16, 24, 40, 0.08)",
+    backdropFilter: "blur(10px)",
+  };
+
+  const heroStatStyle = (accent: string): React.CSSProperties => ({
+    padding: "16px 18px",
+    borderRadius: 18,
+    border: `1px solid ${accent}22`,
+    background: `linear-gradient(180deg, ${accent}12, rgba(255,255,255,0.95))`,
+    boxShadow: "0 14px 26px rgba(16, 24, 40, 0.06)",
+  });
+
+  const chipStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase",
+    background: "rgba(1, 105, 111, 0.08)",
+    color: "#0c4e54",
+  };
+
+  const toolbarButtonStyle: React.CSSProperties = {
+    border: "1px solid rgba(1, 105, 111, 0.14)",
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.72)",
+    color: "var(--color-text)",
+    padding: "10px 12px",
+    fontSize: "var(--fs-xs)",
+    boxShadow: "0 8px 18px rgba(16, 24, 40, 0.04)",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    minWidth: 220,
+    border: "1px solid rgba(1, 105, 111, 0.14)",
+    borderRadius: 14,
+    background: "rgba(255,255,255,0.74)",
+    color: "var(--color-text)",
+    padding: "10px 12px",
+    fontSize: "var(--fs-xs)",
+    boxShadow: "0 8px 18px rgba(16, 24, 40, 0.04)",
   };
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Items (Page)</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{data?.data.length ?? 0}</div>
-        </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Low Stock</div>
-          <div style={{ color: "#b91c1c", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{lowStockCount}</div>
-        </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Out of Stock</div>
-          <div style={{ color: "#991b1b", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{outOfStockCount}</div>
-        </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Total Stock (Page)</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{totalStock}</div>
+    <div style={{ display: "grid", gap: 16 }}>
+      <div
+        style={{
+          ...panelStyle,
+          position: "relative",
+          overflow: "hidden",
+          padding: 20,
+          backgroundImage:
+            "radial-gradient(circle at top left, rgba(1, 105, 111, 0.16), transparent 35%), radial-gradient(circle at top right, rgba(239, 172, 40, 0.16), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,248,244,0.94))",
+        }}
+      >
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(120deg, rgba(255,255,255,0.24), transparent 34%, rgba(255,255,255,0.1) 60%, transparent)" }} />
+        <div style={{ position: "relative", display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ maxWidth: 700 }}>
+              <div style={chipStyle}>Live inventory snapshot</div>
+              <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "38px", lineHeight: 1.03, color: "var(--color-text)" }}>
+                Current inventory
+              </h2>
+              <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", lineHeight: 1.7, maxWidth: 62 * 8 }}>
+                Review stock levels, inspect low and out-of-stock items, and jump directly into check-in or check-out flows without losing the inventory context.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>
+              <Link to="../check-out" style={quickLinkStyle}>- Check Out</Link>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+            <div style={heroStatStyle("#01696f")}>
+              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Items on page</div>
+              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{data?.data.length ?? 0}</div>
+            </div>
+            <div style={heroStatStyle("#b45309")}>
+              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Low stock</div>
+              <div style={{ color: "#92400e", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{lowStockCount}</div>
+            </div>
+            <div style={heroStatStyle("#991b1b")}>
+              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Out of stock</div>
+              <div style={{ color: "#991b1b", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{outOfStockCount}</div>
+            </div>
+            <div style={heroStatStyle("#0c4e54")}>
+              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Total stock</div>
+              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{totalStock}</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>
-          <Link to="../check-out" style={quickLinkStyle}>- Check Out</Link>
+      <div style={{ ...panelStyle, padding: 14 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>
+            <Link to="../check-out" style={quickLinkStyle}>- Check Out</Link>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search SKU / name / unit" style={inputStyle} />
+            <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value as StockFilter)} style={toolbarButtonStyle}>
+              <option value="all">All Status</option>
+              <option value="healthy">Healthy</option>
+              <option value="low">Low Stock</option>
+              <option value="out">Out of Stock</option>
+            </select>
+            <select value={String(pageSize)} onChange={(e) => setPageSize(Number(e.target.value))} style={toolbarButtonStyle}>
+              <option value="10">10 / page</option>
+              <option value="20">20 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search SKU / name / unit"
-            style={{
-              minWidth: 220,
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-              padding: "8px 10px",
-              fontSize: "var(--fs-xs)",
-            }}
-          />
-          <select
-            value={stockFilter}
-            onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-            style={{
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-              padding: "8px 10px",
-              fontSize: "var(--fs-xs)",
-            }}
-          >
-            <option value="all">All Status</option>
-            <option value="healthy">Healthy</option>
-            <option value="low">Low Stock</option>
-            <option value="out">Out of Stock</option>
-          </select>
-          <select
-            value={String(pageSize)}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            style={{
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-              padding: "8px 10px",
-              fontSize: "var(--fs-xs)",
-            }}
-          >
-            <option value="10">10 / page</option>
-            <option value="20">20 / page</option>
-            <option value="50">50 / page</option>
-          </select>
-        </div>
+      </div>
+
+      <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
+        A full inventory snapshot with live stock status and transactional totals.
       </div>
 
       {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
       {!isLoading && isFetching && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)" }}>Refreshing…</div>}
 
       {error && (
-        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b" }}>
+        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 14, fontSize: "var(--fs-sm)", color: "#991b1b", boxShadow: "0 12px 24px rgba(185, 28, 28, 0.08)" }}>
           API unavailable — start the API server with <code>pnpm dev</code>
         </div>
       )}
@@ -168,22 +223,23 @@ export default function CurrentInventoryPage() {
           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
             Showing {filteredRows.length} of {data.data.length} item{data.data.length === 1 ? "" : "s"} on page {page} (total records: {data.total})
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius)" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Code_No</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Item_Description</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Category</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Unit</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Check-in total</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Check-out total</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Balance</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>% Balance</th>
-                  <th style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div style={{ ...panelStyle, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
+                <thead>
+                  <tr style={{ background: "linear-gradient(180deg, rgba(1, 105, 111, 0.08), rgba(1, 105, 111, 0.03))" }}>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Code_No</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Item_Description</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Category</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Unit</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Check-in total</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Check-out total</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Balance</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>% Balance</th>
+                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {filteredRows.map((row, index) => {
                   const quantity = Number(row.quantity ?? 0);
                   const minThreshold = Number(row.minThreshold ?? 0);
@@ -214,27 +270,28 @@ export default function CurrentInventoryPage() {
                       key={`${row.sku ?? "row"}-${index}`}
                       style={{
                         borderBottom: "1px solid var(--color-divider)",
-                        background: isOutOfStock || isLowStock ? "var(--color-surface)" : "transparent",
+                        background: isOutOfStock || isLowStock ? "linear-gradient(90deg, rgba(185, 28, 28, 0.03), transparent)" : index % 2 === 0 ? "rgba(255,255,255,0.45)" : "rgba(249,248,245,0.5)",
                       }}
                     >
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.sourceCode ?? row.sku ?? "—")}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.name ?? "—")}</td>
+                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{String(row.sourceCode ?? row.sku ?? "—")}</td>
+                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>{String(row.name ?? "—")}</td>
                       <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{category}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.unit ?? "—")}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkInTotal}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkOutTotal}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: isOutOfStock || isLowStock ? "#b91c1c" : "var(--color-text-muted)", fontWeight: isOutOfStock || isLowStock ? 700 : 400 }}>{balance}</td>
+                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.unit ?? "—")}</td>
+                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkInTotal}</td>
+                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkOutTotal}</td>
+                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: isOutOfStock || isLowStock ? "#b91c1c" : "var(--color-text)", fontWeight: isOutOfStock || isLowStock ? 800 : 600 }}>{balance}</td>
                       <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${Math.round(percentBalance)}%`}</td>
                       <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "3px 8px", fontWeight: 600, color: statusColor, background: statusBackground }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "5px 10px", fontWeight: 700, color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
                           {statusLabel}
                         </span>
                       </td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -247,13 +304,14 @@ export default function CurrentInventoryPage() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
                 style={{
-                  border: "1px solid var(--color-border)",
-                  background: page <= 1 ? "var(--color-surface)" : "var(--color-surface-2)",
+                  border: "1px solid rgba(1, 105, 111, 0.14)",
+                  background: page <= 1 ? "rgba(255,255,255,0.55)" : "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,246,242,0.92))",
                   color: "var(--color-text)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "6px 10px",
+                  borderRadius: 14,
+                  padding: "8px 12px",
                   fontSize: "var(--fs-xs)",
                   cursor: page <= 1 ? "not-allowed" : "pointer",
+                  boxShadow: "0 8px 18px rgba(16, 24, 40, 0.05)",
                 }}
               >
                 Previous
@@ -263,13 +321,14 @@ export default function CurrentInventoryPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
                 style={{
-                  border: "1px solid var(--color-border)",
-                  background: page >= totalPages ? "var(--color-surface)" : "var(--color-surface-2)",
+                  border: "1px solid rgba(1, 105, 111, 0.14)",
+                  background: page >= totalPages ? "rgba(255,255,255,0.55)" : "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,246,242,0.92))",
                   color: "var(--color-text)",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "6px 10px",
+                  borderRadius: 14,
+                  padding: "8px 12px",
                   fontSize: "var(--fs-xs)",
                   cursor: page >= totalPages ? "not-allowed" : "pointer",
+                  boxShadow: "0 8px 18px rgba(16, 24, 40, 0.05)",
                 }}
               >
                 Next

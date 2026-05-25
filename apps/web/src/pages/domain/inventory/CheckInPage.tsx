@@ -26,6 +26,7 @@ export default function CheckInPage() {
   const [note, setNote] = React.useState("");
   const [projectFor, setProjectFor] = React.useState("ROMS Inventory");
   const [status, setStatus] = React.useState<"APPROVED" | "PENDING" | "REJECTED">("APPROVED");
+  const [projects, setProjects] = React.useState<string[]>([]);
 
   const [newSku, setNewSku] = React.useState("");
   const [newName, setNewName] = React.useState("");
@@ -92,6 +93,22 @@ export default function CheckInPage() {
     fontSize: "var(--fs-xs)",
     width: "100%",
   };
+
+  React.useEffect(() => {
+    let mounted = true;
+    apiClient
+      .get("/domains/inventory/master-data/projects")
+      .then((resp) => {
+        const list = resp.data?.projects ?? [];
+        if (!mounted) return;
+        setProjects(list);
+        setProjectFor((prev) => (prev && prev !== "ROMS Inventory" ? prev : list[0] ?? "ROMS Inventory"));
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const checkInMutation = useMutation({
     mutationFn: async () => {
@@ -260,7 +277,17 @@ export default function CheckInPage() {
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Project For
-              <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+              {projects.length > 0 ? (
+                <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
+                  {projects.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+              )}
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -313,7 +340,17 @@ export default function CheckInPage() {
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Project For
-              <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+              {projects.length > 0 ? (
+                <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
+                  {projects.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+              )}
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
