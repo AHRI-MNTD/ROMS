@@ -5,7 +5,59 @@ import { auditMutation } from "../audit/audit.middleware";
 import { CreateStockItemSchema } from "@roms/shared";
 import { logger } from "../utils/logger";
 
-const router = Router();
+type InventoryMasterDataRecord = {
+  category: string;
+  unit: string;
+  project: string | null;
+  staff: string | null;
+};
+
+type InventoryMasterDataPrisma = typeof prisma & {
+  inventoryMasterData: {
+    findMany: (args?: Record<string, unknown>) => Promise<InventoryMasterDataRecord[]>;
+    count: (args?: Record<string, unknown>) => Promise<number>;
+  };
+};
+
+type InventoryMovementRecord = {
+  stockItemId: string;
+  movementType: "CHECK_IN" | "CHECK_OUT";
+  quantity: number;
+};
+
+type InventoryMovementPrisma = typeof prisma & {
+  inventoryMovement: {
+    findMany: (args?: Record<string, unknown>) => Promise<InventoryMovementRecord[]>;
+    create: (args: Record<string, unknown>) => Promise<unknown>;
+  };
+};
+
+const router: ReturnType<typeof Router> = Router();
+const inventoryPrisma = prisma as InventoryMasterDataPrisma;
+const movementPrisma = prisma as InventoryMovementPrisma;
+
+function toStringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function toDateOrUndefined(value: unknown): Date | undefined {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return undefined;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function toNumberOrUndefined(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
 
 // GET / — list stock items
 router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
@@ -23,6 +75,52 @@ router.get("/equipment", requireAuth, requirePermission("inventory:read"), async
   res.json({ data, total: data.length });
 });
 
+router.get("/master-data", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 50;
+  const search = String(req.query.search ?? "").trim();
+
+  const where = search
+    ? {
+        OR: [
+          { category: { contains: search, mode: "insensitive" as const } },
+          { unit: { contains: search, mode: "insensitive" as const } },
+          { project: { contains: search, mode: "insensitive" as const } },
+          { staff: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
+    : undefined;
+
+  const [data, total, allRows] = await Promise.all([
+    inventoryPrisma.inventoryMasterData.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      orderBy: [{ category: "asc" }, { unit: "asc" }, { project: "asc" }, { staff: "asc" }],
+    }),
+    inventoryPrisma.inventoryMasterData.count({ where }),
+    inventoryPrisma.inventoryMasterData.findMany({
+      where,
+      select: {
+        category: true,
+        unit: true,
+        project: true,
+        staff: true,
+      },
+    }),
+  ]);
+
+  const summary = {
+    rows: allRows.length,
+    categories: new Set(allRows.map((row: InventoryMasterDataRecord) => row.category).filter(Boolean)).size,
+    units: new Set(allRows.map((row: InventoryMasterDataRecord) => row.unit).filter(Boolean)).size,
+    projects: new Set(allRows.map((row: InventoryMasterDataRecord) => row.project).filter((value: string | null): value is string => Boolean(value))).size,
+    staff: new Set(allRows.map((row: InventoryMasterDataRecord) => row.staff).filter((value: string | null): value is string => Boolean(value))).size,
+  };
+
+  res.json({ data, total, page, pageSize, summary });
+});
+
 router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req, res) => {
   const item = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
   if (!item) { res.status(404).json({ code: "NOT_FOUND" }); return; }
@@ -33,7 +131,29 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
   const parsed = CreateStockItemSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
   try {
-    const item = await prisma.stockItem.create({ data: parsed.data });
+    const item = await prisma.$transaction(async (tx) => {
+      const movementTx = tx as typeof tx & InventoryMovementPrisma;
+      const createdItem = await tx.stockItem.create({
+        data: {
+          ...parsed.data,
+          checkInTotal: Number(parsed.data.quantity ?? 0),
+          checkOutTotal: 0,
+          balancePercent: Number(parsed.data.quantity ?? 0) > 0 ? 100 : 0,
+        } as never,
+      });
+      await movementTx.inventoryMovement.create({
+        data: {
+          stockItemId: createdItem.id,
+          movementType: "CHECK_IN",
+          quantity: createdItem.quantity,
+          requestedBy: req.user?.email ?? null,
+          projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
+          status: String(req.body.status ?? "APPROVED") as "APPROVED" | "PENDING" | "REJECTED",
+          remark: String(req.body.note ?? "Opening stock"),
+        },
+      });
+      return createdItem;
+    });
     res.status(201).json(item);
   } catch (err) {
     logger.error(err);
@@ -42,8 +162,79 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
 });
 
 router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "UPDATE"), async (req, res) => {
-  const item = await prisma.stockItem.update({ where: { id: req.params.id }, data: req.body as Record<string, unknown> });
-  res.json(item);
+  try {
+    const item = await prisma.$transaction(async (tx) => {
+      const movementTx = tx as typeof tx & InventoryMovementPrisma;
+      const existing = await tx.stockItem.findUnique({ where: { id: req.params.id } });
+      if (!existing) {
+        return null;
+      }
+
+      const stockUpdate: Record<string, unknown> = {};
+      const quantityUpdate = toNumberOrUndefined(req.body.quantity);
+      const sku = toStringOrUndefined(req.body.sku);
+      const sourceCode = toStringOrUndefined(req.body.sourceCode);
+      const name = toStringOrUndefined(req.body.name);
+      const category = toStringOrUndefined(req.body.category);
+      const lotNumber = toStringOrUndefined(req.body.lotNumber);
+      const unit = toStringOrUndefined(req.body.unit);
+      const expiryDate = toDateOrUndefined(req.body.expiryDate);
+      const minThreshold = toNumberOrUndefined(req.body.minThreshold);
+
+      if (sku) stockUpdate.sku = sku;
+      if (sourceCode) stockUpdate.sourceCode = sourceCode;
+      if (name) stockUpdate.name = name;
+      if (category) stockUpdate.category = category;
+      if (lotNumber !== undefined) stockUpdate.lotNumber = lotNumber;
+      if (unit) stockUpdate.unit = unit;
+      if (expiryDate !== undefined) stockUpdate.expiryDate = expiryDate;
+      if (minThreshold !== undefined) stockUpdate.minThreshold = Math.max(0, Math.floor(minThreshold));
+      if (quantityUpdate !== undefined) stockUpdate.quantity = Math.max(0, Math.floor(quantityUpdate));
+
+      const previousQuantity = Number(existing.quantity ?? 0);
+      const nextQuantity = stockUpdate.quantity !== undefined ? Number(stockUpdate.quantity) : previousQuantity;
+      const difference = nextQuantity - previousQuantity;
+
+      if (difference > 0) {
+        stockUpdate.checkInTotal = Number(existing.checkInTotal ?? 0) + difference;
+      } else if (difference < 0) {
+        stockUpdate.checkOutTotal = Number(existing.checkOutTotal ?? 0) + Math.abs(difference);
+      }
+
+      const nextCheckInTotal = Number(stockUpdate.checkInTotal ?? existing.checkInTotal ?? 0);
+      stockUpdate.balancePercent = nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0;
+
+      const updated = await tx.stockItem.update({ where: { id: req.params.id }, data: stockUpdate });
+
+      if (difference !== 0) {
+        await movementTx.inventoryMovement.create({
+          data: {
+            stockItemId: updated.id,
+            movementType: difference > 0 ? "CHECK_IN" : "CHECK_OUT",
+            quantity: Math.abs(difference),
+            requestedBy: req.user?.email ?? null,
+            destination: String(req.body.destination ?? req.body.projectFor ?? "ROMS Inventory"),
+            recipient: String(req.body.recipient ?? "").trim() || null,
+            projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
+            status: String(req.body.status ?? (difference > 0 ? "APPROVED" : "APPROVED")) as "APPROVED" | "PENDING" | "REJECTED",
+            remark: String(req.body.remark ?? req.body.note ?? (difference > 0 ? "Stock increased" : "Stock decreased")),
+          },
+        });
+      }
+
+      return updated;
+    });
+
+    if (!item) {
+      res.status(404).json({ code: "NOT_FOUND" });
+      return;
+    }
+
+    res.json(item);
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ code: "INTERNAL_ERROR" });
+  }
 });
 
 router.delete("/:id", requireAuth, requirePermission("inventory:delete"), auditMutation("StockItem", "DELETE"), async (req, res) => {

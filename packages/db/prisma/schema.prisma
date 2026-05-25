@@ -190,19 +190,59 @@ enum EquipmentStatus {
   QUARANTINED
 }
 
+enum InventoryMovementType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum InventoryMovementStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
 model StockItem {
   id           String    @id @default(cuid())
   sku          String    @unique
+  sourceCode   String?
   name         String
+  category     String?
   lotNumber    String?
   expiryDate   DateTime?
   quantity     Int       @default(0)
   minThreshold Int       @default(5)
+  checkInTotal Int       @default(0)
+  checkOutTotal Int      @default(0)
+  balancePercent Float   @default(0)
   unit         String    @default("units")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  movements    InventoryMovement[]
+
   @@index([expiryDate])
+  @@index([sourceCode])
+}
+
+model InventoryMovement {
+  id           String                  @id @default(cuid())
+  stockItemId  String
+  stockItem    StockItem               @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  movementType InventoryMovementType
+  quantity     Int
+  destination  String?
+  recipient    String?
+  requestedBy  String?
+  projectFor   String?
+  status       InventoryMovementStatus @default(APPROVED)
+  remark       String?
+  occurredAt   DateTime                @default(now())
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([stockItemId])
+  @@index([movementType])
+  @@index([occurredAt])
 }
 
 model Equipment {
@@ -219,6 +259,21 @@ model Equipment {
   updatedAt        DateTime        @updatedAt
 
   bookings InstrumentBooking[]
+}
+
+model InventoryMasterData {
+  id        String   @id @default(cuid())
+  category  String
+  unit      String
+  project   String?
+  staff     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([unit])
+  @@index([project])
+  @@index([staff])
 }
 
 // ─── 3. QMS / SOPs ────────────────────────────────────────────────────────────

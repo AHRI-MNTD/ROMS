@@ -9,8 +9,523 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DOMAIN_CATALOG } from "@roms/shared";
+import fs from "node:fs";
+import path from "node:path";
 
 const prisma = new PrismaClient();
+
+interface InventoryMasterCsvRow {
+  category: string;
+  unit: string;
+  project?: string;
+  staff?: string;
+}
+
+interface CurrentInventoryCsvRow {
+  codeNo: string;
+  itemDescription: string;
+  category?: string;
+  unit?: string;
+  checkInTotal: number;
+  checkOutTotal: number;
+  balance: number;
+  percentBalance: number;
+}
+
+interface CheckInCsvRow {
+  codeNo: string;
+  barcode?: string;
+  itemDescription: string;
+  quantity: number;
+  unit?: string;
+  unitDescription?: string;
+  category?: string;
+  project?: string;
+  dateReceived?: string;
+  expiryDate?: string;
+  remark?: string;
+}
+
+interface CheckOutCsvRow {
+  codeNo: string;
+  barcode?: string;
+  itemDescription: string;
+  quantity: number;
+  unit?: string;
+  unitDescription?: string;
+  category?: string;
+  dateRequested?: string;
+  requestedBy?: string;
+  projectFor?: string;
+  remark?: string;
+}
+
+interface SeededStockItem {
+  sku: string;
+  name: string;
+  lotNumber?: string;
+  expiryDate?: Date;
+  quantity: number;
+  minThreshold: number;
+  unit: string;
+  createdAt: Date;
+}
+
+interface SeededStockMovement {
+  sku: string;
+  movementType: "CHECK_IN" | "CHECK_OUT";
+  quantity: number;
+  destination?: string;
+  recipient?: string;
+  requestedBy?: string;
+  projectFor?: string;
+  status: "APPROVED" | "PENDING" | "REJECTED";
+  remark?: string;
+  occurredAt: Date;
+}
+
+interface SeededStockMovementRecord extends SeededStockMovement {
+  stockItemId: string;
+}
+
+interface SeededCurrentInventoryStockItem {
+  sku: string;
+  sourceCode: string;
+  name: string;
+  category?: string;
+  lotNumber?: string;
+  expiryDate?: Date;
+  quantity: number;
+  minThreshold: number;
+  checkInTotal: number;
+  checkOutTotal: number;
+  balancePercent: number;
+  unit: string;
+  createdAt: Date;
+}
+
+function parseInventoryMasterCsv(csvText: string): InventoryMasterCsvRow[] {
+  const lines = csvText.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+  if (lines.length <= 1) {
+    return [];
+  }
+
+  const rows: InventoryMasterCsvRow[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const cells = line.split(",").map((v) => v.trim());
+    const [category = "", unit = "", project = "", staff = ""] = cells;
+
+    if (!category && !unit && !project && !staff) {
+      continue;
+    }
+
+    rows.push({
+      category,
+      unit,
+      project: project || undefined,
+      staff: staff || undefined,
+    });
+  }
+
+  return rows;
+}
+
+function readInventoryMasterCsv(): InventoryMasterCsvRow[] {
+  const candidatePaths = [
+    path.resolve(process.cwd(), "BOMS_Inventory_Master_Data.csv"),
+    path.resolve(process.cwd(), "../../BOMS_Inventory_Master_Data.csv"),
+  ];
+
+  const csvPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!csvPath) {
+    throw new Error("BOMS_Inventory_Master_Data.csv was not found. Expected at repository root.");
+  }
+
+  const csvContent = fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, "");
+  return parseInventoryMasterCsv(csvContent);
+}
+
+function parseCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index++) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      cells.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current.trim());
+  return cells;
+}
+
+function parseCsvFile(csvText: string): Array<Record<string, string>> {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+
+  if (lines.length === 0) {
+    return [];
+  }
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
+  return lines.slice(1).map((line) => {
+    const cells = parseCsvLine(line);
+    const row: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      row[header] = (cells[index] ?? "").trim();
+    });
+    return row;
+  });
+}
+
+function parseNumber(value: string | undefined): number {
+  const normalized = String(value ?? "").trim();
+  const numericMatch = normalized.match(/-?[\d,.]+/);
+  const parsed = Number((numericMatch?.[0] ?? "").replace(/,/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseCsvDate(value: string | undefined): Date | undefined {
+  const normalized = String(value ?? "").trim();
+  if (!normalized || /^na$/i.test(normalized)) {
+    return undefined;
+  }
+
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function readCurrentInventoryCsv(): CurrentInventoryCsvRow[] {
+  const candidatePaths = [
+    path.resolve(process.cwd(), "MNTD Inventory Management 2026 - Current Inventory.csv"),
+    path.resolve(process.cwd(), "../../MNTD Inventory Management 2026 - Current Inventory.csv"),
+  ];
+
+  const csvPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!csvPath) {
+    throw new Error("MNTD Inventory Management 2026 - Current Inventory.csv was not found. Expected at repository root.");
+  }
+
+  const rows = parseCsvFile(fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""));
+  return rows
+    .map((row) => {
+      const codeNo = row["Code_No"]?.trim() ?? "";
+      const itemDescription = row["Item_Description"]?.trim() ?? "";
+      if (!codeNo || !itemDescription) {
+        return null;
+      }
+
+      return {
+        codeNo,
+        itemDescription,
+        category: row["Category"]?.trim() || undefined,
+        unit: row["Unit"]?.trim() || undefined,
+        checkInTotal: parseNumber(row["Check-in total"]),
+        checkOutTotal: parseNumber(row["Check-out total"]),
+        balance: parseNumber(row["Balance"]),
+        percentBalance: parseNumber(String(row["% Balance"] ?? "").replace(/%/g, "")),
+      };
+    })
+    .filter((row): row is CurrentInventoryCsvRow => Boolean(row));
+}
+
+function readCheckInCsv(): CheckInCsvRow[] {
+  const candidatePaths = [
+    path.resolve(process.cwd(), "MNTD Inventory Management 2026 - Check-in.csv"),
+    path.resolve(process.cwd(), "../../MNTD Inventory Management 2026 - Check-in.csv"),
+  ];
+
+  const csvPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!csvPath) {
+    throw new Error("MNTD Inventory Management 2026 - Check-in.csv was not found. Expected at repository root.");
+  }
+
+  const rows = parseCsvFile(fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""));
+  return rows
+    .map((row) => {
+      const codeNo = row["Code_No"]?.trim() ?? "";
+      const itemDescription = row["Item_Description"]?.trim() ?? "";
+      if (!codeNo || !itemDescription) {
+        return null;
+      }
+
+      return {
+        codeNo,
+        barcode: row["Barcode"]?.trim() || undefined,
+        itemDescription,
+        quantity: parseNumber(row["Quantity"]),
+        unit: row["Unit"]?.trim() || undefined,
+        unitDescription: row["Unit_Description"]?.trim() || undefined,
+        category: row["Category"]?.trim() || undefined,
+        project: row["Project"]?.trim() || undefined,
+        dateReceived: row["Date_Received"]?.trim() || undefined,
+        expiryDate: row["Expiry_Date"]?.trim() || undefined,
+        remark: row["Remark"]?.trim() || undefined,
+      };
+    })
+    .filter((row): row is CheckInCsvRow => Boolean(row));
+}
+
+function readCheckOutCsv(): CheckOutCsvRow[] {
+  const candidatePaths = [
+    path.resolve(process.cwd(), "MNTD Inventory Management 2026 - Check-out.csv"),
+    path.resolve(process.cwd(), "../../MNTD Inventory Management 2026 - Check-out.csv"),
+  ];
+
+  const csvPath = candidatePaths.find((p) => fs.existsSync(p));
+  if (!csvPath) {
+    throw new Error("MNTD Inventory Management 2026 - Check-out.csv was not found. Expected at repository root.");
+  }
+
+  const rows = parseCsvFile(fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""));
+  return rows
+    .map((row) => {
+      const codeNo = row["Code_No"]?.trim() ?? "";
+      const itemDescription = row["Item_Description"]?.trim() ?? "";
+      if (!codeNo || !itemDescription) {
+        return null;
+      }
+
+      return {
+        codeNo,
+        barcode: row["Barcode"]?.trim() || undefined,
+        itemDescription,
+        quantity: parseNumber(row["Quantity"]),
+        unit: row["Unit"]?.trim() || undefined,
+        unitDescription: row["Unit_Description"]?.trim() || undefined,
+        category: row["Category"]?.trim() || undefined,
+        dateRequested: row["Date_Requested"]?.trim() || undefined,
+        requestedBy: row["Requested_By"]?.trim() || undefined,
+        projectFor: row["Project_For"]?.trim() || undefined,
+        remark: row["Remark"]?.trim() || undefined,
+      };
+    })
+    .filter((row): row is CheckOutCsvRow => Boolean(row));
+}
+
+function humanizeInventoryLabel(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function hashSeed(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function buildSeededStockItems(masterRows: InventoryMasterCsvRow[]): SeededStockItem[] {
+  return masterRows.map((row, index) => {
+    const seedText = `${row.category}|${row.unit}|${row.project ?? ""}|${row.staff ?? ""}`;
+    const hash = hashSeed(seedText);
+    const quantityBand = hash % 10;
+    const quantity = quantityBand === 0 ? 0 : quantityBand <= 2 ? (hash % 20) + 1 : quantityBand <= 5 ? (hash % 80) + 10 : (hash % 400) + 50;
+    const minThreshold = Math.max(3, Math.round(quantity * 0.2));
+    const createdAt = new Date(Date.UTC(2025, index % 12, (index % 28) + 1));
+    const expiryDate = /chemical|reagent|kit|slide|tube|tip/i.test(row.category)
+      ? new Date(Date.UTC(2026 + (hash % 3), hash % 12, ((hash >> 5) % 28) + 1))
+      : undefined;
+
+    return {
+      sku: row.category.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "").toUpperCase() || `ITEM-${index + 1}`,
+      name: humanizeInventoryLabel(row.category),
+      lotNumber: row.project ? row.project.toUpperCase() : undefined,
+      expiryDate,
+      quantity,
+      minThreshold,
+      unit: row.unit,
+      createdAt,
+    };
+  });
+}
+
+function buildSeededStockMovements(stockItems: SeededStockItem[], masterRows: InventoryMasterCsvRow[]): SeededStockMovement[] {
+  return stockItems.flatMap((item, index) => {
+    const master = masterRows[index];
+    const seedText = `${item.sku}|${item.quantity}|${item.minThreshold}|${master?.project ?? ""}|${master?.staff ?? ""}`;
+    const hash = hashSeed(seedText);
+    const checkOutTotal = item.quantity === 0 ? (hash % 12) + 1 : Math.max(0, Math.floor(item.quantity * ((hash % 35) + 10) / 100));
+    const checkInTotal = item.quantity + checkOutTotal;
+    const requestedBy = master?.staff ?? "Seeded Inventory Clerk";
+    const projectFor = master?.project ?? "ROMS Inventory";
+
+    return [
+      {
+        sku: item.sku,
+        movementType: "CHECK_IN",
+        quantity: checkInTotal,
+        requestedBy,
+        projectFor,
+        status: "APPROVED",
+        remark: item.lotNumber ? `Opening stock for lot ${item.lotNumber}` : "Opening stock",
+        occurredAt: new Date(Date.UTC(2025, index % 12, (index % 28) + 1, 8, 0, 0)),
+      },
+      {
+        sku: item.sku,
+        movementType: "CHECK_OUT",
+        quantity: checkOutTotal,
+        destination: projectFor,
+        recipient: master?.staff ?? undefined,
+        requestedBy,
+        projectFor,
+        status: item.quantity === 0 ? "PENDING" : "APPROVED",
+        remark: checkOutTotal > 0 ? "Seeded consumption history" : "No historical checkout",
+        occurredAt: new Date(Date.UTC(2025, index % 12, (index % 28) + 1, 15, 30, 0)),
+      },
+    ];
+  });
+}
+
+function normalizeInventoryKey(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function buildCurrentInventorySeedRows(rows: CurrentInventoryCsvRow[]): SeededCurrentInventoryStockItem[] {
+  const codeUsage = new Map<string, number>();
+
+  return rows.map((row, index) => {
+    const usage = (codeUsage.get(row.codeNo) ?? 0) + 1;
+    codeUsage.set(row.codeNo, usage);
+    const sku = usage === 1 ? row.codeNo : `${row.codeNo}-${usage}`;
+    const quantity = Math.max(0, Math.floor(row.balance));
+    const checkInTotal = Math.max(0, Math.floor(row.checkInTotal));
+    const checkOutTotal = Math.max(0, Math.floor(row.checkOutTotal));
+    const minThreshold = quantity <= 0 ? 1 : Math.max(1, Math.ceil(quantity * 0.2));
+
+    return {
+      sku,
+      sourceCode: row.codeNo,
+      name: row.itemDescription,
+      category: row.category,
+      quantity,
+      minThreshold,
+      checkInTotal,
+      checkOutTotal,
+      balancePercent: row.percentBalance,
+      unit: row.unit ?? "units",
+      createdAt: new Date(Date.UTC(2026, index % 12, (index % 28) + 1)),
+    };
+  });
+}
+
+function buildAdditionalCurrentInventorySeedRows(
+  currentInventoryRows: CurrentInventoryCsvRow[],
+  checkInRows: CheckInCsvRow[],
+  existingKeys: Set<string>,
+): SeededCurrentInventoryStockItem[] {
+  const additionalRows: SeededCurrentInventoryStockItem[] = [];
+
+  for (const row of checkInRows) {
+    const key = normalizeInventoryKey(`${row.codeNo}|${row.itemDescription}`);
+    if (existingKeys.has(key)) {
+      continue;
+    }
+
+    existingKeys.add(key);
+    additionalRows.push({
+      sku: row.codeNo,
+      sourceCode: row.codeNo,
+      name: row.itemDescription,
+      category: row.category,
+      lotNumber: row.project,
+      expiryDate: parseCsvDate(row.expiryDate),
+      quantity: Math.max(0, Math.floor(row.quantity)),
+      minThreshold: Math.max(1, Math.ceil(Math.max(0, Math.floor(row.quantity)) * 0.2)),
+      checkInTotal: Math.max(0, Math.floor(row.quantity)),
+      checkOutTotal: 0,
+      balancePercent: Math.max(0, Math.min(100, Math.round(row.quantity > 0 ? 100 : 0))),
+      unit: row.unit ?? "units",
+      createdAt: new Date(Date.UTC(2026, additionalRows.length % 12, (additionalRows.length % 28) + 1)),
+    });
+  }
+
+  return additionalRows;
+}
+
+function buildMovementSeedRows(
+  stockItems: Array<{ sku: string; sourceCode: string; name: string; category?: string; unit: string }>,
+  checkInRows: CheckInCsvRow[],
+  checkOutRows: CheckOutCsvRow[],
+): SeededStockMovementRecord[] {
+  const stockKeyMap = new Map<string, string>();
+  stockItems.forEach((item) => {
+    stockKeyMap.set(normalizeInventoryKey(`${item.sourceCode}|${item.name}`), item.sku);
+    stockKeyMap.set(normalizeInventoryKey(item.sourceCode), item.sku);
+  });
+
+  const movements: Array<Omit<SeededStockMovementRecord, "stockItemId"> & { stockItemId?: string }> = [];
+
+  checkInRows.forEach((row, index) => {
+    const stockItemId = stockKeyMap.get(normalizeInventoryKey(`${row.codeNo}|${row.itemDescription}`)) ?? stockKeyMap.get(normalizeInventoryKey(row.codeNo));
+    if (!stockItemId) {
+      return;
+    }
+
+    movements.push({
+      stockItemId,
+      sku: row.codeNo,
+      movementType: "CHECK_IN",
+      quantity: Math.max(0, Math.floor(row.quantity)),
+      destination: row.project ?? undefined,
+      recipient: undefined,
+      requestedBy: row.project ?? undefined,
+      projectFor: row.project ?? undefined,
+      status: "APPROVED",
+      remark: row.remark ?? "Imported from check-in CSV",
+      occurredAt: parseCsvDate(row.dateReceived) ?? new Date(Date.UTC(2026, index % 12, (index % 28) + 1, 8, 0, 0)),
+    });
+  });
+
+  checkOutRows.forEach((row, index) => {
+    const stockItemId = stockKeyMap.get(normalizeInventoryKey(`${row.codeNo}|${row.itemDescription}`)) ?? stockKeyMap.get(normalizeInventoryKey(row.codeNo));
+    if (!stockItemId) {
+      return;
+    }
+
+    movements.push({
+      stockItemId,
+      sku: row.codeNo,
+      movementType: "CHECK_OUT",
+      quantity: Math.max(0, Math.floor(row.quantity)),
+      destination: row.projectFor ?? undefined,
+      recipient: row.requestedBy ?? undefined,
+      requestedBy: row.requestedBy ?? undefined,
+      projectFor: row.projectFor ?? undefined,
+      status: "APPROVED",
+      remark: row.remark ?? "Imported from check-out CSV",
+      occurredAt: parseCsvDate(row.dateRequested) ?? new Date(Date.UTC(2026, index % 12, (index % 28) + 1, 15, 30, 0)),
+    });
+  });
+
+  return movements.filter((movement): movement is SeededStockMovementRecord => Boolean(movement.stockItemId));
+}
 
 async function main() {
   console.log("🌱 Starting ROMS database seed...\n");
@@ -286,33 +801,90 @@ async function main() {
     },
   });
 
-  await Promise.all([
-    prisma.stockItem.upsert({
-      where: { sku: "PIPETTE-200" },
-      update: {},
-      create: {
-        sku: "PIPETTE-200",
-        name: "Micropipette Tips 200µL",
-        quantity: 1000,
-        minThreshold: 200,
-        unit: "tips",
-        expiryDate: new Date("2025-12-31"),
-      },
-    }),
-    prisma.stockItem.upsert({
-      where: { sku: "TUBE-EPPENDORF-1.5" },
-      update: {},
-      create: {
-        sku: "TUBE-EPPENDORF-1.5",
-        name: "Eppendorf Tubes 1.5mL",
-        quantity: 30,
-        minThreshold: 50,
-        unit: "tubes",
-      },
-    }),
-  ]);
+  // ─── Inventory master data (CSV) ─────────────────────────────────────────
+  const masterRows = readInventoryMasterCsv();
+  const inventoryMasterData = prisma as PrismaClient & {
+    inventoryMasterData: {
+      deleteMany: () => Promise<unknown>;
+      createMany: (args: { data: InventoryMasterCsvRow[] }) => Promise<unknown>;
+    };
+  };
 
-  console.log("✅ Created demo equipment and stock items");
+  await inventoryMasterData.inventoryMasterData.deleteMany();
+  if (masterRows.length > 0) {
+    await inventoryMasterData.inventoryMasterData.createMany({
+      data: masterRows,
+    });
+  }
+  console.log(`✅ Imported ${masterRows.length} inventory master-data rows from CSV`);
+
+  const currentInventoryRows = readCurrentInventoryCsv();
+  const checkInRows = readCheckInCsv();
+  const checkOutRows = readCheckOutCsv();
+  const currentInventoryItems = buildCurrentInventorySeedRows(currentInventoryRows);
+  const currentInventoryKeySet = new Set(currentInventoryRows.map((row) => normalizeInventoryKey(`${row.codeNo}|${row.itemDescription}`)));
+  const extraInventoryItems = buildAdditionalCurrentInventorySeedRows(currentInventoryRows, checkInRows, currentInventoryKeySet);
+  const stockItems = [...currentInventoryItems, ...extraInventoryItems];
+
+  const stockPrisma = prisma as PrismaClient & {
+    stockItem: {
+      deleteMany: () => Promise<unknown>;
+      createMany: (args: {
+        data: SeededCurrentInventoryStockItem[];
+      }) => Promise<unknown>;
+      findMany: (args?: Record<string, unknown>) => Promise<Array<{ id: string; sku: string; sourceCode: string | null; name: string; category: string | null }>>;
+    };
+  };
+
+  await stockPrisma.stockItem.deleteMany();
+  if (stockItems.length > 0) {
+    await stockPrisma.stockItem.createMany({
+      data: stockItems,
+    });
+  }
+  console.log(`✅ Seeded ${stockItems.length} current inventory stock items from CSV`);
+
+  const seededStockRecords = await stockPrisma.stockItem.findMany({
+    where: {
+      OR: stockItems.map((item) => ({
+        sku: item.sku,
+      })),
+    },
+    select: { id: true, sku: true, sourceCode: true, name: true, category: true },
+  });
+  const stockIdBySku = new Map(seededStockRecords.map((row) => [row.sku, row.id]));
+  const stockIdBySourceCode = new Map(seededStockRecords.filter((row) => row.sourceCode).map((row) => [row.sourceCode as string, row.id]));
+  const seededMovements = buildMovementSeedRows(
+    seededStockRecords.map((row) => ({
+      sku: row.sku,
+      sourceCode: row.sourceCode ?? row.sku,
+      name: row.name,
+      category: row.category ?? undefined,
+      unit: "units",
+    })),
+    checkInRows,
+    checkOutRows,
+  )
+    .map((movement) => ({
+      ...movement,
+      stockItemId: stockIdBySku.get(movement.sku) ?? stockIdBySourceCode.get(movement.sku),
+    }))
+    .filter((movement): movement is SeededStockMovementRecord => Boolean(movement.stockItemId));
+
+  const movementPrisma = prisma as PrismaClient & {
+    inventoryMovement: {
+      deleteMany: () => Promise<unknown>;
+      createMany: (args: { data: SeededStockMovementRecord[] }) => Promise<unknown>;
+    };
+  };
+
+  await movementPrisma.inventoryMovement.deleteMany();
+  if (seededMovements.length > 0) {
+    await movementPrisma.inventoryMovement.createMany({
+      data: seededMovements,
+    });
+  }
+  console.log(`✅ Seeded ${seededMovements.length} inventory movement records from CSV`);
 
   // ─── SOPs ─────────────────────────────────────────────────────────────────
   const sop1 = await prisma.sOP.upsert({

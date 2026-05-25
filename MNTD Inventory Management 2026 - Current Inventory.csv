@@ -1,0 +1,499 @@
+Code_No,Item_Description,Category,Unit,Check-in total,Check-out total,Balance,% Balance
+MNTD001,Falcon tubes of 50ml (Corning),,,0,0,0,0%
+MNTD002,Corning 50ml Centrifuge Tube (RNase and DNase free),Tube_Falcon,Bag,18,1,17,94%
+MNTD003, safe lock tubes 2.0ml (porensic DNA grade),,Pack,20,0,20,100%
+MNTD004,safe lock tubes 15ml (forensic DNA grade),,Pack,7,0,7,100%
+MNTD005,eppendorf tubes 5.0ml (forensic DNA grade),,Pack,2,0,2,100%
+MNTD006,eppendorf tubes 5.0ml (sterile),,Pack,1,0,1,100%
+MNTD007,microcentrifuge 1.5ml with cap (ratialb),,Bag,1,0,1,100%
+MNTD008,microcentrifuge  (fischer brand ) (6 holes),,Each,2,0,2,100%
+MNTD009,pk-25-96-well PCR plate (non skerted ),,Pack,3,0,3,100%
+MNTD010,"96- well full skirt PCR micro plate ,clear ( axygen )",,Pack,5,2,3,60%
+MNTD011,axygen pierceable  alumnium sealing film (non sterile),,Pack,13,0,13,100%
+MNTD012,adhesive sealing sheet (clear),,Pack,13,2,11,85%
+MNTD013,0.2ml non skirted low profile 96-well PCR plate,,Pack,8,0,8,100%
+MNTD014, assay plate with low evaporation lid 96 well flat bottom ,,Pack,20,0,20,100%
+MNTD015,"quality nano plate 26k, 24-well (10)",,Pack,16,0,16,100%
+MNTD016,QIAality nano plate 8.5K- 24-well(10),,Pack,11,0,11,100%
+MNTD017,1Xds DNA BR working solution ,,Each,12,0,12,100%
+MNTD018,RNase free 8-strip 0.2ml PCR tubes of capsF ,,Pack,2,0,2,100%
+MNTD019,PCR consumable with attached individual cap 0.2ml,,Box,3,0,3,100%
+MNTD020,high seansetivity DNA chips (agilent),,Each,8,0,8,100%
+MNTD021,VWS PCR plate 96 well non skirted (0.2ml),,Pack,176,6,170,97%
+MNTD022,1ml lver syringe with out needle,,Pack,61,2,59,97%
+MNTD023,"square well-block (DNA.RNA,&protein pun)",,Box,1,0,1,100%
+MNTD024,king fisher 96 tip comb,,Pack,2,0,2,100%
+MNTD025,low protein birding microcentrifuge tubes 1.5ml,,Pack,3,0,3,100%
+MNTD026,ultra pure agarose 500g ,,Each,4,0,4,100%
+MNTD027,ultra pure 10x TBE buffer 1000ml ,,Bottle,5,0,5,100%
+MNTD028,10X TBE buffer 0.2um filtered 1000ml,,Bottle,2,0,2,100%
+MNTD029,water molecular biology grade 0.03u  filtered 1l,,Bottle,1,0,1,100%
+MNTD030,sub-cell GT gel tray 15x15cm,,Each,4,0,4,100%
+MNTD031,sub-cell GT gel scasting gates,,Each,1,0,1,100%
+MNTD032,sub-cell GT gel caster,,Each,1,0,1,100%
+MNTD033, Sub -cell GT comb 15 wall(14cmx1.5mm),,Each,4,0,4,100%
+MNTD034,"Methanol 99.8%for HPLC,2.5L",,Bottle,3,0,3,100%
+MNTD035,"tween,20 250ml",,Bottle,2,0,2,100%
+MNTD036,Nuclo mag blood 200ul(4x96 preps),,Each,15,0,15,100%
+MNTD037,"96,wall accessories kit B for king fisher",,Each,15,0,15,100%
+MNTD038,"96 wall accessories kit B ,1 set",,Each,2,0,2,100%
+MNTD039,cryovial sterlized non pyrogenic 1.8ml,,Case,2,0,2,100%
+MNTD040,sodium azide.>=99.5%,,Bottle,1,0,1,100%
+MNTD041,hard shell PCR plates 96 well thin white well,,Pack,1,0,1,100%
+MNTD042,hard shell PCRplates 96 well white clear well,,Pack,1,0,1,100%
+MNTD043,"filter tip,100ul(96x1)",,Each,5,0,5,100%
+MNTD044,"filter tips,200ul(96x1)",,Each,1,0,1,100%
+MNTD045,"filter tips,10ul(96x1)",,Each,1,0,1,100%
+MNTD046,filter tips 1000ul(96x1),,Each,1,0,1,100%
+MNTD047,RT-LTS 200ul f 960A/10,,Pack,1,0,1,100%
+MNTD048,Neptune 20ul universal barrier tips,,Pack,1,0,1,100%
+MNTD049,UTIP 10UL Tips,,Pack,1,0,1,100%
+MNTD050,UTIP 1250 UL Tips,,Pack,1,0,1,100%
+MNTD051,Quibit assay tubes(0.5ml),,Pack,10,0,10,100%
+MNTD052,slide box(100 slides),,Each,1,0,1,100%
+MNTD053,Tally counter,,Each,1,0,1,100%
+MNTD054,Hemacue-301 machine,,Each,1,0,1,100%
+MNTD055,minigrip bag PE 100ul 100x150,,Case,2,0,2,100%
+MNTD056,PCR tube strip of 8 with cap strip 0.25ml flat,,Box,2,0,2,100%
+MNTD057,magpix drive fluid plus 4/pack,,Each,3,0,3,100%
+MNTD058,safe lock tubes 1.5 ml(eppidrof/individual,,Pack,1,0,1,100%
+MNTD059,bio-plex pro flat bottom plates,,Pack,18,0,18,100%
+MNTD060,96 well connical bottom 0.45 mlRNAas/DNAasefre,,Pack,6,0,6,100%
+MNTD061,speciality tips micro pipets tips(0.1-10)nonsteroids,,Pack,11,0,11,100%
+MNTD062,Mine elate PCR purification kit(250),,Box,1,0,1,100%
+MNTD063,QIAquick  96 PCR purification kit(4),,Box,2,0,2,100%
+MNTD064,aglinet syringe kit(for bio analyser),,Piece,7,0,7,100%
+MNTD065,Lumo color permanent marker,,Pack,4,0,4,100%
+MNTD066,RNSY mini kit(250)Qiagen,,Box,4,0,4,100%
+MNTD067,BD micro tainer k2E Blood collection tube,,Pack,14,0,14,100%
+MNTD068,BD micro tainer k2E blood collection tube,,Pack,7,0,7,100%
+MNTD069,sterile 2ml poly propylene(sealer),,Pack,4,0,4,100%
+MNTD070,0.1mm Zirconia(silicabead(454 grams)),,Bottle,4,0,4,100%
+MNTD071,larva try(medium size),,Each,97,0,97,100%
+MNTD072,parafilm(10.2cmx38.1m),,Roll,6,0,6,100%
+MNTD073,parafilm(10.2cmx76.2m),,Roll,2,0,2,100%
+MNTD074,DNA/RNA microkit(50),,Box,1,0,1,100%
+MNTD075,microscopic cover sglasses(18x18mm),,Case,60,0,60,100%
+MNTD076,Kit RAL 555 fixtation and differential stainig,,Kit,7,0,7,100%
+MNTD077,no 23 sterile disposable scarples,,Pack,5,0,5,100%
+MNTD078,millex syringe driven filxer units,,Pack,3,0,3,100%
+MNTD079,TOP vision agarose 500g,,Each,1,0,1,100%
+MNTD080,permanent marker point black,,Pack,3,0,3,100%
+MNTD081,microscopic cover glasses(22x22mm),,Pack,10,0,10,100%
+MNTD082,BD micro tainer contact activated lancet 1.55mm,,Pack,10,0,10,100%
+MNTD083,PCR consumable 8 tubes 0.2ml flat caps,,Box,7,0,7,100%
+MNTD084,hard shell PCR plates 96 well low profile semi scerted,,Box,1,0,1,100%
+MNTD085,Hemacue HB-301 micro cuvetes(4x50),,Pack,6,0,6,100%
+MNTD086,universal indicator strips PH01-14,,Pack,2,0,2,100%
+MNTD087,Eppendorff tubes 5ml(PCR clean),,Pack,2,0,2,100%
+MNTD088,super clear 5ml tubes with attached caps,,Bag,1,0,1,100%
+MNTD089,Lens cleaning tissue brush and solution,,Each,1,0,1,100%
+MNTD090,microscopic cover glasses(20x20mm),,Pack,1,0,1,100%
+MNTD091,0.2 ml skrited 96 well PCRplate white),,Pack,17,0,17,100%
+MNTD092,TweezersMM-SA(forceps),,Each,3,0,3,100%
+MNTD093,Giemsa stain powder 25gm,,Each,2,0,2,100%
+MNTD094,"Giemsa stain(M,S)100gm",,Each,1,0,1,100%
+MNTD095,cichild XL sticks(larva food) 325 gm,,Gram,9,0,9,100%
+MNTD096,Centrifuge tubes screw C sterile 50ml,,Pack,10,0,10,100%
+MNTD097,Mini grip REsealable(09mmx114mmx50mg),,Pack,20,0,20,100%
+MNTD098,Mini grip write on bags (230mmx325mm),,Pack,10,0,10,100%
+MNTD099,1set eppedorf conical tubes 25ml screw cup sterile,,Bag,3,0,3,100%
+MNTD100,filterd yellow rack tips(200ul),,Case,1,0,1,100%
+MNTD101,Blant fill needle 40 0bevel 18GX38mm,,Pack,22,0,22,100%
+MNTD102,Medicine pounch(10.5x7.5cm),,Pack,2,0,2,100%
+MNTD103,malaria AgPF/Pv(PLDH/PLDH)RDTkits,,Pack,240,0,240,100%
+MNTD104,15ml polypropylene conical tubes(17x120mm style),,Case,1,0,1,100%
+MNTD105,48 well celkl culture plate flat bottom,,Each,76,0,76,100%
+MNTD106,malaria Agpf(pLDH/HRPII),,Pack,62,0,62,100%
+MNTD107, cell culture treated surface filter cap T-25 flasks,,Pack,80,0,80,100%
+MNTD108,Mono jet almunium hab blunt needle 22G,,Pack,4,0,4,100%
+MNTD109,UTIPS filterd racked pipets tips 300ul,,Pack,6,0,6,100%
+MNTD110,UTIPS Filterd racked pipets tips 100ul,,Pack,4,0,4,100%
+MNTD111,UTIPSfilterd racked pipet tips 20ul,,Pack,6,0,6,100%
+MNTD112,UTIPSfilterd racked pipets 1000ul,,Pack,6,0,6,100%
+MNTD113,screw caps with o-Rings super clear tube,,Case,1,0,1,100%
+MNTD114,10ul universal barriers tips(Neptune),,Pack,5,0,5,100%
+MNTD115,200 ul universal barrier tips(neptune),,Pack,5,0,5,100%
+MNTD116,Zirconici/silica beads(1 mm dix),,Bottle,5,0,5,100%
+MNTD117,1000ul universal barriers tip(Neptune),,Pack,5,0,5,100%
+MNTD118,1ml syringe sterile ,,Pack,5,0,5,100%
+MNTD119,needle hypodermic 22 Gx1/4 0.7x32mmtw,,Pack,5,0,5,100%
+MNTD120,2ml stripette serological pipette ,,Bag,20,0,20,100%
+MNTD121,10ml stripette serological pipette ,,Bag,16,0,16,100%
+MNTD122,plastic two-piece syrige 1ml ,,Pack,12,0,12,100%
+MNTD123,gentamicin reagent solution 10mg/ml,,Vial,36,0,36,100%
+MNTD124,Lumefantrine powder ,,Vial,2,0,2,100%
+MNTD125,sodium bicarbonate 99.7% ACS reagent 25gm,,Bottle,2,0,2,100%
+MNTD126,lactic acid 100ml ,,Bottle,2,0,2,100%
+MNTD127,percoll PH 8.5-9.5 100ml,,Bottle,2,0,2,100%
+MNTD128,D- sorbitol 1kg ,,Bottle,2,0,2,100%
+MNTD129,EDTA (diisodium salt dihaydrate ) 500 mg ,,Bottle,2,0,2,100%
+MNTD130,saponin 500mg,,Bottle,2,0,2,100%
+MNTD131,dimethyl sulfoxide 1L,,Bottle,2,0,2,100%
+MNTD132,dimethyle sulfoxide anhydrous 3ml,,Vial,20,0,20,100%
+MNTD133,tris ultra pure grade 1kg ,,Bottle,1,0,1,100%
+MNTD134,triton X-100 surfact -AMPS tm detergent 50ml,,Bottle,2,0,2,100%
+MNTD135,hypoxanthine 100gm,,Bottle,16,0,16,100%
+MNTD136,cryocane aluminum size 6-place 7 pack of 12,,Pack,7,0,7,100%
+MNTD137,BD plastic pack luer  tip 10ml syring ,,Each,122,0,122,100%
+MNTD138,48 well cellculture plate sterile flatbottem  child ,,Each,100,0,100,100%
+MNTD139,24 well cell culture plate sterile with lid,,Each,50,0,50,100%
+MNTD140,millex GV  filter unit 0.22um durapore pudf membrane   ,,Each,99,0,99,100%
+MNTD141,acrodisk syringe filter 0.2 um supor mambrane ,,Each,50,0,50,100%
+MNTD142,"lens cleaning tissue 100x150mm,25sheet",,Pack,2,0,2,100%
+MNTD143,hard-shell PCR plates (96 well)thin well ,,,8,0,8,100%
+MNTD144,quick gel extraction & PCR purification  combo kit ,,,4,0,4,100%
+MNTD145,finn tip filter (200ul),,Pack,1,0,1,100%
+MNTD146,Utip (300ul) ,,,1,0,1,100%
+MNTD147,Axygen (500ul) 96well round botform  ,,Case,2,0,2,100%
+MNTD148,myspin 12 (termo scientific ) minicentrifug ,,,1,0,1,100%
+MNTD149,1.5ml plian skirted tube (std screw cap),,Bag,"1,000",0,"1,000",100%
+MNTD150,biorad PCR sealer ,,,600,0,600,100%
+MNTD151,eppindorf (2ml),,,500,0,500,100%
+MNTD152,larg biohazard bag ,,Carton,3,0,3,100%
+MNTD153,DNA away (41),,each,12,0,12,100%
+MNTD154,labels roll (6 ROll/box),,Box,1,0,1,100%
+MNTD155,plate seals esay seal triagent (79x135mm),,Box,3,0,3,100%
+MNTD156,plastic cryo box ,,Box,5,0,5,100%
+MNTD157,latex powder free examin glave ,,Box,5,0,5,100%
+MNTD158,64mlx 74m wax /resin ribbon ,,Box,15,0,15,100%
+MNTD159,semi antomated handhold screw cap decapped ,,Box,1,0,1,100%
+MNTD160,G6PD  ,,Bag,5,0,5,100%
+MNTD161,BD MICRO tainer (lancet) ,,Box,1,0,1,100%
+MNTD162,G6PD TEST (25 TEST KIT),,Box,2,0,2,100%
+MNTD163,microtainer (K2E ) BLOOD COLLECTION tubes,,Box,16,0,16,100%
+MNTD164,universa tip( 100ul),,           carton,3,0,3,100%
+MNTD165,universal pipe tip  ( 10ul) ,,Carton,4,0,4,100%
+MNTD166,1000ml-rapid flow filter unit ,,Carton,35,0,35,100%
+MNTD167,universal tip (200 ul) ,,Carton,2,0,2,100%
+MNTD168,universal tip (1000ul) ,,Carton,4,0,4,100%
+MNTD169,esay flasc 225 cm Angled  neck (500 ml) ,,Carton,11,0,11,100%
+MNTD170,500ml-rapid flow bottle top filter (500 ),,Carton,3,0,3,100%
+MNTD171,MAG MAX 96 DNA (extraction kit),,Box,18,13,5,28%
+MNTD172,glove ,,Piece,10,10,0,0%
+MNTD173,syringes (5 ml),,,31,0,31,100%
+MNTD174,NUNC esay flask ( 175),,Carton,1,0,1,100%
+MNTD175,esay  FLASK 75 filt = 5/ba6-100/case ,,Carton,15,0,15,100%
+MNTD176,king fisher 96 tip comb ,,Box,153,1,152,99%
+MNTD177,NEPTUNE ( 100 UL) ,,Box,17,0,17,100%
+MNTD178,NEPTUNE( 1000 UL),,Box,13,0,13,100%
+MNTD179,NEPTUNE( 200 ul),,Box,5,0,5,100%
+MNTD180,NEPTUNE (10 UL),,Box,6,0,6,100%
+MNTD181,NEPTUNE( 20 UL),,Box,4,2,2,50%
+MNTD182,ART-FILTER TIP (10 UL ) ,,Box,14,0,14,100%
+MNTD183,ART-FILTER TIP( 1000 UL),,Pack,5,0,5,100%
+MNTD184,UTIP (10 UL) filtered  racked  pipette ,,Rack,45,0,45,100%
+MNTD185,UTIP( 100 UL) filtered racked pipette ,,Rack,4,0,4,100%
+MNTD186,UTIP (20 ul)filtered racked pipette,,Rack,8,0,8,100%
+MNTD187,UTIP (1000 UL) Filtered racked pipette,,Rack,21,0,21,100%
+MNTD188,96 DIP WELL PLATE ( MAGMAX ),,Carton,25,20,5,20%
+MNTD189,0.2ml thin walled tubes with flat caps ,,,10,0,10,100%
+MNTD190,"PCR-plate,96-well low ,skirted,white ",,Pack,5,0,5,100%
+MNTD191,finn tip filter (20ul),,Pack,3,0,3,100%
+MNTD192,finn tip filter (300 ul),,Pack,3,0,3,100%
+MNTD193,96 well cap NATURA ( radiation sterilized ),,Bag,1,0,1,100%
+MNTD194,ZERO TIP (10-300 UL)( PIPETTE micro tip ),,,5,0,5,100%
+MNTD195,ZERO TIP (10-200 UL)( PIPETTE micro tip ),,,1,0,1,100%
+MNTD197,Omiprazole,,10 x 10,30,0,30,100%
+MNTD198,Ibuprofen Tablet,,12 x 10,10,0,10,100%
+MNTD199,Ibuprofen Suspension,,Bottle,20,0,20,100%
+MNTD200,Diclofenac Injection,,Ampoul,20,0,20,100%
+MNTD201,Axilliary Thermometer ,,Each,20,0,20,100%
+MNTD202,Paracetamol Tablet,,10 x 10,30,0,30,100%
+MNTD203,Paracetamol Suspensiom,,Bottle,50,0,50,100%
+MNTD204,Chlorpheneramine,,10 x 10,2,0,2,100%
+MNTD205,Optifit Tips,,19 x 960,3,0,3,100%
+MNTD206,ART Pipette tips - Pre sterile of 1000ul,,"100 tips per tray, 8 trays per pack",33,0,33,100%
+MNTD207,Sure one pipette tip of 1000ul (Non-filter and aerosol barrier),,Pack of 10 ,32,0,32,100%
+MNTD208,MagMax TM 96 DNA Multisample kit,,Box of 2,93,0,93,100%
+MNTD209,BD Microtainer K2E,,4 x 50,42,0,42,100%
+MNTD210,G6PD Test Standard,,Pack of 25,27,0,27,100%
+MNTD211,G6PD Test Control,,Pack of 10 ,10,0,10,100%
+MNTD212,AL Adult Tablet ,,30 x 24 ,90,0,90,100%
+MNTD213,AL Dispersable Tablet,,12 x 30 ,14,0,14,100%
+MNTD214,"Disposable glove of medium size, Latex powder free",,10 x 100,21,2,19,90%
+MNTD215,Kingfisher Deep well,,50 pcs per cartoon,34,0,34,100%
+MNTD216,Credo Cube ,,4L and 3l,2,0,2,100%
+MNTD217,LimonNAxtra nitrile exam glove,,Pack of 100,19,0,19,100%
+MNTD218,Silical gel,,3kg per pack,13,0,13,100%
+MNTD219,Axygen fileter tips,,"10 racks per units, 5 units per pack",8,0,8,100%
+MNTD220,Urine caps,,Each,"9,500",0,"9,500",100%
+MNTD221,Bovine serum albumin,,Bottle,2,0,2,100%
+MNTD222,Thermoscientific Nalgene Filtration Product,,1000ml,16,0,16,100%
+MNTD223,Quick gel extration and PCR purification Combo Kit,,50 Rxn,2,0,2,100%
+MNTD224,Yellow tips of 200ul ,,Pack of 1000,43,0,43,100%
+MNTD225,Superclear 5ml tubes,,Pack of 250,4,0,4,100%
+MNTD226,Sterile aerosol pipette tips of 200ul ,,Pack of 10,1,0,1,100%
+MNTD227,Low protein binding microcentrifuge tube,,Pack of 250,1,0,1,100%
+MNTD228,Rapigen RDT (pLDH/pLDH),,Pack of 25,50,0,50,100%
+MNTD229,Graduated filter tips of 1000ul,,10 x 96,2,0,2,100%
+MNTD230,Bioplex pro flat-bottom plates (Mylar),,Pack of 40,5,0,5,100%
+MNTD231,Axygen aluminium sealing film,,Pack of 100,16,0,16,100%
+MNTD232,Transparent plate sealer,,Pack of 100,17,0,17,100%
+MNTD233,Reagent Reserviour of 10ml plate of 100,,Cartoon,15,0,15,100%
+MNTD234,Polypropylene Conical tube 30 x 115 mm,,Pack of 500,2,0,2,100%
+MNTD235,Reagent Reserviour 50ul pipette,,Pack of 100,1,0,1,100%
+MNTD236,Tips,,200ul,153,0,153,100%
+MNTD237,Tips,,20ul,51,0,51,100%
+MNTD238,Tips,,10ul,43,0,43,100%
+MNTD239,Luminex ( Drive Fluid),,Boxes,31,0,31,100%
+MNTD240,Envelope (40*60mm),,Boxes,31,0,31,100%
+MNTD241,PBS,,500ml Pcs,70,4,66,94%
+MNTD242,Conical tube (Falcon tube),,15ml,4,0,4,100%
+MNTD243,NUNCK tube,,Boxes,3,0,3,100%
+MNTD244,Lancet ,,Boxes ,7,0,7,100%
+MNTD245,Whatman filter paper,,Pack,8,0,8,100%
+MNTD246,Classer,,Pack,2,0,2,100%
+MNTD247,Screw Cups,,Boxes,2,0,2,100%
+MNTD248,Tipcomb for DW Magnet,,Boxes/Packs,70,0,70,100%
+MNTD249,EDTA tube,,Packs,29,0,29,100%
+MNTD250,Reservoir,,Boxes,4,0,4,100%
+MNTD251,Refill tip,,200ul (10*96) Pack,18,0,18,100%
+MNTD252,Eppendorf tubes,,5ml Boxes,20,0,20,100%
+MNTD253,Eppendorf tubes,,2ml Boxes,18,0,18,100%
+MNTD254,Eppendorf tubes,,1.5ml Boxes,3,0,3,100%
+MNTD255,Eppendorf tubes,,0.5ml Boxes,9,0,9,100%
+MNTD256,Corning Pipette (Single Channel),,200ul Pcs,7,0,7,100%
+MNTD257,Corning Pipette (Single Channel),,1000ul Pc,1,0,1,100%
+MNTD258,Corning Pipette (Single Channel),,10ul Pc,1,0,1,100%
+MNTD259,Thermoscientific Pipette (Multichannel),,50ul Pc,1,0,1,100%
+MNTD260,Transparent selant,,Packs,3,0,3,100%
+MNTD261,Topvision Agarose,,Boxes,2,0,2,100%
+MNTD262,Well skirted PCR Plate,,Boxes,8,0,8,100%
+MNTD263,0.2ml Skirted 96-well PCR Plate,,Boxes,6,0,6,100%
+MNTD264,99% Alcohol (Ethanol),,1L (20Pcs/box),3,1,2,67%
+MNTD265,Srewcup with O-Ring for superclear microt,,Box,1,0,1,100%
+MNTD266,Cotton,,100g Pcs,114,0,114,100%
+MNTD267,Cotton,,Roll,40,9,31,78%
+MNTD268,Reagent Reservoirs,,Box,3,0,3,100%
+MNTD269,Cryobox,,Box,3,0,3,100%
+MNTD270,Micropoint Pipet tips,,Box,3,0,3,100%
+MNTD271,Cryotube,,Pack,34,0,34,100%
+MNTD272,Bluetips,,Pack,2,0,2,100%
+MNTD273,G6PD Machine,,Each,6,0,6,100%
+MNTD274,Weight Scale ,,Pieces,2,0,2,100%
+MNTD275,Sodium Azide,,Box,1,0,1,100%
+MNTD276,Sodium Azide,,Box,1,0,1,100%
+MNTD277,Polyvinyl Alcohol,,Pack,1,0,1,100%
+MNTD278,Bovine Serumalbumin (BSA),,Pack,1,0,1,100%
+MNTD279,PH METER (4 in one),,Piece,15,15,0,0%
+MNTD280,"Fish Food (larval Food,Tetra Cichlid XL Sticks,320g))",,Bottle,50,5,45,90%
+MNTD281,FALCON TUBES - 50ml (case of 500pcs),,Carton,13,7,6,46%
+MNTD282,Pasteur Pipette (P/500)(cartoon of 100 bags ),,Carton,2,1,1,50%
+MNTD283,DIGITAL TDS METER (AQUAMETER) for TDS only,,Box,3,3,0,0%
+MNTD284,Thermo-Hygrometer,,Piece,15,14,1,7%
+MNTD285,COLD BOX (Medium-sized),,Piece,15,9,6,40%
+MNTD286,Eppendorf vials (bags 1000),,Carton,2,1,1,50%
+MNTD287,DISSECTION KIT,,Kit,15,15,0,0%
+MNTD288,"Dental Dam (6""×6"" pack of 36) Powder-free latex",,Piece,20,20,0,0%
+MNTD289,"FORCEPS (Stainless steel,)",,Piece,30,27,3,10%
+MNTD290,PETRI DISH-100 x15 mm;Non sterile; Made from borosilicate 3,,Box,7,7,0,0%
+MNTD291,PLASTIC ZIP BAG (100/bag),,Bag,15,10,5,33%
+MNTD292,"Silica gel orange, for drying purposes, non toxic grade, 2-5 mm ",,kg,8,0,8,100%
+MNTD293,Microtainer K2E Blood Collection Tubes ,,Tube,104,0,104,100%
+MNTD294,"BD PlastiPak™ Luer Slip Syringe without Needle, 1ml ",,Not Applicable,16,0,16,100%
+MNTD295,"Microtainer Contact-Activated Lancet, Depth Needle: 2.0mm, 0.08 in.,  Needle Gauge: 16.5g, Blue ",,Not Applicable,56,0,56,100%
+MNTD296,BD Vacutainer CAT Plus Blood collection tubes ,,Not Applicable,20,0,20,100%
+MNTD297,Tetra Cichlid XL Sticks 320g ,,Gram,8,0,8,100%
+MNTD298,LTS Pipette Tip 5-200uL Racked Filter Pk960,,Rack,4,0,4,100%
+MNTD299,LTS Pipette Tip 5-200uL Racked Filter Pk960,,rack,1,0,1,100%
+MNTD300,"Silica gel orange, for drying purposes, non toxic grade, 2-5 mm ",,Kilogram,2,0,2,100%
+MNTD301,BD Vacutainer LH Plus Blood Collection Tubes ,,Not Applicable,10,0,10,100%
+MNTD302,LTS Pipette Tip 0.1-20uL Racked Filter Pk960,,Rack,5,0,5,100%
+MNTD303,Immersion oil for microscopy ,,Milliliter,6,0,6,100%
+MNTD304,"2.0ml NonKnurl, NonSkrt, Nat, Description: 2.0ml Screw Cap Tube,  NonKnurl, NonSkirted,Natural ",,Pack,8,0,8,100%
+MNTD305,"2.0ml NonKnurl, NonSkrt, Nat, Description: 2.0ml Screw Cap Tube,  NonKnurl, NonSkirted,Natural ",,Pack,8,0,8,100%
+MNTD306,"2.0ml NonKnurl, NonSkrt, Nat, Description: 2.0ml Screw Cap Tube,  NonKnurl, NonSkirted,Natural ",,Pack,8,0,8,100%
+MNTD307,"2.0ml NonKnurl, NonSkrt, Nat, Description: 2.0ml Screw Cap Tube,  NonKnurl, NonSkirted,Natural",,Pack,8,0,8,100%
+MNTD308,"2.0ml NonKnurl, NonSkrt, Nat, Description: 2.0ml Screw Cap Tube,  NonKnurl, NonSkirted,Natural ",,Pack,8,0,8,100%
+MNTD309,LTS Pipette Tip 5-200uL Racked Filter Pk960 ,,Rack,5,0,5,100%
+MNTD310,LTS Pipette Tip 0.1-20uL Racked Filter Pk960 ,,Rack,5,0,5,100%
+MNTD311,LTS Pipette Tip 0.1-20uL Racked Filter Pk960 ,,Rack,5,0,5,100%
+MNTD312,LTS Pipette Tip 5-200uL Racked Filter Pk960 ,,Rack,5,0,5,100%
+MNTD313,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD314,"0.7 mL External Thread Co-Mold Jacket Tube, Uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD315,LTS Pipette Tip 5-200uL Racked Filter Pk960 ,,Box,5,0,5,100%
+MNTD316,LTS Pipette Tip 0.1-20uL Racked Filter Pk960 ,,Box,5,0,5,100%
+MNTD317,LTS Pipette Tip 0.1-20uL Racked Filter Pk960 ,,Box,5,1,4,80%
+MNTD318,LTS Pipette Tip  0.1-20uL Racked Filter Pk960 ,,Box,5,1,4,80%
+MNTD319,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD320,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD321,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD322,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD323,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD324,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD325,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD326,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD327,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD328,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,4,0,4,100%
+MNTD329,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD330,"1mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD331,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD332,"0.7 mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD333,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in  low profile rack ",,Case,5,0,5,100%
+MNTD334,External thread screwcaps Black ,,Bag,35,0,35,100%
+MNTD335,"1mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD336,"0.7mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD337,"0.7mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rackj",,Case,5,0,5,100%
+MNTD338,"0.7mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD339,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD340,External thread screwcaps Black ,,Bag,5,0,5,100%
+MNTD341,"0.7mL External Thread Co-Mold Jacket Tube, precapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD342,"0.7mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD343," 0.7mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD344,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD345,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD346,"0.7 mL External Thread Co-Mold Jacket Tube, uncapped, pre-racked in low  profile rack",,Case,5,0,5,100%
+MNTD347,External thread screwcaps Black ,,Bag,25,0,25,100%
+MNTD348,External thread screwcaps Black ,,Bag,23,0,23,100%
+MNTD349,Combitips advanced 0.5 mL,,Piece,4,0,4,100%
+MNTD350,LTS Pipette Tip 5-200uL Racked Filter Pk960 ,,Rack,5,0,5,100%
+MNTD351,LTS Pipette Tip 1000uL Racked Filter Pk960 ,,Rack,5,0,5,100%
+MNTD352,Combitips advanced 0.1 mL,,Piece,4,0,4,100%
+MNTD353,Combitips advanced 0.5 mL,,Piece,8,0,8,100%
+MNTD354,glove medium size powder -free latex 10*100,Glove,Carton,40,10,30,75%
+MNTD355,chloroform,,Bottle,15,0,15,100%
+MNTD356,microscop slide frosted,,Box,70,0,70,100%
+MNTD357,microscop slide  non frosted,,Box,70,0,70,100%
+MNTD358,microscop slide box,,Box,30,0,30,100%
+MNTD359,50 ml polypropylene conical tube,,Rack,20,0,20,100%
+MNTD360,VWR UNIVERSAL pipet tips 1250ul,,Pack,9,0,9,100%
+MNTD361,LDPE clear zipper bag 40x60mm,,Piece,5,0,5,100%
+MNTD362,VWR UNIVERSAL pipet tips ,,Pack,11,0,11,100%
+MNTD363,axygen assay plateP-96-450-C-SVbottom,,Plate,4,0,4,100%
+MNTD364,VWR universal pipet tip(20ul),,Box,8,0,8,100%
+MNTD365,VWR universal pipet tip (200ul) ,,Box,7,3,4,57%
+MNTD366,VWR universal pipet tip(100ul),,Box,12,0,12,100%
+MNTD367,ethanol  absolute=99%,,Bottle,1,0,1,100%
+MNTD368,alumaseal film for pcr folid storag sterile,,Pack,1,1,0,0%
+MNTD369,hepparigen tube 100/unit,,Pack,1,1,0,0%
+MNTD370,,,,0,0,0,0%
+MNTD371,,,,0,0,0,0%
+MNTD372,,,,0,0,0,0%
+MNTD373,,,,0,0,0,0%
+MNTD374,,,,0,0,0,0%
+MNTD375,,,,0,0,0,0%
+MNTD376,,,,0,0,0,0%
+MNTD377,,,,0,0,0,0%
+MNTD378,,,,0,0,0,0%
+MNTD379,,,,0,0,0,0%
+MNTD380,,,,0,0,0,0%
+MNTD381,,,,0,0,0,0%
+MNTD382,,,,0,0,0,0%
+MNTD383,,,,0,0,0,0%
+MNTD384,,,,0,0,0,0%
+MNTD385,,,,0,0,0,0%
+MNTD386,,,,0,0,0,0%
+MNTD387,,,,0,0,0,0%
+MNTD388,,,,0,0,0,0%
+MNTD389,,,,0,0,0,0%
+MNTD390,,,,0,0,0,0%
+MNTD391,,,,0,0,0,0%
+MNTD392,,,,0,0,0,0%
+MNTD393,,,,0,0,0,0%
+MNTD394,,,,0,0,0,0%
+MNTD395,,,,0,0,0,0%
+MNTD396,,,,0,0,0,0%
+MNTD397,,,,0,0,0,0%
+MNTD398,,,,0,0,0,0%
+MNTD399,,,,0,0,0,0%
+MNTD400,,,,0,0,0,0%
+MNTD401,,,,0,0,0,0%
+MNTD402,,,,0,0,0,0%
+MNTD403,,,,0,0,0,0%
+MNTD404,,,,0,0,0,0%
+MNTD405,,,,0,0,0,0%
+MNTD406,,,,0,0,0,0%
+MNTD407,,,,0,0,0,0%
+MNTD408,,,,0,0,0,0%
+MNTD409,,,,0,0,0,0%
+MNTD410,,,,0,0,0,0%
+MNTD411,,,,0,0,0,0%
+MNTD412,,,,0,0,0,0%
+MNTD413,,,,0,0,0,0%
+MNTD414,,,,0,0,0,0%
+MNTD415,,,,0,0,0,0%
+MNTD416,,,,0,0,0,0%
+MNTD417,,,,0,0,0,0%
+MNTD418,,,,0,0,0,0%
+MNTD419,,,,0,0,0,0%
+MNTD420,,,,0,0,0,0%
+MNTD421,,,,0,0,0,0%
+MNTD422,,,,0,0,0,0%
+MNTD423,,,,0,0,0,0%
+MNTD424,,,,0,0,0,0%
+MNTD425,,,,0,0,0,0%
+MNTD426,,,,0,0,0,0%
+MNTD427,,,,0,0,0,0%
+MNTD428,,,,0,0,0,0%
+MNTD429,,,,0,0,0,0%
+MNTD430,,,,0,0,0,0%
+MNTD431,,,,0,0,0,0%
+MNTD432,,,,0,0,0,0%
+MNTD433,,,,0,0,0,0%
+MNTD434,,,,0,0,0,0%
+MNTD435,,,,0,0,0,0%
+MNTD436,,,,0,0,0,0%
+MNTD437,,,,0,0,0,0%
+MNTD438,,,,0,0,0,0%
+MNTD439,,,,0,0,0,0%
+MNTD440,,,,0,0,0,0%
+MNTD441,,,,0,0,0,0%
+MNTD442,,,,0,0,0,0%
+MNTD443,,,,0,0,0,0%
+MNTD444,,,,0,0,0,0%
+MNTD445,,,,0,0,0,0%
+MNTD446,,,,0,0,0,0%
+MNTD447,,,,0,0,0,0%
+MNTD448,,,,0,0,0,0%
+MNTD449,,,,0,0,0,0%
+MNTD450,,,,0,0,0,0%
+MNTD451,,,,0,0,0,0%
+MNTD452,,,,0,0,0,0%
+MNTD453,,,,0,0,0,0%
+MNTD454,,,,0,0,0,0%
+MNTD455,,,,0,0,0,0%
+MNTD456,,,,0,0,0,0%
+MNTD457,,,,0,0,0,0%
+MNTD458,,,,0,0,0,0%
+MNTD459,,,,0,0,0,0%
+MNTD460,,,,0,0,0,0%
+MNTD461,,,,0,0,0,0%
+MNTD462,,,,0,0,0,0%
+MNTD463,,,,0,0,0,0%
+MNTD464,,,,0,0,0,0%
+MNTD465,,,,0,0,0,0%
+MNTD466,,,,0,0,0,0%
+MNTD467,,,,0,0,0,0%
+MNTD468,,,,0,0,0,0%
+MNTD469,,,,0,0,0,0%
+MNTD470,,,,0,0,0,0%
+MNTD471,,,,0,0,0,0%
+MNTD472,,,,0,0,0,0%
+MNTD473,,,,0,0,0,0%
+MNTD474,,,,0,0,0,0%
+MNTD475,,,,0,0,0,0%
+MNTD476,,,,0,0,0,0%
+MNTD477,,,,0,0,0,0%
+MNTD478,,,,0,0,0,0%
+MNTD479,,,,0,0,0,0%
+MNTD480,,,,0,0,0,0%
+MNTD481,,,,0,0,0,0%
+MNTD482,,,,0,0,0,0%
+MNTD483,,,,0,0,0,0%
+MNTD484,,,,0,0,0,0%
+MNTD485,,,,0,0,0,0%
+MNTD486,,,,0,0,0,0%
+MNTD487,,,,0,0,0,0%
+MNTD488,,,,0,0,0,0%
+MNTD489,,,,0,0,0,0%
+MNTD490,,,,0,0,0,0%
+MNTD491,,,,0,0,0,0%
+MNTD492,,,,0,0,0,0%
+MNTD493,,,,0,0,0,0%
+MNTD494,,,,0,0,0,0%
+MNTD495,,,,0,0,0,0%
+MNTD496,,,,0,0,0,0%
+MNTD497,,,,0,0,0,0%
+MNTD498,,,,0,0,0,0%
+MNTD499,,,,0,0,0,0%

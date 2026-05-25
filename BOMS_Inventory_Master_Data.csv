@@ -1,0 +1,117 @@
+Categories,Units,Projects,Staff
+Bag,Bag,ACHIDES,Abrham Gashaw
+Bag_Biohazard,Block,AnoSTEP,Addisu Assefa
+Bag_DBS,Bottle,CDC,Addisu Gizat
+Bag_Sample,Box,ColGo,Amanuel Albene
+Barcode,Bulk,Dessicate,Anteneh Eyesus
+Chemical,Bundle,DRIVAX,Betelhem Aklilu
+Chemical_Alcohol_Ethanol,Can,EMAGEN,Betelhem Yitbarek
+Chemical_Buffer,Card,Gov't,Daniel Mussa
+Cotton_Gauze,Carton,HAMMS,Desalegn Nibret
+Entomology,Cartridge,INDIE,Elias Bekele
+Equipment,Case,INDIE2,Elifaged H/Meskel
+Equipment_Centrifuge,Centimeter,MNTD,Fikadesilassie Mozart
+Equipment_ELISA_Microplate_Reader,Container,OptiVivax,Fitsum Girma Dr.
+Equipment_Hotplate_Stirrer,Cylinder,Preg,Gemechis Motuma
+Equipment_Plate_Spinner,Dozen,PvGam,Gemechu Ayalew
+Equipment_Shaker_Mixer,Each,PvSTATEM,Getinet Habtamu
+Equipment_Spectrophotometer,Gram,PvTBI,Hunyalew Adane
+Equipment_Vacuum_Chamber,Gross,PvTrans,Jimma Dinsa
+Filter_Paper,Jar,StephBio,Kassahun Abi
+Glassware,Kilogram,StephColonoy,Kebede Getachew
+Glassware_Culture_Flask,Kit,TES2021,Kidist W/Kidan
+Glassware_Filter_Unit,Liter,TES2023,Legesse Alamire
+Glove,Lot,TMDA,Matiwos Kidane
+Instrument,Meter,UrbanMalaria,Melaku Petros
+Instrument_Biopsy_Punch,Microgram,VISPA,Melat Abdo
+Instrument_Dental_Dam,Microliter,,Mengist Engidaw
+Instrument_HemoCue,Milligram,,Meskele Dechasa
+Instrument_Micropipette,Milliliter,,Migbaru Kefale Dr.
+Instrument_Mortar_Pestle,Mole,,Mulugeta Demssie
+Instrument_pH_Meter,Not Applicable,,Muluken Assefa
+Instrument_Pipette,Pack,,Natnael Lemessa
+Instrument_Pipette_8_Channel,Packet,,Sagni Chali Dr.
+Instrument_Pipette_P0.2-2ul,Pad,,Sinknesh Wolde
+Instrument_Pipette_P0.5-10ul,Pail,,Sinshaw Legese
+Instrument_Pipette_P0.5-2ul,Pair,,Tadele Emiru
+Instrument_Pipette_P100-1000ul,Pallet,,Temesgen Tafese
+Instrument_Pipette_P100ul,Piece,,Tesfaye Tsega
+Instrument_Pipette_P10-100ul,Plate,,Tigist Atele
+Instrument_Pipette_P10ul,Prep,,Tilahun Ketema
+Instrument_Pipette_P1-10ul,Rack,,Tirhas Endale
+Instrument_Pipette_P1ul,Ream,,Tizita Tsegaye
+Instrument_Pipette_P20-200ul,Reel,,Wakweya Chali
+Instrument_Pipette_P2-20ul,Rod,,Zewedu Solomon
+Instrument_Pipette_P250-1000ul,Roll,,
+Instrument_Pipette_Repeater,Sachet,,
+Instrument_Pipette_Set,Set,,
+Instrument_Thermometer,Sheet,,
+Kit,Sleeve,,
+Kit_DNA,Stack,,
+Kit_DNA_Extraction,Tablet,,
+Kit_HCG,Test,,
+Kit_RNA,Tube,,
+Kit_Shredder,Unit,,
+Needle,Vial,,
+Pasteur_Pipette,,,
+Plate,,,
+Plate_Culture,,,
+Plate_Deep_Well,,,
+Plate_ELISA,,,
+Plate_PCR,,,
+Plate_Rack,,,
+Plate_Seal_Lid,,,
+Primer,,,
+Probe,,,
+Reagent,,,
+Reagent_Agarose,,,
+Reagent_Beads,,,
+Reagent_Chelex,,,
+Reagent_G6PD,,,
+Reagent_H2O,,,
+Reagent_MAGPIX,,,
+Reagent_PBS,,,
+Reagent_Reservoir,,,
+Reagent_Resin,,,
+Reagent_Saponin,,,
+Reagent_Silica_Gel,,,
+Reagent_Sodium_Azide,,,
+Reagent_Tween_20,,,
+Seal,,,
+Slide,,,
+Slide_Box,,,
+Slide_Cover_Glass,,,
+Slide_Frosted,,,
+Slide_Nonfrosted,,,
+Stationery,,,
+Storage,,,
+Syringe,,,
+Syringe_10ml,,,
+Syringe_1ml,,,
+Syringe_3ml,,,
+Syringe_5ml,,,
+Tip,,,
+Tip_0.5ul,,,
+Tip_1000ul,,,
+Tip_100ul,,,
+Tip_10ul,,,
+Tip_1250ul,,,
+Tip_200ul,,,
+Tip_20ul,,,
+Tip_300ul,,,
+Tip_Comb,,,
+Tip_Rack,,,
+Tube,,,
+Tube_Blood_Collection,,,
+Tube_Centrifuge,,,
+Tube_Cryotube,,,
+Tube_DNA,,,
+Tube_EDTA,,,
+Tube_Falcon,,,
+Tube_Heparin,,,
+Tube_Microcentrifuge,,,
+Tube_Microtainer,,,
+Tube_Microtube,,,
+Tube_PCR,,,
+Tube_Screw_Cap,,,
+Tube_Vacutainer,,,
