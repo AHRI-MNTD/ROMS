@@ -17,9 +17,14 @@ export async function fetchGrants(page = 1): Promise<PaginatedResult<Record<stri
   return resp.data as PaginatedResult<Record<string, unknown>>;
 }
 
-export async function fetchSOPs(page = 1): Promise<PaginatedResult<Record<string, unknown>>> {
-  const resp = await apiClient.get("/domains/qms/sops", { params: { page } });
+export async function fetchSOPs(page = 1, limit = 1000): Promise<PaginatedResult<Record<string, unknown>>> {
+  const resp = await apiClient.get("/domains/qms/sops", { params: { page, limit } });
   return resp.data as PaginatedResult<Record<string, unknown>>;
+}
+
+export async function syncSOPs(): Promise<{ ok: boolean; count: number }> {
+  const resp = await apiClient.post("/domains/qms/sops/sync");
+  return resp.data as { ok: boolean; count: number };
 }
 
 export async function fetchParticipants(page = 1): Promise<PaginatedResult<Record<string, unknown>>> {

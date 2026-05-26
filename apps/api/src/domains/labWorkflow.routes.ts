@@ -24,7 +24,7 @@ router.post("/protocols", requireAuth, requirePermission("lab-workflow:write"), 
 });
 
 router.patch("/protocols/:id", requireAuth, requirePermission("lab-workflow:write"), auditMutation("Protocol", "UPDATE"), async (req, res) => {
-  const p = await prisma.protocol.update({ where: { id: req.params.id }, data: req.body as Record<string, unknown> });
+  const p = await prisma.protocol.update({ where: { id: req.params.id }, data: req.body as any });
   res.json(p);
 });
 
@@ -40,7 +40,7 @@ router.get("/assay-runs", requireAuth, requirePermission("lab-workflow:read"), a
 
 router.post("/assay-runs", requireAuth, requirePermission("lab-workflow:write"), auditMutation("AssayRun", "CREATE"), async (req, res) => {
   try {
-    const run = await prisma.assayRun.create({ data: req.body as Record<string, unknown> });
+    const run = await prisma.assayRun.create({ data: req.body as any });
     res.status(201).json(run);
   } catch (err) { logger.error(err); res.status(500).json({ code: "INTERNAL_ERROR" }); }
 });
@@ -53,7 +53,7 @@ router.get("/bookings", requireAuth, requirePermission("lab-workflow:read"), asy
 
 router.post("/bookings", requireAuth, requirePermission("lab-workflow:write"), auditMutation("InstrumentBooking", "CREATE"), async (req, res) => {
   try {
-    const booking = await prisma.instrumentBooking.create({ data: req.body as Record<string, unknown> });
+    const booking = await prisma.instrumentBooking.create({ data: req.body as any });
     res.status(201).json(booking);
   } catch (err) { logger.error(err); res.status(500).json({ code: "INTERNAL_ERROR" }); }
 });

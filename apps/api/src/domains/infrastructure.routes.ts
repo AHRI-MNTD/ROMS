@@ -31,7 +31,7 @@ router.get("/sensor-readings", requireAuth, requirePermission("infrastructure:re
 
 router.post("/integration-jobs", requireAuth, requirePermission("infrastructure:write"), async (req, res) => {
   try {
-    const job = await prisma.integrationJob.create({ data: req.body as Record<string, unknown> });
+    const job = await prisma.integrationJob.create({ data: req.body as any });
     res.status(201).json(job);
   } catch (err) { logger.error(err); res.status(500).json({ code: "INTERNAL_ERROR" }); }
 });

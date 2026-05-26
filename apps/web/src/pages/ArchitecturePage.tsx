@@ -135,7 +135,7 @@ export default function ArchitecturePage() {
           </div>
 
           <RelationsList
-            relations={data.relationships as { from: string; arrow: string; to: string; label: string }[]}
+            relations={data.relationships as any}
             title="Key Relationships"
           />
         </div>
@@ -170,7 +170,7 @@ export default function ArchitecturePage() {
           </BoundaryBox>
 
           <RelationsList
-            relations={data.containerInteractions as { from: string; arrow: string; to: string; label: string }[]}
+            relations={data.containerInteractions as any}
             title="Container Interactions"
           />
         </div>

@@ -22,7 +22,7 @@ A full-stack monorepo for managing all 10 domains of biomedical and life-science
 │  ┌─────────────┐              ┌──────────────────┐  ┌──────────────┐    │
 │  │ Core DB     │              │ Document Store   │  │ Notification │    │
 │  │ PostgreSQL  │              │ S3/MinIO         │  │ BullMQ+Redis │    │
-│  │ Port 5432   │              │ Port 9000/9001   │  │ Port 4001    │    │
+│  │ Port 5432   │              │ Port 9000/9002   │  │ Port 4001    │    │
 │  └─────────────┘              └──────────────────┘  └──────────────┘    │
 │                                                                          │
 │  ┌─────────────┐              ┌──────────────────┐  ┌──────────────┐    │
@@ -77,7 +77,7 @@ pnpm dev
 | OpenAPI Spec | http://localhost:4000/openapi.json |
 | C4 Architecture Explorer | http://localhost:5173/architecture |
 | Domain Workspace | http://localhost:5173/operations |
-| MinIO Console | http://localhost:9001 |
+| MinIO Console | http://localhost:9002 |
 | Keycloak Admin | http://localhost:8080 |
 
 ---

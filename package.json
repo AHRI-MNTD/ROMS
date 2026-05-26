@@ -12,9 +12,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:migrate": "pnpm --filter @roms/db prisma migrate dev",
+    "db:migrate": "pnpm --filter @roms/db exec prisma migrate dev",
     "db:seed": "pnpm --filter @roms/db exec tsx seed.ts",
-    "db:reset": "pnpm --filter @roms/db prisma migrate reset --force && pnpm db:seed",
+    "db:reset": "pnpm --filter @roms/db exec prisma migrate reset --force && pnpm db:seed",
     "infra:up": "docker compose up -d postgres redis mosquitto minio",
     "infra:down": "docker compose down",
     "infra:up:all": "docker compose up -d"

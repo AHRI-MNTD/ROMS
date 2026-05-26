@@ -1008,7 +1008,7 @@ async function main() {
 
   // ─── Staff profiles ───────────────────────────────────────────────────────
   await Promise.all(
-    users.slice(0, 4).map((u, i) =>
+    users.slice(0, 4).map((u: any, i: number) =>
       prisma.staffProfile.upsert({
         where: { userId: u.id },
         update: {},

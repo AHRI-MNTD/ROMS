@@ -23,13 +23,13 @@ router.get("/studies/:id", requireAuth, requirePermission("data-management:read"
 
 router.post("/studies", requireAuth, requirePermission("data-management:write"), auditMutation("Study", "CREATE"), async (req, res) => {
   try {
-    const s = await prisma.study.create({ data: req.body as Record<string, unknown> });
+    const s = await prisma.study.create({ data: req.body as any });
     res.status(201).json(s);
   } catch (err) { logger.error(err); res.status(500).json({ code: "INTERNAL_ERROR" }); }
 });
 
 router.patch("/studies/:id", requireAuth, requirePermission("data-management:write"), auditMutation("Study", "UPDATE"), async (req, res) => {
-  const s = await prisma.study.update({ where: { id: req.params.id }, data: req.body as Record<string, unknown> });
+  const s = await prisma.study.update({ where: { id: req.params.id }, data: req.body as any });
   res.json(s);
 });
 
