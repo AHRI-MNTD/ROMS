@@ -7,8 +7,12 @@
     "node": ">=20",
     "pnpm": ">=9"
   },
+  "prisma": {
+    "schema": "packages/db/prisma/schema.prisma"
+  },
   "scripts": {
-    "dev": "turbo run dev --parallel",
+    "dev": "pnpm exec prisma generate --schema=packages/db/prisma/schema.prisma && pnpm exec turbo run dev --parallel",
+    "prisma:generate": "pnpm exec prisma generate",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
@@ -21,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "prisma": "^5.14.0",
     "turbo": "^2.0.0",
     "typescript": "^5.4.5"
   }

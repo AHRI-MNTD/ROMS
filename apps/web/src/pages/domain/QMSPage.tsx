@@ -305,172 +305,82 @@ export default function QMSPage() {
 
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden", fontFamily: "var(--font-body)", background: "var(--color-bg)" }} className="anim">
-      {/* ── LEFT COLUMN: Sub-functions Sidebar ── */}
-      <div
-        style={{
-          width: 250,
-          minWidth: 250,
-          background: "var(--color-surface)",
-          borderRight: "1px solid var(--color-border)",
-          padding: "24px 16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px" }}>
-          <span
-            style={{
-              fontSize: "1.25rem",
-              background: "var(--color-primary-soft)",
-              color: "var(--color-primary)",
-              width: 32,
-              height: 32,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "var(--radius-sm)",
-            }}
-          >
-            📄
-          </span>
-          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text)", letterSpacing: "-0.01em" }}>
-            SOPs & Quality Management
-          </h2>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-faint)", letterSpacing: "0.08em", textTransform: "uppercase", padding: "0 4px 4px" }}>
-            Sub-functions
-          </span>
-          {subfunctions.map((sub, idx) => {
-            const isActive = activeSubfnIdx === idx;
-            return (
-              <button
-                key={idx}
-                onClick={() => {
-                  setActiveSubfnIdx(idx);
-                  setCurrentPage(1);
-                  setStatusFilterCard(null);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-sm)",
-                  textAlign: "left",
-                  fontSize: "var(--fs-sm)",
-                  transition: "all 0.12s",
-                  background: isActive ? "var(--color-primary)" : "transparent",
-                  color: isActive ? "#ffffff" : "var(--color-text-muted)",
-                  fontWeight: isActive ? 600 : 400,
-                  boxShadow: isActive ? "var(--shadow-sm)" : "none",
-                  borderLeft: isActive ? "4px solid var(--color-primary-highlight)" : "4px solid transparent",
-                }}
-              >
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {sub.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── RIGHT COLUMN: Content Pane ── */}
+      {/* ── CONTENT PANE ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         {/* Active Title Block */}
-        {activeSubfnIdx !== 0 && (
-          <div
-            style={{
-              padding: "24px 32px 16px",
-              borderBottom: "1px solid var(--color-border)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              background: "var(--color-surface)",
-            }}
-          >
+        <div
+          style={{
+            padding: "24px 32px 16px",
+            borderBottom: "1px solid var(--color-border)",
+            display: "flex",
+            alignItems: "center",
+            background: "var(--color-surface)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                fontSize: "1.25rem",
+                background: "var(--color-primary-soft)",
+                color: "var(--color-primary)",
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              📄
+            </span>
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text)", marginBottom: 4 }}>
-                {subfunctions[activeSubfnIdx].name}
+              <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
+                SOPs & Quality Management
               </h1>
-              {subfunctions[activeSubfnIdx].desc && (
-                <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>
-                  {subfunctions[activeSubfnIdx].desc}
-                </p>
-              )}
+              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-faint)", margin: "4px 0 0 0" }}>
+                Manage SOPs & Quality. Showing live data from the ROMS API
+              </p>
             </div>
           </div>
-        )}
+<button
+  onClick={() => setShowNewSopModal(true)}
+  style={{
+    background: "var(--color-primary)",
+    color: "#ffffff",
+    border: "none",
+    padding: "8px 16px",
+    borderRadius: "var(--radius-sm)",
+    fontSize: "var(--fs-sm)",
+    fontWeight: 600,
+    cursor: "pointer",
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    boxShadow: "var(--shadow-sm)",
+    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "translateY(-1px) scale(1.02)";
+    e.currentTarget.style.boxShadow = "var(--shadow-md)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "translateY(0) scale(1)";
+    e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+  }}
+>
+  <span>+ Create SOP</span>
+</button>
+</div>
 
         {/* Inner Scroll Pane */}
         <div style={{ flex: 1, padding: "24px 32px", overflowY: "auto" }}>
 
-          {/* Sub-function 1: SOP Authoring & Control */}
-          {activeSubfnIdx === 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-              {/* Tab Navigation */}
-              <div style={{ display: "flex", gap: 24, borderBottom: "1px solid var(--color-divider)", margin: "0 -8px" }}>
-                {[
-                  {
-                    id: "draft", label: "SOPs", icon: (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    )
-                  },
-                  {
-                    id: "review", label: "Review & Approval Workflow", icon: (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    )
-                  },
-                  {
-                    id: "version", label: "Version Control", icon: (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    )
-                  },
-                  {
-                    id: "distribution", label: "Controlled Distribution", icon: (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="5" r="3"></circle><circle cx="12" cy="19" r="3"></circle><circle cx="5" cy="12" r="3"></circle><circle cx="19" cy="12" r="3"></circle></svg>
-                    )
-                  },
-                  {
-                    id: "change", label: "Change Control", icon: (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                    )
-                  }
-                ].map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "12px 16px",
-                        fontSize: "var(--fs-sm)",
-                        fontWeight: isActive ? 600 : 500,
-                        color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
-                        borderBottom: isActive ? "2px solid var(--color-primary)" : "2px solid transparent",
-                        transition: "all 0.15s",
-                        marginBottom: "-1px",
-                      }}
-                    >
-                      {tab.icon}
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {activeTab === "draft" ? (
                 <>
+
                   {sopsError && (
                     <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b" }}>
                       API connection unavailable — showing locally added items.
@@ -879,295 +789,13 @@ export default function QMSPage() {
                     </div>
                   </div>
                 </>
-              ) : (
-                <div
-                  style={{
-                    padding: "60px 40px",
-                    background: "var(--color-surface)",
-                    border: "1px dashed var(--color-border)",
-                    borderRadius: "var(--radius-lg)",
-                    textAlign: "center",
-                  }}
-                >
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {activeTab.replace(/([A-Z])/g, " $1")} Control Panel
-                  </h3>
-                  <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-faint)" }}>
-                    This component is prepped and waiting to load specific functionalities.
-                  </p>
-                </div>
-              )}
             </div>
-          )}
 
-          {/* Sub-function 2: Training & Acknowledgment */}
-          {activeSubfnIdx === 1 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {/* Stats Cards Row */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                {[
-                  { title: "Compliance Rate", value: "—", subtitle: "Role-based training completed", icon: "📈", bg: "#e8f5e9", color: "#2e7d32" },
-                  { title: "Pending Assignments", value: "0", subtitle: "Awaiting staff acknowledgment", icon: "⏳", bg: "#fff3e0", color: "#f57c00" },
-                  { title: "Overdue Trainings", value: "0", subtitle: "Reminders dispatched", icon: "⚠️", bg: "#ffebee", color: "#c62828" },
-                ].map((card, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: "var(--color-surface-2)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "var(--radius)",
-                      padding: 16,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 16,
-                      boxShadow: "var(--shadow-sm)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        background: card.bg,
-                        color: card.color,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "50%",
-                        fontSize: "1.2rem",
-                      }}
-                    >
-                      {card.icon}
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{card.title}</span>
-                      <h3 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text)", margin: "2px 0 0" }}>{card.value}</h3>
-                      <span style={{ fontSize: "10px", color: "var(--color-text-faint)", marginTop: 2, display: "block" }}>{card.subtitle}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Training logs table */}
-              <div
-                style={{
-                  background: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "var(--radius-lg)",
-                  overflow: "hidden",
-                  boxShadow: "var(--shadow-sm)",
-                }}
-              >
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 100 }}>SOP Code</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>SOP Title</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 140 }}>Staff Member</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 120 }}>Role</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 120 }}>Status</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 110 }}>Assigned</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 110 }}>Completed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colSpan={7} style={{ padding: "30px", textTransform: "uppercase", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "center" }}>
-                        No training records found.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Sub-function 3: Audits & CAPA (Displays live data from Prisma API) */}
-          {activeSubfnIdx === 2 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {/* Stats Cards Row */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                {[
-                  { title: "Active CAPA Plans", value: dbCapasData?.total ?? 0, subtitle: "Assigned corrective actions", icon: "📋", bg: "#e0f2f1", color: "#00796b" },
-                  { title: "Resolved Findings", value: "0", subtitle: "Closed audit actions", icon: "✅", bg: "#e8f5e9", color: "#2e7d32" },
-                  { title: "Quality Audit Score", value: "—", subtitle: "Last compliance review", icon: "⭐️", bg: "#fffde7", color: "#fbc02d" },
-                ].map((card, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: "var(--color-surface-2)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "var(--radius)",
-                      padding: 16,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 16,
-                      boxShadow: "var(--shadow-sm)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        background: card.bg,
-                        color: card.color,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "50%",
-                        fontSize: "1.2rem",
-                      }}
-                    >
-                      {card.icon}
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{card.title}</span>
-                      <h3 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text)", margin: "2px 0 0" }}>{card.value}</h3>
-                      <span style={{ fontSize: "10px", color: "var(--color-text-faint)", marginTop: 2, display: "block" }}>{card.subtitle}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* CAPA list */}
-              <div
-                style={{
-                  background: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "var(--radius-lg)",
-                  overflow: "hidden",
-                  boxShadow: "var(--shadow-sm)",
-                }}
-              >
-                <div style={{ padding: "16px", background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Active Audit non-conformances & CAPA
-                  </h3>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Live database data</span>
-                </div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>Finding & Observation</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 140 }}>Owner</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 120 }}>Due Date</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 120 }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isCapasLoading ? (
-                      <tr>
-                        <td colSpan={4} style={{ padding: "30px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
-                          Loading CAPA data…
-                        </td>
-                      </tr>
-                    ) : dbCapasData?.data && dbCapasData.data.length > 0 ? (
-                      dbCapasData.data.map((capa) => (
-                        <tr key={capa.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{capa.finding}</td>
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{capa.owner?.displayName || "QA Officer"}</td>
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{new Date(capa.dueDate).toLocaleDateString()}</td>
-                          <td style={{ padding: "12px 16px", fontSize: "10px" }}>
-                            <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, background: "#fff8e1", color: "#f57f17" }}>
-                              {capa.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} style={{ padding: "30px", textTransform: "uppercase", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "center" }}>
-                          No CAPAs found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Sub-function 4: Incident & Deviation Reporting */}
-          {activeSubfnIdx === 3 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {/* Deviations table */}
-              <div
-                style={{
-                  background: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "var(--radius-lg)",
-                  overflow: "hidden",
-                  boxShadow: "var(--shadow-sm)",
-                }}
-              >
-                <div style={{ padding: "16px", background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                  <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Logged Laboratory Incident & Deviation Reports
-                  </h3>
-                </div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 120 }}>Deviation Code</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>Description</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 110 }}>Severity</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 180 }}>Root Cause</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 110 }}>Logged Date</th>
-                      <th style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 110 }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td colSpan={6} style={{ padding: "30px", textTransform: "uppercase", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "center" }}>
-                        No incident reports logged.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Sub-function 5: QMS & Accreditation */}
-          {activeSubfnIdx === 4 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
-                {[
-                  { title: "ISO 15189 Standard Compliance", desc: "Requirements for quality and competence in medical laboratories.", score: "—", status: "PENDING ASSESS", checklist: "Checkpoints unverified" },
-                  { title: "ISO 17025 Standard Compliance", desc: "General requirements for the competence of testing and calibration laboratories.", score: "—", status: "PENDING ASSESS", checklist: "Checkpoints unverified" },
-                  { title: "GLP & GCP Compliance Checklist", desc: "Good Laboratory Practice and Good Clinical Practice compliance guidelines.", score: "—", status: "PENDING ASSESS", checklist: "Training records pending" },
-                  { title: "Laboratory Risk Registers", desc: "Identification and mitigation control register for laboratory bio-risk hazards.", score: "—", status: "PENDING ASSESS", checklist: "Mitigation register unverified" },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      background: "var(--color-surface-2)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "var(--radius-lg)",
-                      padding: 20,
-                      boxShadow: "var(--shadow-sm)",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                      <h3 style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--color-text)" }}>{item.title}</h3>
-                      <span style={{ padding: "2px 8px", background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: 10, fontSize: "10px", fontWeight: 700 }}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", marginBottom: 16, lineHeight: 1.45 }}>{item.desc}</p>
-                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--color-divider)", paddingTop: 12, alignItems: "center" }}>
-                      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-faint)" }}>{item.checklist}</span>
-                      <span style={{ fontSize: "18px", fontWeight: 700, color: "var(--color-primary)" }}>{item.score}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
         </div>
       </div>
 
-      {/* ── NEW SOP CREATION MODAL ── */}
+      {/* NEW SOP CREATION MODAL */}
       {showNewSopModal && (
         <div
           style={{
