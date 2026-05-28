@@ -151,9 +151,7 @@ export default function CurrentInventoryPage() {
               <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "38px", lineHeight: 1.03, color: "var(--color-text)" }}>
                 Current inventory
               </h2>
-              <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", lineHeight: 1.7, maxWidth: 62 * 8 }}>
-                Review stock levels, inspect low and out-of-stock items, and jump directly into check-in or check-out flows without losing the inventory context.
-              </p>
+              
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>
@@ -205,9 +203,7 @@ export default function CurrentInventoryPage() {
         </div>
       </div>
 
-      <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", lineHeight: 1.6 }}>
-        A full inventory snapshot with live stock status and transactional totals.
-      </div>
+     
 
       {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
       {!isLoading && isFetching && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)" }}>Refreshing…</div>}

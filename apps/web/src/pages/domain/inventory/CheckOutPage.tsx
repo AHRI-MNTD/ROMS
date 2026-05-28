@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
@@ -13,23 +12,34 @@ interface CheckOutLogEntry {
   destination: string;
 }
 
-export default function CheckOutPage() {
+interface LabelOverrides {
+  mainTitle?: string;
+  quantity?: string;
+  referenceTable?: string;
+}
+
+interface CheckOutPageProps {
+  mode?: string;
+  labelOverrides?: LabelOverrides;
+}
+
+export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps = {}) {
   const user = useAuth((state) => state.user);
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
   const [selectedItemId, setSelectedItemId] = React.useState("");
   const [checkOutQty, setCheckOutQty] = React.useState(1);
-  const [destination, setDestination] = React.useState("Lab Room 1");
-  const [recipient, setRecipient] = React.useState("");
-  const [purpose, setPurpose] = React.useState("");
+  const [projectFor, setProjectFor] = React.useState("ROMS Inventory");
+  const [dateRequested, setDateRequested] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [requestedBy, setRequestedBy] = React.useState("");
   const [note, setNote] = React.useState("");
   const [checkOutStatus, setCheckOutStatus] = React.useState<"APPROVED" | "PENDING" | "REJECTED">("APPROVED");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
   const [logs, setLogs] = React.useState<CheckOutLogEntry[]>([]);
-  const [statusByRowKey, setStatusByRowKey] = React.useState<Record<string, "APPROVED" | "PENDING" | "REJECTED">>({});
   const [projects, setProjects] = React.useState<string[]>([]);
+  const [staffMembers, setStaffMembers] = React.useState<string[]>([]);
 
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
   const currentQty = Number(selectedItem?.quantity ?? 0);
@@ -48,8 +58,6 @@ export default function CheckOutPage() {
           : name.includes("meter") || name.includes("thermo")
             ? "Equipment"
             : "General";
-      const defaultStatus: "APPROVED" | "PENDING" | "REJECTED" = isOutOfStock ? "PENDING" : "APPROVED";
-
       return {
         rowKey: item.id ?? item.sku ?? `${index}`,
         codeNo: item.sku ?? "—",
@@ -62,55 +70,30 @@ export default function CheckOutPage() {
         dateRequested: new Date().toISOString().slice(0, 10),
         requestedBy: user?.displayName ?? user?.email ?? "Unknown User",
         projectFor: "ROMS Inventory",
-        defaultStatus,
         remark: isOutOfStock ? "Out of stock" : isLowStock ? "Low stock" : item.lotNumber ? `Lot: ${item.lotNumber}` : "In stock",
       };
     });
   }, [data?.data, user?.displayName, user?.email]);
 
   React.useEffect(() => {
-    if (inventoryReferenceRows.length === 0) {
-      return;
-    }
-
-    setStatusByRowKey((prev) => {
-      const next = { ...prev };
-      inventoryReferenceRows.forEach((row) => {
-        if (!next[row.rowKey]) {
-          next[row.rowKey] = row.defaultStatus;
-        }
-      });
-      return next;
-    });
-  }, [inventoryReferenceRows]);
-
-  React.useEffect(() => {
     let mounted = true;
     apiClient
-      .get("/domains/inventory/master-data/projects")
+      .get("/domains/inventory/master-data", { params: { page: 1, pageSize: 1000 } })
       .then((resp) => {
-        const list = resp.data?.projects ?? [];
+        const rows = (resp.data?.data ?? []) as Array<{ project?: string | null; staff?: string | null }>;
         if (!mounted) return;
-        setProjects(list);
+        const projectList = Array.from(new Set(rows.map((row) => String(row.project ?? "").trim()).filter((value): value is string => value.length > 0)));
+        const staffList = Array.from(new Set(rows.map((row) => String(row.staff ?? "").trim()).filter((value): value is string => value.length > 0)));
+        setProjects(projectList);
+        setStaffMembers(staffList);
+        setProjectFor(projectList[0] ?? "ROMS Inventory");
+        setRequestedBy(staffList[0] ?? "");
       })
       .catch(() => {});
     return () => {
       mounted = false;
     };
   }, []);
-
-  const quickLinkStyle: React.CSSProperties = {
-    border: "1px solid var(--color-border)",
-    background: "var(--color-surface-2)",
-    color: "var(--color-text)",
-    borderRadius: "999px",
-    padding: "8px 12px",
-    fontSize: "var(--fs-xs)",
-    textDecoration: "none",
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-  };
 
   const inputStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",
@@ -133,16 +116,19 @@ export default function CheckOutPage() {
       if (checkOutQty > currentQty) {
         throw new Error("Check-out quantity cannot exceed current stock.");
       }
-      if (!destination.trim()) {
-        throw new Error("Destination is required.");
+      if (!projectFor.trim()) {
+        throw new Error("Project for is required.");
+      }
+      if (!requestedBy.trim()) {
+        throw new Error("Requested by is required.");
       }
 
       const nextQuantity = currentQty - checkOutQty;
       await apiClient.patch(`/domains/inventory/${selectedItem.id}`, {
         quantity: nextQuantity,
-        destination: destination.trim(),
-        recipient: recipient.trim() || undefined,
-        projectFor: purpose.trim() || destination.trim(),
+        destination: projectFor.trim(),
+        recipient: requestedBy.trim(),
+        projectFor: projectFor.trim(),
         status: checkOutStatus,
         remark: note.trim() || undefined,
       });
@@ -150,7 +136,7 @@ export default function CheckOutPage() {
       return {
         itemLabel: `${selectedItem.sku ?? ""} ${selectedItem.name ?? ""}`.trim(),
         quantity: checkOutQty,
-        destination: destination.trim(),
+        destination: projectFor.trim(),
       };
     },
     onSuccess: async (result) => {
@@ -173,8 +159,8 @@ export default function CheckOutPage() {
       ].slice(0, 8));
 
       setCheckOutQty(1);
-      setRecipient("");
-      setPurpose("");
+      setDateRequested(new Date().toISOString().slice(0, 10));
+      setRequestedBy(staffMembers[0] || "");
       setNote("");
       setCheckOutStatus("APPROVED");
     },
@@ -186,13 +172,8 @@ export default function CheckOutPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link to="../current-inventory" style={quickLinkStyle}>View Current Inventory</Link>
-        <Link to="../check-in" style={quickLinkStyle}>Go To Check In</Link>
-      </div>
-
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Check Out</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>{labelOverrides?.mainTitle || "Check Out"}</div>
 
         {feedback && (
           <div
@@ -224,23 +205,43 @@ export default function CheckOutPage() {
           </label>
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Check-Out Quantity
+            {labelOverrides?.quantity || "Quantity"}
             <input type="number" min={1} value={checkOutQty} onChange={(e) => setCheckOutQty(Number(e.target.value))} style={inputStyle} />
           </label>
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Destination / Department
-            <input value={destination} onChange={(e) => setDestination(e.target.value)} style={inputStyle} />
+            Project For
+            {projects.length > 0 ? (
+              <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
+                {projects.map((project) => (
+                  <option key={project} value={project}>
+                    {project}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+            )}
           </label>
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Recipient (optional)
-            <input value={recipient} onChange={(e) => setRecipient(e.target.value)} style={inputStyle} />
+            Date Requested
+            <input type="date" value={dateRequested} onChange={(e) => setDateRequested(e.target.value)} style={inputStyle} />
           </label>
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Purpose (optional)
-            <input value={purpose} onChange={(e) => setPurpose(e.target.value)} style={inputStyle} />
+            Requested By
+            {staffMembers.length > 0 ? (
+              <select value={requestedBy} onChange={(e) => setRequestedBy(e.target.value)} style={inputStyle}>
+                {staffMembers.map((staff) => (
+                  <option key={staff} value={staff}>
+                    {staff}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input value={requestedBy} onChange={(e) => setRequestedBy(e.target.value)} style={inputStyle} />
+            )}
           </label>
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -251,21 +252,11 @@ export default function CheckOutPage() {
               <option value="REJECTED">REJECTED</option>
             </select>
           </label>
-        </div>
 
-        <div style={{ marginTop: 12 }}>
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: 6 }}>
-            Note (optional)
+          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            Remark
+            <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
           </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            style={{
-              ...inputStyle,
-              resize: "vertical",
-            }}
-          />
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
@@ -309,7 +300,7 @@ export default function CheckOutPage() {
               cursor: checkOutMutation.isPending ? "not-allowed" : "pointer",
             }}
           >
-            {checkOutMutation.isPending ? "Submitting..." : "Submit Check Out"}
+            {checkOutMutation.isPending ? "Submitting..." : "Submit"}
           </button>
         </div>
       </div>
@@ -345,7 +336,7 @@ export default function CheckOutPage() {
       </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Check-Out Reference Table</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>{labelOverrides?.referenceTable || "Check-Out Reference Table"}</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -360,14 +351,13 @@ export default function CheckOutPage() {
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date_Requested</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested_By</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project_For</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Status</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
               </tr>
             </thead>
             <tbody>
               {inventoryReferenceRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                  <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
                     No records available.
                   </td>
                 </tr>
@@ -384,27 +374,6 @@ export default function CheckOutPage() {
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.dateRequested}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                      <select
-                        value={statusByRowKey[row.rowKey] ?? row.defaultStatus}
-                        onChange={(e) => {
-                          const value = e.target.value as "APPROVED" | "PENDING" | "REJECTED";
-                          setStatusByRowKey((prev) => ({ ...prev, [row.rowKey]: value }));
-                        }}
-                        style={{
-                          border: "1px solid var(--color-border)",
-                          borderRadius: "var(--radius-sm)",
-                          background: "var(--color-surface)",
-                          color: "var(--color-text)",
-                          padding: "4px 6px",
-                          fontSize: "var(--fs-xs)",
-                        }}
-                      >
-                        <option value="APPROVED">APPROVED</option>
-                        <option value="PENDING">PENDING</option>
-                        <option value="REJECTED">REJECTED</option>
-                      </select>
-                    </td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark}</td>
                   </tr>
                 ))

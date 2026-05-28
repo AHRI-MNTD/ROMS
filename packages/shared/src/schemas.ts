@@ -150,6 +150,7 @@ export const CreateStockItemSchema = z.object({
   name: z.string().min(2).max(255),
   lotNumber: z.string().max(64).optional(),
   expiryDate: z.coerce.date().optional(),
+  dateReceived: z.coerce.date().optional(),
   quantity: z.number().int().nonnegative(),
   minThreshold: z.number().int().nonnegative().default(5),
   unit: z.string().max(32).default("units"),

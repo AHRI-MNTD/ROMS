@@ -6,6 +6,8 @@ const tabs = [
   { to: "current-inventory", label: "Current Inventory" },
   { to: "check-in", label: "Check In" },
   { to: "check-out", label: "Check Out" },
+  { to: "requests", label: "Request/s" },
+  { to: "analytics", label: "Analytics" },
   { to: "master-data", label: "Master Data" },
 ];
 

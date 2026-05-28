@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
@@ -9,9 +8,21 @@ type CheckInMode = "existing" | "new";
 interface CheckInLogEntry {
   id: string;
   timestamp: string;
+  dateReceived: string;
   itemLabel: string;
   quantity: number;
   mode: CheckInMode;
+}
+
+function toDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeSearch(value: string) {
+  return value.trim().toLowerCase();
 }
 
 export default function CheckInPage() {
@@ -20,29 +31,181 @@ export default function CheckInPage() {
 
   const [mode, setMode] = React.useState<CheckInMode>("existing");
   const [selectedItemId, setSelectedItemId] = React.useState("");
+  const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkInQty, setCheckInQty] = React.useState(1);
-  const [lotNumber, setLotNumber] = React.useState("");
-  const [expiryDate, setExpiryDate] = React.useState("");
   const [note, setNote] = React.useState("");
   const [projectFor, setProjectFor] = React.useState("ROMS Inventory");
-  const [status, setStatus] = React.useState<"APPROVED" | "PENDING" | "REJECTED">("APPROVED");
+  const [dateReceived, setDateReceived] = React.useState(() => toDateInputValue());
+  const [expiryDate, setExpiryDate] = React.useState<string>("");
   const [projects, setProjects] = React.useState<string[]>([]);
 
   const [newSku, setNewSku] = React.useState("");
+  const [newBarcode, setNewBarcode] = React.useState("");
   const [newName, setNewName] = React.useState("");
   const [newUnit, setNewUnit] = React.useState("units");
-  const [newMinThreshold, setNewMinThreshold] = React.useState(5);
   const [newOpeningQty, setNewOpeningQty] = React.useState(1);
-  const [newLotNumber, setNewLotNumber] = React.useState("");
-  const [newExpiryDate, setNewExpiryDate] = React.useState("");
+  const [newUnitDescription, setNewUnitDescription] = React.useState("");
+  const [newCategory, setNewCategory] = React.useState("");
+  const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
   const [logs, setLogs] = React.useState<CheckInLogEntry[]>([]);
+  const itemInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [itemMenuOpen, setItemMenuOpen] = React.useState(false);
+  const [itemActiveIndex, setItemActiveIndex] = React.useState(0);
 
-  const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
+  const inventoryItems = data?.data ?? [];
+
+  const filteredItemSuggestions = React.useMemo(() => {
+    const query = normalizeSearch(selectedItemQuery);
+    if (!query) {
+      return inventoryItems.slice(0, 20);
+    }
+
+    return inventoryItems.filter((item) => {
+      const sku = normalizeSearch(item.sku ?? "");
+      const name = normalizeSearch(item.name ?? "");
+      return sku.includes(query) || name.includes(query) || `${sku} - ${name}`.includes(query);
+    });
+  }, [inventoryItems, selectedItemQuery]);
+
+  const selectedItem = React.useMemo(() => {
+    const exactById = inventoryItems.find((item) => item.id === selectedItemId);
+    if (exactById) {
+      return exactById;
+    }
+
+    const query = normalizeSearch(selectedItemQuery);
+    if (!query) {
+      return undefined;
+    }
+
+    const exactMatches = inventoryItems.filter((item) => {
+      const sku = normalizeSearch(item.sku ?? "");
+      const name = normalizeSearch(item.name ?? "");
+      return query === sku || query === name || query === `${sku} - ${name}`;
+    });
+    if (exactMatches.length > 0) {
+      return exactMatches[0];
+    }
+
+    const partialMatches = inventoryItems.filter((item) => {
+      const sku = normalizeSearch(item.sku ?? "");
+      const name = normalizeSearch(item.name ?? "");
+      return sku.includes(query) || name.includes(query) || `${sku} - ${name}`.includes(query);
+    });
+    return partialMatches.length === 1 ? partialMatches[0] : undefined;
+  }, [inventoryItems, selectedItemId, selectedItemQuery]);
+
+  const selectedItemLabel = React.useMemo(() => {
+    if (!selectedItem) {
+      return "";
+    }
+    return [selectedItem.sku ?? "", selectedItem.name ?? ""].filter(Boolean).join(" - ");
+  }, [selectedItem]);
+
+  const selectedItemQuantity = Number(selectedItem?.quantity ?? 0);
+
+  const computeNextSku = React.useMemo(() => {
+    const nums = inventoryItems
+      .map((i) => {
+        const s = String(i.sku ?? "");
+        const m = s.match(/(\d+)$/);
+        return m ? Number(m[1]) : NaN;
+      })
+      .filter(Number.isFinite);
+    const max = nums.length ? Math.max(...nums) : 0;
+    return `MNTD${max + 1}`;
+  }, [inventoryItems]);
+
+  React.useEffect(() => {
+    if (mode === "new" && !newSku) {
+      setNewSku(computeNextSku);
+    }
+  }, [mode, computeNextSku, newSku]);
+
+  React.useEffect(() => {
+    setItemActiveIndex((prev) => Math.min(prev, Math.max(filteredItemSuggestions.length - 1, 0)));
+  }, [filteredItemSuggestions.length]);
+
+  React.useEffect(() => {
+    if (!selectedItemQuery) {
+      setSelectedItemId("");
+      return;
+    }
+
+    const exact = inventoryItems.find((item) => {
+      const sku = normalizeSearch(item.sku ?? "");
+      const name = normalizeSearch(item.name ?? "");
+      const query = normalizeSearch(selectedItemQuery);
+      return query === sku || query === name || query === `${sku} - ${name}`;
+    });
+
+    if (exact) {
+      setSelectedItemId(exact.id ?? "");
+    }
+  }, [inventoryItems, selectedItemQuery]);
+
+  React.useEffect(() => {
+    if (selectedItem) {
+      setSelectedItemQuery(selectedItemLabel);
+    }
+  }, [selectedItem, selectedItemLabel]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    apiClient
+      .get("/domains/inventory/master-data/projects")
+      .then((resp) => {
+        const list = resp.data?.projects ?? [];
+        if (!mounted) return;
+        setProjects(list);
+        setProjectFor((prev) => (prev && prev !== "ROMS Inventory" ? prev : list[0] ?? "ROMS Inventory"));
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const chooseInventoryItem = React.useCallback((item: (typeof inventoryItems)[number]) => {
+    setSelectedItemId(item.id ?? "");
+    setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
+    setItemMenuOpen(false);
+  }, []);
+
+  const handleItemKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredItemSuggestions.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setItemMenuOpen(true);
+      setItemActiveIndex((prev) => Math.min(prev + 1, filteredItemSuggestions.length - 1));
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setItemMenuOpen(true);
+      setItemActiveIndex((prev) => Math.max(prev - 1, 0));
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const chosen = filteredItemSuggestions[itemActiveIndex];
+      if (chosen) {
+        chooseInventoryItem(chosen);
+      }
+    }
+
+    if (event.key === "Escape") {
+      setItemMenuOpen(false);
+    }
+  };
 
   const inventoryReferenceRows = React.useMemo(() => {
-    return (data?.data ?? []).map((item) => {
+    return inventoryItems.map((item) => {
       const quantity = Number(item.quantity ?? 0);
       const minThreshold = Number(item.minThreshold ?? 0);
       const isOutOfStock = quantity <= 0;
@@ -69,20 +232,7 @@ export default function CheckInPage() {
         remark: isOutOfStock ? "Out of stock" : isLowStock ? "Low stock" : item.lotNumber ? `Lot: ${item.lotNumber}` : "In stock",
       };
     });
-  }, [data?.data]);
-
-  const quickLinkStyle: React.CSSProperties = {
-    border: "1px solid var(--color-border)",
-    background: "var(--color-surface-2)",
-    color: "var(--color-text)",
-    borderRadius: "999px",
-    padding: "8px 12px",
-    fontSize: "var(--fs-xs)",
-    textDecoration: "none",
-    fontWeight: 600,
-    display: "inline-flex",
-    alignItems: "center",
-  };
+  }, [inventoryItems]);
 
   const inputStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",
@@ -94,22 +244,6 @@ export default function CheckInPage() {
     width: "100%",
   };
 
-  React.useEffect(() => {
-    let mounted = true;
-    apiClient
-      .get("/domains/inventory/master-data/projects")
-      .then((resp) => {
-        const list = resp.data?.projects ?? [];
-        if (!mounted) return;
-        setProjects(list);
-        setProjectFor((prev) => (prev && prev !== "ROMS Inventory" ? prev : list[0] ?? "ROMS Inventory"));
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const checkInMutation = useMutation({
     mutationFn: async () => {
       if (mode === "existing") {
@@ -120,18 +254,18 @@ export default function CheckInPage() {
           throw new Error("Check-in quantity must be greater than zero.");
         }
 
+        if (selectedItem && checkInQty > selectedItemQuantity) {
+          throw new Error("Quantity cannot exceed current available stock.");
+        }
+
         const nextQuantity = Number(selectedItem.quantity ?? 0) + checkInQty;
-        const payload: Record<string, unknown> = { quantity: nextQuantity };
-        if (lotNumber.trim()) {
-          payload.lotNumber = lotNumber.trim();
-        }
-        if (expiryDate) {
-          payload.expiryDate = expiryDate;
-        }
-        payload.projectFor = projectFor.trim() || "ROMS Inventory";
-        payload.status = status;
-        payload.remark = note.trim() || undefined;
-        await apiClient.patch(`/domains/inventory/${selectedItem.id}`, payload);
+        await apiClient.patch(`/domains/inventory/${selectedItem.id}`, {
+          quantity: nextQuantity,
+          projectFor: projectFor.trim() || "ROMS Inventory",
+          dateReceived: dateReceived || undefined,
+          expiryDate: expiryDate || undefined,
+          remark: note.trim() || undefined,
+        });
 
         return {
           mode,
@@ -144,20 +278,32 @@ export default function CheckInPage() {
         throw new Error("SKU and Item Description are required for new items.");
       }
       if (!Number.isFinite(newOpeningQty) || newOpeningQty <= 0) {
-        throw new Error("Opening quantity must be greater than zero.");
+        throw new Error("Quantity must be greater than zero.");
       }
+
+      const nameLower = newName.trim().toLowerCase();
+      const category = newCategory.trim() || (nameLower.includes("tube") || nameLower.includes("plate") || nameLower.includes("dish")
+        ? "Consumables"
+        : nameLower.includes("meter") || nameLower.includes("thermo")
+        ? "Equipment"
+        : "General");
+      const barcode = newBarcode.trim() || newSku.trim();
+      const unitDescription = newUnitDescription.trim() || `${newUnit.trim() || "units"} per pack`;
 
       await apiClient.post("/domains/inventory", {
         sku: newSku.trim(),
+        codeNo: newSku.trim(),
+        barcode,
         name: newName.trim(),
+        itemDescription: newName.trim(),
         unit: newUnit.trim() || "units",
-        minThreshold: Math.max(0, Math.floor(newMinThreshold)),
+        unitDescription,
         quantity: Math.max(0, Math.floor(newOpeningQty)),
-        lotNumber: newLotNumber.trim() || undefined,
-        expiryDate: newExpiryDate || undefined,
+        category,
         projectFor: projectFor.trim() || "ROMS Inventory",
-        status,
-        note: note.trim() || undefined,
+        dateReceived: dateReceived || undefined,
+        expiryDate: newExpiryDate || undefined,
+        remark: note.trim() || undefined,
       });
 
       return {
@@ -178,6 +324,7 @@ export default function CheckInPage() {
         {
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           timestamp: new Date().toISOString(),
+          dateReceived,
           itemLabel: result.itemLabel,
           quantity: result.quantity,
           mode: result.mode,
@@ -187,20 +334,19 @@ export default function CheckInPage() {
 
       if (result.mode === "existing") {
         setCheckInQty(1);
-        setLotNumber("");
-        setExpiryDate("");
         setNote("");
+        setSelectedItemId("");
+        setSelectedItemQuery("");
       } else {
         setNewSku("");
+        setNewBarcode("");
         setNewName("");
         setNewUnit("units");
-        setNewMinThreshold(5);
         setNewOpeningQty(1);
-        setNewLotNumber("");
-        setNewExpiryDate("");
+        setNewUnitDescription("");
+        setNewCategory("");
         setNote("");
         setProjectFor("ROMS Inventory");
-        setStatus("APPROVED");
       }
     },
     onError: (err) => {
@@ -211,11 +357,6 @@ export default function CheckInPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link to="../current-inventory" style={quickLinkStyle}>View Current Inventory</Link>
-        <Link to="../check-out" style={quickLinkStyle}>Go To Check Out</Link>
-      </div>
-
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Check In</div>
 
@@ -248,31 +389,95 @@ export default function CheckInPage() {
 
         {mode === "existing" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Select Item
-              <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} style={inputStyle}>
-                <option value="">Choose item</option>
-                {(data?.data ?? []).map((item) => (
-                  <option key={item.id ?? `${item.sku}-${item.name}`} value={item.id ?? ""}>
-                    {item.sku} - {item.name} (Current: {item.quantity ?? 0})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div style={{ position: "relative" }}>
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block" }}>
+                Select Item
+                <input
+                  ref={itemInputRef}
+                  value={selectedItemQuery}
+                  onChange={(e) => {
+                    setSelectedItemQuery(e.target.value);
+                    setSelectedItemId("");
+                    setItemMenuOpen(true);
+                    setItemActiveIndex(0);
+                  }}
+                  onFocus={() => setItemMenuOpen(true)}
+                  onBlur={() => {
+                    window.setTimeout(() => setItemMenuOpen(false), 120);
+                  }}
+                  onKeyDown={handleItemKeyDown}
+                  placeholder="Type SKU or item name"
+                  style={inputStyle}
+                />
+              </label>
+
+              {itemMenuOpen && filteredItemSuggestions.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    zIndex: 20,
+                    marginTop: 6,
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-surface-2)",
+                    boxShadow: "0 12px 28px rgba(16, 24, 40, 0.12)",
+                    maxHeight: 240,
+                    overflowY: "auto",
+                  }}
+                >
+                  {filteredItemSuggestions.map((item, index) => {
+                    const isActive = index === itemActiveIndex;
+                    const quantity = Number(item.quantity ?? 0);
+                    return (
+                      <button
+                        key={item.id ?? `${item.sku}-${item.name}`}
+                        type="button"
+                        onMouseEnter={() => setItemActiveIndex(index)}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          chooseInventoryItem(item);
+                        }}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          border: "none",
+                          borderBottom: "1px solid var(--color-divider)",
+                          background: isActive ? "var(--color-accent-soft)" : "transparent",
+                          padding: "10px 12px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 700 }}>{item.sku} - {item.name}</div>
+                        <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 4 }}>
+                          Available: {quantity} {item.unit ?? "units"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Check-In Quantity
-              <input type="number" min={1} value={checkInQty} onChange={(e) => setCheckInQty(Number(e.target.value))} style={inputStyle} />
-            </label>
-
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Lot Number (optional)
-              <input value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} style={inputStyle} />
-            </label>
-
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Expiry Date (optional)
-              <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={inputStyle} />
+              Quantity
+              <input
+                type="number"
+                min={1}
+                max={selectedItem ? selectedItemQuantity : undefined}
+                value={checkInQty}
+                onChange={(e) => {
+                  const v = Number(e.target.value) || 0;
+                  if (selectedItem) {
+                    setCheckInQty(Math.min(v, selectedItemQuantity));
+                  } else {
+                    setCheckInQty(v);
+                  }
+                }}
+                style={inputStyle}
+              />
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -291,12 +496,18 @@ export default function CheckInPage() {
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Status
-              <select value={status} onChange={(e) => setStatus(e.target.value as "APPROVED" | "PENDING" | "REJECTED")} style={inputStyle}>
-                <option value="APPROVED">APPROVED</option>
-                <option value="PENDING">PENDING</option>
-                <option value="REJECTED">REJECTED</option>
-              </select>
+              Date Received
+              <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Expiry Date
+              <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Remark
+              <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
             </label>
           </div>
         )}
@@ -304,8 +515,13 @@ export default function CheckInPage() {
         {mode === "new" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Code_No (SKU)
+              Code_No
               <input value={newSku} onChange={(e) => setNewSku(e.target.value)} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Barcode
+              <input value={newBarcode} onChange={(e) => setNewBarcode(e.target.value)} style={inputStyle} />
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -314,28 +530,23 @@ export default function CheckInPage() {
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Quantity
+              <input type="number" min={1} value={newOpeningQty} onChange={(e) => setNewOpeningQty(Number(e.target.value))} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Unit
               <input value={newUnit} onChange={(e) => setNewUnit(e.target.value)} style={inputStyle} />
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Opening Quantity
-              <input type="number" min={1} value={newOpeningQty} onChange={(e) => setNewOpeningQty(Number(e.target.value))} style={inputStyle} />
+              Unit_Description
+              <input value={newUnitDescription} onChange={(e) => setNewUnitDescription(e.target.value)} style={inputStyle} />
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Min Threshold
-              <input type="number" min={0} value={newMinThreshold} onChange={(e) => setNewMinThreshold(Number(e.target.value))} style={inputStyle} />
-            </label>
-
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Lot Number (optional)
-              <input value={newLotNumber} onChange={(e) => setNewLotNumber(e.target.value)} style={inputStyle} />
-            </label>
-
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Expiry Date (optional)
-              <input type="date" value={newExpiryDate} onChange={(e) => setNewExpiryDate(e.target.value)} style={inputStyle} />
+              Category
+              <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} style={inputStyle} />
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -354,30 +565,34 @@ export default function CheckInPage() {
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              Status
-              <select value={status} onChange={(e) => setStatus(e.target.value as "APPROVED" | "PENDING" | "REJECTED")} style={inputStyle}>
-                <option value="APPROVED">APPROVED</option>
-                <option value="PENDING">PENDING</option>
-                <option value="REJECTED">REJECTED</option>
-              </select>
+              Date Received
+              <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Expiry Date
+              <input type="date" value={newExpiryDate} onChange={(e) => setNewExpiryDate(e.target.value)} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Remark
+              <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
             </label>
           </div>
         )}
 
-        <div style={{ marginTop: 12 }}>
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block", marginBottom: 6 }}>
-            Note (optional)
-          </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            style={{
-              ...inputStyle,
-              resize: "vertical",
-            }}
-          />
-        </div>
+        {mode === "existing" && (
+          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+            <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Current Stock</div>
+              <div style={{ fontSize: "var(--fs-md)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? selectedItemQuantity : "—"}</div>
+            </div>
+            <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Selected Item</div>
+              <div style={{ fontSize: "var(--fs-md)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? selectedItemLabel : "—"}</div>
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -403,7 +618,7 @@ export default function CheckInPage() {
               cursor: checkInMutation.isPending ? "not-allowed" : "pointer",
             }}
           >
-            {checkInMutation.isPending ? "Submitting..." : mode === "existing" ? "Submit Check In" : "Create Item + Check In"}
+            {checkInMutation.isPending ? "Submitting..." : mode === "existing" ? "Submit" : "Create Item + Submit"}
           </button>
         </div>
       </div>
@@ -418,6 +633,7 @@ export default function CheckInPage() {
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date_Received</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Mode</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
@@ -427,6 +643,7 @@ export default function CheckInPage() {
                 {logs.map((entry) => (
                   <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.dateReceived).toLocaleDateString()}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.mode === "existing" ? "Existing" : "New"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>

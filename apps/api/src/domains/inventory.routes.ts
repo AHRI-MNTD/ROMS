@@ -23,6 +23,13 @@ type InventoryMovementRecord = {
   stockItemId: string;
   movementType: "CHECK_IN" | "CHECK_OUT";
   quantity: number;
+  occurredAt: Date;
+  requestedBy?: string | null;
+  projectFor?: string | null;
+  recipient?: string | null;
+  destination?: string | null;
+  status?: "APPROVED" | "PENDING" | "REJECTED" | null;
+  remark?: string | null;
 };
 
 type InventoryMovementPrisma = typeof prisma & {
@@ -136,6 +143,166 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
   res.json({ projects });
 });
 
+router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
+  const [stockItems, movements] = await Promise.all([
+    prisma.stockItem.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        sku: true,
+        sourceCode: true,
+        name: true,
+        category: true,
+        quantity: true,
+        minThreshold: true,
+        checkInTotal: true,
+        checkOutTotal: true,
+      },
+    }),
+    movementPrisma.inventoryMovement.findMany({
+      select: {
+        stockItemId: true,
+        movementType: true,
+        quantity: true,
+        occurredAt: true,
+        requestedBy: true,
+        projectFor: true,
+        recipient: true,
+        destination: true,
+        status: true,
+        remark: true,
+      },
+      orderBy: { occurredAt: "asc" },
+    }),
+  ]);
+
+  const totalItems = stockItems.length;
+  const totalQuantity = stockItems.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
+  const totalCheckIn = stockItems.reduce((sum, row) => sum + Number(row.checkInTotal ?? 0), 0);
+  const totalCheckOut = stockItems.reduce((sum, row) => sum + Number(row.checkOutTotal ?? 0), 0);
+  const lowStockItems = stockItems.filter((row) => {
+    const quantity = Number(row.quantity ?? 0);
+    const minThreshold = Number(row.minThreshold ?? 0);
+    return quantity > 0 && quantity <= minThreshold;
+  }).length;
+  const outOfStockItems = stockItems.filter((row) => Number(row.quantity ?? 0) <= 0).length;
+  const healthyItems = stockItems.filter((row) => {
+    const quantity = Number(row.quantity ?? 0);
+    const minThreshold = Number(row.minThreshold ?? 0);
+    return quantity > minThreshold;
+  }).length;
+  const atRiskItems = lowStockItems + outOfStockItems;
+
+  const categoryMap = new Map<string, { category: string; count: number; quantity: number; checkOut: number }>();
+  stockItems.forEach((row) => {
+    const category = String(row.category ?? "Unclassified").trim() || "Unclassified";
+    const current = categoryMap.get(category) ?? { category, count: 0, quantity: 0, checkOut: 0 };
+    current.count += 1;
+    current.quantity += Number(row.quantity ?? 0);
+    current.checkOut += Number(row.checkOutTotal ?? 0);
+    categoryMap.set(category, current);
+  });
+
+  const categoryBreakdown = [...categoryMap.values()].sort((left, right) => right.quantity - left.quantity);
+
+  const topDemandItems = [...stockItems]
+    .sort((left, right) => Number(right.checkOutTotal ?? 0) - Number(left.checkOutTotal ?? 0))
+    .slice(0, 8);
+
+  const criticalItems = [...stockItems]
+    .filter((row) => Number(row.quantity ?? 0) <= Number(row.minThreshold ?? 0))
+    .sort((left, right) => Number(left.quantity ?? 0) - Number(right.quantity ?? 0) || Number(right.checkOutTotal ?? 0) - Number(left.checkOutTotal ?? 0))
+    .slice(0, 8);
+
+  const now = new Date();
+  const months: Array<{ key: string; label: string; checkIn: number; checkOut: number; stockRisk: number }> = [];
+  for (let offset = 5; offset >= 0; offset -= 1) {
+    const monthDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+    const key = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = monthDate.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+    months.push({ key, label, checkIn: 0, checkOut: 0, stockRisk: 0 });
+  }
+
+  movements.forEach((movement) => {
+    const occurredAt = new Date(movement.occurredAt);
+    const key = `${occurredAt.getUTCFullYear()}-${String(occurredAt.getUTCMonth() + 1).padStart(2, "0")}`;
+    const bucket = months.find((month) => month.key === key);
+    if (!bucket) {
+      return;
+    }
+    if (movement.movementType === "CHECK_IN") {
+      bucket.checkIn += Number(movement.quantity ?? 0);
+    } else {
+      bucket.checkOut += Number(movement.quantity ?? 0);
+    }
+  });
+
+  months.forEach((month) => {
+    const [year, monthIndex] = month.key.split("-").map((value) => Number(value));
+    const cutoff = new Date(Date.UTC(year, monthIndex, 0, 23, 59, 59, 999));
+    const itemState = new Map<string, { quantity: number; threshold: number }>();
+
+    stockItems.forEach((row) => {
+      itemState.set(row.id, {
+        quantity: Number(row.quantity ?? 0),
+        threshold: Number(row.minThreshold ?? 0),
+      });
+    });
+
+    movements.forEach((movement) => {
+      if (new Date(movement.occurredAt) <= cutoff) {
+        return;
+      }
+      const current = itemState.get(movement.stockItemId);
+      if (!current) {
+        return;
+      }
+      const delta = movement.movementType === "CHECK_IN" ? Number(movement.quantity ?? 0) : -Number(movement.quantity ?? 0);
+      current.quantity -= delta;
+    });
+
+    month.stockRisk = [...itemState.values()].filter((item) => item.quantity <= item.threshold).length;
+  });
+
+  const stockById = new Map(stockItems.map((item) => [item.id, item]));
+  const usageRecords = movements
+    .filter((movement) => movement.movementType === "CHECK_OUT")
+    .map((movement, index) => {
+      const stockItem = stockById.get(movement.stockItemId);
+      return {
+        id: `${movement.stockItemId}-${movement.occurredAt.toISOString()}-${index}`,
+        stockItemId: movement.stockItemId,
+        itemName: stockItem?.name ?? "Unknown item",
+        itemCode: stockItem?.sourceCode ?? stockItem?.sku ?? "",
+        category: stockItem?.category ?? "Unclassified",
+        quantity: Number(movement.quantity ?? 0),
+        requestedBy: String(movement.requestedBy ?? movement.recipient ?? "Unknown User"),
+        projectFor: String(movement.projectFor ?? movement.destination ?? "Unassigned"),
+        status: String(movement.status ?? "APPROVED"),
+        occurredAt: movement.occurredAt,
+      };
+    })
+    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+
+  res.json({
+    summary: {
+      totalItems,
+      totalQuantity,
+      totalCheckIn,
+      totalCheckOut,
+      lowStockItems,
+      outOfStockItems,
+      healthyItems,
+      atRiskItems,
+    },
+    categoryBreakdown,
+    topDemandItems,
+    criticalItems,
+    monthlyTrends: months,
+    usageRecords,
+  });
+});
+
 router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req, res) => {
   const item = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
   if (!item) { res.status(404).json({ code: "NOT_FOUND" }); return; }
@@ -145,6 +312,7 @@ router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req,
 router.post("/", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "CREATE"), async (req, res) => {
   const parsed = CreateStockItemSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
+  const { dateReceived: parsedDateReceived, ...stockItemData } = parsed.data;
   // enforce projectFor exists in master-data
   const projectForValue = String(req.body.projectFor ?? parsed.data.projectFor ?? "ROMS Inventory").trim();
   if (projectForValue.length > 0) {
@@ -159,7 +327,7 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
       const movementTx = tx as typeof tx & InventoryMovementPrisma;
       const createdItem = await tx.stockItem.create({
         data: {
-          ...parsed.data,
+          ...stockItemData,
           checkInTotal: Number(parsed.data.quantity ?? 0),
           checkOutTotal: 0,
           balancePercent: Number(parsed.data.quantity ?? 0) > 0 ? 100 : 0,
@@ -174,6 +342,7 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
           projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
           status: String(req.body.status ?? "APPROVED") as "APPROVED" | "PENDING" | "REJECTED",
           remark: String(req.body.note ?? "Opening stock"),
+          occurredAt: parsedDateReceived ?? new Date(),
         },
       });
       return createdItem;
@@ -251,6 +420,7 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
             projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
             status: String(req.body.status ?? (difference > 0 ? "APPROVED" : "APPROVED")) as "APPROVED" | "PENDING" | "REJECTED",
             remark: String(req.body.remark ?? req.body.note ?? (difference > 0 ? "Stock increased" : "Stock decreased")),
+            occurredAt: toDateOrUndefined(req.body.dateReceived ?? req.body.dateFiled) ?? new Date(),
           },
         });
       }
