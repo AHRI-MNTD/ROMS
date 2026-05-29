@@ -456,7 +456,7 @@ export default function AnalyticsPage() {
             </button>
           </div>
 
-          <div style={{ minWidth: 260, flex: "0 0 260px", padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.74)", border: "1px solid rgba(1, 105, 111, 0.14)" }}>
+          <div style={{ minWidth: 260,  padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.74)", border: "1px solid rgba(1, 105, 111, 0.14)" }}>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Leadership Brief</div>
             <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", lineHeight: 1.7 }}>{executiveSummary}</div>
           </div>

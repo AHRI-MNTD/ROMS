@@ -169,6 +169,15 @@ export const CreateStaffProfileSchema = z.object({
 
 export type CreateStaffProfileInput = z.infer<typeof CreateStaffProfileSchema>;
 
+export const StaffApprovalStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"]);
+
+export const ReviewStaffProfileSchema = z.object({
+  approvalStatus: StaffApprovalStatusSchema,
+  reviewNote: z.string().max(2000).optional(),
+});
+
+export type ReviewStaffProfileInput = z.infer<typeof ReviewStaffProfileSchema>;
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export const LoginSchema = z.object({

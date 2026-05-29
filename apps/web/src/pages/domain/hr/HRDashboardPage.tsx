@@ -1,0 +1,79 @@
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "../../../api/client";
+
+type StaffRow = Record<string, unknown>;
+
+export default function HRDashboardPage() {
+  const staffQuery = useQuery({
+    queryKey: ["hr-dashboard-staff"],
+    queryFn: async () => {
+      try {
+        const resp = await apiClient.get("/domains/hr/staff?page=1");
+        return resp.data as { data: StaffRow[]; total: number };
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
+  });
+
+  const trainingQuery = useQuery({
+    queryKey: ["hr-dashboard-training"],
+    queryFn: async () => {
+      try {
+        const resp = await apiClient.get("/domains/hr/training-records");
+        return resp.data as { data: StaffRow[]; total: number };
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
+  });
+
+  const staff = staffQuery.data?.data ?? [];
+  const totalStaff = staffQuery.data?.total ?? 0;
+  const totalTraining = trainingQuery.data?.total ?? 0;
+  const departments = new Set(staff.map((row) => String(row.department ?? "Unknown")).filter(Boolean)).size;
+
+  const cardStyle = (tone: string): React.CSSProperties => ({
+    padding: 16,
+    borderRadius: 18,
+    border: `1px solid ${tone}22`,
+    background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
+    boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)",
+  });
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 12 }}>
+        <div style={cardStyle("#0f766e")}>
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Staff</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalStaff}</div>
+        </div>
+        <div style={cardStyle("#1d4ed8")}>
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Departments</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{departments}</div>
+        </div>
+        <div style={cardStyle("#b45309")}>
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Training Records</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalTraining}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+        <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", padding: 16 }}>
+          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, marginBottom: 8 }}>What is covered</div>
+          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+            This HR workspace is now split into dashboard, staff directory, training records, leave, onboarding, and analytics sections so the domain can grow like inventory.
+          </div>
+        </div>
+
+        <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", padding: 16 }}>
+          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, marginBottom: 8 }}>Preview</div>
+          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+            Use the Staff Directory tab to review live staff data from the API. The remaining tabs are ready for future HR workflows.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
