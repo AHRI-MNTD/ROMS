@@ -24,6 +24,7 @@ const HRPage = lazy(() => import("./pages/domain/HRPage"));
 const FinancePage = lazy(() => import("./pages/domain/FinancePage"));
 const ParticipantPage = lazy(() => import("./pages/domain/ParticipantPage"));
 const RegulatoryPage = lazy(() => import("./pages/domain/RegulatoryPage"));
+const UserRightsControlPage = lazy(() => import("./pages/UserRightsControlPage"));
 
 export const routes: RouteObject[] = [
   {
@@ -60,6 +61,7 @@ export const routes: RouteObject[] = [
       { path: "domains/finance", element: <FinancePage /> },
       { path: "domains/participant", element: <ParticipantPage /> },
       { path: "domains/regulatory", element: <RegulatoryPage /> },
+      { path: "admin/user-rights", element: <UserRightsControlPage /> },
     ],
   },
 ];

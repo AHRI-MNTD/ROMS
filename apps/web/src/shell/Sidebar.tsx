@@ -132,6 +132,53 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </div>
+        {/* User rights / admin control at bottom */}
+        <div style={{ marginTop: "auto", padding: "8px", borderTop: "1px solid var(--color-divider)" }}>
+          <NavLink
+            to="/admin/user-rights"
+            style={({ isActive }) => ({
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--fs-sm)",
+              color: isActive ? "var(--color-primary)" : "var(--color-text)",
+              background: isActive ? "var(--color-primary-highlight)" : "transparent",
+              fontWeight: isActive ? 600 : 400,
+              textDecoration: "none",
+              marginBottom: 2,
+              transition: "background 0.12s",
+            })}
+          >
+            <span
+              style={{
+                fontSize: "0.75rem",
+                width: 20,
+                height: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "var(--color-surface-offset)",
+                borderRadius: "var(--radius-sm)",
+                flexShrink: 0,
+              }}
+            >
+              🔐
+            </span>
+            <span
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                lineHeight: 1.3,
+              }}
+            >
+              User Right Control
+            </span>
+          </NavLink>
+        </div>
     </nav>
   );
 };
