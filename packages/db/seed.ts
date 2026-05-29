@@ -886,7 +886,12 @@ async function main() {
 
   if (seededMovements.length > 0) {
     await movementPrisma.inventoryMovement.createMany({
-      data: seededMovements,
+      data: seededMovements.map((movement) =>
+        Object.fromEntries(
+          Object.entries(movement)
+            .filter(([key, value]) => key !== "sku" && value !== undefined)
+        ) as SeededStockMovementRecord
+      ),
     });
   }
   console.log(`✅ Seeded ${seededMovements.length} inventory movement records from CSV`);
@@ -1011,16 +1016,49 @@ async function main() {
 
   // ─── Staff profiles ───────────────────────────────────────────────────────
   await Promise.all(
-    users.slice(0, 4).map((u: any, i: number) =>
+    users.slice(0, 6).map((u: any, i: number) =>
       prisma.staffProfile.upsert({
         where: { userId: u.id },
-        update: {},
+        update: {
+          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED"][i] as any,
+          reviewedById: i >= 2 ? users[6]?.id : null,
+          reviewedAt: i >= 2 ? new Date("2025-05-01T10:00:00") : null,
+          reviewNote:
+            i >= 4
+              ? "Employee did not meet the approval criteria yet."
+              : i >= 2
+                ? "Employee approved for HR access."
+                : null,
+        } as any,
         create: {
           userId: u.id,
-          department: ["Laboratory Sciences", "Data Management", "Research Administration", "Principal Investigators"][i],
-          jobTitle: ["Lab Scientist", "Data Manager", "Research Admin", "Principal Investigator"][i],
+          department: [
+            "Laboratory Sciences",
+            "Data Management",
+            "Research Administration",
+            "Principal Investigators",
+            "Human Resources",
+            "Operations",
+          ][i],
+          jobTitle: [
+            "Lab Scientist",
+            "Data Manager",
+            "Research Admin",
+            "Principal Investigator",
+            "HR Officer",
+            "Operations Coordinator",
+          ][i],
           startDate: new Date("2022-01-01"),
-        },
+          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED"][i] as any,
+          reviewedById: i >= 2 ? users[6]?.id : undefined,
+          reviewedAt: i >= 2 ? new Date("2025-05-01T10:00:00") : undefined,
+          reviewNote:
+            i >= 4
+              ? "Employee did not meet the approval criteria yet."
+              : i >= 2
+                ? "Employee approved for HR access."
+                : undefined,
+        } as any,
       })
     )
   );

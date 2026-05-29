@@ -32,6 +32,7 @@ model User {
   capaItems       CAPA[]         @relation("CAPAOwner")
   instrumentBookings InstrumentBooking[]
   documents       Document[]
+  reviewedStaffProfiles StaffProfile[] @relation("StaffProfileReviewedBy")
 }
 
 model Session {
@@ -486,15 +487,28 @@ model BackupJob {
 
 // ─── 7. HR & Staff Operations ────────────────────────────────────────────────
 
+enum StaffApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model StaffProfile {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department String
-  jobTitle   String
-  startDate  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String              @id @default(cuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department     String
+  jobTitle       String
+  startDate      DateTime
+  approvalStatus StaffApprovalStatus @default(PENDING)
+  reviewedById   String?
+  reviewedBy     User?               @relation("StaffProfileReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([approvalStatus])
 }
 
 model TrainingRecord {

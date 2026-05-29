@@ -20,7 +20,14 @@ const QMSPage = lazy(() => import("./pages/domain/QMSPage"));
 const LabWorkflowPage = lazy(() => import("./pages/domain/LabWorkflowPage"));
 const DataManagementPage = lazy(() => import("./pages/domain/DataManagementPage"));
 const InfrastructurePage = lazy(() => import("./pages/domain/InfrastructurePage"));
-const HRPage = lazy(() => import("./pages/domain/HRPage"));
+const HRLayout = lazy(() => import("./pages/domain/hr"));
+const HRDashboardPage = lazy(() => import("./pages/domain/hr/HRDashboardPage"));
+const StaffDirectoryPage = lazy(() => import("./pages/domain/hr/StaffDirectoryPage"));
+const TrainingRecordsPage = lazy(() => import("./pages/domain/hr/TrainingRecordsPage"));
+const LeavePage = lazy(() => import("./pages/domain/hr/LeavePage"));
+const OnboardingPage = lazy(() => import("./pages/domain/hr/OnboardingPage"));
+const ApproveEmployeePage = lazy(() => import("./pages/domain/hr/ApproveEmployeePage"));
+const HRAnalyticsPage = lazy(() => import("./pages/domain/hr/AnalyticsPage"));
 const FinancePage = lazy(() => import("./pages/domain/FinancePage"));
 const ParticipantPage = lazy(() => import("./pages/domain/ParticipantPage"));
 const RegulatoryPage = lazy(() => import("./pages/domain/RegulatoryPage"));
@@ -57,7 +64,20 @@ export const routes: RouteObject[] = [
       { path: "domains/lab-workflow", element: <LabWorkflowPage /> },
       { path: "domains/data-management", element: <DataManagementPage /> },
       { path: "domains/infrastructure", element: <InfrastructurePage /> },
-      { path: "domains/hr", element: <HRPage /> },
+      {
+        path: "domains/hr",
+        element: <HRLayout />,
+        children: [
+          { index: true, element: <Navigate to="dashboard" replace /> },
+          { path: "dashboard", element: <HRDashboardPage /> },
+          { path: "staff-directory", element: <StaffDirectoryPage /> },
+          { path: "training-records", element: <TrainingRecordsPage /> },
+          { path: "leave", element: <LeavePage /> },
+          { path: "onboarding", element: <OnboardingPage /> },
+          { path: "approve-employee", element: <ApproveEmployeePage /> },
+          { path: "analytics", element: <HRAnalyticsPage /> },
+        ],
+      },
       { path: "domains/finance", element: <FinancePage /> },
       { path: "domains/participant", element: <ParticipantPage /> },
       { path: "domains/regulatory", element: <RegulatoryPage /> },
