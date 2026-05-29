@@ -16,7 +16,9 @@ const CheckOutPage = lazy(() => import("./pages/domain/inventory/CheckOutPage"))
 const RequestsPage = lazy(() => import("./pages/domain/inventory/RequestsPage"));
 const AnalyticsPage = lazy(() => import("./pages/domain/inventory/AnalyticsPage"));
 const MasterDataPage = lazy(() => import("./pages/domain/inventory/MasterDataPage"));
-const QMSPage = lazy(() => import("./pages/domain/QMSPage"));
+const QMSLayout = lazy(() => import("./pages/domain/qms/QMSLayout"));
+const QMSPage = lazy(() => import("./pages/domain/qms/QMSPage"));
+const CreateSOPPage = lazy(() => import("./pages/domain/qms/CreateSOPPage"));
 const LabWorkflowPage = lazy(() => import("./pages/domain/LabWorkflowPage"));
 const DataManagementPage = lazy(() => import("./pages/domain/DataManagementPage"));
 const InfrastructurePage = lazy(() => import("./pages/domain/InfrastructurePage"));
@@ -52,7 +54,14 @@ export const routes: RouteObject[] = [
           { path: "master-data", element: <MasterDataPage /> },
         ],
       },
-      { path: "domains/qms", element: <QMSPage /> },
+      {
+        path: "domains/qms",
+        element: <QMSLayout />,
+        children: [
+          { index: true, element: <QMSPage /> },
+          { path: "create-sop", element: <CreateSOPPage /> },
+        ],
+      },
       { path: "domains/lab-workflow", element: <LabWorkflowPage /> },
       { path: "domains/data-management", element: <DataManagementPage /> },
       { path: "domains/infrastructure", element: <InfrastructurePage /> },
