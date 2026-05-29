@@ -12,6 +12,10 @@ type ApprovalRow = {
   approvalStatus: ApprovalStatus;
   reviewNote?: string | null;
   reviewedAt?: string | null;
+  createdAt?: string | null;
+  employmentType?: string | null;
+  contractEndDate?: string | null;
+  contractRenewalDate?: string | null;
   user?: {
     displayName?: string | null;
     email?: string | null;
@@ -61,9 +65,15 @@ export default function ApproveEmployeePage() {
   });
 
   const rows = data?.data ?? [];
-  const pending = useMemo(() => rows.filter((row) => row.approvalStatus === "PENDING"), [rows]);
-  const approved = useMemo(() => rows.filter((row) => row.approvalStatus === "APPROVED"), [rows]);
-  const rejected = useMemo(() => rows.filter((row) => row.approvalStatus === "REJECTED"), [rows]);
+  const sortByRecent = (a: ApprovalRow, b: ApprovalRow) => {
+    const ta = new Date(a.createdAt ?? a.reviewedAt ?? a.startDate ?? 0).getTime();
+    const tb = new Date(b.createdAt ?? b.reviewedAt ?? b.startDate ?? 0).getTime();
+    return tb - ta;
+  };
+
+  const pending = useMemo(() => rows.filter((row) => row.approvalStatus === "PENDING").slice().sort(sortByRecent), [rows]);
+  const approved = useMemo(() => rows.filter((row) => row.approvalStatus === "APPROVED").slice().sort(sortByRecent), [rows]);
+  const rejected = useMemo(() => rows.filter((row) => row.approvalStatus === "REJECTED").slice().sort(sortByRecent), [rows]);
 
   const handleDecision = async (id: string, approvalStatus: ApprovalStatus) => {
     const note = notes[id]?.trim();
@@ -103,27 +113,31 @@ export default function ApproveEmployeePage() {
 
   const rowStyle: React.CSSProperties = {
     borderBottom: "1px solid var(--color-divider)",
+    height: 48,
+    overflow: "hidden",
   };
 
-  const renderRow = (row: ApprovalRow, showActions: boolean) => (
-    <tr key={row.id} style={rowStyle}>
-      <td style={{ padding: "8px 10px", verticalAlign: "top", width: "20%" }}>
-        <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700, lineHeight: 1.2 }}>{row.user?.displayName ?? "Unknown"}</div>
-        <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2, lineHeight: 1.2 }}>{row.user?.email ?? ""}</div>
+  const renderRow = (row: ApprovalRow, showActions: boolean, index: number) => (
+    <tr key={row.id} style={{ ...rowStyle, ...(index === 0 ? { borderTop: "2px solid var(--color-divider)" } : {}) }}>
+      <td style={{ padding: "8px 10px", verticalAlign: "top", width: "4%", textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700 }}>{index + 1}</td>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", width: "20%" }}>
+        <div title={row.user?.displayName ?? "Unknown"} style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.user?.displayName ?? "Unknown"}</div>
       </td>
-      <td style={{ padding: "8px 10px", verticalAlign: "top", width: "22%" }}>{row.department}</td>
-      <td style={{ padding: "8px 10px", verticalAlign: "top", width: "20%" }}>{row.jobTitle}</td>
-      <td style={{ padding: "8px 10px", verticalAlign: "top", whiteSpace: "nowrap", width: "14%" }}>{formatDate(row.startDate)}</td>
-      <td style={{ padding: "8px 10px", verticalAlign: "top", width: "16%" }}>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", width: "22%" }} title={row.department}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.department}</div></td>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", width: "20%" }} title={row.jobTitle}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.jobTitle}</div></td>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", whiteSpace: "nowrap", width: "14%" }}>{formatDate(row.startDate)}</td>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", width: "12%" }}>{row.employmentType ?? "—"}</td>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", width: "12%" }}>{formatDate(row.contractEndDate ?? null)}</td>
+      <td style={{ padding: "8px 10px", verticalAlign: "middle", width: "16%" }}>
         {showActions ? (
           <input
             value={notes[row.id] ?? ""}
             onChange={(e) => setNotes((cur) => ({ ...cur, [row.id]: e.target.value }))}
             placeholder="Optional remark"
-            style={{ width: "100%", minWidth: 150, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "rgba(255,255,255,0.95)", font: "inherit" }}
+            style={{ width: "100%", height: 36, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "rgba(255,255,255,0.95)", font: "inherit", boxSizing: "border-box", overflow: "hidden" }}
           />
         ) : (
-          <div style={{ lineHeight: 1.25 }}>{row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"}</div>
+          <div title={row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"} style={{ lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"}</div>
         )}
       </td>
       {showActions ? (
@@ -165,7 +179,7 @@ export default function ApproveEmployeePage() {
       </div>
 
       <div style={{ display: "grid", gap: 12 }}>
-        <div style={approvalPanelStyle("rgba(34, 197, 94, 0.18)", "rgba(240, 253, 244, 0.98)", "rgba(16, 24, 40, 0.05)")}> 
+        <div style={approvalPanelStyle("rgba(186, 197, 34, 0.18)", "rgba(240, 253, 244, 0.98)", "rgba(16, 24, 40, 0.05)")}> 
           <div style={approvalHeaderStyle}>Pending employee approvals</div>
           <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the employee profile, then approve or disapprove access.</div>
           <div style={{ overflowX: "auto" }}>
@@ -173,16 +187,19 @@ export default function ApproveEmployeePage() {
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <thead>
                   <tr>
+                    <th style={{ textAlign: "right", padding: "8px 10px", width: "4%" }}>#</th>
                     <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Name</th>
                     <th style={{ textAlign: "left", padding: "8px 10px", width: "22%" }}>Department</th>
                     <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Job title</th>
                     <th style={{ textAlign: "left", padding: "8px 10px", width: "14%" }}>Start date</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", width: "12%" }}>Employment</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", width: "12%" }}>Contract end</th>
                     <th style={{ textAlign: "left", padding: "8px 10px", width: "16%" }}>Remark</th>
                     <th style={{ padding: "8px 10px", width: "8%" }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pending.map((row) => renderRow(row, true))}
+                  {pending.map((row, i) => renderRow(row, true, i))}
                 </tbody>
               </table>
             ) : (
@@ -199,15 +216,18 @@ export default function ApproveEmployeePage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Name</th>
+                        <th style={{ textAlign: "right", padding: "8px 10px", width: "4%" }}>#</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Name</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "22%" }}>Department</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Job title</th>
-                      <th style={{ textAlign: "left", padding: "8px 10px", width: "14%" }}>Start date</th>
-                      <th style={{ textAlign: "left", padding: "8px 10px", width: "24%" }}>Reviewed</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", width: "14%" }}>Start date</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", width: "12%" }}>Employment</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", width: "12%" }}>Contract end</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", width: "24%" }}>Reviewed</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {approved.map((row) => renderRow(row, false))}
+                      {approved.map((row, i) => renderRow(row, false, i))}
                   </tbody>
                 </table>
               ) : (
@@ -223,15 +243,18 @@ export default function ApproveEmployeePage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                   <thead>
                     <tr>
+                      <th style={{ textAlign: "right", padding: "8px 10px", width: "4%" }}>#</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Name</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "22%" }}>Department</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "20%" }}>Job title</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "14%" }}>Start date</th>
+                      <th style={{ textAlign: "left", padding: "8px 10px", width: "12%" }}>Employment</th>
+                      <th style={{ textAlign: "left", padding: "8px 10px", width: "12%" }}>Contract end</th>
                       <th style={{ textAlign: "left", padding: "8px 10px", width: "24%" }}>Reviewed</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rejected.map((row) => renderRow(row, false))}
+                    {rejected.map((row, i) => renderRow(row, false, i))}
                   </tbody>
                 </table>
               ) : (

@@ -609,6 +609,26 @@ async function main() {
         roles: ["ADMIN"],
       },
     }),
+    prisma.user.upsert({
+      where: { email: "pending1@roms.dev" },
+      update: {},
+      create: {
+        email: "pending1@roms.dev",
+        hashedPassword: password,
+        displayName: "Henry Osei",
+        roles: ["HR_APPLICANT"],
+      },
+    }),
+    prisma.user.upsert({
+      where: { email: "pending2@roms.dev" },
+      update: {},
+      create: {
+        email: "pending2@roms.dev",
+        hashedPassword: password,
+        displayName: "Irene Njoroge",
+        roles: ["HR_APPLICANT"],
+      },
+    }),
   ]);
 
   console.log(`✅ Created ${users.length} demo users`);
@@ -1016,19 +1036,41 @@ async function main() {
 
   // ─── Staff profiles ───────────────────────────────────────────────────────
   await Promise.all(
-    users.slice(0, 6).map((u: any, i: number) =>
+    users.slice(0, 8).map((u: any, i: number) =>
       prisma.staffProfile.upsert({
         where: { userId: u.id },
         update: {
-          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED"][i] as any,
-          reviewedById: i >= 2 ? users[6]?.id : null,
-          reviewedAt: i >= 2 ? new Date("2025-05-01T10:00:00") : null,
+          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED", "PENDING", "PENDING"][i] as any,
+          reviewedById: i >= 2 && i < 6 ? users[6]?.id : null,
+          reviewedAt: i >= 2 && i < 6 ? new Date("2025-05-01T10:00:00") : null,
           reviewNote:
-            i >= 4
+            i >= 4 && i < 6
               ? "Employee did not meet the approval criteria yet."
-              : i >= 2
+              : i >= 2 && i < 4
                 ? "Employee approved for HR access."
                 : null,
+          employmentType:
+            ["Full-time", "Contract", "Full-time", "Full-time", "Part-time", "Contract", "Contract", "Full-time"][i],
+          contractEndDate: [
+            null,
+            new Date("2026-12-31"),
+            null,
+            null,
+            null,
+            new Date("2025-11-30"),
+            new Date("2026-06-30"),
+            null,
+          ][i],
+          contractRenewalDate: [
+            null,
+            new Date("2027-01-15"),
+            null,
+            null,
+            null,
+            new Date("2026-11-30"),
+            new Date("2027-06-30"),
+            null,
+          ][i],
         } as any,
         create: {
           userId: u.id,
@@ -1039,6 +1081,8 @@ async function main() {
             "Principal Investigators",
             "Human Resources",
             "Operations",
+            "Field Operations",
+            "Clinical Operations",
           ][i],
           jobTitle: [
             "Lab Scientist",
@@ -1047,17 +1091,49 @@ async function main() {
             "Principal Investigator",
             "HR Officer",
             "Operations Coordinator",
+            "Field Technician",
+            "Clinical Coordinator",
           ][i],
           startDate: new Date("2022-01-01"),
-          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED"][i] as any,
-          reviewedById: i >= 2 ? users[6]?.id : undefined,
-          reviewedAt: i >= 2 ? new Date("2025-05-01T10:00:00") : undefined,
+          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED", "PENDING", "PENDING"][i] as any,
+          reviewedById: i >= 2 && i < 6 ? users[6]?.id : undefined,
+          reviewedAt: i >= 2 && i < 6 ? new Date("2025-05-01T10:00:00") : undefined,
           reviewNote:
-            i >= 4
+            i >= 4 && i < 6
               ? "Employee did not meet the approval criteria yet."
-              : i >= 2
+              : i >= 2 && i < 4
                 ? "Employee approved for HR access."
                 : undefined,
+          employmentType: [
+            "Full-time",
+            "Contract",
+            "Full-time",
+            "Full-time",
+            "Part-time",
+            "Contract",
+            "Contract",
+            "Full-time",
+          ][i],
+          contractEndDate: [
+            null,
+            new Date("2026-12-31"),
+            null,
+            null,
+            null,
+            new Date("2025-11-30"),
+            new Date("2026-06-30"),
+            null,
+          ][i],
+          contractRenewalDate: [
+            null,
+            new Date("2027-01-15"),
+            null,
+            null,
+            null,
+            new Date("2026-11-30"),
+            new Date("2027-06-30"),
+            null,
+          ][i],
         } as any,
       })
     )
