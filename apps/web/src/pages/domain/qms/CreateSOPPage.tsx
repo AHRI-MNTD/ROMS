@@ -345,6 +345,985 @@ const RectangleMultiselect: React.FC<RectangleMultiselectProps> = ({
   );
 };
 
+// Rich Text Editor Component
+interface RichTextEditorProps {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (val: string) => void;
+  rows?: number;
+  placeholder?: string;
+}
+
+const RichTextEditor: React.FC<RichTextEditorProps> = ({
+  label,
+  required = false,
+  value,
+  onChange,
+  rows = 4,
+  placeholder = "",
+}) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [selectedColor, setSelectedColor] = useState("#334155");
+  const [selectedHighlight, setSelectedHighlight] = useState("transparent");
+  const [isColorOpen, setIsColorOpen] = useState(false);
+  const [isHighlightOpen, setIsHighlightOpen] = useState(false);
+  const [isMoreFormatOpen, setIsMoreFormatOpen] = useState(false);
+  const [isTableMenuOpen, setIsTableMenuOpen] = useState(false);
+  const [isGridVisible, setIsGridVisible] = useState(true);
+  const [hoveredGrid, setHoveredGrid] = useState({ r: 0, c: 0 });
+  const [gridSize, setGridSize] = useState({ rows: 8, cols: 10 });
+
+  const colorRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const moreFormatRef = useRef<HTMLDivElement>(null);
+  const tableMenuRef = useRef<HTMLDivElement>(null);
+
+  const savedSelectionRangeRef = useRef<Range | null>(null);
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+        savedSelectionRangeRef.current = range;
+      }
+    }
+  };
+
+  const restoreSelection = () => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+      const sel = window.getSelection();
+      if (sel) {
+        if (savedSelectionRangeRef.current && editorRef.current.contains(savedSelectionRangeRef.current.commonAncestorContainer)) {
+          sel.removeAllRanges();
+          sel.addRange(savedSelectionRangeRef.current);
+        } else {
+          const range = document.createRange();
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          savedSelectionRangeRef.current = range;
+        }
+      }
+    }
+  };
+
+  // Sync state to innerHTML only when value is changed externally (not by user typing)
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      if (document.activeElement !== editorRef.current || !value) {
+        editorRef.current.innerHTML = value || "";
+      }
+    }
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node;
+      if (colorRef.current && !colorRef.current.contains(target)) setIsColorOpen(false);
+      if (highlightRef.current && !highlightRef.current.contains(target)) setIsHighlightOpen(false);
+      if (moreFormatRef.current && !moreFormatRef.current.contains(target)) setIsMoreFormatOpen(false);
+      if (tableMenuRef.current && !tableMenuRef.current.contains(target)) setIsTableMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!isTableMenuOpen) {
+      setGridSize({ rows: 8, cols: 10 });
+      setHoveredGrid({ r: 0, c: 0 });
+    }
+  }, [isTableMenuOpen]);
+
+  const handleInput = () => {
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const exec = (command: string, arg: string = "") => {
+    restoreSelection();
+    document.execCommand(command, false, arg);
+    handleInput();
+    saveSelection();
+  };
+
+  const handleTextType = (type: string) => {
+    if (type === "h1") exec("formatBlock", "<h1>");
+    else if (type === "h2") exec("formatBlock", "<h2>");
+    else if (type === "h3") exec("formatBlock", "<h3>");
+    else if (type === "normal") exec("formatBlock", "<p>");
+    else if (type === "small") exec("formatBlock", "<small>");
+  };
+
+  const handleLink = () => {
+    const url = prompt("Enter URL:", "https://");
+    if (url) {
+      exec("createLink", url);
+    }
+  };
+
+  const getSelectedCell = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node = sel.getRangeAt(0).startContainer;
+    while (node) {
+      if (node.nodeName === "TD" || node.nodeName === "TH") {
+        return node as HTMLTableCellElement;
+      }
+      if (node.nodeName === "BODY" || node.nodeName === "HTML" || (node instanceof HTMLElement && node.classList.contains("rich-editor-content"))) {
+        break;
+      }
+      node = node.parentNode as Node;
+    }
+    return null;
+  };
+
+  const handlePlus = (action: string, args?: any) => {
+    restoreSelection();
+    if (action === "quote") {
+      exec("formatBlock", "<blockquote>");
+    } else if (action === "table") {
+      const rows = args?.rows || 2;
+      const cols = args?.cols || 2;
+
+      let rowsHtml = "";
+      for (let r = 0; r < rows; r++) {
+        let colsHtml = "";
+        for (let c = 0; c < cols; c++) {
+          colsHtml += `<td style="border:1px solid var(--color-border); padding:8px; min-width:50px;"><br></td>`;
+        }
+        rowsHtml += `<tr>${colsHtml}</tr>`;
+      }
+
+      const tableHtml = `<table style="width:100%; border-collapse:collapse; border:1px solid var(--color-border); margin:10px 0;">
+  <tbody>
+    ${rowsHtml}
+  </tbody>
+</table>`;
+      exec("insertHTML", tableHtml);
+    } else if (action === "addRow") {
+      const cell = getSelectedCell();
+      if (cell) {
+        const row = cell.parentNode as HTMLTableRowElement;
+        const newRow = row.cloneNode(true) as HTMLTableRowElement;
+        Array.from(newRow.cells).forEach(c => c.innerHTML = "<br>");
+        row.parentNode?.insertBefore(newRow, row.nextSibling);
+        handleInput();
+      } else {
+        alert("Please place your cursor inside a table cell to add a row.");
+      }
+    } else if (action === "addColumn") {
+      const cell = getSelectedCell();
+      if (cell) {
+        const table = cell.closest("table");
+        if (table) {
+          const colIndex = cell.cellIndex;
+          Array.from(table.rows).forEach(row => {
+            const newCell = row.cells[colIndex].cloneNode(true) as HTMLTableCellElement;
+            newCell.innerHTML = "<br>";
+            row.insertBefore(newCell, row.cells[colIndex].nextSibling);
+          });
+          handleInput();
+        }
+      } else {
+        alert("Please place your cursor inside a table cell to add a column.");
+      }
+    } else if (action === "deleteRow") {
+      const cell = getSelectedCell();
+      if (cell) {
+        const row = cell.parentNode as HTMLTableRowElement;
+        row.parentNode?.removeChild(row);
+        handleInput();
+      } else {
+        alert("Please place your cursor inside a table cell to delete the row.");
+      }
+    } else if (action === "deleteColumn") {
+      const cell = getSelectedCell();
+      if (cell) {
+        const table = cell.closest("table");
+        if (table) {
+          const colIndex = cell.cellIndex;
+          Array.from(table.rows).forEach(row => {
+            if (row.cells[colIndex]) {
+              row.deleteCell(colIndex);
+            }
+          });
+          handleInput();
+        }
+      } else {
+        alert("Please place your cursor inside a table cell to delete the column.");
+      }
+    } else if (action === "image") {
+      const url = prompt("Enter Image URL:", "https://");
+      if (url) {
+        exec("insertImage", url);
+      }
+    } else if (action === "video") {
+      const url = prompt("Enter Video URL:", "https://");
+      if (url) {
+        const videoHtml = `<video src="${url}" controls style="max-width:100%; height:auto; margin:10px 0;"></video>`;
+        exec("insertHTML", videoHtml);
+      }
+    } else if (action === "formula") {
+      const formula = prompt("Enter mathematical formula:", "");
+      if (formula) {
+        const formulaHtml = `<span style="font-family:monospace; background:var(--color-surface-2); padding:2px 4px; border-radius:4px;">${formula}</span>`;
+        exec("insertHTML", formulaHtml);
+      }
+    }
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    padding: "2px 6px",
+    background: "none",
+    border: "none",
+    borderRadius: "4px",
+    color: "var(--color-text)",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "bold",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: "26px",
+    height: "26px",
+    position: "relative",
+  };
+
+  const selectStyle: React.CSSProperties = {
+    padding: "2px 4px",
+    background: "var(--color-surface-2)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "4px",
+    color: "var(--color-text)",
+    cursor: "pointer",
+    fontSize: "11px",
+    outline: "none",
+    height: "26px",
+  };
+
+  const FONT_COLORS = [
+    { name: "Default", value: "#334155" },
+    { name: "Red", value: "#ef4444" },
+    { name: "Blue", value: "#3b82f6" },
+    { name: "Green", value: "#10b981" },
+    { name: "Orange", value: "#f97316" },
+    { name: "Purple", value: "#8b5cf6" },
+    { name: "Pink", value: "#ec4899" },
+    { name: "Black", value: "#000000" },
+  ];
+
+  const HIGHLIGHT_COLORS = [
+    { name: "None", value: "transparent" },
+    { name: "Yellow", value: "#fef08a" },
+    { name: "Green", value: "#bbf7d0" },
+    { name: "Blue", value: "#bfdbfe" },
+    { name: "Pink", value: "#fbcfe8" },
+    { name: "Orange", value: "#fed7aa" },
+  ];
+
+  const isAnyMenuOpen = isColorOpen || isHighlightOpen || isMoreFormatOpen || isTableMenuOpen;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+      <style>{`
+        .rich-editor-content:empty:before {
+          content: attr(placeholder);
+          color: var(--color-text-faint);
+          font-style: italic;
+          cursor: text;
+        }
+        .editor-btn:hover {
+          background-color: var(--color-surface-offset) !important;
+        }
+        .popover-menu-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 12px;
+          font-size: 12px;
+          color: var(--color-text);
+          background: none;
+          border: none;
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+          border-radius: 4px;
+        }
+        .popover-menu-item:hover {
+          background-color: var(--color-surface-offset);
+        }
+        .popover-menu-item.active {
+          background-color: #f3e5f5;
+          color: #7b1fa2;
+        }
+        .grid-cell {
+          width: 16px;
+          height: 16px;
+          border: 1px solid #cccccc;
+          background-color: #f9f9f9;
+          cursor: pointer;
+          transition: background-color 0.1s, border-color 0.1s;
+        }
+        .grid-cell.highlighted {
+          background-color: #e8d5e8;
+          border-color: #ab47bc;
+        }
+      `}</style>
+      <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>
+        {label} {required && <span style={{ color: "red" }}>*</span>}
+      </label>
+      <div
+        style={{
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-surface-2)",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          zIndex: isAnyMenuOpen ? 50 : 1,
+        }}
+      >
+        {/* Editor Toolbar */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 4,
+            padding: "4px 8px",
+            borderBottom: "1px solid var(--color-border)",
+            background: "var(--color-surface)",
+            borderTopLeftRadius: "var(--radius-sm)",
+            borderTopRightRadius: "var(--radius-sm)",
+          }}
+        >
+          {/* Text Type Selection */}
+          <select
+            onChange={(e) => {
+              handleTextType(e.target.value);
+              e.target.value = "";
+            }}
+            defaultValue=""
+            style={selectStyle}
+          >
+            <option value="" disabled>Normal Text</option>
+            <option value="normal">Normal Text</option>
+            <option value="h1">Heading 1</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+            <option value="small">Small</option>
+          </select>
+
+          <div style={{ width: 1, height: 16, background: "var(--color-border)", margin: "0 4px" }} />
+
+          {/* Bold, Italic */}
+          <button
+            type="button"
+            onClick={() => exec("bold")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Bold"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4 2h4.5a3.5 3.5 0 0 1 2.5 6 3.5 3.5 0 0 1-2.5 6H4V2zm2 2.5v3.5h2a1.75 1.75 0 0 0 0-3.5H6zm0 5.5v3h2.5a1.75 1.75 0 0 0 0-3.5H6z"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => exec("italic")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Italic"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M6 2h6v2.5H9.4l-2.8 7H9v2.5H3V11.5h2.6l2.8-7H6V2z"/>
+            </svg>
+          </button>
+
+          {/* Custom Color Selector */}
+          <div ref={colorRef} style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => setIsColorOpen(!isColorOpen)}
+              style={buttonStyle}
+              className="editor-btn"
+              title="Text Color"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ display: "block" }}>
+                <path d="M4 11h8M8 2L3 11h2.2l.8-2h4l.8 2h2.2L9 2zm0 2.2L9.2 8H6.8z" />
+                <rect x="1" y="13" width="14" height="2.5" fill={selectedColor} />
+              </svg>
+            </button>
+            {isColorOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  marginTop: 4,
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-md)",
+                  zIndex: 200,
+                  padding: 8,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: 6,
+                  minWidth: 120,
+                }}
+              >
+                {FONT_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => {
+                      exec("foreColor", c.value);
+                      setSelectedColor(c.value);
+                      setIsColorOpen(false);
+                    }}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: c.value,
+                      border: c.value === "#ffffff" ? "1px solid #ccc" : "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "inset 0 0 2px rgba(0,0,0,0.2)",
+                    }}
+                    title={c.name}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Custom Highlight Selector */}
+          <div ref={highlightRef} style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => setIsHighlightOpen(!isHighlightOpen)}
+              style={buttonStyle}
+              className="editor-btn"
+              title="Highlight Color"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ display: "block" }}>
+                <path d="M11.5 1.5a1.5 1.5 0 0 1 2.12 0l.88.88a1.5 1.5 0 0 1 0 2.12L7.3 11.7l-3 1.2a.5.5 0 0 1-.67-.67l1.2-3zM6 9.8L11.2 4.6l-1-1L5 8.8z" />
+                <rect x="1" y="13" width="14" height="2.5" fill={selectedHighlight === "transparent" ? "#dddddd" : selectedHighlight} />
+              </svg>
+            </button>
+            {isHighlightOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  marginTop: 4,
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-md)",
+                  zIndex: 200,
+                  padding: 8,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 6,
+                  minWidth: 100,
+                }}
+              >
+                {HIGHLIGHT_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => {
+                      exec("hiliteColor", c.value);
+                      setSelectedHighlight(c.value);
+                      setIsHighlightOpen(false);
+                    }}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      backgroundColor: c.value === "transparent" ? "#fff" : c.value,
+                      border: c.value === "transparent" ? "1px dashed #999" : "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "8px",
+                      color: "#999",
+                      borderRadius: "2px",
+                    }}
+                    title={c.name}
+                  >
+                    {c.value === "transparent" && "✕"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ width: 1, height: 16, background: "var(--color-border)", margin: "0 4px" }} />
+
+          {/* Alignments */}
+          <button
+            type="button"
+            onClick={() => exec("justifyLeft")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Align Left"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="2" y1="3" x2="14" y2="3" />
+              <line x1="2" y1="6" x2="10" y2="6" />
+              <line x1="2" y1="9" x2="14" y2="9" />
+              <line x1="2" y1="12" x2="8" y2="12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => exec("justifyCenter")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Align Center"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="2" y1="3" x2="14" y2="3" />
+              <line x1="4" y1="6" x2="12" y2="6" />
+              <line x1="2" y1="9" x2="14" y2="9" />
+              <line x1="5" y1="12" x2="11" y2="12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => exec("justifyRight")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Align Right"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="2" y1="3" x2="14" y2="3" />
+              <line x1="6" y1="6" x2="14" y2="6" />
+              <line x1="2" y1="9" x2="14" y2="9" />
+              <line x1="8" y1="12" x2="14" y2="12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => exec("justifyFull")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Justify"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="2" y1="3" x2="14" y2="3" />
+              <line x1="2" y1="6" x2="14" y2="6" />
+              <line x1="2" y1="9" x2="14" y2="9" />
+              <line x1="2" y1="12" x2="14" y2="12" />
+            </svg>
+          </button>
+
+          <div style={{ width: 1, height: 16, background: "var(--color-border)", margin: "0 4px" }} />
+
+          {/* Lists */}
+          <button
+            type="button"
+            onClick={() => exec("insertUnorderedList")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Bullet List"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="3" cy="4" r="1.5"/>
+              <rect x="7" y="3" width="8" height="2" rx="0.5"/>
+              <circle cx="3" cy="8" r="1.5"/>
+              <rect x="7" y="7" width="8" height="2" rx="0.5"/>
+              <circle cx="3" cy="12" r="1.5"/>
+              <rect x="7" y="11" width="8" height="2" rx="0.5"/>
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => exec("insertOrderedList")}
+            style={buttonStyle}
+            className="editor-btn"
+            title="Number List"
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2.5 2v3h.5V2.5h1v2h.5v-2.5h-.5V2zM2.8 7.5h1.4c0-.3-.1-.5-.3-.7a.7.7 0 0 0-.5-.2.4.4 0 0 0-.4.2c-.1.1-.1.2-.1.3h-.5a.8.8 0 0 1 .2-.6c.2-.2.4-.3.7-.3.3 0 .6.1.7.3.2.2.3.4.3.7 0 .3-.1.5-.3.7L3.4 9.5h1.3V10H2.5v-.5l.8-1h-.5zm.2 4.2h1.3v.5H3V13h1.3v.5H3v.5h1.5c.3 0 .5-.1.6-.3.2-.2.2-.4.2-.6 0-.2-.1-.4-.2-.5l-.3-.1v-.1c.2 0 .3-.2.4-.3.1-.2.1-.4.1-.5 0-.3-.1-.5-.3-.7a.7.7 0 0 0-.6-.3H2.8v.5z" />
+              <rect x="7" y="3" width="8" height="2" rx="0.5"/>
+              <rect x="7" y="7" width="8" height="2" rx="0.5"/>
+              <rect x="7" y="11" width="8" height="2" rx="0.5"/>
+            </svg>
+          </button>
+
+          <div style={{ width: 1, height: 16, background: "var(--color-border)", margin: "0 4px" }} />
+
+          {/* Interactive Table & Elements Popover (Sample Image Requirement) */}
+          <div ref={tableMenuRef} style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsTableMenuOpen(!isTableMenuOpen);
+                setIsGridVisible(true);
+              }}
+              style={buttonStyle}
+              className="editor-btn"
+              title="Table & Elements"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 2h3.5v3.5H2V2zm0 4.5h3.5v3H2v-3zm0 4H2v-3.5h3.5v3.5zm4.5 3.5V11H10v3.5H6.5zm4.5 0V11h3v3.5h-3zM14 10h-3V6.5h3V10zm0-4.5h-3V2h3v3.5zM10 2v3.5H6.5V2H10zm-3.5 4.5H10v3H6.5v-3z" />
+              </svg>
+              <span style={{ fontSize: "8px", marginLeft: "2px" }}>▼</span>
+            </button>
+            {isTableMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  marginTop: 4,
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-md)",
+                  zIndex: 200,
+                  display: "flex",
+                  padding: 4,
+                }}
+              >
+                {/* Left Action List */}
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 155, gap: 1 }}>
+                  <button
+                    type="button"
+                    className={`popover-menu-item ${isGridVisible ? "active" : ""}`}
+                    onMouseEnter={() => setIsGridVisible(true)}
+                    style={{ justifyContent: "space-between" }}
+                  >
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 2h3.5v3.5H2V2z"/>
+                      </svg>
+                      Table
+                    </span>
+                    <span>&gt;</span>
+                  </button>
+
+                  <div style={{ height: 1, backgroundColor: "var(--color-border)", margin: "4px 0" }} />
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("addRow");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <rect x="2" y="2" width="12" height="6" rx="1" />
+                      <line x1="2" y1="12" x2="14" y2="12" />
+                      <line x1="8" y1="10" x2="8" y2="14" />
+                    </svg>
+                    Add Row Below
+                  </button>
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("addColumn");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <rect x="2" y="2" width="6" height="12" rx="1" />
+                      <line x1="12" y1="2" x2="12" y2="14" />
+                      <line x1="10" y1="8" x2="14" y2="8" />
+                    </svg>
+                    Add Column Right
+                  </button>
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("deleteRow");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <line x1="2" y1="8" x2="14" y2="8" stroke="red" strokeWidth="2.5" />
+                    </svg>
+                    Delete Row
+                  </button>
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("deleteColumn");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <line x1="8" y1="2" x2="8" y2="14" stroke="red" strokeWidth="2.5" />
+                    </svg>
+                    Delete Column
+                  </button>
+
+                  <div style={{ height: 1, backgroundColor: "var(--color-border)", margin: "4px 0" }} />
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("quote");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    Quote Block
+                  </button>
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("image");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    Image
+                  </button>
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("video");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    Video
+                  </button>
+
+                  <button
+                    type="button"
+                    className="popover-menu-item"
+                    onMouseEnter={() => setIsGridVisible(false)}
+                    onClick={() => {
+                      handlePlus("formula");
+                      setIsTableMenuOpen(false);
+                    }}
+                  >
+                    Formula
+                  </button>
+                </div>
+
+                {/* Right Extended Table Grid Picker */}
+                {isGridVisible && (
+                  <div
+                    style={{
+                      padding: "8px 12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderLeft: "1px solid var(--color-border)",
+                      background: "var(--color-surface)",
+                    }}
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: `repeat(${gridSize.cols}, 1fr)`, gap: 3 }}>
+                      {Array.from({ length: gridSize.rows }).map((_, rIdx) => {
+                        const rowNum = rIdx + 1;
+                        return Array.from({ length: gridSize.cols }).map((__, cIdx) => {
+                          const colNum = cIdx + 1;
+                          const isHighlighted = rowNum <= hoveredGrid.r && colNum <= hoveredGrid.c;
+                          return (
+                            <div
+                              key={`${rIdx}-${cIdx}`}
+                              className={`grid-cell ${isHighlighted ? "highlighted" : ""}`}
+                              onMouseEnter={() => {
+                                setHoveredGrid({ r: rowNum, c: colNum });
+                                
+                                // Grow the grid dynamically if hovering near current maximums (up to 30x30)
+                                let newRows = gridSize.rows;
+                                let newCols = gridSize.cols;
+                                if (rowNum >= gridSize.rows) {
+                                  newRows = Math.min(rowNum + 2, 30);
+                                }
+                                if (colNum >= gridSize.cols) {
+                                  newCols = Math.min(colNum + 2, 30);
+                                }
+                                if (newRows !== gridSize.rows || newCols !== gridSize.cols) {
+                                  setGridSize({ rows: newRows, cols: newCols });
+                                }
+                              }}
+                              onMouseLeave={() => setHoveredGrid({ r: 0, c: 0 })}
+                              onClick={() => {
+                                handlePlus("table", { rows: rowNum, cols: colNum });
+                                setIsTableMenuOpen(false);
+                                setGridSize({ rows: 8, cols: 10 });
+                              }}
+                              style={{ width: 14, height: 14 }}
+                            />
+                          );
+                        });
+                      })}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: "var(--color-text-muted)",
+                        textAlign: "center",
+                      }}
+                    >
+                      {hoveredGrid.r > 0 && hoveredGrid.c > 0 ? `${hoveredGrid.c}×${hoveredGrid.r}` : "Insert Table"}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div style={{ width: 1, height: 16, background: "var(--color-border)", margin: "0 4px" }} />
+
+          {/* More formatting dropdown (underline, strike, link, clear formatting) */}
+          <div ref={moreFormatRef} style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => setIsMoreFormatOpen(!isMoreFormatOpen)}
+              style={buttonStyle}
+              className="editor-btn"
+              title="More Formatting"
+            >
+              •••
+            </button>
+            {isMoreFormatOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  marginTop: 4,
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-md)",
+                  zIndex: 200,
+                  padding: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  minWidth: 150,
+                  gap: 1,
+                }}
+              >
+                <button
+                  type="button"
+                  className="popover-menu-item"
+                  onClick={() => {
+                    exec("underline");
+                    setIsMoreFormatOpen(false);
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ marginRight: 2 }}>
+                    <path d="M4 3v5a4 4 0 0 0 8 0V3M2 14h12" />
+                  </svg>
+                  Underline
+                </button>
+                <button
+                  type="button"
+                  className="popover-menu-item"
+                  onClick={() => {
+                    exec("strikeThrough");
+                    setIsMoreFormatOpen(false);
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ marginRight: 2 }}>
+                    <path d="M3 11.5c1 1.5 3 2 5 2a4 4 0 0 0 4-4c0-2-1.5-3-4-3.5s-4-1-4-3a3 3 0 0 1 3-3c2 0 4 .5 5 2M1 8h14" />
+                  </svg>
+                  Strikethrough
+                </button>
+                <button
+                  type="button"
+                  className="popover-menu-item"
+                  onClick={() => {
+                    handleLink();
+                    setIsMoreFormatOpen(false);
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ marginRight: 2 }}>
+                    <path d="M6.5 9.5l3-3M10 4a3 3 0 0 1 4 4l-2 2a3 3 0 0 1-4.2 0M6 12a3 3 0 0 1-4-4l2-2" />
+                  </svg>
+                  Link
+                </button>
+                <button
+                  type="button"
+                  className="popover-menu-item"
+                  onClick={() => {
+                    exec("removeFormat");
+                    setIsMoreFormatOpen(false);
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" style={{ marginRight: 2 }}>
+                    <path d="M2 13h12M11 2L3 10M13 4l-2-2L3 10" />
+                  </svg>
+                  Clear Formatting
+                </button>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Editable Content Div */}
+        <div
+          ref={editorRef}
+          contentEditable={true}
+          onInput={handleInput}
+          onBlur={saveSelection}
+          onMouseUp={saveSelection}
+          onKeyUp={saveSelection}
+          onFocus={saveSelection}
+          className="rich-editor-content"
+          placeholder={placeholder}
+          style={{
+            padding: "10px 14px",
+            minHeight: `${rows * 22}px`,
+            background: "transparent",
+            color: "var(--color-text)",
+            fontSize: "var(--fs-sm)",
+            outline: "none",
+            overflowY: "auto",
+            fontFamily: "inherit",
+            width: "100%",
+            boxSizing: "border-box",
+            border: "none",
+            borderBottomLeftRadius: "var(--radius-sm)",
+            borderBottomRightRadius: "var(--radius-sm)",
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
 // Generate SOP Version list: 1.0 to 5.1
 const SOP_VERSION_OPTIONS: string[] = [];
 for (let major = 1; major <= 5; major++) {
@@ -825,23 +1804,23 @@ export default function CreateSOPPage() {
 
   // List of sections for the left sidebar
   const sections = [
-    { id: "A", label: "A. SOP Identification" },
-    { id: "B", label: "B. Revision & History" },
-    { id: "C", label: "C. Purpose & Scope" },
-    { id: "D", label: "D. Definitions" },
-    { id: "E", label: "E. Responsibility" },
-    { id: "F", label: "F. Method Principle" },
-    { id: "G", label: "G. Samples & Specimens" },
-    { id: "H", label: "H. Reagents & Supplies" },
-    { id: "I", label: "I. Equipment & Instruments" },
-    { id: "J", label: "J. Safety Controls" },
-    { id: "K", label: "K. Quality Control" },
-    { id: "L", label: "L. Stepwise Procedure" },
-    { id: "M", label: "M. Calculation & Analysis" },
-    { id: "N", label: "N. Result Reporting" },
-    { id: "P", label: "P. Storage & Transport" },
-    { id: "Q", label: "Q. References & Files" },
-    { id: "R", label: "R. Control & Sign-off" }
+    { id: "A", label: "SOP Identification" },
+    { id: "B", label: "Revision & History" },
+    { id: "C", label: "Purpose & Scope" },
+    { id: "D", label: "Definitions" },
+    { id: "E", label: "Responsibility" },
+    { id: "F", label: "Method Principle" },
+    { id: "G", label: "Samples & Specimens" },
+    { id: "H", label: "Reagents & Supplies" },
+    { id: "I", label: "Equipment & Instruments" },
+    { id: "J", label: "Safety Controls" },
+    { id: "K", label: "Quality Control" },
+    { id: "L", label: "Stepwise Procedure" },
+    { id: "M", label: "Calculation & Analysis" },
+    { id: "N", label: "Result Reporting" },
+    { id: "P", label: "Storage & Transport" },
+    { id: "Q", label: "References & Files" },
+    { id: "R", label: "Control & Sign-off" }
   ];
 
   const scrollToSection = (id: string) => {
@@ -976,116 +1955,124 @@ export default function CreateSOPPage() {
           {/* SECTION A. SOP Identification */}
           <div id="section-A" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              A. SOP Identification
+              SOP Identification
             </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Entered by (data steward) *</label>
-                <input type="text" required placeholder="Name of data steward" value={enteredBy} onChange={(e) => setEnteredBy(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Row 1: Entered by (1/5) and SOP Title (4/5) */}
+              <div style={{ display: "flex", gap: 20, width: "100%" }}>
+                <div style={{ flex: "1 1 20%", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Entered by (data steward) *</label>
+                  <input type="text" required placeholder="Name of data steward" value={enteredBy} onChange={(e) => setEnteredBy(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                <div style={{ flex: "4 1 80%", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Title *</label>
+                  <input type="text" required placeholder="Full title of the SOP" value={sopTitle} onChange={(e) => setSopTitle(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Title *</label>
-                <input type="text" required placeholder="Full title of the SOP" value={sopTitle} onChange={(e) => setSopTitle(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+              {/* Row 2: SOP Code, Version, Supersedes, Effective Date, Next review date (1/5 space each) */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20, width: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Code / number *</label>
+                  <input type="text" required placeholder="e.g. SOP-MNTD-042" value={sopCode} onChange={(e) => setSopCode(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+
+                <CircleDropdown
+                  label="SOP version *"
+                  value={sopVersion}
+                  onChange={setSopVersion}
+                  options={SOP_VERSION_OPTIONS}
+                />
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Supersedes (previous SOP code/version)</label>
+                  <input type="text" placeholder="e.g. SOP-MNTD-030 v1.2" value={supersedes} onChange={(e) => setSupersedes(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Effective Date *</label>
+                  <input type="date" required value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Next review date *</label>
+                  <input type="date" required value={nextReviewDate} onChange={(e) => setNextReviewDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Code / number *</label>
-                <input type="text" required placeholder="e.g. SOP-MNTD-042" value={sopCode} onChange={(e) => setSopCode(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+              {/* Row 3: SOP status, Owning site, Owning Lab Unit, Assay Category, Method Family (1/5 space each) */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20, width: "100%" }}>
+                <CircleDropdown
+                  label="SOP status *"
+                  value={sopStatus}
+                  onChange={setSopStatus}
+                  options={["Draft", "Under review", "Active / Approved", "Superseded", "Retired / Archived"]}
+                />
+
+                <CircleDropdown
+                  label="Owning site / institution *"
+                  value={owningSite}
+                  onChange={setOwningSite}
+                  options={["AHRI – Addis Ababa", "AHRI – Field Site", "Partner Laboratory", "Other (specify)"]}
+                  hasOther={true}
+                  otherValue={owningSiteOther}
+                  onOtherChange={setOwningSiteOther}
+                />
+
+                <CircleDropdown
+                  label="Owning Laboratory Unit *"
+                  value={owningLabUnit}
+                  onChange={setOwningLabUnit}
+                  options={["MNTD Molecular Lab", "MNTD Serology Lab", "MNTD Vector Entomology Lab", "MNTD NGS / Sequencing Lab", "Field laboratory"]}
+                />
+
+                <CircleDropdown
+                  label="Assay Category (cascading parent) *"
+                  value={assayCategory}
+                  onChange={setAssayCategory}
+                  options={[
+                    "Sample collection / preparation",
+                    "Nucleic acid extraction",
+                    "Real-time qPCR",
+                    "Gel-based PCR (incl. nested PCR)",
+                    "Genotyping (MSP1 / MSP2)",
+                    "Digital PCR (Pfhrp2 / Pfhrp3)",
+                    "NGS library preparation",
+                    "Serology / bead-based assays",
+                    "Vector / entomology procedure",
+                    "Equipment operation / maintenance"
+                  ]}
+                />
+
+                <CircleDropdown
+                  label="Method Family *"
+                  value={methodFamily}
+                  onChange={setMethodFamily}
+                  options={[
+                    "Conventional PCR",
+                    "Real-time qPCR",
+                    "Digital PCR",
+                    "Next-generation sequencing",
+                    "Immunoassay / serology",
+                    "Nucleic-acid extraction",
+                    "Sample collection / preparation",
+                    "Vector / entomology",
+                    "Equipment SOP",
+                    "Other (specify)"
+                  ]}
+                  hasOther={true}
+                  otherValue={methodFamilyOther}
+                  onOtherChange={setMethodFamilyOther}
+                />
               </div>
-
-              <CircleDropdown
-                label="SOP version *"
-                value={sopVersion}
-                onChange={setSopVersion}
-                options={SOP_VERSION_OPTIONS}
-              />
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Supersedes (previous SOP code/version)</label>
-                <input type="text" placeholder="e.g. SOP-MNTD-030 v1.2" value={supersedes} onChange={(e) => setSupersedes(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Effective Date *</label>
-                <input type="date" required value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Next review date *</label>
-                <input type="date" required value={nextReviewDate} onChange={(e) => setNextReviewDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-
-              <CircleDropdown
-                label="SOP status *"
-                value={sopStatus}
-                onChange={setSopStatus}
-                options={["Draft", "Under review", "Active / Approved", "Superseded", "Retired / Archived"]}
-              />
-
-              <CircleDropdown
-                label="Owning site / institution *"
-                value={owningSite}
-                onChange={setOwningSite}
-                options={["AHRI – Addis Ababa", "AHRI – Field Site", "Partner Laboratory", "Other (specify)"]}
-                hasOther={true}
-                otherValue={owningSiteOther}
-                onOtherChange={setOwningSiteOther}
-              />
-
-              <CircleDropdown
-                label="Owning Laboratory Unit *"
-                value={owningLabUnit}
-                onChange={setOwningLabUnit}
-                options={["MNTD Molecular Lab", "MNTD Serology Lab", "MNTD Vector Entomology Lab", "MNTD NGS / Sequencing Lab", "Field laboratory"]}
-              />
-
-              <CircleDropdown
-                label="Assay Category (cascading parent) *"
-                value={assayCategory}
-                onChange={setAssayCategory}
-                options={[
-                  "Sample collection / preparation",
-                  "Nucleic acid extraction",
-                  "Real-time qPCR",
-                  "Gel-based PCR (incl. nested PCR)",
-                  "Genotyping (MSP1 / MSP2)",
-                  "Digital PCR (Pfhrp2 / Pfhrp3)",
-                  "NGS library preparation",
-                  "Serology / bead-based assays",
-                  "Vector / entomology procedure",
-                  "Equipment operation / maintenance"
-                ]}
-              />
-
-              <CircleDropdown
-                label="Method Family *"
-                value={methodFamily}
-                onChange={setMethodFamily}
-                options={[
-                  "Conventional PCR",
-                  "Real-time qPCR",
-                  "Digital PCR",
-                  "Next-generation sequencing",
-                  "Immunoassay / serology",
-                  "Nucleic-acid extraction",
-                  "Sample collection / preparation",
-                  "Vector / entomology",
-                  "Equipment SOP",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={methodFamilyOther}
-                onOtherChange={setMethodFamilyOther}
-              />
             </div>
           </div>
 
           {/* SECTION B. Revision & Amendment History */}
           <div id="section-B" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              B. Revision & Amendment History
+              Revision & Amendment History
             </h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 16 }}>
@@ -1101,70 +2088,96 @@ export default function CreateSOPPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Summary of changes from previous version</label>
-                <textarea rows={3} placeholder="Describe the changes made in this revision..." value={revisionSummary} onChange={(e) => setRevisionSummary(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Summary of changes from previous version"
+                placeholder="Describe the changes made in this revision..."
+                value={revisionSummary}
+                onChange={setRevisionSummary}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Rationale for change</label>
-                <textarea rows={3} placeholder="Explain the reasons/necessity for making this change..." value={revisionRationale} onChange={(e) => setRevisionRationale(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Rationale for change"
+                placeholder="Explain the reasons/necessity for making this change..."
+                value={revisionRationale}
+                onChange={setRevisionRationale}
+                rows={3}
+              />
             </div>
           </div>
 
           {/* SECTION C. Purpose, Scope & Background */}
           <div id="section-C" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              C. Purpose, Scope & Background
+              Purpose, Scope & Background
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Purpose (verbatim) *</label>
-                <textarea rows={4} required placeholder="State the purpose of this SOP exactly as described in the official document..." value={purpose} onChange={(e) => setPurpose(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Purpose (verbatim) *"
+                required={true}
+                placeholder="State the purpose of this SOP exactly as described in the official document..."
+                value={purpose}
+                onChange={setPurpose}
+                rows={4}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Scope – what this SOP covers *</label>
-                <textarea rows={3} required placeholder="Detail the applicability and coverage of this procedure..." value={scopeCovers} onChange={(e) => setScopeCovers(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Scope – what this SOP covers *"
+                required={true}
+                placeholder="Detail the applicability and coverage of this procedure..."
+                value={scopeCovers}
+                onChange={setScopeCovers}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Scope – what is explicitly excluded</label>
-                <textarea rows={3} placeholder="Identify what procedures, parameters or targets are explicitly excluded from this SOP..." value={scopeExcluded} onChange={(e) => setScopeExcluded(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Scope – what is explicitly excluded"
+                placeholder="Identify what procedures, parameters or targets are explicitly excluded from this SOP..."
+                value={scopeExcluded}
+                onChange={setScopeExcluded}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Background / Introduction</label>
-                <textarea rows={4} placeholder="Provide necessary theoretical context or laboratory introduction..." value={background} onChange={(e) => setBackground(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Background / Introduction"
+                placeholder="Provide necessary theoretical context or laboratory introduction..."
+                value={background}
+                onChange={setBackground}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION D. Definitions & Abbreviations */}
           <div id="section-D" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              D. Definitions & Abbreviations
+              Definitions & Abbreviations
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Definitions / Terminology (narrative)</label>
-                <textarea rows={4} placeholder="List key terms and their technical definition in context..." value={definitions} onChange={(e) => setDefinitions(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Definitions / Terminology (narrative)"
+                placeholder="List key terms and their technical definition in context..."
+                value={definitions}
+                onChange={setDefinitions}
+                rows={4}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>D2. Abbreviations used in this SOP</label>
-                <textarea rows={3} placeholder="e.g. DBS: Dried Blood Spot; qPCR: Quantitative Polymerase Chain Reaction..." value={abbreviations} onChange={(e) => setAbbreviations(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Abbreviations used in this SOP"
+                placeholder="e.g. DBS: Dried Blood Spot; qPCR: Quantitative Polymerase Chain Reaction..."
+                value={abbreviations}
+                onChange={setAbbreviations}
+                rows={3}
+              />
             </div>
           </div>
 
           {/* SECTION E. Responsibility & Accountability */}
           <div id="section-E" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              E. Responsibility & Accountability
+              Responsibility & Accountability
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -1191,117 +2204,145 @@ export default function CreateSOPPage() {
                 onOtherChange={setRolesInvolvedOther}
               />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Responsibility & accountability (narrative) *</label>
-                <textarea rows={4} required placeholder="Describe detailed roles and their exact procedural accountability..." value={responsibilityNarrative} onChange={(e) => setResponsibilityNarrative(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Responsibility & accountability (narrative) *"
+                required={true}
+                placeholder="Describe detailed roles and their exact procedural accountability..."
+                value={responsibilityNarrative}
+                onChange={setResponsibilityNarrative}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION F. Principle of the Method */}
           <div id="section-F" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              F. Principle of the Method
+              Principle of the Method
             </h3>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Principle / Methodological basis *</label>
-              <textarea rows={6} required placeholder="Explain the scientific/methodological principles governing the assay..." value={principleBasis} onChange={(e) => setPrincipleBasis(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <RichTextEditor
+                label="Principle / Methodological basis *"
+                required={true}
+                placeholder="Explain the scientific/methodological principles governing the assay..."
+                value={principleBasis}
+                onChange={setPrincipleBasis}
+                rows={6}
+              />
             </div>
           </div>
 
           {/* SECTION G. Samples / Specimens Covered */}
           <div id="section-G" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              G. Samples / Specimens Covered
+              Samples / Specimens Covered
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RectangleMultiselect
-                label="Sample matrices covered by this SOP *"
-                selectedValues={sampleMatrices}
-                onChange={setSampleMatrices}
-                options={[
-                  "Whole blood",
-                  "DBS",
-                  "Plasma",
-                  "Serum",
-                  "RBC pellet",
-                  "RNA-protect whole blood",
-                  "Mosquito – adult",
-                  "Mosquito – larvae",
-                  "Mosquito midgut",
-                  "Mosquito head-thorax",
-                  "Mosquito abdomen",
-                  "Purified DNA extract",
-                  "Purified RNA extract",
-                  "In-vitro culture / control strain",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={sampleMatricesOther}
-                onOtherChange={setSampleMatricesOther}
-              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, width: "100%" }}>
+                <RectangleMultiselect
+                  label="Sample matrices covered by this SOP *"
+                  selectedValues={sampleMatrices}
+                  onChange={setSampleMatrices}
+                  options={[
+                    "Whole blood",
+                    "DBS",
+                    "Plasma",
+                    "Serum",
+                    "RBC pellet",
+                    "RNA-protect whole blood",
+                    "Mosquito – adult",
+                    "Mosquito – larvae",
+                    "Mosquito midgut",
+                    "Mosquito head-thorax",
+                    "Mosquito abdomen",
+                    "Purified DNA extract",
+                    "Purified RNA extract",
+                    "In-vitro culture / control strain",
+                    "Other (specify)"
+                  ]}
+                  hasOther={true}
+                  otherValue={sampleMatricesOther}
+                  onOtherChange={setSampleMatricesOther}
+                />
 
-              <RectangleMultiselect
-                label="Input material type(s) *"
-                selectedValues={inputMaterialTypes}
-                onChange={setInputMaterialTypes}
-                options={[
-                  "DBS punch(es)",
-                  "Whole blood",
-                  "Plasma / serum",
-                  "Single mosquito",
-                  "Mosquito pool",
-                  "Larvae",
-                  "Cultured parasites",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={inputMaterialTypesOther}
-                onOtherChange={setInputMaterialTypesOther}
-              />
+                <RectangleMultiselect
+                  label="Input material type(s) *"
+                  selectedValues={inputMaterialTypes}
+                  onChange={setInputMaterialTypes}
+                  options={[
+                    "DBS punch(es)",
+                    "Whole blood",
+                    "Plasma / serum",
+                    "Single mosquito",
+                    "Mosquito pool",
+                    "Larvae",
+                    "Cultured parasites",
+                    "Other (specify)"
+                  ]}
+                  hasOther={true}
+                  otherValue={inputMaterialTypesOther}
+                  onOtherChange={setInputMaterialTypesOther}
+                />
+              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Volume / amount required per sample *</label>
                 <input type="text" required placeholder="e.g. 50 µL or 3 DBS punches" value={volumeRequired} onChange={(e) => setVolumeRequired(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Sample acceptance criteria *</label>
-                <textarea rows={3} required placeholder="Detailed criteria for accepting incoming samples..." value={sampleAcceptanceCriteria} onChange={(e) => setSampleAcceptanceCriteria(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Sample acceptance criteria *"
+                required={true}
+                placeholder="Detailed criteria for accepting incoming samples..."
+                value={sampleAcceptanceCriteria}
+                onChange={setSampleAcceptanceCriteria}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Sample rejection criteria *</label>
-                <textarea rows={3} required placeholder="Detailed criteria for rejecting incoming samples..." value={sampleRejectionCriteria} onChange={(e) => setSampleRejectionCriteria(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Sample rejection criteria *"
+                required={true}
+                placeholder="Detailed criteria for rejecting incoming samples..."
+                value={sampleRejectionCriteria}
+                onChange={setSampleRejectionCriteria}
+                rows={3}
+              />
             </div>
           </div>
 
           {/* SECTION H. Reagents & Supplies */}
           <div id="section-H" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              H. Reagents & Supplies
+              Reagents & Supplies
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reagents & supplies (full narrative as in SOP) *</label>
-                <textarea rows={5} required placeholder="Describe full list of materials, concentrations, and manufacturer guidelines..." value={reagentsSuppliesNarrative} onChange={(e) => setReagentsSuppliesNarrative(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Reagents & supplies (full narrative as in SOP) *"
+                required={true}
+                placeholder="Describe full list of materials, concentrations, and manufacturer guidelines..."
+                value={reagentsSuppliesNarrative}
+                onChange={setReagentsSuppliesNarrative}
+                rows={5}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>H2. Reagents & supplies (one per line) *</label>
-                <textarea rows={4} required placeholder="Item 1 - Brand - Cat #&#10;Item 2 - Brand - Cat #" value={reagentsSuppliesList} onChange={(e) => setReagentsSuppliesList(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Reagents & supplies (one per line) *"
+                required={true}
+                placeholder="Item 1 - Brand - Cat &#10;Item 2 - Brand - Cat #"
+                value={reagentsSuppliesList}
+                onChange={setReagentsSuppliesList}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION I. Equipment & Instruments */}
           <div id="section-I" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              I. Equipment & Instruments
+              Equipment & Instruments
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -1327,20 +2368,24 @@ export default function CreateSOPPage() {
                 onOtherChange={setPrimaryEquipmentOther}
               />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>I2. Equipment & instruments (one per line) *</label>
-                <textarea rows={4} required placeholder="Equipment Name - Model - Manufacturer" value={equipmentList} onChange={(e) => setEquipmentList(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Equipment & instruments (one per line) *"
+                required={true}
+                placeholder="Equipment Name - Model - Manufacturer"
+                value={equipmentList}
+                onChange={setEquipmentList}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION J. Environmental & Safety Controls */}
           <div id="section-J" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              J. Environmental & Safety Controls
+              Environmental & Safety Controls
             </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 20 }}>
               <RectangleMultiselect
                 label="PPE required *"
                 selectedValues={ppeRequired}
@@ -1368,9 +2413,7 @@ export default function CreateSOPPage() {
                 onChange={setBiosafetyLevel}
                 options={["BSL-1", "BSL-2", "BSL-2+", "BSL-3"]}
               />
-            </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <RectangleMultiselect
                 label="Hazards relevant to this procedure *"
                 selectedValues={hazardsRelevant}
@@ -1391,23 +2434,32 @@ export default function CreateSOPPage() {
                 otherValue={hazardsRelevantOther}
                 onOtherChange={setHazardsRelevantOther}
               />
+            </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Waste handling instructions *</label>
-                <textarea rows={3} required placeholder="Detailed procedures for managing biological, chemical, or sharps waste..." value={wasteHandling} onChange={(e) => setWasteHandling(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <RichTextEditor
+                label="Waste handling instructions *"
+                required={true}
+                placeholder="Detailed procedures for managing biological, chemical, or sharps waste..."
+                value={wasteHandling}
+                onChange={setWasteHandling}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Additional safety / environmental controls</label>
-                <textarea rows={3} placeholder="e.g. Spill kits, specialized fume hoods..." value={additionalSafetyControls} onChange={(e) => setAdditionalSafetyControls(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Additional safety / environmental controls"
+                placeholder="e.g. Spill kits, specialized fume hoods..."
+                value={additionalSafetyControls}
+                onChange={setAdditionalSafetyControls}
+                rows={3}
+              />
             </div>
           </div>
 
           {/* SECTION K. Quality Control */}
           <div id="section-K" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              K. Quality Control
+              Quality Control
             </h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
@@ -1449,94 +2501,130 @@ export default function CreateSOPPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Acceptance / rejection criteria *</label>
-                <textarea rows={3} required placeholder="Criteria for validating the assay run based on control outputs..." value={qcAcceptanceCriteria} onChange={(e) => setQcAcceptanceCriteria(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Acceptance / rejection criteria *"
+                required={true}
+                placeholder="Criteria for validating the assay run based on control outputs..."
+                value={qcAcceptanceCriteria}
+                onChange={setQcAcceptanceCriteria}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Quality control narrative (verbatim from SOP)</label>
-                <textarea rows={4} placeholder="Verbatim text detailing Quality Control guidelines..." value={qcNarrative} onChange={(e) => setQcNarrative(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Quality control narrative (verbatim from SOP)"
+                placeholder="Verbatim text detailing Quality Control guidelines..."
+                value={qcNarrative}
+                onChange={setQcNarrative}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION L. Stepwise Procedure */}
           <div id="section-L" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              L. Stepwise Procedure
+              Stepwise Procedure
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Full procedure narrative (verbatim from SOP) *</label>
-                <textarea rows={8} required placeholder="Enter the exact wording of the stepwise procedure as described in the SOP document..." value={procedureNarrative} onChange={(e) => setProcedureNarrative(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Full procedure narrative (verbatim from SOP) *"
+                required={true}
+                placeholder="Enter the exact wording of the stepwise procedure as described in the SOP document..."
+                value={procedureNarrative}
+                onChange={setProcedureNarrative}
+                rows={8}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>L2. Stepwise procedure (one step per line) *</label>
-                <textarea rows={6} required placeholder="Step 1: Perform task A&#10;Step 2: Perform task B" value={procedureStepsList} onChange={(e) => setProcedureStepsList(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Stepwise procedure (one step per line) *"
+                required={true}
+                placeholder="Step 1: Perform task A&#10;Step 2: Perform task B"
+                value={procedureStepsList}
+                onChange={setProcedureStepsList}
+                rows={6}
+              />
             </div>
           </div>
 
           {/* SECTION M. Calculation / Data Analysis */}
           <div id="section-M" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              M. Calculation / Data Analysis
+              Calculation / Data Analysis
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Calculations / formulas used</label>
-                <textarea rows={3} placeholder="List any math formulas or biological conversion factors needed..." value={calculationsFormulas} onChange={(e) => setCalculationsFormulas(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Calculations / formulas used"
+                placeholder="List any math formulas or biological conversion factors needed..."
+                value={calculationsFormulas}
+                onChange={setCalculationsFormulas}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Software / analysis tools used</label>
-                <textarea rows={3} placeholder="e.g. Bio-Rad CFX Manager, Microsoft Excel, R Studio..." value={softwareTools} onChange={(e) => setSoftwareTools(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Software / analysis tools used"
+                placeholder="e.g. Bio-Rad CFX Manager, Microsoft Excel, R Studio..."
+                value={softwareTools}
+                onChange={setSoftwareTools}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Interpretation rules / thresholds</label>
-                <textarea rows={3} placeholder="e.g. Cycle threshold (Ct) value < 37 is positive..." value={interpretationRules} onChange={(e) => setInterpretationRules(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Interpretation rules / thresholds"
+                placeholder="e.g. Cycle threshold (Ct) value < 37 is positive..."
+                value={interpretationRules}
+                onChange={setInterpretationRules}
+                rows={3}
+              />
             </div>
           </div>
 
           {/* SECTION N. Result Reporting & Interpretation */}
           <div id="section-N" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              N. Result Reporting & Interpretation
+              Result Reporting & Interpretation
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reporting format (units, layout)</label>
-                <textarea rows={3} placeholder="e.g. parasites/µL, positive/negative..." value={reportingFormat} onChange={(e) => setReportingFormat(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Reporting format (units, layout)"
+                placeholder="e.g. parasites/µL, positive/negative..."
+                value={reportingFormat}
+                onChange={setReportingFormat}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Cut-offs / thresholds</label>
-                <textarea rows={3} placeholder="Indicate boundaries for diagnostic reporting..." value={cutOffsThresholds} onChange={(e) => setCutOffsThresholds(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Cut-offs / thresholds"
+                placeholder="Indicate boundaries for diagnostic reporting..."
+                value={cutOffsThresholds}
+                onChange={setCutOffsThresholds}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>LIMS / database field mapping</label>
-                <textarea rows={3} placeholder="Map variables to fields in database schema..." value={limsDatabaseMapping} onChange={(e) => setLimsDatabaseMapping(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="LIMS / database field mapping"
+                placeholder="Map variables to fields in database schema..."
+                value={limsDatabaseMapping}
+                onChange={setLimsDatabaseMapping}
+                rows={3}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Result reporting narrative</label>
-                <textarea rows={4} placeholder="Full workflow narrative for reporting..." value={resultReportingNarrative} onChange={(e) => setResultReportingNarrative(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Result reporting narrative"
+                placeholder="Full workflow narrative for reporting..."
+                value={resultReportingNarrative}
+                onChange={setResultReportingNarrative}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION P. Storage & Transport Requirements */}
           <div id="section-P" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              P. Storage & Transport Requirements
+              Storage & Transport Requirements
             </h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
@@ -1584,79 +2672,94 @@ export default function CreateSOPPage() {
                 ]}
               />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Storage & transport narrative</label>
-                <textarea rows={4} placeholder="Verbatim guidelines for storage container preparation and shipping validation..." value={storageTransportNarrative} onChange={(e) => setStorageTransportNarrative(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="Storage & transport narrative"
+                placeholder="Verbatim guidelines for storage container preparation and shipping validation..."
+                value={storageTransportNarrative}
+                onChange={setStorageTransportNarrative}
+                rows={4}
+              />
             </div>
           </div>
 
           {/* SECTION Q. References & Attachments */}
           <div id="section-Q" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Q. References & Attachments
+              References & Attachments
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>References (citations, manufacturer manuals)</label>
-                <textarea rows={4} placeholder="Provide academic citations, guidelines or user guides referred to..." value={referencesText} onChange={(e) => setReferencesText(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              <RichTextEditor
+                label="References (citations, manufacturer manuals)"
+                placeholder="Provide academic citations, guidelines or user guides referred to..."
+                value={referencesText}
+                onChange={setReferencesText}
+                rows={4}
+              />
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach the original SOP document (PDF or DOCX) *</label>
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.doc"
-                  onChange={(e) => setOriginalSopFile(e.target.files ? e.target.files[0] : null)}
-                  style={{
-                    padding: "8px 12px",
-                    border: "1px dashed var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    cursor: "pointer",
-                  }}
-                />
-                {originalSopFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {originalSopFile.name}</span>}
-              </div>
+              {/* Three file input fields in one row, 1/3 space each */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, width: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach the original SOP document (PDF or DOCX) *</label>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc"
+                    onChange={(e) => setOriginalSopFile(e.target.files ? e.target.files[0] : null)}
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px dashed var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      cursor: "pointer",
+                      width: "100%",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                  {originalSopFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {originalSopFile.name}</span>}
+                </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach supplementary file (optional)</label>
-                <input
-                  type="file"
-                  onChange={(e) => setSupplementaryFile(e.target.files ? e.target.files[0] : null)}
-                  style={{
-                    padding: "8px 12px",
-                    border: "1px dashed var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    cursor: "pointer",
-                  }}
-                />
-                {supplementaryFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {supplementaryFile.name}</span>}
-              </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach supplementary file (optional)</label>
+                  <input
+                    type="file"
+                    onChange={(e) => setSupplementaryFile(e.target.files ? e.target.files[0] : null)}
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px dashed var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      cursor: "pointer",
+                      width: "100%",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                  {supplementaryFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {supplementaryFile.name}</span>}
+                </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach workflow diagram (optional)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setWorkflowFile(e.target.files ? e.target.files[0] : null)}
-                  style={{
-                    padding: "8px 12px",
-                    border: "1px dashed var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    cursor: "pointer",
-                  }}
-                />
-                {workflowFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {workflowFile.name}</span>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach workflow diagram (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setWorkflowFile(e.target.files ? e.target.files[0] : null)}
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px dashed var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      cursor: "pointer",
+                      width: "100%",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                  {workflowFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {workflowFile.name}</span>}
+                </div>
               </div>
             </div>
           </div>
@@ -1664,68 +2767,81 @@ export default function CreateSOPPage() {
           {/* SECTION R. Document Control & Sign-off */}
           <div id="section-R" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              R. Document Control & Sign-off
+              Document Control & Sign-off
             </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 20 }}>
-              {/* Prepared */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared by (name) *</label>
-                <input type="text" required value={preparedByName} onChange={(e) => setPreparedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared by (role) *</label>
-                <input type="text" required value={preparedByRole} onChange={(e) => setPreparedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared date *</label>
-                <input type="date" required value={preparedDate} onChange={(e) => setPreparedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Row 1 & Row 2: 10 fields, 5 columns of 1/5 width each */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20 }}>
+                {/* Prepared by (name) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared by (name) *</label>
+                  <input type="text" required value={preparedByName} onChange={(e) => setPreparedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Prepared by (role) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared by (role) *</label>
+                  <input type="text" required value={preparedByRole} onChange={(e) => setPreparedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Prepared date */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared date *</label>
+                  <input type="date" required value={preparedDate} onChange={(e) => setPreparedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Reviewed by (name) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed by (name) *</label>
+                  <input type="text" required value={reviewedByName} onChange={(e) => setReviewedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Reviewed by (role) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed by (role) *</label>
+                  <input type="text" required value={reviewedByRole} onChange={(e) => setReviewedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+
+                {/* Row 2 starts here in the same grid flow */}
+                {/* Reviewed date */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed date *</label>
+                  <input type="date" required value={reviewedDate} onChange={(e) => setReviewedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Approved by (name) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved by (name) *</label>
+                  <input type="text" required value={approvedByName} onChange={(e) => setApprovedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Approved by (role) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved by (role) *</label>
+                  <input type="text" required value={approvedByRole} onChange={(e) => setApprovedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Approved date */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved date *</label>
+                  <input type="date" required value={approvedDate} onChange={(e) => setApprovedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
+                {/* Controlled copy number */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Controlled copy number *</label>
+                  <input type="text" required placeholder="e.g. Copy 01" value={controlledCopyNumber} onChange={(e) => setControlledCopyNumber(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
               </div>
 
-              {/* Reviewed */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed by (name) *</label>
-                <input type="text" required value={reviewedByName} onChange={(e) => setReviewedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed by (role) *</label>
-                <input type="text" required value={reviewedByRole} onChange={(e) => setReviewedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed date *</label>
-                <input type="date" required value={reviewedDate} onChange={(e) => setReviewedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+              {/* Row 3: Remaining field Distribution list * (1/5 space, so inside a 5-column grid spanning 1 column) */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20 }}>
+                <div style={{ gridColumn: "span 1", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Distribution list *</label>
+                  <input type="text" required placeholder="Who should receive copies of this SOP" value={distributionList} onChange={(e) => setDistributionList(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                </div>
               </div>
 
-              {/* Approved */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved by (name) *</label>
-                <input type="text" required value={approvedByName} onChange={(e) => setApprovedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved by (role) *</label>
-                <input type="text" required value={approvedByRole} onChange={(e) => setApprovedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved date *</label>
-                <input type="date" required value={approvedDate} onChange={(e) => setApprovedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 20, marginBottom: 20 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Controlled copy number *</label>
-                <input type="text" required placeholder="e.g. Copy 01" value={controlledCopyNumber} onChange={(e) => setControlledCopyNumber(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Distribution list *</label>
-                <input type="text" required placeholder="Who should receive copies of this SOP" value={distributionList} onChange={(e) => setDistributionList(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Final comments / notes</label>
-              <textarea rows={3} placeholder="Any final comments or notes on document sign-off..." value={finalComments} onChange={(e) => setFinalComments(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", fontFamily: "inherit" }} />
+              <RichTextEditor
+                label="Final comments / notes"
+                placeholder="Any final comments or notes on document sign-off..."
+                value={finalComments}
+                onChange={setFinalComments}
+                rows={3}
+              />
             </div>
           </div>
         </form>
