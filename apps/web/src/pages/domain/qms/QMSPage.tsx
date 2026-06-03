@@ -418,15 +418,17 @@ export default function QMSPage() {
         {/* Active Title Block */}
         <div
           style={{
-            padding: "16px 24px 0 24px",
+            padding: "14px 24px",
             borderBottom: "1px solid var(--color-border)",
             background: "var(--color-surface)",
             display: "flex",
-            flexDirection: "column",
-            gap: 12,
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 16,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span
                 style={{
@@ -444,80 +446,81 @@ export default function QMSPage() {
                 📄
               </span>
               <div>
-                <h1 style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
+                <h1 style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
                   SOP & Quality Management
                 </h1>
-                <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: "2px 0 0 0" }}>
-                  Manage laboratory procedures, compliance, and quality documentation
+                <p style={{ fontSize: "11px", color: "var(--color-text-muted)", margin: "1px 0 0 0" }}>
+                  Manage procedures, compliance, and quality
                 </p>
               </div>
             </div>
 
-            {activeTab === "author" && (
-              <button
-                onClick={() => navigate("create-sop")}
-                style={{
-                  background: "var(--color-primary)",
-                  color: "#ffffff",
-                  border: "none",
-                  padding: "6px 14px",
-                  borderRadius: "var(--radius-sm)",
-                  fontSize: "var(--fs-xs)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  boxShadow: "var(--shadow-sm)",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-md)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-                }}
-              >
-                <span>+ Create SOP</span>
-              </button>
-            )}
+            {/* Role selection tab bar beside the title */}
+            <div style={{ display: "flex", gap: 8, fontSize: "12.5px", fontWeight: 600, marginLeft: 12 }}>
+              {[
+                { id: "dashboard", label: "📊 Dashboard" },
+                { id: "author", label: "✍️ Author" },
+                { id: "reviewer", label: "🔍 Reviewer" },
+                { id: "viewer", label: "📖 Viewer" }
+              ].map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <div
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    style={{
+                      padding: "6px 12px",
+                      cursor: "pointer",
+                      color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
+                      borderRadius: "var(--radius-sm)",
+                      background: isActive ? "var(--color-primary-soft)" : "transparent",
+                      transition: "all 0.15s ease",
+                      fontWeight: isActive ? 700 : 550,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.color = "var(--color-text)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.color = "var(--color-text-muted)";
+                    }}
+                  >
+                    {tab.label}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Role selection tab bar */}
-          <div style={{ display: "flex", gap: 24, fontSize: "13px", fontWeight: 600 }}>
-            {[
-              { id: "dashboard", label: "📊 Overview Dashboard" },
-              { id: "author", label: "✍️ Author Workspace" },
-              { id: "reviewer", label: "🔍 Reviewer Workspace" },
-              { id: "viewer", label: "📖 Viewer Workspace" }
-            ].map(tab => {
-              const isActive = activeTab === tab.id;
-              return (
-                <div
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    padding: "8px 4px 12px 4px",
-                    cursor: "pointer",
-                    color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
-                    borderBottom: isActive ? "2.5px solid var(--color-primary)" : "2.5px solid transparent",
-                    transition: "all 0.15s ease",
-                    fontWeight: isActive ? 700 : 550,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.color = "var(--color-text)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.color = "var(--color-text-muted)";
-                  }}
-                >
-                  {tab.label}
-                </div>
-              );
-            })}
-          </div>
+          {activeTab === "author" && (
+            <button
+              onClick={() => navigate("create-sop")}
+              style={{
+                background: "var(--color-primary)",
+                color: "#ffffff",
+                border: "none",
+                padding: "6px 14px",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "var(--shadow-sm)",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "var(--shadow-md)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+              }}
+            >
+              <span>+ Create SOP</span>
+            </button>
+          )}
         </div>
 
         {/* Inner Scroll Pane */}
@@ -861,8 +864,12 @@ export default function QMSPage() {
                           badgeStyle = { background: "#e8f5e9", color: "#2e7d32" };
                         } else if (statusUpper === "DRAFT") {
                           badgeStyle = { background: "#e3f2fd", color: "#1565c0" };
-                        } else if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW") {
+                        } else if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW" || statusUpper === "SUBMITTED") {
                           badgeStyle = { background: "#f3e5f5", color: "#7b1fa2" };
+                        } else if (statusUpper === "RETURNED") {
+                          badgeStyle = { background: "#fee2e2", color: "#dc2626" };
+                        } else if (statusUpper === "AWAITING AUTHOR RESPONSE" || statusUpper === "AWAITING RESPONSE") {
+                          badgeStyle = { background: "#fffbeb", color: "#d97706" };
                         } else if (statusUpper === "SUPERSEDED") {
                           badgeStyle = { background: "#fff3e0", color: "#e65100" };
                         } else if (statusUpper === "RETIRED / ARCHIVED" || statusUpper === "RETIRED" || statusUpper === "ARCHIVED") {
@@ -1078,6 +1085,52 @@ export default function QMSPage() {
                 {selectedSopDetails.details?.effectiveDate && <div><strong>Effective Date:</strong> {selectedSopDetails.details.effectiveDate}</div>}
               </div>
 
+              {/* Reviewer Feedback & Return Comments (Task 2) */}
+              {selectedSopDetails.details?.comments && selectedSopDetails.details.comments.length > 0 && (
+                <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: "var(--radius)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <h4 style={{ margin: 0, fontSize: "14px", fontWeight: "bold", color: "#b45309", display: "flex", alignItems: "center", gap: 6 }}>
+                    💬 Reviewer Feedback & Return Comments
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "200px", overflowY: "auto", paddingRight: 4 }}>
+                    {selectedSopDetails.details?.comments?.map((comment: any, idx: number) => (
+                      <div key={idx} style={{ fontSize: "12px", borderBottom: idx < (selectedSopDetails.details?.comments?.length || 0) - 1 ? "1px dashed #fcd34d" : "none", paddingBottom: idx < (selectedSopDetails.details?.comments?.length || 0) - 1 ? 8 : 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "#b45309", fontWeight: 700, marginBottom: 2 }}>
+                          <span>{comment.author} ({comment.section})</span>
+                          <span style={{ fontWeight: 400, fontSize: "11px", color: "var(--color-text-muted)" }}>{comment.timestamp}</span>
+                        </div>
+                        <div style={{ color: "#78350f", lineHeight: "1.4" }}>{comment.text}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Edit & Correct Button */}
+                  {(selectedSopDetails.status.toUpperCase() === "RETURNED" || selectedSopDetails.status.toUpperCase() === "AWAITING AUTHOR RESPONSE") && (
+                    <button
+                      onClick={() => {
+                        setSelectedSopDetails(null);
+                        navigate(`create-sop?edit=${selectedSopDetails.code}`);
+                      }}
+                      style={{
+                        alignSelf: "flex-start",
+                        background: "#b45309",
+                        color: "#ffffff",
+                        border: "none",
+                        padding: "6px 12px",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "var(--fs-xs)",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        marginTop: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
+                      }}
+                    >
+                      <span>✏️ Edit & Correct SOP</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Sections rendering */}
               {[
                 {
@@ -1241,7 +1294,7 @@ export default function QMSPage() {
 
             {/* Modal Footer */}
             <div style={{ background: "var(--color-surface-2)", padding: "16px 24px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-              {selectedSopDetails.status.toUpperCase() === "DRAFT" && (
+              {(selectedSopDetails.status.toUpperCase() === "DRAFT" || selectedSopDetails.status.toUpperCase() === "RETURNED" || selectedSopDetails.status.toUpperCase() === "AWAITING AUTHOR RESPONSE") && (
                 <button
                   onClick={() => handleSubmitForReview(selectedSopDetails)}
                   style={{ background: "#7b1fa2", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}

@@ -24,7 +24,7 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
   const [searchText, setSearchText] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [selectedSopForReview, setSelectedSopForReview] = useState<SOPItem | null>(null);
-  
+
   // Reviewer specific inputs
   const [commentSection, setCommentSection] = useState<string>("General Comments");
   const [commentText, setCommentText] = useState<string>("");
@@ -43,11 +43,11 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
       const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
       return appDate.includes(todayStr) || appDate.includes(new Date().toLocaleDateString());
     }).length;
-    
+
     // Checked is total approved + returned + awaiting author response
-    const reviewed = sops.filter(s => 
-      s.status.toUpperCase() === "APPROVED" || 
-      s.status.toUpperCase() === "ACTIVE / APPROVED" || 
+    const reviewed = sops.filter(s =>
+      s.status.toUpperCase() === "APPROVED" ||
+      s.status.toUpperCase() === "ACTIVE / APPROVED" ||
       s.status.toUpperCase() === "RETURNED" ||
       s.status.toUpperCase() === "AWAITING AUTHOR RESPONSE"
     ).length;
@@ -58,9 +58,9 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
   // Review Queue list (Submitted or Under Review items)
   const reviewQueue = useMemo(() => {
     return sops.filter(sop => {
-      const isReviewable = 
-        sop.status.toUpperCase() === "UNDER REVIEW" || 
-        sop.status.toUpperCase() === "REVIEW" || 
+      const isReviewable =
+        sop.status.toUpperCase() === "UNDER REVIEW" ||
+        sop.status.toUpperCase() === "REVIEW" ||
         sop.status.toUpperCase() === "SUBMITTED" ||
         sop.status.toUpperCase() === "AWAITING AUTHOR RESPONSE" ||
         sop.status.toUpperCase() === "RETURNED"; // Reviewer can view returned ones too
@@ -86,8 +86,8 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
   const previousVersionSop = useMemo(() => {
     if (!selectedSopForReview) return null;
     // Find an SOP with same code but lower version number
-    return sops.find(s => 
-      s.code === selectedSopForReview.code && 
+    return sops.find(s =>
+      s.code === selectedSopForReview.code &&
       parseFloat(s.version) < parseFloat(selectedSopForReview.version)
     ) || null;
   }, [selectedSopForReview, sops]);
@@ -133,11 +133,11 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
     if (window.confirm(`Are you sure you want to APPROVE SOP: ${selectedSopForReview.code}?`)) {
       const todayStr = new Date().toLocaleDateString();
       const updatedSop = { ...selectedSopForReview };
-      
+
       updatedSop.status = "Approved";
       if (!updatedSop.details) updatedSop.details = {};
       if (!updatedSop.details.signoff) updatedSop.details.signoff = {};
-      
+
       updatedSop.details.signoff = {
         ...updatedSop.details.signoff,
         reviewedByName: "Quality Officer",
@@ -200,7 +200,7 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
 
     if (!updatedSop.details) updatedSop.details = {};
     if (!updatedSop.details.history) updatedSop.details.history = [];
-    
+
     updatedSop.details.history.push({
       action: "Returned for Revision",
       user: "Quality Reviewer",
@@ -251,7 +251,7 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      
+
       {/* ── METRICS SUMMARY BAR ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
         {[
@@ -382,7 +382,7 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
       {selectedSopForReview && (
         <div style={modalOverlayStyle}>
           <div style={modalContainerStyle}>
-            
+
             {/* Modal Header */}
             <div style={modalHeaderStyle}>
               <div style={{ display: "flex", flexDirection: "column" }}>
@@ -440,10 +440,10 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
 
             {/* Modal Body: Split view (Document vs Comments) */}
             <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-              
+
               {/* Document Pane (Read Only) */}
               <div style={docPaneStyle}>
-                
+
                 {showDiffView && previousVersionSop ? (
                   /* DIFF VIEW COMPONENT */
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
