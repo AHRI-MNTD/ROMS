@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
+import logoAhri from "../../../assets/logo_ahri.png";
 
 // Define SOP Sections and Sub-sections metadata for premium dynamic dropdowns
 const SOP_SECTIONS = [
@@ -133,13 +135,24 @@ interface SOPItem {
   details?: Record<string, any>;
 }
 
+const formatRichText = (htmlOrText: string) => {
+  if (!htmlOrText) return "";
+  // If the text does not contain any HTML tags, replace newlines with <br/>
+  if (!/<[a-z][\s\S]*>/i.test(htmlOrText)) {
+    return htmlOrText.replace(/\n/g, "<br/>");
+  }
+  return htmlOrText;
+};
+
 export default function QMSPage() {
   const navigate = useNavigate();
 
   // Filtering & Pagination states
   const [searchText, setSearchText] = useState<string>("");
-  const [selectedSection, setSelectedSection] = useState<string>("All");
-  const [selectedSubSection, setSelectedSubSection] = useState<string>("All");
+  const [filterTitle, setFilterTitle] = useState<string>("All");
+  const [filterAuthor, setFilterAuthor] = useState<string>("All");
+  const [filterMethodFamily, setFilterMethodFamily] = useState<string>("All");
+  const [filterAssayCategory, setFilterAssayCategory] = useState<string>("All");
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [statusFilterCard, setStatusFilterCard] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -198,6 +211,42 @@ export default function QMSPage() {
     return [...localSops, ...filteredBackend];
   }, [localSops, sops]);
 
+  // Automatically open SOP details modal if "view" query param is present in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const viewCode = params.get("view");
+    if (viewCode && allSops.length > 0) {
+      const matched = allSops.find(s => s.code.toLowerCase() === viewCode.toLowerCase());
+      if (matched) {
+        setSelectedSopDetails(matched);
+        // Clean up URL query parameter without reloading
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [allSops]);
+
+  // Dynamic options parsed from SOP list
+  const titleOptions = useMemo(() => {
+    const titles = allSops.map(s => s.title).filter(Boolean);
+    return Array.from(new Set(titles)).sort();
+  }, [allSops]);
+
+  const authorOptions = useMemo(() => {
+    const authors = allSops.map(s => s.author).filter(Boolean);
+    return Array.from(new Set(authors)).sort();
+  }, [allSops]);
+
+  const methodFamilyOptions = useMemo(() => {
+    const families = allSops.map(s => s.details?.methodFamily).filter(Boolean);
+    return Array.from(new Set(families)).sort();
+  }, [allSops]);
+
+  const assayCategoryOptions = useMemo(() => {
+    const categories = allSops.map(s => s.sopSection).filter(Boolean);
+    return Array.from(new Set(categories)).sort();
+  }, [allSops]);
+
   // Compute stats on the real list
   const stats = useMemo(() => {
     const total = allSops.length;
@@ -217,8 +266,10 @@ export default function QMSPage() {
         sop.sopSubSection.toLowerCase().includes(searchText.toLowerCase()) ||
         sop.author.toLowerCase().includes(searchText.toLowerCase());
 
-      const matchesSection = selectedSection === "All" || sop.sopSection === selectedSection;
-      const matchesSubSection = selectedSubSection === "All" || sop.sopSubSection === selectedSubSection;
+      const matchesTitle = filterTitle === "All" || sop.title === filterTitle;
+      const matchesAuthor = filterAuthor === "All" || sop.author === filterAuthor;
+      const matchesMethodFamily = filterMethodFamily === "All" || sop.details?.methodFamily === filterMethodFamily;
+      const matchesAssayCategory = filterAssayCategory === "All" || sop.sopSection === filterAssayCategory;
 
       let matchesStatus = true;
       if (selectedStatus !== "All") {
@@ -233,9 +284,9 @@ export default function QMSPage() {
         }
       }
 
-      return matchesSearch && matchesSection && matchesSubSection && matchesStatus;
+      return matchesSearch && matchesTitle && matchesAuthor && matchesMethodFamily && matchesAssayCategory && matchesStatus;
     });
-  }, [allSops, searchText, selectedSection, selectedSubSection, selectedStatus, statusFilterCard]);
+  }, [allSops, searchText, filterTitle, filterAuthor, filterMethodFamily, filterAssayCategory, selectedStatus, statusFilterCard]);
 
   // Pagination constants
   const itemsPerPage = 10;
@@ -284,7 +335,7 @@ export default function QMSPage() {
   };
 
   const handleCopyLink = (code: string) => {
-    const link = `${window.location.origin}/domains/qms/view-sop?code=${code}`;
+    const link = `${window.location.origin}/domains/qms?view=${code}`;
     navigator.clipboard.writeText(link).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
@@ -351,6 +402,10 @@ export default function QMSPage() {
     </svg>
   );
 
+  const footerYear = printingSop
+    ? new Date(printingSop.details?.effectiveDate || printingSop.lastUpdated || Date.now()).getFullYear()
+    : new Date().getFullYear();
+
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden", fontFamily: "var(--font-body)", background: "var(--color-bg)" }} className="anim">
       {/* ── CONTENT PANE ── */}
@@ -359,21 +414,21 @@ export default function QMSPage() {
         {/* Active Title Block */}
         <div
           style={{
-            padding: "24px 32px 16px",
+            padding: "12px 24px",
             borderBottom: "1px solid var(--color-border)",
             display: "flex",
             alignItems: "center",
             background: "var(--color-surface)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
-                fontSize: "1.25rem",
+                fontSize: "1rem",
                 background: "var(--color-primary-soft)",
                 color: "var(--color-primary)",
-                width: 32,
-                height: 32,
+                width: 26,
+                height: 26,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -383,10 +438,10 @@ export default function QMSPage() {
               📄
             </span>
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
+              <h1 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
                 SOPs & Quality Management
               </h1>
-              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-faint)", margin: "4px 0 0 0" }}>
+              <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", margin: "2px 0 0 0" }}>
                 Manage SOPs & Quality. Showing live data from the ROMS API
               </p>
             </div>
@@ -397,15 +452,15 @@ export default function QMSPage() {
               background: "var(--color-primary)",
               color: "#ffffff",
               border: "none",
-              padding: "8px 16px",
+              padding: "6px 12px",
               borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
+              fontSize: "var(--fs-xs)",
               fontWeight: 600,
               cursor: "pointer",
               marginLeft: "auto",
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 6,
               boxShadow: "var(--shadow-sm)",
               transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
@@ -423,9 +478,9 @@ export default function QMSPage() {
         </div>
 
         {/* Inner Scroll Pane */}
-        <div style={{ flex: 1, padding: "24px 32px", overflowY: "auto" }}>
+        <div style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
             {sopsError && (
               <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b" }}>
@@ -439,7 +494,6 @@ export default function QMSPage() {
                 {
                   title: "Total SOPs",
                   value: stats.total,
-                  subtitle: "All documents",
                   icon: "📄",
                   bg: "#e3f2fd",
                   color: "#0288d1",
@@ -448,7 +502,6 @@ export default function QMSPage() {
                 {
                   title: "Drafts",
                   value: stats.drafts,
-                  subtitle: "In progress",
                   icon: "⏳",
                   bg: "#fff3e0",
                   color: "#f57c00",
@@ -457,7 +510,6 @@ export default function QMSPage() {
                 {
                   title: "Under Review",
                   value: stats.review,
-                  subtitle: "Awaiting review",
                   icon: "👥",
                   bg: "#f3e5f5",
                   color: "#565f04ff",
@@ -466,7 +518,6 @@ export default function QMSPage() {
                 {
                   title: "Approved",
                   value: stats.approved,
-                  subtitle: "Published",
                   icon: "🛡️",
                   bg: "#e8f5e9",
                   color: "#2e7d32",
@@ -484,11 +535,11 @@ export default function QMSPage() {
                     style={{
                       background: "var(--color-surface-2)",
                       border: isSelected ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
-                      borderRadius: "var(--radius)",
-                      padding: "12px 16px",
+                      borderRadius: "var(--radius-sm)",
+                      padding: "6px 12px",
                       display: "flex",
                       alignItems: "center",
-                      gap: 12,
+                      gap: 8,
                       cursor: "pointer",
                       transition: "transform 0.15s, box-shadow 0.15s, border-color 0.15s",
                       boxShadow: isSelected ? "var(--shadow-sm)" : "none",
@@ -502,12 +553,12 @@ export default function QMSPage() {
                       e.currentTarget.style.boxShadow = isSelected ? "var(--shadow-sm)" : "none";
                     }}
                   >
-                    <div style={{ fontSize: "20px", width: 40, height: 40, background: card.bg, color: card.color, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <div style={{ fontSize: "14px", width: 26, height: 26, background: card.bg, color: card.color, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {card.icon}
                     </div>
-                    <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+                    <div style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
                       <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>{card.title}</span>
-                      <h3 style={{ fontSize: "18px", fontWeight: 750, color: "var(--color-text)", margin: "2px 0 0 0" }}>{card.value}</h3>
+                      <h3 style={{ fontSize: "15px", fontWeight: 750, color: "var(--color-text)", margin: 0 }}>{card.value}</h3>
                     </div>
                   </div>
                 );
@@ -520,14 +571,127 @@ export default function QMSPage() {
                 display: "flex",
                 gap: 12,
                 alignItems: "center",
+                flexWrap: "wrap",
                 background: "var(--color-surface)",
                 padding: 12,
                 borderRadius: "var(--radius)",
                 border: "1px solid var(--color-border)",
               }}
             >
+              {/* SOP Title Select */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Title:</span>
+                <select
+                  value={filterTitle}
+                  onChange={(e) => {
+                    setFilterTitle(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 24px 8px 12px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-surface-2)",
+                    color: "var(--color-text)",
+                    fontSize: "var(--fs-sm)",
+                    outline: "none",
+                    cursor: "pointer",
+                    maxWidth: "180px",
+                  }}
+                >
+                  <option value="All">All Titles</option>
+                  {titleOptions.map((title) => (
+                    <option key={title} value={title}>{title}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SOP Author Select */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Author:</span>
+                <select
+                  value={filterAuthor}
+                  onChange={(e) => {
+                    setFilterAuthor(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 24px 8px 12px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-surface-2)",
+                    color: "var(--color-text)",
+                    fontSize: "var(--fs-sm)",
+                    outline: "none",
+                    cursor: "pointer",
+                    maxWidth: "150px",
+                  }}
+                >
+                  <option value="All">All Authors</option>
+                  {authorOptions.map((auth) => (
+                    <option key={auth} value={auth}>{auth}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SOP Method Family Select */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Method Family:</span>
+                <select
+                  value={filterMethodFamily}
+                  onChange={(e) => {
+                    setFilterMethodFamily(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 24px 8px 12px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-surface-2)",
+                    color: "var(--color-text)",
+                    fontSize: "var(--fs-sm)",
+                    outline: "none",
+                    cursor: "pointer",
+                    maxWidth: "180px",
+                  }}
+                >
+                  <option value="All">All Families</option>
+                  {methodFamilyOptions.map((mf) => (
+                    <option key={mf} value={mf}>{mf}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SOP Assay Category Select */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Assay Category:</span>
+                <select
+                  value={filterAssayCategory}
+                  onChange={(e) => {
+                    setFilterAssayCategory(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: "8px 24px 8px 12px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--color-surface-2)",
+                    color: "var(--color-text)",
+                    fontSize: "var(--fs-sm)",
+                    outline: "none",
+                    cursor: "pointer",
+                    maxWidth: "180px",
+                  }}
+                >
+                  <option value="All">All Categories</option>
+                  {assayCategoryOptions.map((ac) => (
+                    <option key={ac} value={ac}>{ac}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Search Input */}
-              <div style={{ position: "relative", flex: 1 }}>
+              <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
                 <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-faint)", fontSize: "14px" }}>
                   🔍
                 </span>
@@ -552,72 +716,15 @@ export default function QMSPage() {
                 />
               </div>
 
-              {/* SOP Section Select */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Section:</span>
-                <select
-                  value={selectedSection}
-                  onChange={(e) => {
-                    setSelectedSection(e.target.value);
-                    setSelectedSubSection("All");
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 24px 8px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                    cursor: "pointer",
-                    maxWidth: "180px",
-                  }}
-                >
-                  <option value="All">All Sections</option>
-                  {SOP_SECTIONS.map((section) => (
-                    <option key={section} value={section}>{section}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* SOP Sub-section Select */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Sub-section:</span>
-                <select
-                  value={selectedSubSection}
-                  onChange={(e) => {
-                    setSelectedSubSection(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  disabled={selectedSection === "All"}
-                  style={{
-                    padding: "8px 24px 8px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                    cursor: selectedSection === "All" ? "not-allowed" : "pointer",
-                    opacity: selectedSection === "All" ? 0.6 : 1,
-                    maxWidth: "180px",
-                  }}
-                >
-                  <option value="All">All Sub-sections</option>
-                  {selectedSection !== "All" && SOP_SUB_SECTIONS[selectedSection]?.map((sub) => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Reset Filters Button */}
-              {(searchText || selectedSection !== "All" || selectedSubSection !== "All" || selectedStatus !== "All" || statusFilterCard) && (
+              {(searchText || filterTitle !== "All" || filterAuthor !== "All" || filterMethodFamily !== "All" || filterAssayCategory !== "All" || selectedStatus !== "All" || statusFilterCard) && (
                 <button
                   onClick={() => {
                     setSearchText("");
-                    setSelectedSection("All");
-                    setSelectedSubSection("All");
+                    setFilterTitle("All");
+                    setFilterAuthor("All");
+                    setFilterMethodFamily("All");
+                    setFilterAssayCategory("All");
                     setSelectedStatus("All");
                     setStatusFilterCard(null);
                     setCurrentPage(1);
@@ -631,6 +738,7 @@ export default function QMSPage() {
                     fontSize: "var(--fs-xs)",
                     fontWeight: 600,
                     cursor: "pointer",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   Clear Filters
@@ -893,7 +1001,7 @@ export default function QMSPage() {
               {/* Sections rendering */}
               {[
                 {
-                  label: "B. Revision & Amendment History", data: selectedSopDetails.details?.revision, fields: [
+                  label: "Revision & Amendment History", data: selectedSopDetails.details?.revision, fields: [
                     { k: "Revision Number", v: "revisionNumber" },
                     { k: "Revision Date", v: "revisionDate" },
                     { k: "Summary of changes", v: "revisionSummary", area: true },
@@ -901,7 +1009,7 @@ export default function QMSPage() {
                   ]
                 },
                 {
-                  label: "C. Purpose, Scope & Background", data: selectedSopDetails.details?.purposeScope, fields: [
+                  label: "Purpose, Scope & Background", data: selectedSopDetails.details?.purposeScope, fields: [
                     { k: "Purpose (verbatim)", v: "purpose", area: true },
                     { k: "Scope - covers", v: "scopeCovers", area: true },
                     { k: "Scope - excluded", v: "scopeExcluded", area: true },
@@ -909,20 +1017,20 @@ export default function QMSPage() {
                   ]
                 },
                 {
-                  label: "D. Definitions & Abbreviations", data: selectedSopDetails.details?.definitions, fields: [
+                  label: "Definitions & Abbreviations", data: selectedSopDetails.details?.definitions, fields: [
                     { k: "Definitions", v: "definitions", area: true },
                     { k: "Abbreviations", v: "abbreviations", area: true },
                   ]
                 },
                 {
-                  label: "E. Responsibility & Accountability", data: selectedSopDetails.details?.responsibility, fields: [
+                  label: "Responsibility & Accountability", data: selectedSopDetails.details?.responsibility, fields: [
                     { k: "Roles involved", v: "roles", badge: true },
                     { k: "Responsibility (narrative)", v: "responsibilityNarrative", area: true },
                   ]
                 },
-                { label: "F. Principle of the Method", text: selectedSopDetails.details?.principle },
+                { label: "Principle of the Method", text: selectedSopDetails.details?.principle },
                 {
-                  label: "G. Samples / Specimens Covered", data: selectedSopDetails.details?.samples, fields: [
+                  label: "Samples / Specimens Covered", data: selectedSopDetails.details?.samples, fields: [
                     { k: "Sample matrices", v: "matrices", badge: true },
                     { k: "Input material types", v: "inputMaterials", badge: true },
                     { k: "Volume required", v: "volumeRequired" },
@@ -931,19 +1039,19 @@ export default function QMSPage() {
                   ]
                 },
                 {
-                  label: "H. Reagents & Supplies", data: selectedSopDetails.details?.reagents, fields: [
+                  label: "Reagents & Supplies", data: selectedSopDetails.details?.reagents, fields: [
                     { k: "Reagents Narrative", v: "narrative", area: true },
                     { k: "Reagents List", v: "list", area: true },
                   ]
                 },
                 {
-                  label: "I. Equipment & Instruments", data: selectedSopDetails.details?.equipment, fields: [
+                  label: "Equipment & Instruments", data: selectedSopDetails.details?.equipment, fields: [
                     { k: "Primary Equipment", v: "primary", badge: true },
                     { k: "Equipment List", v: "list", area: true },
                   ]
                 },
                 {
-                  label: "J. Environmental & Safety Controls", data: selectedSopDetails.details?.safety, fields: [
+                  label: "Environmental & Safety Controls", data: selectedSopDetails.details?.safety, fields: [
                     { k: "PPE required", v: "ppe", badge: true },
                     { k: "Biosafety Level", v: "level" },
                     { k: "Hazards relevant", v: "hazards", badge: true },
@@ -952,7 +1060,7 @@ export default function QMSPage() {
                   ]
                 },
                 {
-                  label: "K. Quality Control", data: selectedSopDetails.details?.qualityControl, fields: [
+                  label: "Quality Control", data: selectedSopDetails.details?.qualityControl, fields: [
                     { k: "Controls included", v: "controls", badge: true },
                     { k: "DNA/RNA QC methods", v: "methods", badge: true },
                     { k: "Acceptance criteria", v: "acceptance", area: true },
@@ -960,20 +1068,20 @@ export default function QMSPage() {
                   ]
                 },
                 {
-                  label: "L. Stepwise Procedure", data: selectedSopDetails.details?.procedure, fields: [
+                  label: "Stepwise Procedure", data: selectedSopDetails.details?.procedure, fields: [
                     { k: "Full procedure", v: "narrative", area: true },
                     { k: "Stepwise list", v: "steps", area: true },
                   ]
                 },
                 {
-                  label: "M. Calculation / Data Analysis", data: selectedSopDetails.details?.calculation, fields: [
+                  label: "Calculation / Data Analysis", data: selectedSopDetails.details?.calculation, fields: [
                     { k: "Calculations/formulas", v: "formulas", area: true },
                     { k: "Software/tools", v: "software", area: true },
                     { k: "Interpretation rules", v: "thresholds", area: true },
                   ]
                 },
                 {
-                  label: "N. Result Reporting & Interpretation", data: selectedSopDetails.details?.resultReporting, fields: [
+                  label: "Result Reporting & Interpretation", data: selectedSopDetails.details?.resultReporting, fields: [
                     { k: "Reporting format", v: "format", area: true },
                     { k: "Cut-offs / thresholds", v: "thresholds", area: true },
                     { k: "LIMS mapping", v: "lims", area: true },
@@ -981,7 +1089,7 @@ export default function QMSPage() {
                   ]
                 },
                 {
-                  label: "P. Storage & Transport Requirements", data: selectedSopDetails.details?.storage, fields: [
+                  label: "Storage & Transport Requirements", data: selectedSopDetails.details?.storage, fields: [
                     { k: "Sample types stored", v: "types", badge: true },
                     { k: "Recommended storage temp", v: "temp" },
                     { k: "Max storage duration", v: "duration" },
@@ -989,9 +1097,9 @@ export default function QMSPage() {
                     { k: "Storage narrative", v: "narrative", area: true },
                   ]
                 },
-                { label: "Q. References & Attachments", text: selectedSopDetails.details?.references },
+                { label: "References & Attachments", text: selectedSopDetails.details?.references },
                 {
-                  label: "R. Document Control & Sign-off", data: selectedSopDetails.details?.signoff, fields: [
+                  label: "Document Control & Sign-off", data: selectedSopDetails.details?.signoff, fields: [
                     { k: "Prepared by Name", v: "preparedByName" },
                     { k: "Prepared by Role", v: "preparedByRole" },
                     { k: "Prepared date", v: "preparedDate" },
@@ -1012,7 +1120,12 @@ export default function QMSPage() {
                     {sec.label}
                   </h4>
 
-                  {sec.text && <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", whiteSpace: "pre-wrap" }}>{sec.text}</div>}
+                  {sec.text && (
+                    <div
+                      style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}
+                      dangerouslySetInnerHTML={{ __html: formatRichText(sec.text) }}
+                    />
+                  )}
 
                   {sec.data && sec.fields && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1030,7 +1143,10 @@ export default function QMSPage() {
                                 ))}
                               </div>
                             ) : f.area ? (
-                              <div style={{ padding: 10, background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", marginTop: 4, whiteSpace: "pre-wrap" }}>{val}</div>
+                              <div
+                                style={{ padding: 10, background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", marginTop: 4 }}
+                                dangerouslySetInnerHTML={{ __html: formatRichText(val) }}
+                              />
                             ) : (
                               <span style={{ marginLeft: 8 }}>{val}</span>
                             )}
@@ -1106,7 +1222,7 @@ export default function QMSPage() {
                 <input
                   type="text"
                   readOnly
-                  value={`${window.location.origin}/domains/qms/view-sop?code=${shareSop.code}`}
+                  value={`${window.location.origin}/domains/qms?view=${shareSop.code}`}
                   style={{
                     flex: 1,
                     padding: "8px 12px",
@@ -1136,38 +1252,59 @@ export default function QMSPage() {
                 </button>
               </div>
 
-              <div style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 16, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <div style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 16, display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }}>
                 <a
-                  href={`mailto:?subject=SOP%20Shared%3A%20${encodeURIComponent(shareSop.code)}&body=Hi%20there%2C%0A%0APlease%20review%20this%20Standard%20Operating%20Procedure%20details%20by%20clicking%20on%20the%20link%20below%3A%0A%0A${encodeURIComponent(window.location.origin + '/domains/qms/view-sop?code=' + shareSop.code)}`}
+                  href={`mailto:?subject=SOP%20Shared%3A%20${encodeURIComponent(shareSop.code)}&body=Hi%20there%2C%0A%0APlease%20review%20this%20Standard%20Operating%20Procedure%20details%20by%20clicking%20on%20the%20link%20below%3A%0A%0A${encodeURIComponent(window.location.origin + '/domains/qms?view=' + shareSop.code)}`}
                   style={{
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    border: "1px solid var(--color-border)",
-                    padding: "8px 16px",
+                    background: "var(--color-primary-soft)",
+                    color: "var(--color-primary)",
+                    border: "1px solid var(--color-primary)",
+                    padding: "8px 14px",
                     borderRadius: "var(--radius-sm)",
                     fontSize: "var(--fs-xs)",
                     fontWeight: 600,
                     textDecoration: "none",
                     display: "inline-flex",
                     alignItems: "center",
+                    gap: 6
                   }}
                 >
-                  ✉ Share via Email
+                  ✉ Email Link
+                </a>
+                <a
+                  href={`https://t.me/share/url?url=${encodeURIComponent(window.location.origin + '/domains/qms?view=' + shareSop.code)}&text=${encodeURIComponent('Please review this Standard Operating Procedure: ' + shareSop.title)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: "#0088cc",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "var(--fs-xs)",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}
+                >
+                  ✈ Telegram Link
                 </a>
                 <button
                   onClick={() => setShareSop(null)}
                   style={{
-                    background: "var(--color-primary)",
-                    color: "#ffffff",
-                    border: "none",
-                    padding: "8px 16px",
+                    background: "var(--color-surface-2)",
+                    color: "var(--color-text)",
+                    border: "1px solid var(--color-border)",
+                    padding: "8px 14px",
                     borderRadius: "var(--radius-sm)",
                     fontSize: "var(--fs-xs)",
                     fontWeight: 600,
                     cursor: "pointer",
                   }}
                 >
-                  Done
+                  Close
                 </button>
               </div>
             </div>
@@ -1175,120 +1312,127 @@ export default function QMSPage() {
         </div>
       )}
 
-      {/* PRINT-ONLY AREA (RENDERED FOR PDF GENERATION) */}
-      {printingSop && (
+      {/* PRINT-ONLY AREA (RENDERED FOR PDF GENERATION VIA PORTAL ON BODY) */}
+      {printingSop && createPortal(
         <div id="qms-sop-print-area">
           {/* COVER PAGE (PAGE 1) */}
-          <div className="cover-page page-break-after">
-            <div className="text-center" style={{ width: "100%" }}>
-              <h1 style={{ fontSize: "20px", fontWeight: "800", margin: "0 0 8px 0", color: "#1e3a8a", fontFamily: "sans-serif", letterSpacing: "0.05em" }}>
-                ARMAUER HANSEN RESEARCH INSTITUTE
+          <div
+            className="cover-page page-break-after"
+            style={{ boxSizing: "border-box", padding: 0 }}
+          >
+            <div className="text-center" style={{ width: "100%", marginTop: "0.4in" }}>
+              <h1
+                className="cover-title"
+                style={{
+                  fontSize: "24pt", fontWeight: "800", margin: "0 0 24px 0",
+                  color: "#071338ff", fontFamily: '"Times New Roman", Times, serif', letterSpacing: "0.05em",
+                  lineHeight: "1.3"
+                }}
+              >
+                ARMAUER HANSEN RESEARCH INSTITUTE LABORATORY
               </h1>
-              <h3 style={{ fontSize: "11px", fontWeight: "700", margin: "0 0 20px 0", color: "#64748b", fontFamily: "sans-serif", letterSpacing: "0.08em" }}>
-                QUALITY MANAGEMENT SYSTEM | CENTRAL LABORATORY
-              </h3>
-              <div style={{ borderBottom: "3px double #1e3a8a", width: "100%", margin: "0 auto 25px auto" }}></div>
-              <div style={{ margin: "25px 0", display: "flex", justifyContent: "center" }}>
-                {renderAhriLogo(240, 145)}
+
+              <div style={{ margin: "40px 0" }}>
+                <img
+                  src={logoAhri}
+                  style={{ height: "180px", display: "block", margin: "0 auto" }}
+                  alt="AHRI Logo"
+                />
               </div>
-              <div style={{ margin: "30px 0" }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", color: "#b45309", textTransform: "uppercase", letterSpacing: "0.12em", display: "block", marginBottom: "8px" }}>
-                  Standard Operating Procedure
-                </span>
-                <h2 style={{ fontSize: "20px", fontWeight: "800", margin: "0", color: "#0f172a", fontFamily: "sans-serif", borderTop: "2px solid #1e3a8a", borderBottom: "2px solid #1e3a8a", padding: "18px 10px", textTransform: "uppercase", lineHeight: "1.4" }}>
+
+              <div style={{ margin: "40px 0" }}>
+                <h2
+                  style={{
+                    fontSize: "20pt", fontWeight: "800", margin: "0",
+                    color: "#091530ff", fontFamily: '"Times New Roman", Times, serif', padding: "8px 0",
+                    textTransform: "uppercase", lineHeight: "1.4",
+                  }}
+                >
                   {printingSop.title}
                 </h2>
               </div>
             </div>
 
             {/* Metadata Table Page 1 */}
-            <table style={{ width: "100%", borderCollapse: "collapse", border: "1.5px solid #1e3a8a", marginTop: "30px", fontFamily: "sans-serif" }}>
+            <table
+              style={{
+                width: "calc(100% - 2px)", borderCollapse: "collapse",
+                border: "1.5px solid #000000", marginTop: "50px",
+                fontFamily: '"Times New Roman", Times, serif',
+              }}
+            >
               <tbody>
-                <tr>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontWeight: "bold", fontSize: "11px", width: "30%", color: "#1e3a8a", backgroundColor: "#f8fafc" }}>Prepared by:</td>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontSize: "11px", color: "#334155" }}>
-                    {printingSop.details?.signoff?.preparedByName || printingSop.author || "N/A"}{" "}
-                    {printingSop.details?.signoff?.preparedByRole ? `(${printingSop.details.signoff.preparedByRole})` : ""}{" "}
-                    {printingSop.details?.signoff?.preparedDate ? `on ${printingSop.details.signoff.preparedDate}` : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontWeight: "bold", fontSize: "11px", color: "#1e3a8a", backgroundColor: "#f8fafc" }}>Reviewed by:</td>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontSize: "11px", color: "#334155" }}>
-                    {printingSop.details?.signoff?.reviewedByName || "N/A"}{" "}
-                    {printingSop.details?.signoff?.reviewedByRole ? `(${printingSop.details.signoff.reviewedByRole})` : ""}{" "}
-                    {printingSop.details?.signoff?.reviewedDate ? `on ${printingSop.details.signoff.reviewedDate}` : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontWeight: "bold", fontSize: "11px", color: "#1e3a8a", backgroundColor: "#f8fafc" }}>Approved by:</td>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontSize: "11px", color: "#334155" }}>
-                    {printingSop.details?.signoff?.approvedByName || "N/A"}{" "}
-                    {printingSop.details?.signoff?.approvedByRole ? `(${printingSop.details.signoff.approvedByRole})` : ""}{" "}
-                    {printingSop.details?.signoff?.approvedDate ? `on ${printingSop.details.signoff.approvedDate}` : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontWeight: "bold", fontSize: "11px", color: "#1e3a8a", backgroundColor: "#f8fafc" }}>Effective Date:</td>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontSize: "11px", color: "#334155" }}>
-                    {printingSop.details?.effectiveDate || printingSop.lastUpdated || "N/A"}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontWeight: "bold", fontSize: "11px", color: "#1e3a8a", backgroundColor: "#f8fafc" }}>Version No:</td>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontSize: "11px", color: "#334155" }}>
-                    {printingSop.version}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontWeight: "bold", fontSize: "11px", color: "#1e3a8a", backgroundColor: "#f8fafc" }}>Document No:</td>
-                  <td style={{ border: "1.5px solid #1e3a8a", padding: "10px 14px", fontSize: "11px", color: "#334155" }}>
-                    {printingSop.code}
-                  </td>
-                </tr>
+                {[
+                  ["Prepared by", `${printingSop.details?.signoff?.preparedByName || printingSop.author || "N/A"} ${printingSop.details?.signoff?.preparedByRole ? `(${printingSop.details.signoff.preparedByRole})` : ""} ${printingSop.details?.signoff?.preparedDate ? `on ${printingSop.details.signoff.preparedDate}` : ""}`],
+                  ["Reviewed by", `${printingSop.details?.signoff?.reviewedByName || "N/A"} ${printingSop.details?.signoff?.reviewedByRole ? `(${printingSop.details.signoff.reviewedByRole})` : ""} ${printingSop.details?.signoff?.reviewedDate ? `on ${printingSop.details.signoff.reviewedDate}` : ""}`],
+                  ["Approved by", `${printingSop.details?.signoff?.approvedByName || "N/A"} ${printingSop.details?.signoff?.approvedByRole ? `(${printingSop.details.signoff.approvedByRole})` : ""} ${printingSop.details?.signoff?.approvedDate ? `on ${printingSop.details.signoff.approvedDate}` : ""}`],
+                  ["Effective Date", printingSop.details?.effectiveDate || printingSop.lastUpdated || "N/A"],
+                  ["Version No", printingSop.version],
+                  ["Document No", printingSop.code],
+                ].map(([label, value]) => {
+                  let valColor = "#000000";
+                  let valClass = "";
+                  if (label === "Document No") {
+                    valColor = "#071338ff";
+                    valClass = "header-doc-no";
+                  } else if (label === "Version No") {
+                    valColor = "#490b09ff";
+                    valClass = "header-version-no";
+                  } else if (label === "Effective Date") {
+                    valColor = "#490b09ff";
+                    valClass = "header-effective-date";
+                  }
+                  return (
+                    <tr key={label}>
+                      <td style={{ border: "1.5px solid #000000", padding: "6px 12px", fontWeight: "bold", fontSize: "12pt", fontFamily: '"Times New Roman", Times, serif', width: "30%", color: "#000000", backgroundColor: "#f8fafc", lineHeight: "1.5" }}>
+                        {label}:
+                      </td>
+                      <td className={valClass} style={{ border: "1.5px solid #000000", padding: "6px 12px", fontSize: "12pt", fontFamily: '"Times New Roman", Times, serif', color: valColor, lineHeight: "1.5" }}>
+                        {value}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* REPEATING HEADER / FOOTER BODY WRAPPER FOR PAGE 2+ */}
           <div className="printable-body-wrapper">
-            <table style={{ width: "100%", borderCollapse: "collapse", border: "none" }}>
+            <table className="print-outer-wrapper-table" style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, border: "none" }}>
               <thead>
                 <tr>
                   <td style={{ border: "none", padding: 0 }}>
                     {/* Header Table: repeating on every page */}
-                    <table style={{ width: "100%", border: "1.5px solid #1e3a8a", borderCollapse: "collapse", marginBottom: "20px", fontFamily: "sans-serif" }}>
+                    <table style={{ width: "100%", border: "1.5px solid #000000", borderCollapse: "collapse", marginBottom: "15px", fontFamily: '"Times New Roman", Times, serif' }}>
                       <tbody>
                         <tr>
                           {/* Mini logo cell spans 3 rows */}
-                          <td rowSpan={3} style={{ width: "90px", border: "1.5px solid #1e3a8a", textAlign: "center", verticalAlign: "middle", padding: "6px", backgroundColor: "#f8fafc" }}>
-                            {renderAhriLogo(80, 50)}
+                          <td rowSpan={3} style={{ width: "90px", border: "1.5px solid #000000", textAlign: "center", verticalAlign: "middle", padding: "6px", backgroundColor: "#f8fafc" }}>
+                            <img src={logoAhri} style={{ height: "45px", display: "block", margin: "0 auto" }} alt="AHRI Logo" />
                           </td>
-                          <td style={{ border: "1.5px solid #1e3a8a", padding: "8px 12px", fontWeight: "bold", fontSize: "11px", color: "#1e3a8a", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          <td className="header-institution" style={{ border: "1.5px solid #000000", padding: "8px 12px", fontWeight: "bold", fontSize: "11px", fontFamily: '"Times New Roman", Times, serif', color: "#071338ff", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                             ARMAUER HANSEN RESEARCH INSTITUTE LABORATORY
                           </td>
-                          <td style={{ border: "1.5px solid #1e3a8a", padding: "8px 12px", fontSize: "10px", width: "180px", fontWeight: "bold", color: "#475569" }}>
+                          <td className="header-effective-date" style={{ border: "1.5px solid #000000", padding: "8px 12px", fontSize: "10px", fontFamily: '"Times New Roman", Times, serif', width: "180px", fontWeight: "bold", color: "#490b09ff" }}>
                             Effective Date: {printingSop.details?.effectiveDate || printingSop.lastUpdated || "N/A"}
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan={2} style={{ border: "1.5px solid #1e3a8a", padding: "8px 12px", fontWeight: "bold", fontSize: "12px", color: "#0f172a", textTransform: "uppercase" }}>
+                          <td colSpan={2} style={{ border: "1.5px solid #000000", padding: "8px 12px", fontWeight: "bold", fontSize: "12px", fontFamily: '"Times New Roman", Times, serif', color: "#000000", textTransform: "uppercase" }}>
                             TITLE: {printingSop.title}
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan={2} style={{ border: "1.5px solid #1e3a8a", padding: 0 }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", border: "none" }}>
+                          <td colSpan={2} style={{ border: "1.5px solid #000000", padding: 0 }}>
+                            <table className="header-inner-table" style={{ width: "100%", borderCollapse: "collapse", border: "none" }}>
                               <tbody>
                                 <tr>
-                                  <td style={{ borderRight: "1.5px solid #1e3a8a", padding: "6px 12px", fontSize: "10px", fontWeight: "bold", width: "35%", color: "#475569" }}>
+                                  <td className="header-doc-no" style={{ borderRight: "1.5px solid #000000", padding: "6px 12px", fontSize: "10px", fontFamily: '"Times New Roman", Times, serif', fontWeight: "bold", width: "50%", color: "#071338ff" }}>
                                     Document No: {printingSop.code}
                                   </td>
-                                  <td style={{ borderRight: "1.5px solid #1e3a8a", padding: "6px 12px", fontSize: "10px", fontWeight: "bold", width: "30%", color: "#475569" }}>
+                                  <td className="header-version-no" style={{ padding: "6px 12px", fontSize: "10px", fontFamily: '"Times New Roman", Times, serif', fontWeight: "bold", width: "50%", color: "#490b09ff" }}>
                                     Version No: {printingSop.version}
-                                  </td>
-                                  <td style={{ padding: "6px 12px", fontSize: "10px", fontWeight: "bold", width: "35%", color: "#475569" }}>
-                                    Page No: <span className="page-number"></span>
                                   </td>
                                 </tr>
                               </tbody>
@@ -1304,26 +1448,15 @@ export default function QMSPage() {
               <tfoot>
                 <tr>
                   <td style={{ border: "none", padding: 0 }}>
-                    <div style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      borderTop: "1.5px solid #1e3a8a",
-                      paddingTop: "8px",
-                      marginTop: "10px",
-                      fontFamily: "sans-serif",
-                      fontSize: "10px",
-                      fontWeight: "bold",
-                      width: "100%",
-                      color: "#475569"
-                    }}>
-                      <span>
-                        Version No: {printingSop.version} | Year: {new Date(printingSop.details?.effectiveDate || printingSop.lastUpdated || Date.now()).getFullYear()}
-                      </span>
-                      <span>
-                        Page: <span className="page-number"></span>
-                      </span>
-                    </div>
+                    <div
+                      className="footer-line"
+                      style={{
+                        borderTop: "2.5px solid #071338ff",
+                        marginTop: "6px",
+                        width: "100%",
+                        height: "1px"
+                      }}
+                    />
                   </td>
                 </tr>
               </tfoot>
@@ -1332,10 +1465,10 @@ export default function QMSPage() {
                 <tr>
                   <td style={{ border: "none", padding: 0 }}>
                     {/* B TO R CONTENTS (Start Page 2) */}
-                    <div style={{ fontFamily: "sans-serif", fontSize: "12px", color: "#000000", lineHeight: "1.5" }}>
+                    <div style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt", color: "#000000", lineHeight: "1.5", textAlign: "justify" }}>
                       {[
                         {
-                          label: "B. Revision & Amendment History", data: printingSop.details?.revision, fields: [
+                          label: "Revision & Amendment History", data: printingSop.details?.revision, fields: [
                             { k: "Revision Number", v: "revisionNumber" },
                             { k: "Revision Date", v: "revisionDate" },
                             { k: "Summary of changes from previous version", v: "revisionSummary", multiline: true },
@@ -1343,7 +1476,7 @@ export default function QMSPage() {
                           ]
                         },
                         {
-                          label: "C. Purpose, Scope & Background", data: printingSop.details?.purposeScope, fields: [
+                          label: "Purpose, Scope & Background", data: printingSop.details?.purposeScope, fields: [
                             { k: "Purpose (verbatim)", v: "purpose", multiline: true },
                             { k: "Scope - what this SOP covers", v: "scopeCovers", multiline: true },
                             { k: "Scope - what is explicitly excluded", v: "scopeExcluded", multiline: true },
@@ -1351,20 +1484,20 @@ export default function QMSPage() {
                           ]
                         },
                         {
-                          label: "D. Definitions & Abbreviations", data: printingSop.details?.definitions, fields: [
+                          label: "Definitions & Abbreviations", data: printingSop.details?.definitions, fields: [
                             { k: "Definitions / Terminology (narrative)", v: "definitions", multiline: true },
                             { k: "Abbreviations used in this SOP", v: "abbreviations", multiline: true },
                           ]
                         },
                         {
-                          label: "E. Responsibility & Accountability", data: printingSop.details?.responsibility, fields: [
+                          label: "Responsibility & Accountability", data: printingSop.details?.responsibility, fields: [
                             { k: "Roles involved in executing this SOP", v: "roles", list: true },
                             { k: "Responsibility & accountability (narrative)", v: "responsibilityNarrative", multiline: true },
                           ]
                         },
-                        { label: "F. Principle of the Method", text: printingSop.details?.principle },
+                        { label: "Principle of the Method", text: printingSop.details?.principle },
                         {
-                          label: "G. Samples / Specimens Covered", data: printingSop.details?.samples, fields: [
+                          label: "Samples / Specimens Covered", data: printingSop.details?.samples, fields: [
                             { k: "Sample matrices covered by this SOP", v: "matrices", list: true },
                             { k: "Input material type(s)", v: "inputMaterials", list: true },
                             { k: "Volume / amount required per sample", v: "volumeRequired" },
@@ -1373,19 +1506,19 @@ export default function QMSPage() {
                           ]
                         },
                         {
-                          label: "H. Reagents & Supplies", data: printingSop.details?.reagents, fields: [
+                          label: "Reagents & Supplies", data: printingSop.details?.reagents, fields: [
                             { k: "Reagents & supplies (full narrative as in SOP)", v: "narrative", multiline: true },
                             { k: "Reagents & supplies (one per line)", v: "list", multiline: true },
                           ]
                         },
                         {
-                          label: "I. Equipment & Instruments", data: printingSop.details?.equipment, fields: [
+                          label: "Equipment & Instruments", data: printingSop.details?.equipment, fields: [
                             { k: "Primary equipment used", v: "primary", list: true },
                             { k: "Equipment & instruments (one per line)", v: "list", multiline: true },
                           ]
                         },
                         {
-                          label: "J. Environmental & Safety Controls", data: printingSop.details?.safety, fields: [
+                          label: "Environmental & Safety Controls", data: printingSop.details?.safety, fields: [
                             { k: "PPE required", v: "ppe", list: true },
                             { k: "Biosafety level required", v: "level" },
                             { k: "Hazards relevant to this procedure", v: "hazards", list: true },
@@ -1394,7 +1527,7 @@ export default function QMSPage() {
                           ]
                         },
                         {
-                          label: "K. Quality Control", data: printingSop.details?.qualityControl, fields: [
+                          label: "Quality Control", data: printingSop.details?.qualityControl, fields: [
                             { k: "Controls included in this SOP", v: "controls", list: true },
                             { k: "DNA/RNA QC methods specified", v: "methods", list: true },
                             { k: "Acceptance / rejection criteria", v: "acceptance", multiline: true },
@@ -1402,20 +1535,20 @@ export default function QMSPage() {
                           ]
                         },
                         {
-                          label: "L. Stepwise Procedure", data: printingSop.details?.procedure, fields: [
+                          label: "Stepwise Procedure", data: printingSop.details?.procedure, fields: [
                             { k: "Full procedure narrative", v: "narrative", multiline: true },
                             { k: "Stepwise procedure list", v: "steps", multiline: true },
                           ]
                         },
                         {
-                          label: "M. Calculation / Data Analysis", data: printingSop.details?.calculation, fields: [
+                          label: "Calculation / Data Analysis", data: printingSop.details?.calculation, fields: [
                             { k: "Calculations / formulas used", v: "formulas", multiline: true },
                             { k: "Software / analysis tools used", v: "software", multiline: true },
                             { k: "Interpretation rules / thresholds", v: "thresholds", multiline: true },
                           ]
                         },
                         {
-                          label: "N. Result Reporting & Interpretation", data: printingSop.details?.resultReporting, fields: [
+                          label: "Result Reporting & Interpretation", data: printingSop.details?.resultReporting, fields: [
                             { k: "Reporting format (units, layout)", v: "format", multiline: true },
                             { k: "Cut-offs / thresholds", v: "thresholds", multiline: true },
                             { k: "LIMS / database field mapping", v: "lims", multiline: true },
@@ -1423,7 +1556,7 @@ export default function QMSPage() {
                           ]
                         },
                         {
-                          label: "P. Storage & Transport Requirements", data: printingSop.details?.storage, fields: [
+                          label: "Storage & Transport Requirements", data: printingSop.details?.storage, fields: [
                             { k: "Sample types this SOP stores / transports", v: "types", list: true },
                             { k: "Recommended storage temperature", v: "temp" },
                             { k: "Maximum storage duration", v: "duration" },
@@ -1431,9 +1564,9 @@ export default function QMSPage() {
                             { k: "Storage & transport narrative", v: "narrative", multiline: true },
                           ]
                         },
-                        { label: "Q. References & Attachments", text: printingSop.details?.references },
+                        { label: "References & Attachments", text: printingSop.details?.references },
                         {
-                          label: "R. Document Control & Sign-off", data: printingSop.details?.signoff, fields: [
+                          label: "Document Control & Sign-off", data: printingSop.details?.signoff, fields: [
                             { k: "Prepared by (name)", v: "preparedByName" },
                             { k: "Prepared by (role)", v: "preparedByRole" },
                             { k: "Prepared date", v: "preparedDate" },
@@ -1450,31 +1583,39 @@ export default function QMSPage() {
                         }
                       ].map((sec, sidx) => (
                         <div key={sidx} className="print-section-container">
-                          <h3 style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "bold", borderBottom: "1.5px solid #1e3a8a", color: "#1e3a8a", paddingBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          <h3 className="print-section-title" style={{ margin: "0 0 4px 0", fontFamily: '"Times New Roman", Times, serif', fontSize: "14pt", fontWeight: "bold", borderBottom: "none", color: "#031755ff", paddingBottom: "2px", textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: "1.5" }}>
                             {sec.label}
                           </h3>
 
-                          {sec.text && <div style={{ fontSize: "11px", whiteSpace: "pre-wrap", paddingLeft: "10px", color: "#334155", lineHeight: "1.4" }}>{sec.text}</div>}
+                          {sec.text && (
+                            <div
+                              style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt", paddingLeft: "0px", color: "#000000", lineHeight: "1.5", textAlign: "justify" }}
+                              dangerouslySetInnerHTML={{ __html: formatRichText(sec.text) }}
+                            />
+                          )}
 
                           {sec.data && sec.fields && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "10px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "6px", paddingLeft: "0px" }}>
                               {sec.fields.map((f, fidx) => {
                                 const val = sec.data[f.v];
                                 if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) return null;
 
                                 return (
-                                  <div key={fidx} style={{ fontSize: "11px" }}>
-                                    <h4 style={{ margin: "0 0 3px 0", fontSize: "11px", fontWeight: "bold", color: "#475569" }}>{f.k}:</h4>
+                                  <div key={fidx} className="print-subsection-container" style={{ fontSize: "12pt" }}>
+                                    <h4 style={{ margin: "0 0 2px 0", fontFamily: '"Times New Roman", Times, serif', fontSize: "13pt", fontWeight: "bold", color: "#000000", lineHeight: "1.5" }}>{f.k}:</h4>
                                     {f.list && Array.isArray(val) ? (
-                                      <ul style={{ margin: "4px 0 6px 20px", padding: 0, listStyleType: "square" }}>
+                                      <ul style={{ margin: "2px 0 4px 20px", padding: 0, listStyleType: "square" }}>
                                         {val.map((item: string, idx: number) => (
-                                          <li key={idx} style={{ padding: "2px 0", fontSize: "11px", color: "#334155" }}>{item}</li>
+                                          <li key={idx} style={{ padding: "2px 0", fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt", color: "#000000", lineHeight: "1.5", textAlign: "justify" }}>{item}</li>
                                         ))}
                                       </ul>
                                     ) : f.multiline ? (
-                                      <div style={{ padding: "8px 12px", borderLeft: "3px solid #1e3a8a", background: "#f8fafc", whiteSpace: "pre-wrap", margin: "4px 0 8px 0", borderRadius: "0 4px 4px 0", color: "#334155", lineHeight: "1.4" }}>{val}</div>
+                                      <div
+                                        style={{ padding: "0px", margin: "2px 0 4px 0", color: "#000000", fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt", lineHeight: "1.5", textAlign: "justify" }}
+                                        dangerouslySetInnerHTML={{ __html: formatRichText(val) }}
+                                      />
                                     ) : (
-                                      <div style={{ padding: "4px 0", paddingLeft: "8px", borderLeft: "2px solid #cbd5e1", color: "#334155" }}>{val}</div>
+                                      <div style={{ padding: "2px 0", paddingLeft: "0px", borderLeft: "none", color: "#000000", fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt", lineHeight: "1.5", textAlign: "justify" }}>{val}</div>
                                     )}
                                   </div>
                                 );
@@ -1490,44 +1631,21 @@ export default function QMSPage() {
             </table>
           </div>
         </div>
-      )}
+        , document.body)}
 
       {/* Dynamic CSS Styling & Print Styling */}
       <style>{`
         /* PRINT SPECIFIC STYLES */
         @media print {
-          /* Remove all layout limits from ancestors of #qms-sop-print-area to prevent cutoff */
-          html, body, #root, .anim {
-            overflow: visible !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-            display: block !important;
-            position: static !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          
-          #root > div, .anim > div {
-            overflow: visible !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-            display: block !important;
-            position: static !important;
-          }
-          
-          /* Hide main app screen elements to prevent empty spacing or page push */
-          .anim > *:not(#qms-sop-print-area) {
+          /* Hide the main app root completely to prevent any whitespace, offsets or page push */
+          #root {
             display: none !important;
           }
           
-          body * {
-            visibility: hidden !important;
-          }
-          
-          #qms-sop-print-area, #qms-sop-print-area * {
-            visibility: visible !important;
+          body {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
           #qms-sop-print-area {
@@ -1535,24 +1653,96 @@ export default function QMSPage() {
             position: static !important;
             width: 100% !important;
             background: #ffffff !important;
-            color: #000000 !important;
             overflow: visible !important;
             height: auto !important;
-            text-align: left !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
-          /* Force left-alignment for all standard elements inside the print area to override parent rules */
-          #qms-sop-print-area td,
-          #qms-sop-print-area th,
+          /* Force solid black color for elements by default, but exclude custom color elements */
+          #qms-sop-print-area,
+          #qms-sop-print-area * {
+            color: #000000;
+            border-color: #000000;
+          }
+          
+          /* Specific color overrides using class names */
+          #qms-sop-print-area .cover-title {
+            color: #071338ff !important;
+          }
+          #qms-sop-print-area .header-institution {
+            color: #071338ff !important;
+          }
+          #qms-sop-print-area .header-effective-date {
+            color: #490b09ff !important;
+          }
+          #qms-sop-print-area .header-doc-no {
+            color: #071338ff !important;
+          }
+          #qms-sop-print-area .header-version-no {
+            color: #490b09ff !important;
+          }
+          #qms-sop-print-area .print-section-title {
+            color: #031755ff !important;
+          }
+          #qms-sop-print-area .footer-line {
+            border-top: 2.5px solid #071338ff !important;
+            border-color: #071338ff !important;
+          }
+
+          /* Ensure outer wrapper table does not collapse or show borders */
+          table.print-outer-wrapper-table {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            width: 100% !important;
+            border: none !important;
+          }
+          table.print-outer-wrapper-table > tbody > tr > td,
+          table.print-outer-wrapper-table > thead > tr > td,
+          table.print-outer-wrapper-table > tfoot > tr > td {
+            border: none !important;
+            padding: 0 !important;
+          }
+
+          /* Ensure all content tables have distinct collapsed borders and fit inside page width */
+          #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) {
+            width: calc(100% - 2px) !important;
+            border-collapse: collapse !important;
+            border: 1.5px solid #000000 !important;
+            margin-bottom: 15px !important;
+            margin-right: 2px !important;
+          }
+          #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) td,
+          #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) th {
+            border: 1.5px solid #000000 !important;
+            padding: 6px 12px !important;
+          }
+
+          /* Explicitly remove borders for inner header table except the Document No right border */
+          #qms-sop-print-area table.header-inner-table,
+          #qms-sop-print-area table.header-inner-table td {
+            border: none !important;
+          }
+          #qms-sop-print-area table.header-inner-table td.header-doc-no {
+            border-right: 1.5px solid #000000 !important;
+          }
+          
+          /* Justify alignment for standard text blocks */
           #qms-sop-print-area p,
           #qms-sop-print-area div,
+          #qms-sop-print-area li,
+          #qms-sop-print-area span {
+            text-align: justify !important;
+          }
+          
+          /* Keep headings and tables left aligned */
           #qms-sop-print-area h1,
           #qms-sop-print-area h2,
           #qms-sop-print-area h3,
           #qms-sop-print-area h4,
-          #qms-sop-print-area li,
-          #qms-sop-print-area span {
-            text-align: left;
+          #qms-sop-print-area th,
+          #qms-sop-print-area td {
+            text-align: left !important;
           }
           
           /* Specifically allow class 'text-center' to center-align */
@@ -1565,17 +1755,40 @@ export default function QMSPage() {
             page-break-after: always !important;
             break-after: always !important;
             box-sizing: border-box !important;
-            height: 255mm !important; /* Perfect printable height for A4 with 20mm margins */
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-            padding: 10mm 5mm !important;
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
           .print-section-container {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+            margin-bottom: 10px !important;
+            margin-top: 0 !important;
+            padding: 0 !important;
+          }
+          
+          .print-section-container h3 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+            margin: 0 0 4px 0 !important;
+          }
+          
+          .print-subsection-container {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            margin-bottom: 25px !important;
+            margin-bottom: 6px !important;
+          }
+          
+          .print-subsection-container h4 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+            margin: 0 0 2px 0 !important;
+          }
+          
+          table, tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           
           .page-break-before {
@@ -1586,30 +1799,54 @@ export default function QMSPage() {
             page-break-after: always !important;
             break-after: always !important;
           }
+          
           @page {
-            size: A4 portrait;
-            margin: 20mm 15mm !important;
+            size: portrait;
+            margin: 0.2in 1.0in 0.8in 1.0in; /* Enforces minimized top margin on pages 2+ */
+            @top-left { content: ""; }
+            @top-center { content: ""; }
+            @top-right { content: ""; }
+            @bottom-left {
+              content: "` + footerYear + `/AHRI-MNTD" !important;
+              font-family: "Times New Roman", Times, serif !important;
+              font-size: 10px !important;
+              font-weight: bold !important;
+              color: #490b09ff !important;
+              vertical-align: top !important;
+              padding-top: 4px !important;
+            }
+            @bottom-center { content: ""; }
+            @bottom-right {
+              content: "Page " counter(page) !important;
+              font-family: "Times New Roman", Times, serif !important;
+              font-size: 10px !important;
+              font-weight: bold !important;
+              color: #071338ff !important;
+              vertical-align: top !important;
+              padding-top: 4px !important;
+            }
+          }
+          @page :first {
+            margin-top: 1.0in; /* Enforces normal top margin for the cover page */
+            margin-bottom: 1.0in;
+            counter-reset: page 0;
+            @top-left { content: ""; }
+            @top-center { content: ""; }
+            @top-right { content: ""; }
+            @bottom-left { content: none !important; }
+            @bottom-center { content: ""; }
+            @bottom-right { content: none !important; }
           }
           
           tr {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
-
-          /* Dynamic client-side repeating footer simulation */
+          
           .printable-body-wrapper {
             position: relative;
             overflow: visible !important;
             height: auto !important;
-          }
-          
-          body {
-            counter-reset: page 1;
-          }
-          
-          .page-number::after {
-            counter-increment: page;
-            content: counter(page);
           }
         }
 
@@ -1627,6 +1864,6 @@ export default function QMSPage() {
           100% { transform: translateY(0); opacity: 1; }
         }
       `}</style>
-    </div>
+    </div >
   );
 }
