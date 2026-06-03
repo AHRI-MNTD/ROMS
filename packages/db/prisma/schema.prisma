@@ -201,6 +201,7 @@ enum InventoryMovementStatus {
   APPROVED
   PENDING
   REJECTED
+  PARTIAL
 }
 
 model StockItem {
@@ -228,20 +229,25 @@ model StockItem {
 
 model InventoryMovement {
   id           String                  @id @default(cuid())
+  requestBatchId String?
   stockItemId  String
   stockItem    StockItem               @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
   movementType InventoryMovementType
   quantity     Int
+  requestedQuantity Int                @default(0)
   destination  String?
   recipient    String?
+  requestedFor String?
   requestedBy  String?
   projectFor   String?
+  team         String?
   status       InventoryMovementStatus @default(APPROVED)
   remark       String?
   occurredAt   DateTime                @default(now())
   createdAt    DateTime                @default(now())
   updatedAt    DateTime                @updatedAt
 
+  @@index([requestBatchId])
   @@index([stockItemId])
   @@index([movementType])
   @@index([occurredAt])

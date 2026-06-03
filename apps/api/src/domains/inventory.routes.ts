@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import prisma from "@roms/db";
+import { randomUUID } from "node:crypto";
 import { requireAuth, requirePermission } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
 import { CreateStockItemSchema } from "@roms/shared";
@@ -8,18 +9,29 @@ import { logger } from "../utils/logger";
 type InventoryMasterDataRecord = {
   category: string;
   unit: string;
-  project: string | null;
-  staff: string | null;
+  requestBatchId?: string | null;
+  project?: string | null;
+  staff?: string | null;
 };
 
 type InventoryMasterDataPrisma = typeof prisma & {
   inventoryMasterData: {
     findMany: (args?: Record<string, unknown>) => Promise<InventoryMasterDataRecord[]>;
     count: (args?: Record<string, unknown>) => Promise<number>;
+    findFirst?: (args?: Record<string, unknown>) => Promise<InventoryMasterDataRecord | null>;
   };
 };
 
+type StockItemSelect = {
+  id: string;
+  sku?: string | null;
+  name?: string | null;
+  unit?: string | null;
+  category?: string | null;
+};
+
 type InventoryMovementRecord = {
+  id?: string;
   stockItemId: string;
   movementType: "CHECK_IN" | "CHECK_OUT";
   quantity: number;
@@ -28,8 +40,14 @@ type InventoryMovementRecord = {
   projectFor?: string | null;
   recipient?: string | null;
   destination?: string | null;
-  status?: "APPROVED" | "PENDING" | "REJECTED" | null;
+  status?: "APPROVED" | "PENDING" | "REJECTED" | "PARTIAL" | null;
   remark?: string | null;
+  requestedQuantity?: number;
+  requestedFor?: string | null;
+  requestBatchId?: string | null;
+  team?: string | null;
+  stockItem?: StockItemSelect | null;
+  createdAt?: Date;
 };
 
 type InventoryMovementPrisma = typeof prisma & {
@@ -64,6 +82,42 @@ function toNumberOrUndefined(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
+}
+
+function toInventoryMovementStatus(value: unknown): "APPROVED" | "PENDING" | "REJECTED" | "PARTIAL" | undefined {
+  const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
+  if (normalized === "APPROVED" || normalized === "PENDING" || normalized === "REJECTED" || normalized === "PARTIAL") {
+    return normalized;
+  }
+  return undefined;
+}
+
+function mapMovementToRequestRow(movement: InventoryMovementRecord) {
+  const stockItem = movement.stockItem;
+  const requestedQuantity = Number(movement.requestedQuantity ?? movement.quantity ?? 0);
+  const acceptedQuantity = Number(movement.quantity ?? 0);
+
+  return {
+    rowKey: movement.id ?? `${movement.requestBatchId ?? "batch"}-${movement.stockItemId}`,
+    requestBatchId: movement.requestBatchId ?? null,
+    codeNo: stockItem?.sku ?? "—",
+    barcode: stockItem?.sku ?? "—",
+    itemDescription: stockItem?.name ?? "—",
+    quantity: acceptedQuantity,
+    requestedQuantity,
+    unit: stockItem?.unit ?? "units",
+    unitDescription: `${stockItem?.unit ?? "units"} per pack`,
+    category: stockItem?.category ?? "General",
+    dateRequested: movement.occurredAt.toISOString().slice(0, 10),
+    requestedBy: movement.requestedBy ?? "Unknown User",
+    requestedFor: movement.requestedFor ?? "",
+    project: movement.projectFor ?? "ROMS Inventory",
+    team: movement.team ?? "",
+    remark: movement.remark ?? "",
+    status: movement.status ?? "PENDING",
+    acceptedQuantity,
+    movementId: movement.id,
+  };
 }
 
 // GET / — list stock items
@@ -129,8 +183,8 @@ router.get("/master-data", requireAuth, requirePermission("inventory:read"), asy
     rows: allRows.length,
     categories: new Set(allRows.map((row: InventoryMasterDataRecord) => row.category).filter(Boolean)).size,
     units: new Set(allRows.map((row: InventoryMasterDataRecord) => row.unit).filter(Boolean)).size,
-    projects: new Set(allRows.map((row: InventoryMasterDataRecord) => row.project).filter((value: string | null): value is string => Boolean(value))).size,
-    staff: new Set(allRows.map((row: InventoryMasterDataRecord) => row.staff).filter((value: string | null): value is string => Boolean(value))).size,
+    projects: new Set(allRows.map((row: InventoryMasterDataRecord) => row.project).filter((value): value is string => Boolean(value))).size,
+    staff: new Set(allRows.map((row: InventoryMasterDataRecord) => row.staff).filter((value): value is string => Boolean(value))).size,
   };
 
   res.json({ data, total, page, pageSize, summary });
@@ -141,6 +195,206 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
   const rows = await prisma.inventoryMasterData.findMany({ select: { project: true } });
   const projects = Array.from(new Set(rows.map((r: any) => String(r.project ?? "")).filter((p: string) => p.trim().length > 0)));
   res.json({ projects });
+});
+
+router.get("/requests", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
+  const movements = await prisma.inventoryMovement.findMany({
+    where: { movementType: "CHECK_OUT" },
+    include: {
+      stockItem: {
+        select: { id: true, sku: true, name: true, unit: true, category: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const data = movements.map((movement) =>
+    mapMovementToRequestRow({
+      ...movement,
+      stockItem: movement.stockItem,
+    })
+  );
+
+  res.json({ data, total: data.length });
+});
+
+router.post("/requests", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (items.length === 0) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
+    return;
+  }
+
+  const requestedBy = toStringOrUndefined(req.body?.requestedBy) ?? req.user?.email ?? null;
+  const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
+  const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
+  const team = toStringOrUndefined(req.body?.team) ?? null;
+  const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
+  const batchId = randomUUID();
+
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const createdRows = await Promise.all(
+        items.map(async (rawItem: any) => {
+          const stockItemId = toStringOrUndefined(rawItem?.id);
+          const stockItem = stockItemId ? await tx.stockItem.findUnique({ where: { id: stockItemId } }) : null;
+          if (!stockItemId || !stockItem) {
+            throw new Error("INVALID_ITEM_ID");
+          }
+
+          const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
+
+          return tx.inventoryMovement.create({
+            data: {
+              requestBatchId: batchId,
+              stockItemId,
+              movementType: "CHECK_OUT",
+              quantity: requestedQuantity,
+              requestedQuantity,
+              requestedBy,
+              requestedFor,
+              recipient: requestedFor,
+              destination: projectFor,
+              projectFor,
+              team,
+              status: "PENDING",
+              remark: toStringOrUndefined(rawItem?.remark) ?? "Requested by user",
+              occurredAt,
+            },
+            include: {
+              stockItem: {
+                select: { id: true, sku: true, name: true, unit: true, category: true },
+              },
+            },
+          });
+        })
+      );
+
+      return createdRows;
+    });
+
+    res.status(201).json({
+      data: created.map((movement) =>
+        mapMovementToRequestRow({
+          ...movement,
+          stockItem: movement.stockItem,
+        })
+      ),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_ITEM_ID") {
+      res.status(400).json({ code: "VALIDATION_ERROR", message: "Each item must include a valid id" });
+      return;
+    }
+    logger.error(error);
+    res.status(500).json({ code: "INTERNAL_ERROR" });
+  }
+});
+
+router.post("/request-decisions", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (items.length === 0) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
+    return;
+  }
+
+  const requestedBy = toStringOrUndefined(req.body?.requestedBy) ?? req.user?.email ?? null;
+  const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
+  const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
+  const team = toStringOrUndefined(req.body?.team) ?? null;
+  const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
+
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const createdRows = await Promise.all(
+        items.map(async (rawItem: any) => {
+          const movementId = toStringOrUndefined(rawItem?.movementId);
+          const stockItemId = toStringOrUndefined(rawItem?.id);
+          const status = toInventoryMovementStatus(rawItem?.status) ?? "PENDING";
+          const quantity = status === "REJECTED" ? 0 : Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.acceptedQuantity) ?? toNumberOrUndefined(rawItem?.quantity) ?? 0));
+          const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
+
+          if (!movementId && !stockItemId) {
+            throw new Error("INVALID_ITEM_ID");
+          }
+
+          const summary =
+            status === "REJECTED"
+              ? `Rejected by project manager${requestedQuantity > 0 ? ` (${requestedQuantity} requested)` : ""}`
+              : status === "PARTIAL"
+                ? `Partial approval: accepted ${quantity} of ${requestedQuantity}`
+                : `Approved by project manager${requestedQuantity > 0 ? ` (${requestedQuantity} requested)` : ""}`;
+
+          if (movementId) {
+            const movement = await tx.inventoryMovement.update({
+              where: { id: movementId },
+              data: {
+                quantity,
+                requestedQuantity,
+                requestedBy,
+                requestedFor,
+                recipient: requestedFor,
+                destination: projectFor,
+                projectFor,
+                team,
+                status,
+                remark: [summary, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
+                occurredAt,
+              },
+              include: {
+                stockItem: {
+                  select: { id: true, sku: true, name: true, unit: true, category: true },
+                },
+              },
+            });
+            return movement;
+          }
+
+          return tx.inventoryMovement.create({
+            data: {
+              requestBatchId: randomUUID(),
+              stockItemId: stockItemId!,
+              movementType: "CHECK_OUT",
+              quantity,
+              requestedQuantity,
+              requestedBy,
+              requestedFor,
+              recipient: requestedFor,
+              destination: projectFor,
+              projectFor,
+              team,
+              status,
+              remark: [summary, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
+              occurredAt,
+            },
+            include: {
+              stockItem: {
+                select: { id: true, sku: true, name: true, unit: true, category: true },
+              },
+            },
+          });
+        })
+      );
+
+      return createdRows;
+    });
+
+    res.status(201).json({
+      data: created.map((movement) =>
+        mapMovementToRequestRow({
+          ...movement,
+          stockItem: movement.stockItem,
+        })
+      ),
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_ITEM_ID") {
+      res.status(400).json({ code: "VALIDATION_ERROR", message: "Each item must include a valid id" });
+      return;
+    }
+    logger.error(error);
+    res.status(500).json({ code: "INTERNAL_ERROR" });
+  }
 });
 
 router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
@@ -314,7 +568,7 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
   const { dateReceived: parsedDateReceived, ...stockItemData } = parsed.data;
   // enforce projectFor exists in master-data
-  const projectForValue = String(req.body.projectFor ?? parsed.data.projectFor ?? "ROMS Inventory").trim();
+  const projectForValue = String(req.body.projectFor ?? "ROMS Inventory").trim();
   if (projectForValue.length > 0) {
     const found = await prisma.inventoryMasterData.findFirst({ where: { project: projectForValue } });
     if (!found) {
