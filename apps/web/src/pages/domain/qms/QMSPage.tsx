@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
 import logoAhri from "../../../assets/logo_ahri.png";
+import QMSDashboardView from "./QMSDashboardView";
+import QMSReviewerView from "./QMSReviewerView";
+import QMSViewerView from "./QMSViewerView";
 
 // Define SOP Sections and Sub-sections metadata for premium dynamic dropdowns
 const SOP_SECTIONS = [
@@ -156,6 +159,7 @@ export default function QMSPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("All");
   const [statusFilterCard, setStatusFilterCard] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "author" | "reviewer" | "viewer">("dashboard");
 
   // SOP dynamic backend states
   const [sops, setSops] = useState<SOPItem[]>([]);
@@ -414,525 +418,601 @@ export default function QMSPage() {
         {/* Active Title Block */}
         <div
           style={{
-            padding: "12px 24px",
+            padding: "16px 24px 0 24px",
             borderBottom: "1px solid var(--color-border)",
-            display: "flex",
-            alignItems: "center",
             background: "var(--color-surface)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontSize: "1rem",
-                background: "var(--color-primary-soft)",
-                color: "var(--color-primary)",
-                width: 26,
-                height: 26,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: "var(--radius-sm)",
-              }}
-            >
-              📄
-            </span>
-            <div>
-              <h1 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
-                SOPs & Quality Management
-              </h1>
-              <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", margin: "2px 0 0 0" }}>
-                Manage SOPs & Quality. Showing live data from the ROMS API
-              </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: "1.2rem",
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  width: 32,
+                  height: 32,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "var(--radius)",
+                }}
+              >
+                📄
+              </span>
+              <div>
+                <h1 style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
+                  SOP & Quality Management
+                </h1>
+                <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: "2px 0 0 0" }}>
+                  Manage laboratory procedures, compliance, and quality documentation
+                </p>
+              </div>
             </div>
+
+            {activeTab === "author" && (
+              <button
+                onClick={() => navigate("create-sop")}
+                style={{
+                  background: "var(--color-primary)",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "6px 14px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  boxShadow: "var(--shadow-sm)",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                }}
+              >
+                <span>+ Create SOP</span>
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => navigate("create-sop")}
-            style={{
-              background: "var(--color-primary)",
-              color: "#ffffff",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-xs)",
-              fontWeight: 600,
-              cursor: "pointer",
-              marginLeft: "auto",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              boxShadow: "var(--shadow-sm)",
-              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-1px) scale(1.02)";
-              e.currentTarget.style.boxShadow = "var(--shadow-md)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-            }}
-          >
-            <span>+ Create SOP</span>
-          </button>
+
+          {/* Role selection tab bar */}
+          <div style={{ display: "flex", gap: 24, fontSize: "13px", fontWeight: 600 }}>
+            {[
+              { id: "dashboard", label: "📊 Overview Dashboard" },
+              { id: "author", label: "✍️ Author Workspace" },
+              { id: "reviewer", label: "🔍 Reviewer Workspace" },
+              { id: "viewer", label: "📖 Viewer Workspace" }
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <div
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  style={{
+                    padding: "8px 4px 12px 4px",
+                    cursor: "pointer",
+                    color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
+                    borderBottom: isActive ? "2.5px solid var(--color-primary)" : "2.5px solid transparent",
+                    transition: "all 0.15s ease",
+                    fontWeight: isActive ? 700 : 550,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.color = "var(--color-text)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.color = "var(--color-text-muted)";
+                  }}
+                >
+                  {tab.label}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Inner Scroll Pane */}
         <div style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {sopsError && (
+            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b", marginBottom: 16 }}>
+              API connection unavailable — showing locally added items.
+            </div>
+          )}
 
-            {sopsError && (
-              <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b" }}>
-                API connection unavailable — showing locally added items.
+          {activeTab === "dashboard" && (
+            <QMSDashboardView
+              sops={allSops}
+              onTabChange={(tab, statusFilter) => {
+                setActiveTab(tab);
+                if (statusFilter) {
+                  if (statusFilter === "All") {
+                    setSelectedStatus("All");
+                    setStatusFilterCard(null);
+                  } else {
+                    setSelectedStatus(statusFilter);
+                    setStatusFilterCard(statusFilter);
+                  }
+                  setCurrentPage(1);
+                }
+              }}
+            />
+          )}
+
+          {activeTab === "reviewer" && (
+            <QMSReviewerView
+              sops={allSops}
+              onSopUpdate={(updatedList) => {
+                setLocalSops(updatedList);
+              }}
+            />
+          )}
+
+          {activeTab === "viewer" && (
+            <QMSViewerView
+              sops={allSops}
+              onPrintRequest={(sop) => handlePrintPDF(sop)}
+            />
+          )}
+
+          {activeTab === "author" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* Stats Cards Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                {[
+                  {
+                    title: "Total SOPs",
+                    value: stats.total,
+                    icon: "📄",
+                    bg: "#e3f2fd",
+                    color: "#0288d1",
+                    filterValue: null,
+                  },
+                  {
+                    title: "Drafts",
+                    value: stats.drafts,
+                    icon: "⏳",
+                    bg: "#fff3e0",
+                    color: "#f57c00",
+                    filterValue: "DRAFT",
+                  },
+                  {
+                    title: "Under Review",
+                    value: stats.review,
+                    icon: "👥",
+                    bg: "#f3e5f5",
+                    color: "#565f04ff",
+                    filterValue: "UNDER REVIEW",
+                  },
+                  {
+                    title: "Approved",
+                    value: stats.approved,
+                    icon: "🛡️",
+                    bg: "#e8f5e9",
+                    color: "#2e7d32",
+                    filterValue: "APPROVED",
+                  },
+                ].map((card, i) => {
+                  const isSelected = statusFilterCard === card.filterValue;
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        setStatusFilterCard(card.filterValue);
+                        setCurrentPage(1);
+                      }}
+                      style={{
+                        background: "var(--color-surface-2)",
+                        border: isSelected ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        padding: "6px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        cursor: "pointer",
+                        transition: "transform 0.15s, box-shadow 0.15s, border-color 0.15s",
+                        boxShadow: isSelected ? "var(--shadow-sm)" : "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = isSelected ? "var(--shadow-sm)" : "none";
+                      }}
+                    >
+                      <div style={{ fontSize: "14px", width: 26, height: 26, background: card.bg, color: card.color, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {card.icon}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                        <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>{card.title}</span>
+                        <h3 style={{ fontSize: "15px", fontWeight: 750, color: "var(--color-text)", margin: 0 }}>{card.value}</h3>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
 
-            {/* Stats Cards Row */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-              {[
-                {
-                  title: "Total SOPs",
-                  value: stats.total,
-                  icon: "📄",
-                  bg: "#e3f2fd",
-                  color: "#0288d1",
-                  filterValue: null,
-                },
-                {
-                  title: "Drafts",
-                  value: stats.drafts,
-                  icon: "⏳",
-                  bg: "#fff3e0",
-                  color: "#f57c00",
-                  filterValue: "DRAFT",
-                },
-                {
-                  title: "Under Review",
-                  value: stats.review,
-                  icon: "👥",
-                  bg: "#f3e5f5",
-                  color: "#565f04ff",
-                  filterValue: "UNDER REVIEW",
-                },
-                {
-                  title: "Approved",
-                  value: stats.approved,
-                  icon: "🛡️",
-                  bg: "#e8f5e9",
-                  color: "#2e7d32",
-                  filterValue: "APPROVED",
-                },
-              ].map((card, i) => {
-                const isSelected = statusFilterCard === card.filterValue;
-                return (
-                  <div
-                    key={i}
-                    onClick={() => {
-                      setStatusFilterCard(card.filterValue);
+              {/* Search and Filters Bar */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  background: "var(--color-surface)",
+                  padding: 12,
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                {/* SOP Title Select */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Title:</span>
+                  <select
+                    value={filterTitle}
+                    onChange={(e) => {
+                      setFilterTitle(e.target.value);
                       setCurrentPage(1);
                     }}
                     style={{
-                      background: "var(--color-surface-2)",
-                      border: isSelected ? "2px solid var(--color-primary)" : "1px solid var(--color-border)",
+                      padding: "8px 24px 8px 12px",
+                      border: "1px solid var(--color-border)",
                       borderRadius: "var(--radius-sm)",
-                      padding: "6px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      outline: "none",
                       cursor: "pointer",
-                      transition: "transform 0.15s, box-shadow 0.15s, border-color 0.15s",
-                      boxShadow: isSelected ? "var(--shadow-sm)" : "none",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = isSelected ? "var(--shadow-sm)" : "none";
+                      maxWidth: "180px",
                     }}
                   >
-                    <div style={{ fontSize: "14px", width: 26, height: 26, background: card.bg, color: card.color, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {card.icon}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                      <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>{card.title}</span>
-                      <h3 style={{ fontSize: "15px", fontWeight: 750, color: "var(--color-text)", margin: 0 }}>{card.value}</h3>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    <option value="All">All Titles</option>
+                    {titleOptions.map((title) => (
+                      <option key={title} value={title}>{title}</option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Search and Filters Bar */}
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                flexWrap: "wrap",
-                background: "var(--color-surface)",
-                padding: 12,
-                borderRadius: "var(--radius)",
-                border: "1px solid var(--color-border)",
-              }}
-            >
-              {/* SOP Title Select */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Title:</span>
-                <select
-                  value={filterTitle}
-                  onChange={(e) => {
-                    setFilterTitle(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 24px 8px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                    cursor: "pointer",
-                    maxWidth: "180px",
-                  }}
-                >
-                  <option value="All">All Titles</option>
-                  {titleOptions.map((title) => (
-                    <option key={title} value={title}>{title}</option>
-                  ))}
-                </select>
-              </div>
+                {/* SOP Author Select */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Author:</span>
+                  <select
+                    value={filterAuthor}
+                    onChange={(e) => {
+                      setFilterAuthor(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: "8px 24px 8px 12px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      outline: "none",
+                      cursor: "pointer",
+                      maxWidth: "150px",
+                    }}
+                  >
+                    <option value="All">All Authors</option>
+                    {authorOptions.map((auth) => (
+                      <option key={auth} value={auth}>{auth}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* SOP Author Select */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Author:</span>
-                <select
-                  value={filterAuthor}
-                  onChange={(e) => {
-                    setFilterAuthor(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 24px 8px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                    cursor: "pointer",
-                    maxWidth: "150px",
-                  }}
-                >
-                  <option value="All">All Authors</option>
-                  {authorOptions.map((auth) => (
-                    <option key={auth} value={auth}>{auth}</option>
-                  ))}
-                </select>
-              </div>
+                {/* SOP Method Family Select */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Method Family:</span>
+                  <select
+                    value={filterMethodFamily}
+                    onChange={(e) => {
+                      setFilterMethodFamily(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: "8px 24px 8px 12px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      outline: "none",
+                      cursor: "pointer",
+                      maxWidth: "180px",
+                    }}
+                  >
+                    <option value="All">All Families</option>
+                    {methodFamilyOptions.map((mf) => (
+                      <option key={mf} value={mf}>{mf}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* SOP Method Family Select */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Method Family:</span>
-                <select
-                  value={filterMethodFamily}
-                  onChange={(e) => {
-                    setFilterMethodFamily(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 24px 8px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                    cursor: "pointer",
-                    maxWidth: "180px",
-                  }}
-                >
-                  <option value="All">All Families</option>
-                  {methodFamilyOptions.map((mf) => (
-                    <option key={mf} value={mf}>{mf}</option>
-                  ))}
-                </select>
-              </div>
+                {/* SOP Assay Category Select */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Assay Category:</span>
+                  <select
+                    value={filterAssayCategory}
+                    onChange={(e) => {
+                      setFilterAssayCategory(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: "8px 24px 8px 12px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      outline: "none",
+                      cursor: "pointer",
+                      maxWidth: "180px",
+                    }}
+                  >
+                    <option value="All">All Categories</option>
+                    {assayCategoryOptions.map((ac) => (
+                      <option key={ac} value={ac}>{ac}</option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* SOP Assay Category Select */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Assay Category:</span>
-                <select
-                  value={filterAssayCategory}
-                  onChange={(e) => {
-                    setFilterAssayCategory(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    padding: "8px 24px 8px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                    cursor: "pointer",
-                    maxWidth: "180px",
-                  }}
-                >
-                  <option value="All">All Categories</option>
-                  {assayCategoryOptions.map((ac) => (
-                    <option key={ac} value={ac}>{ac}</option>
-                  ))}
-                </select>
-              </div>
+                {/* Search Input */}
+                <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
+                  <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-faint)", fontSize: "14px" }}>
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={searchText}
+                    onChange={(e) => {
+                      setSearchText(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder="Search SOPs by title, code, section, author..."
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px 8px 36px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      color: "var(--color-text)",
+                      fontSize: "var(--fs-sm)",
+                      outline: "none",
+                    }}
+                  />
+                </div>
 
-              {/* Search Input */}
-              <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--color-text-faint)", fontSize: "14px" }}>
-                  🔍
-                </span>
-                <input
-                  type="text"
-                  value={searchText}
-                  onChange={(e) => {
-                    setSearchText(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search SOPs by title, code, section, author..."
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px 8px 36px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    color: "var(--color-text)",
-                    fontSize: "var(--fs-sm)",
-                    outline: "none",
-                  }}
-                />
-              </div>
-
-              {/* Reset Filters Button */}
-              {(searchText || filterTitle !== "All" || filterAuthor !== "All" || filterMethodFamily !== "All" || filterAssayCategory !== "All" || selectedStatus !== "All" || statusFilterCard) && (
-                <button
-                  onClick={() => {
-                    setSearchText("");
-                    setFilterTitle("All");
-                    setFilterAuthor("All");
-                    setFilterMethodFamily("All");
-                    setFilterAssayCategory("All");
-                    setSelectedStatus("All");
-                    setStatusFilterCard(null);
-                    setCurrentPage(1);
-                  }}
-                  style={{
-                    background: "var(--color-primary-soft)",
-                    color: "var(--color-primary)",
-                    border: "none",
-                    padding: "8px 12px",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: "var(--fs-xs)",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-
-            {/* SOP Table (Revised Columns only display: SOP Code, Title, Version, Status, Author, Actions) */}
-            <div
-              style={{
-                background: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-lg)",
-                overflow: "hidden",
-                boxShadow: "var(--shadow-sm)",
-              }}
-            >
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                    <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 140 }}>SOP Code</th>
-                    <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Title</th>
-                    <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 100 }}>Version</th>
-                    <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 150 }}>Status</th>
-                    <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 160 }}>Author</th>
-                    <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", width: 180 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isSopsLoading ? (
-                    <tr>
-                      <td colSpan={6} style={{ padding: "30px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
-                        Loading SOP data…
-                      </td>
-                    </tr>
-                  ) : paginatedSops.length > 0 ? (
-                    paginatedSops.map((sop) => {
-                      let badgeStyle = { background: "#e0e0e0", color: "#424242" };
-                      const statusUpper = sop.status.toUpperCase();
-                      if (statusUpper === "APPROVED" || statusUpper === "ACTIVE / APPROVED" || statusUpper === "ACTIVE") {
-                        badgeStyle = { background: "#e8f5e9", color: "#2e7d32" };
-                      } else if (statusUpper === "DRAFT") {
-                        badgeStyle = { background: "#e3f2fd", color: "#1565c0" };
-                      } else if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW") {
-                        badgeStyle = { background: "#f3e5f5", color: "#7b1fa2" };
-                      } else if (statusUpper === "SUPERSEDED") {
-                        badgeStyle = { background: "#fff3e0", color: "#e65100" };
-                      } else if (statusUpper === "RETIRED / ARCHIVED" || statusUpper === "RETIRED" || statusUpper === "ARCHIVED") {
-                        badgeStyle = { background: "#ffebee", color: "#c62828" };
-                      }
-                      return (
-                        <tr
-                          key={sop.id}
-                          style={{
-                            borderBottom: "1px solid var(--color-divider)",
-                            transition: "background 0.12s",
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                        >
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)" }}>{sop.code}</td>
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.version}</td>
-                          <td style={{ padding: "12px 16px", fontSize: "10px" }}>
-                            <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, textTransform: "uppercase", ...badgeStyle }}>
-                              {sop.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.author}</td>
-                          <td style={{ padding: "12px 16px", display: "flex", gap: 12, justifyContent: "center", alignItems: "center" }}>
-                            <button
-                              onClick={() => handleViewDetails(sop)}
-                              title="View Details"
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
-                              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                            >
-                              👁️
-                            </button>
-                            <button
-                              onClick={() => handleEdit(sop.code)}
-                              title="Edit"
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
-                              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handlePrintPDF(sop)}
-                              title="Generate PDF"
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
-                              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                            >
-                              📄
-                            </button>
-                            <button
-                              onClick={() => handleShare(sop)}
-                              title="Share"
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
-                              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                            >
-                              🔗
-                            </button>
-                            <button
-                              onClick={() => handleDelete(sop.code)}
-                              title="Delete"
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
-                              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
-                              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                            >
-                              🗑️
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={6} style={{ padding: "30px", textTransform: "uppercase", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "center" }}>
-                        No SOPs found matching current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Footer */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px" }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                Showing {filteredSops.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredSops.length)} of {filteredSops.length} entries
-              </span>
-
-              <div style={{ display: "flex", gap: 4 }}>
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  style={{
-                    padding: "6px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    fontSize: "var(--fs-xs)",
-                    cursor: currentPage === 1 ? "default" : "pointer",
-                    color: currentPage === 1 ? "var(--color-text-faint)" : "var(--color-text)",
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                  }}
-                >
-                  &lt;
-                </button>
-
-                {Array.from({ length: totalPages }).map((_, i) => (
+                {/* Reset Filters Button */}
+                {(searchText || filterTitle !== "All" || filterAuthor !== "All" || filterMethodFamily !== "All" || filterAssayCategory !== "All" || selectedStatus !== "All" || statusFilterCard) && (
                   <button
-                    key={i}
-                    onClick={() => handlePageChange(i + 1)}
+                    onClick={() => {
+                      setSearchText("");
+                      setFilterTitle("All");
+                      setFilterAuthor("All");
+                      setFilterMethodFamily("All");
+                      setFilterAssayCategory("All");
+                      setSelectedStatus("All");
+                      setStatusFilterCard(null);
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      background: "var(--color-primary-soft)",
+                      color: "var(--color-primary)",
+                      border: "none",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+
+              {/* SOP Table (Revised Columns only display: SOP Code, Title, Version, Status, Author, Actions) */}
+              <div
+                style={{
+                  background: "var(--color-surface-2)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-lg)",
+                  overflow: "hidden",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
+                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 140 }}>SOP Code</th>
+                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left" }}>Title</th>
+                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 100 }}>Version</th>
+                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 150 }}>Status</th>
+                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", width: 160 }}>Author</th>
+                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", width: 180 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isSopsLoading ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: "30px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
+                          Loading SOP data…
+                        </td>
+                      </tr>
+                    ) : paginatedSops.length > 0 ? (
+                      paginatedSops.map((sop) => {
+                        let badgeStyle = { background: "#e0e0e0", color: "#424242" };
+                        const statusUpper = sop.status.toUpperCase();
+                        if (statusUpper === "APPROVED" || statusUpper === "ACTIVE / APPROVED" || statusUpper === "ACTIVE") {
+                          badgeStyle = { background: "#e8f5e9", color: "#2e7d32" };
+                        } else if (statusUpper === "DRAFT") {
+                          badgeStyle = { background: "#e3f2fd", color: "#1565c0" };
+                        } else if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW") {
+                          badgeStyle = { background: "#f3e5f5", color: "#7b1fa2" };
+                        } else if (statusUpper === "SUPERSEDED") {
+                          badgeStyle = { background: "#fff3e0", color: "#e65100" };
+                        } else if (statusUpper === "RETIRED / ARCHIVED" || statusUpper === "RETIRED" || statusUpper === "ARCHIVED") {
+                          badgeStyle = { background: "#ffebee", color: "#c62828" };
+                        }
+                        return (
+                          <tr
+                            key={sop.id}
+                            style={{
+                              borderBottom: "1px solid var(--color-divider)",
+                              transition: "background 0.12s",
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          >
+                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)" }}>{sop.code}</td>
+                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
+                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.version}</td>
+                            <td style={{ padding: "12px 16px", fontSize: "10px" }}>
+                              <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, textTransform: "uppercase", ...badgeStyle }}>
+                                {sop.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.author}</td>
+                            <td style={{ padding: "12px 16px", display: "flex", gap: 12, justifyContent: "center", alignItems: "center" }}>
+                              <button
+                                onClick={() => handleViewDetails(sop)}
+                                title="View Details"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                              >
+                                👁️
+                              </button>
+                              <button
+                                onClick={() => handleEdit(sop.code)}
+                                title="Edit"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                              >
+                                ✍️
+                              </button>
+                              <button
+                                onClick={() => handlePrintPDF(sop)}
+                                title="Generate PDF"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                              >
+                                📄
+                              </button>
+                              <button
+                                onClick={() => handleShare(sop)}
+                                title="Share"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                              >
+                                🔗
+                              </button>
+                              <button
+                                onClick={() => handleDelete(sop.code)}
+                                title="Delete"
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16 }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                              >
+                                🗑️
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ padding: "30px", textTransform: "uppercase", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "center" }}>
+                          No SOPs found matching current filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Footer */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px" }}>
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                  Showing {filteredSops.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredSops.length)} of {filteredSops.length} entries
+                </span>
+
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
                     style={{
                       padding: "6px 12px",
                       border: "1px solid var(--color-border)",
                       borderRadius: "var(--radius-sm)",
-                      background: currentPage === i + 1 ? "var(--color-primary)" : "var(--color-surface-2)",
-                      color: currentPage === i + 1 ? "#ffffff" : "var(--color-text)",
+                      background: "var(--color-surface-2)",
                       fontSize: "var(--fs-xs)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      borderColor: currentPage === i + 1 ? "var(--color-primary)" : "var(--color-border)",
+                      cursor: currentPage === 1 ? "default" : "pointer",
+                      color: currentPage === 1 ? "var(--color-text-faint)" : "var(--color-text)",
+                      opacity: currentPage === 1 ? 0.5 : 1,
                     }}
                   >
-                    {i + 1}
+                    &lt;
                   </button>
-                ))}
 
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  style={{
-                    padding: "6px 12px",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    fontSize: "var(--fs-xs)",
-                    cursor: currentPage === totalPages ? "default" : "pointer",
-                    color: currentPage === totalPages ? "var(--color-text-faint)" : "var(--color-text)",
-                    opacity: currentPage === totalPages ? 0.5 : 1,
-                  }}
-                >
-                  &gt;
-                </button>
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i + 1)}
+                      style={{
+                        padding: "6px 12px",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "var(--radius-sm)",
+                        background: currentPage === i + 1 ? "var(--color-primary)" : "var(--color-surface-2)",
+                        color: currentPage === i + 1 ? "#ffffff" : "var(--color-text)",
+                        fontSize: "var(--fs-xs)",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        borderColor: currentPage === i + 1 ? "var(--color-primary)" : "var(--color-border)",
+                      }}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    style={{
+                      padding: "6px 12px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--color-surface-2)",
+                      fontSize: "var(--fs-xs)",
+                      cursor: currentPage === totalPages ? "default" : "pointer",
+                      color: currentPage === totalPages ? "var(--color-text-faint)" : "var(--color-text)",
+                      opacity: currentPage === totalPages ? 0.5 : 1,
+                    }}
+                  >
+                    &gt;
+                  </button>
+                </div>
               </div>
-            </div>
 
-          </div>
+            </div>
+          )}
 
         </div>
       </div>

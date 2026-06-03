@@ -1302,7 +1302,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           onKeyUp={saveSelection}
           onFocus={saveSelection}
           className="rich-editor-content"
-          placeholder={placeholder}
+          {...{ placeholder }}
           style={{
             padding: "10px 14px",
             minHeight: `${rows * 22}px`,
