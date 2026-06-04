@@ -41,6 +41,7 @@ interface RequestReferenceRow {
 
 export default function RequestsPage() {
   const user = useAuth((state) => state.user);
+  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
   const { data: persistedRequests, refetch: refetchPersistedRequests } = useQuery({
@@ -83,7 +84,7 @@ export default function RequestsPage() {
 
   // no status badges here anymore; requests are submitted for review
 
-  const inventoryReferenceRows = React.useMemo(() => {
+  const inventoryReferenceRows = React.useMemo<RequestReferenceRow[]>(() => {
     return (data?.data ?? []).map((item, index) => {
       const quantity = Number(item.quantity ?? 0);
       const minThreshold = Number(item.minThreshold ?? 0);
@@ -231,6 +232,53 @@ export default function RequestsPage() {
     });
   }, [inventoryReferenceRows, referenceDecisionOrder, referenceRows]);
 
+  const [requestSearch, setRequestSearch] = React.useState("");
+  const [requestStatusFilter, setRequestStatusFilter] = React.useState("ALL");
+  const [requestPage, setRequestPage] = React.useState(1);
+  const [requestPageSize, setRequestPageSize] = React.useState(25);
+
+  const filteredRequests = React.useMemo(() => {
+    return orderedReferenceRows.filter((row) => {
+      // Status filter
+      const status = (referenceStatuses[String(row.rowKey)] as string) ?? row.status ?? "PENDING";
+      const normalizedStatus = status === "ACCEPT" ? "APPROVED" : status;
+      if (requestStatusFilter !== "ALL" && normalizedStatus !== requestStatusFilter) {
+        return false;
+      }
+
+      // Search filter
+      const term = requestSearch.toLowerCase().trim();
+      if (!term) return true;
+
+      const trackingId = String(row.requestBatchId ?? row.movementId ?? row.rowKey).toLowerCase();
+      const desc = String(row.itemDescription).toLowerCase();
+      const code = String(row.codeNo).toLowerCase();
+      const reqBy = String(row.requestedBy).toLowerCase();
+      const proj = String(row.project).toLowerCase();
+
+      return (
+        trackingId.includes(term) ||
+        desc.includes(term) ||
+        code.includes(term) ||
+        reqBy.includes(term) ||
+        proj.includes(term)
+      );
+    });
+  }, [orderedReferenceRows, referenceStatuses, requestSearch, requestStatusFilter]);
+
+  const paginatedRequests = React.useMemo(() => {
+    const start = (requestPage - 1) * requestPageSize;
+    return filteredRequests.slice(start, start + requestPageSize);
+  }, [filteredRequests, requestPage, requestPageSize]);
+
+  const requestTotalPages = Math.max(1, Math.ceil(filteredRequests.length / requestPageSize));
+
+  React.useEffect(() => {
+    if (requestPage > requestTotalPages) {
+      setRequestPage(requestTotalPages);
+    }
+  }, [requestPage, requestTotalPages]);
+
   const saveDecisionMutation = useMutation({
     mutationFn: async () => {
       if (!activeLog) {
@@ -324,7 +372,7 @@ export default function RequestsPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100}}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Request</div>
 
         {feedback && (
@@ -428,8 +476,8 @@ export default function RequestsPage() {
           </div>
           <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Validation</div>
-            <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b91c1c" : "#166534", fontWeight: 700 }}>
-              {!selectedItem ? "Select item" : requestQty > currentQty ? "Exceeds stock" : "Valid"}
+            <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b45309" : "#166534", fontWeight: 700 }}>
+              {!selectedItem ? "Select item" : requestQty > currentQty ? "⚠ Exceeds stock" : "Valid"}
             </div>
           </div>
         </div>
@@ -448,7 +496,7 @@ export default function RequestsPage() {
                 setFeedback(null);
                 if (!selectedItem?.id) return setFeedback({ type: 'error', message: 'Select an item first.' });
                 if (!Number.isFinite(requestQty) || requestQty <= 0) return setFeedback({ type: 'error', message: 'Quantity must be > 0.' });
-                if (requestQty > currentQty) return setFeedback({ type: 'error', message: 'Quantity exceeds current stock.' });
+                // Allow requests exceeding current stock — Project Manager will decide
                 const sid = selectedItem.id as string;
                 const sSku = selectedItem.sku ?? "";
                 const sName = selectedItem.name ?? "";
@@ -608,7 +656,7 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100 }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Request Activity (Session)</div>
         {(() => {
           const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
@@ -693,6 +741,7 @@ export default function RequestsPage() {
                       <td style={{ padding: 8 }}>
                         <select
                           value={it.status}
+                          disabled={!isAdmin}
                           onChange={(e) => {
                             const nextStatus = e.target.value as "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL";
                             setModalItems((prev) => {
@@ -715,6 +764,7 @@ export default function RequestsPage() {
                             fontWeight: 700,
                             background: it.status === "ACCEPT" ? "#dcfce7" : it.status === "REJECT" ? "#fee2e2" : it.status === "PARTIAL" ? "#fff7ed" : "#f3f4f6",
                             color: it.status === "ACCEPT" ? "#166534" : it.status === "REJECT" ? "#991b1b" : it.status === "PARTIAL" ? "#9a3412" : "#374151",
+                            cursor: !isAdmin ? "not-allowed" : "default",
                           }}
                         >
                           <option value="PENDING">Pending</option>
@@ -725,7 +775,7 @@ export default function RequestsPage() {
                       </td>
                       <td style={{ padding: 8 }}>
                         {it.status === "PARTIAL" ? (
-                          <input type="number" value={it.acceptedQuantity ?? 0} min={0} max={it.quantity} onChange={(e) => setModalItems((prev) => { const n = [...prev]; n[idx] = { ...n[idx], acceptedQuantity: Math.max(0, Math.min(it.quantity, Number(e.target.value) || 0)) }; return n; })} style={{ width: 100, padding: 6 }} />
+                          <input type="number" value={it.acceptedQuantity ?? 0} min={0} max={it.quantity} disabled={!isAdmin} onChange={(e) => setModalItems((prev) => { const n = [...prev]; n[idx] = { ...n[idx], acceptedQuantity: Math.max(0, Math.min(it.quantity, Number(e.target.value) || 0)) }; return n; })} style={{ width: 100, padding: 6 }} />
                         ) : (
                           <div>{it.acceptedQuantity ?? (it.status === "REJECT" ? 0 : it.quantity)}</div>
                         )}
@@ -738,18 +788,85 @@ export default function RequestsPage() {
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
               <button onClick={() => { setModalOpen(false); setActiveLog(null); }} style={{ padding: "8px 12px" }}>Close</button>
-              <button onClick={() => saveDecisionMutation.mutate()} disabled={saveDecisionMutation.isPending} style={{ padding: "8px 12px", background: "var(--color-primary)", color: "#fff", borderRadius: 6, opacity: saveDecisionMutation.isPending ? 0.7 : 1 }}>Save decisions</button>
+              {isAdmin && (
+                <button onClick={() => saveDecisionMutation.mutate()} disabled={saveDecisionMutation.isPending} style={{ padding: "8px 12px", background: "var(--color-primary)", color: "#fff", borderRadius: 6, opacity: saveDecisionMutation.isPending ? 0.7 : 1 }}>Save decisions</button>
+              )}
             </div>
           </div>
         </div>
       )}
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Request/s Reference Table</div>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Request/s Reference Table</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <input
+              value={requestSearch}
+              onChange={(e) => {
+                setRequestSearch(e.target.value);
+                setRequestPage(1);
+              }}
+              placeholder="Search by Tracking ID, Item, Requested By, Project..."
+              style={{
+                minWidth: 300,
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+              }}
+            />
+            <select
+              value={requestStatusFilter}
+              onChange={(e) => {
+                setRequestStatusFilter(e.target.value);
+                setRequestPage(1);
+              }}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 600,
+              }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">PENDING</option>
+              <option value="APPROVED">APPROVED</option>
+              <option value="PARTIAL">PARTIAL</option>
+              <option value="REJECTED">REJECTED</option>
+            </select>
+            <select
+              value={String(requestPageSize)}
+              onChange={(e) => {
+                setRequestPageSize(Number(e.target.value));
+                setRequestPage(1);
+              }}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+              }}
+            >
+              <option value="10">10 / page</option>
+              <option value="25">25 / page</option>
+              <option value="50">50 / page</option>
+              <option value="100">100 / page</option>
+            </select>
+          </div>
+        </div>
+
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1500 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Tracking ID</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Code_No</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Barcode</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item_Description</th>
@@ -767,31 +884,34 @@ export default function RequestsPage() {
                 </tr>
             </thead>
             <tbody>
-              {orderedReferenceRows.length === 0 ? (
+              {paginatedRequests.length === 0 ? (
                 <tr>
-                    <td colSpan={14} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    No records available.
+                    <td colSpan={15} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textAlign: "center" }}>
+                    No matching records available.
                   </td>
                 </tr>
               ) : (
-                orderedReferenceRows.map((row, index) => {
+                paginatedRequests.map((row, index) => {
                   const cellStyle: React.CSSProperties = { padding: "0 8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
                   const truncCell = (maxW: number): React.CSSProperties => ({ ...cellStyle, maxWidth: maxW });
+                  const s = (v: unknown) => (v == null ? "" : String(v));
+                  const fullTrackingId = row.requestBatchId ?? row.movementId ?? row.rowKey;
                   return (
                     <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 40, maxHeight: 40 }}>
-                      <td style={cellStyle} title={row.codeNo}>{row.codeNo}</td>
-                      <td style={cellStyle} title={row.barcode}>{row.barcode}</td>
-                      <td style={truncCell(200)} title={row.itemDescription}>{row.itemDescription}</td>
-                      <td style={cellStyle} title={String(row.quantity)}>{row.quantity}</td>
-                      <td style={cellStyle} title={row.unit}>{row.unit}</td>
-                      <td style={truncCell(160)} title={row.unitDescription}>{row.unitDescription}</td>
-                      <td style={cellStyle} title={row.category}>{row.category}</td>
-                      <td style={cellStyle} title={row.dateRequested}>{row.dateRequested}</td>
-                      <td style={truncCell(160)} title={row.requestedBy}>{row.requestedBy}</td>
-                      <td style={truncCell(160)} title={row.requestedFor}>{row.requestedFor}</td>
-                      <td style={truncCell(160)} title={row.project}>{row.project}</td>
-                      <td style={cellStyle} title={row.team}>{row.team}</td>
-                      <td style={truncCell(160)} title={row.remark}>{row.remark}</td>
+                      <td style={{ ...cellStyle, fontWeight: 700 }} title={s(fullTrackingId)}>{s(fullTrackingId).slice(-8).toUpperCase()}</td>
+                      <td style={cellStyle} title={s(row.codeNo)}>{s(row.codeNo)}</td>
+                      <td style={cellStyle} title={s(row.barcode)}>{s(row.barcode)}</td>
+                      <td style={truncCell(200)} title={s(row.itemDescription)}>{s(row.itemDescription)}</td>
+                      <td style={cellStyle} title={s(row.quantity)}>{s(row.quantity)}</td>
+                      <td style={cellStyle} title={s(row.unit)}>{s(row.unit)}</td>
+                      <td style={truncCell(160)} title={s(row.unitDescription)}>{s(row.unitDescription)}</td>
+                      <td style={cellStyle} title={s(row.category)}>{s(row.category)}</td>
+                      <td style={cellStyle} title={s(row.dateRequested)}>{s(row.dateRequested)}</td>
+                      <td style={truncCell(160)} title={s(row.requestedBy)}>{s(row.requestedBy)}</td>
+                      <td style={truncCell(160)} title={s(row.requestedFor)}>{s(row.requestedFor)}</td>
+                      <td style={truncCell(160)} title={s(row.project)}>{s(row.project)}</td>
+                      <td style={cellStyle} title={s(row.team)}>{s(row.team)}</td>
+                      <td style={truncCell(160)} title={s(row.remark)}>{s(row.remark)}</td>
                       <td style={{ padding: "0 8px", fontSize: "var(--fs-xs)", minWidth: 130, whiteSpace: "nowrap" }}>
                         <div
                           style={{
@@ -817,6 +937,46 @@ export default function RequestsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            Page {requestPage} of {requestTotalPages} (total records: {filteredRequests.length})
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setRequestPage((p) => Math.max(1, p - 1))}
+              disabled={requestPage <= 1}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: requestPage <= 1 ? "var(--color-surface)" : "var(--color-surface-2)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+                cursor: requestPage <= 1 ? "not-allowed" : "pointer",
+              }}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setRequestPage((p) => Math.min(requestTotalPages, p + 1))}
+              disabled={requestPage >= requestTotalPages}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: requestPage >= requestTotalPages ? "var(--color-surface)" : "var(--color-surface-2)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+                cursor: requestPage >= requestTotalPages ? "not-allowed" : "pointer",
+              }}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

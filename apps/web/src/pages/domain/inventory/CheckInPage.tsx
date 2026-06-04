@@ -1,18 +1,9 @@
 import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 
 type CheckInMode = "existing" | "new";
-
-interface CheckInLogEntry {
-  id: string;
-  timestamp: string;
-  dateReceived: string;
-  itemLabel: string;
-  quantity: number;
-  mode: CheckInMode;
-}
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -49,7 +40,17 @@ export default function CheckInPage() {
   const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [logs, setLogs] = React.useState<CheckInLogEntry[]>([]);
+
+  const { data: checkInMovementsData } = useQuery({
+    queryKey: ["inventory-checkin-movements"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/movements", {
+        params: { type: "CHECK_IN", limit: 50 },
+      });
+      return resp.data as { data: any[]; total: number };
+    },
+  });
+
   const itemInputRef = React.useRef<HTMLInputElement | null>(null);
   const [itemMenuOpen, setItemMenuOpen] = React.useState(false);
   const [itemActiveIndex, setItemActiveIndex] = React.useState(0);
@@ -254,10 +255,6 @@ export default function CheckInPage() {
           throw new Error("Check-in quantity must be greater than zero.");
         }
 
-        if (selectedItem && checkInQty > selectedItemQuantity) {
-          throw new Error("Quantity cannot exceed current available stock.");
-        }
-
         const nextQuantity = Number(selectedItem.quantity ?? 0) + checkInQty;
         await apiClient.patch(`/domains/inventory/${selectedItem.id}`, {
           quantity: nextQuantity,
@@ -320,17 +317,8 @@ export default function CheckInPage() {
         message: `${result.mode === "existing" ? "Checked in" : "Created and checked in"} ${result.quantity} unit(s) for ${result.itemLabel}.`,
       });
 
-      setLogs((prev) => [
-        {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: new Date().toISOString(),
-          dateReceived,
-          itemLabel: result.itemLabel,
-          quantity: result.quantity,
-          mode: result.mode,
-        },
-        ...prev,
-      ].slice(0, 8));
+      await queryClient.invalidateQueries({ queryKey: ["inventory-checkin-movements"] });
+
 
       if (result.mode === "existing") {
         setCheckInQty(1);
@@ -472,15 +460,10 @@ export default function CheckInPage() {
               <input
                 type="number"
                 min={1}
-                max={selectedItem ? selectedItemQuantity : undefined}
                 value={checkInQty}
                 onChange={(e) => {
                   const v = Number(e.target.value) || 0;
-                  if (selectedItem) {
-                    setCheckInQty(Math.min(v, selectedItemQuantity));
-                  } else {
-                    setCheckInQty(v);
-                  }
+                  setCheckInQty(Math.max(0, v));
                 }}
                 style={inputStyle}
               />
@@ -630,28 +613,28 @@ export default function CheckInPage() {
       </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Check-In Activity (Session)</div>
-        {logs.length === 0 ? (
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No check-in actions recorded yet in this session.</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Check-In Activity</div>
+        {(!checkInMovementsData || checkInMovementsData.data.length === 0) ? (
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No check-in actions recorded yet.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date_Received</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date Received</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Mode</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
                 </tr>
               </thead>
               <tbody>
-                {logs.map((entry) => (
+                {checkInMovementsData.data.slice(0, 8).map((entry) => (
                   <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.dateReceived).toLocaleDateString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.mode === "existing" ? "Existing" : "New"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.createdAt).toLocaleString()}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.occurredAt).toLocaleDateString()}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.remark && entry.remark.includes("Opening stock") ? "New" : "Existing"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${entry.stockItem?.sku ?? ""} - ${entry.stockItem?.name ?? ""}`}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
                   </tr>
                 ))}
@@ -662,7 +645,7 @@ export default function CheckInPage() {
       </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Check-In Reference Table</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Check-In Reference Table (History)</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -681,26 +664,26 @@ export default function CheckInPage() {
               </tr>
             </thead>
             <tbody>
-              {inventoryReferenceRows.length === 0 ? (
+              {!checkInMovementsData || checkInMovementsData.data.length === 0 ? (
                 <tr>
                   <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    No records available.
+                    No check-in history records available.
                   </td>
                 </tr>
               ) : (
-                inventoryReferenceRows.map((row, index) => (
-                  <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.codeNo}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.barcode}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.itemDescription}</td>
+                checkInMovementsData.data.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.name ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unit}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unitDescription}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.category}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.project}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.dateReceived}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.expiryDate}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.unit ?? "units"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${row.stockItem?.unit ?? "units"} per pack`}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.category ?? "General"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(row.occurredAt).toLocaleDateString()}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.expiryDate ? new Date(row.stockItem.expiryDate).toLocaleDateString() : "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark ?? "—"}</td>
                   </tr>
                 ))
               )}

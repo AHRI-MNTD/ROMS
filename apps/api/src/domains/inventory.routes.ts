@@ -1,10 +1,11 @@
 import { Router, Request, Response } from "express";
 import prisma from "@roms/db";
 import { randomUUID } from "node:crypto";
-import { requireAuth, requirePermission } from "../auth/auth.middleware";
+import { requireAuth, requirePermission, requireRole } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
-import { CreateStockItemSchema } from "@roms/shared";
+import { CreateStockItemSchema, Role } from "@roms/shared";
 import { logger } from "../utils/logger";
+import { GoogleSheetsSyncService } from "../services/googleSheets.service";
 
 type InventoryMasterDataRecord = {
   category: string;
@@ -197,6 +198,64 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
   res.json({ projects });
 });
 
+// POST /master-data - add a new master data record
+router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const { category, unit, project, staff } = req.body;
+  if (!category || !unit) {
+    return res.status(400).json({ error: "category and unit are required fields." });
+  }
+
+  const record = await prisma.inventoryMasterData.create({
+    data: {
+      category: String(category).trim(),
+      unit: String(unit).trim(),
+      project: project ? String(project).trim() : null,
+      staff: staff ? String(staff).trim() : null,
+    },
+  });
+
+  res.status(201).json(record);
+});
+
+// PUT /master-data/:id - update an existing master data record
+router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { category, unit, project, staff } = req.body;
+
+  if (!category || !unit) {
+    return res.status(400).json({ error: "category and unit are required fields." });
+  }
+
+  try {
+    const record = await prisma.inventoryMasterData.update({
+      where: { id },
+      data: {
+        category: String(category).trim(),
+        unit: String(unit).trim(),
+        project: project ? String(project).trim() : null,
+        staff: staff ? String(staff).trim() : null,
+      },
+    });
+    res.json(record);
+  } catch (error) {
+    res.status(404).json({ error: "Master data record not found." });
+  }
+});
+
+// DELETE /master-data/:id - delete a master data record
+router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.inventoryMasterData.delete({
+      where: { id },
+    });
+    res.json({ success: true, message: "Record deleted successfully." });
+  } catch (error) {
+    res.status(404).json({ error: "Master data record not found." });
+  }
+});
+
 router.get("/requests", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
   const movements = await prisma.inventoryMovement.findMany({
     where: { movementType: "CHECK_OUT" },
@@ -217,6 +276,30 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
 
   res.json({ data, total: data.length });
 });
+
+router.get("/movements", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
+  const type = req.query.type as string;
+  const limit = parseInt(req.query.limit as string) || 100;
+  
+  const where: any = {};
+  if (type === "CHECK_IN" || type === "CHECK_OUT") {
+    where.movementType = type;
+  }
+  
+  const data = await prisma.inventoryMovement.findMany({
+    where,
+    take: limit,
+    include: {
+      stockItem: {
+        select: { id: true, sku: true, name: true, unit: true, category: true },
+      },
+    },
+    orderBy: { occurredAt: "desc" },
+  });
+  
+  res.json({ data, total: data.length });
+});
+
 
 router.post("/requests", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
@@ -291,7 +374,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
   }
 });
 
-router.post("/request-decisions", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   if (items.length === 0) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
@@ -557,13 +640,32 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
   });
 });
 
+// POST /google-sheets/sync - Sync inventory with Google Sheets
+router.post("/google-sheets/sync", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req, res) => {
+  try {
+    const result = await GoogleSheetsSyncService.pullStockItems(prisma);
+    res.json({
+      success: true,
+      message: `Successfully synchronized inventory from Google Sheets.`,
+      importedCount: result.imported,
+      source: result.source,
+    });
+  } catch (error: any) {
+    logger.error(error);
+    res.status(500).json({
+      code: "SYNC_ERROR",
+      message: error.message || "Failed to sync with Google Sheets.",
+    });
+  }
+});
+
 router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req, res) => {
   const item = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
   if (!item) { res.status(404).json({ code: "NOT_FOUND" }); return; }
   res.json(item);
 });
 
-router.post("/", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "CREATE"), async (req, res) => {
+router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), auditMutation("StockItem", "CREATE"), async (req, res) => {
   const parsed = CreateStockItemSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
   const { dateReceived: parsedDateReceived, ...stockItemData } = parsed.data;
@@ -577,7 +679,7 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
     }
   }
   try {
-    const item = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const movementTx = tx as typeof tx & InventoryMovementPrisma;
       const createdItem = await tx.stockItem.create({
         data: {
@@ -587,7 +689,7 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
           balancePercent: Number(parsed.data.quantity ?? 0) > 0 ? 100 : 0,
         } as never,
       });
-      await movementTx.inventoryMovement.create({
+      const movement = await movementTx.inventoryMovement.create({
         data: {
           stockItemId: createdItem.id,
           movementType: "CHECK_IN",
@@ -599,18 +701,172 @@ router.post("/", requireAuth, requirePermission("inventory:write"), auditMutatio
           occurredAt: parsedDateReceived ?? new Date(),
         },
       });
-      return createdItem;
+      return { createdItem, movement };
     });
-    res.status(201).json(item);
+
+    // Non-blocking Google Sheets sync in background
+    GoogleSheetsSyncService.syncStockItem({
+      sku: result.createdItem.sku,
+      name: result.createdItem.name,
+      category: result.createdItem.category,
+      unit: result.createdItem.unit,
+      quantity: result.createdItem.quantity,
+      minThreshold: result.createdItem.minThreshold,
+      checkInTotal: result.createdItem.checkInTotal,
+      checkOutTotal: result.createdItem.checkOutTotal,
+    });
+
+    GoogleSheetsSyncService.syncMovement({
+      id: result.movement.id,
+      stockItemSku: result.createdItem.sku,
+      stockItemName: result.createdItem.name,
+      movementType: "CHECK_IN",
+      quantity: result.movement.quantity,
+      requestedBy: result.movement.requestedBy,
+      projectFor: result.movement.projectFor,
+      status: result.movement.status,
+      remark: result.movement.remark,
+      occurredAt: result.movement.occurredAt,
+    });
+
+    res.status(201).json(result.createdItem);
   } catch (err) {
     logger.error(err);
     res.status(500).json({ code: "INTERNAL_ERROR" });
   }
 });
 
-router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "UPDATE"), async (req, res) => {
+router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+  const { items } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "items array is required and must not be empty." });
+  }
+
   try {
-    const item = await prisma.$transaction(async (tx) => {
+    const results = await prisma.$transaction(async (tx) => {
+      const movementTx = tx as typeof tx & InventoryMovementPrisma;
+      const updatedItems = [];
+      const createdMovements = [];
+
+      for (const cartItem of items) {
+        const { stockItemId, quantity, projectFor, requestedBy: staffName, remark } = cartItem;
+        if (!stockItemId || !quantity || quantity <= 0) {
+          throw new Error(`INVALID_ITEM_PARAMS:${stockItemId}`);
+        }
+
+        const existing = await tx.stockItem.findUnique({ where: { id: stockItemId } });
+        if (!existing) {
+          throw new Error(`ITEM_NOT_FOUND:${stockItemId}`);
+        }
+
+        const currentQty = Number(existing.quantity ?? 0);
+        if (quantity > currentQty) {
+          throw new Error(`INSUFFICIENT_STOCK:${existing.name}`);
+        }
+
+        const nextQuantity = currentQty - quantity;
+        const nextCheckOutTotal = Number(existing.checkOutTotal ?? 0) + quantity;
+        const nextCheckInTotal = Number(existing.checkInTotal ?? 0);
+        const nextBalancePercent = nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0;
+
+        const updated = await tx.stockItem.update({
+          where: { id: stockItemId },
+          data: {
+            quantity: nextQuantity,
+            checkOutTotal: nextCheckOutTotal,
+            balancePercent: nextBalancePercent,
+          },
+        });
+
+        const movement = await movementTx.inventoryMovement.create({
+          data: {
+            stockItemId: updated.id,
+            movementType: "CHECK_OUT",
+            quantity: quantity,
+            requestedBy: req.user?.email ?? null,
+            destination: String(projectFor ?? "ROMS Inventory"),
+            recipient: String(staffName ?? "").trim() || null,
+            projectFor: String(projectFor ?? "ROMS Inventory"),
+            status: "APPROVED",
+            remark: String(remark ?? "Bulk checkout"),
+            occurredAt: new Date(),
+          },
+        });
+
+        updatedItems.push(updated);
+        createdMovements.push({ ...movement, stockItem: updated });
+      }
+      return { updatedItems, createdMovements };
+    });
+
+    // Sync to Google Sheets asynchronously in background
+    results.createdMovements.forEach((mov) => {
+      GoogleSheetsSyncService.syncStockItem({
+        sku: mov.stockItem.sku,
+        name: mov.stockItem.name,
+        category: mov.stockItem.category,
+        unit: mov.stockItem.unit,
+        quantity: mov.stockItem.quantity,
+        minThreshold: mov.stockItem.minThreshold,
+        checkInTotal: mov.stockItem.checkInTotal,
+        checkOutTotal: mov.stockItem.checkOutTotal,
+      });
+
+      GoogleSheetsSyncService.syncMovement({
+        id: mov.id,
+        stockItemSku: mov.stockItem.sku,
+        stockItemName: mov.stockItem.name,
+        movementType: "CHECK_OUT",
+        quantity: mov.quantity,
+        requestedBy: mov.requestedBy,
+        projectFor: mov.projectFor,
+        status: mov.status,
+        remark: mov.remark,
+        occurredAt: mov.occurredAt,
+      });
+    });
+
+    res.json({ success: true, updatedItems: results.updatedItems });
+  } catch (error: any) {
+    logger.error(error);
+    const message = error.message || "";
+    if (message.startsWith("INSUFFICIENT_STOCK:")) {
+      return res.status(400).json({ error: `Insufficient stock for ${message.split(":")[1]}.` });
+    }
+    if (message.startsWith("ITEM_NOT_FOUND:")) {
+      return res.status(404).json({ error: "One or more items in the batch could not be found." });
+    }
+    res.status(500).json({ error: "Bulk checkout transaction failed." });
+  }
+});
+
+router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "UPDATE"), async (req, res) => {
+  // Enforce role-based access for administrative updates (Check-In or detail edits)
+  const isAdmin = req.user?.roles.some(r => r === Role.ADMIN || r === Role.RESEARCH_ADMIN) ?? false;
+  if (!isAdmin) {
+    const existing = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      res.status(404).json({ code: "NOT_FOUND" });
+      return;
+    }
+    const bodyQty = req.body.quantity !== undefined ? Number(req.body.quantity) : undefined;
+    const hasMetadataChanges = 
+      req.body.sku !== undefined ||
+      req.body.name !== undefined ||
+      req.body.category !== undefined ||
+      req.body.unit !== undefined ||
+      req.body.minThreshold !== undefined ||
+      req.body.lotNumber !== undefined;
+      
+    const isIncreasingQty = bodyQty !== undefined && bodyQty > Number(existing.quantity ?? 0);
+
+    if (hasMetadataChanges || isIncreasingQty) {
+      res.status(403).json({ code: "FORBIDDEN", message: "Insufficient permissions for administrative modifications." });
+      return;
+    }
+  }
+  try {
+    const result = await prisma.$transaction(async (tx) => {
       const movementTx = tx as typeof tx & InventoryMovementPrisma;
       const existing = await tx.stockItem.findUnique({ where: { id: req.params.id } });
       if (!existing) {
@@ -662,8 +918,9 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
 
       const updated = await tx.stockItem.update({ where: { id: req.params.id }, data: stockUpdate });
 
+      let createdMovement = null;
       if (difference !== 0) {
-        await movementTx.inventoryMovement.create({
+        createdMovement = await movementTx.inventoryMovement.create({
           data: {
             stockItemId: updated.id,
             movementType: difference > 0 ? "CHECK_IN" : "CHECK_OUT",
@@ -679,15 +936,42 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
         });
       }
 
-      return updated;
+      return { updated, createdMovement };
     });
 
-    if (!item) {
+    if (!result) {
       res.status(404).json({ code: "NOT_FOUND" });
       return;
     }
 
-    res.json(item);
+    // Sync to Google Sheets asynchronously in background
+    GoogleSheetsSyncService.syncStockItem({
+      sku: result.updated.sku,
+      name: result.updated.name,
+      category: result.updated.category,
+      unit: result.updated.unit,
+      quantity: result.updated.quantity,
+      minThreshold: result.updated.minThreshold,
+      checkInTotal: result.updated.checkInTotal,
+      checkOutTotal: result.updated.checkOutTotal,
+    });
+
+    if (result.createdMovement) {
+      GoogleSheetsSyncService.syncMovement({
+        id: result.createdMovement.id,
+        stockItemSku: result.updated.sku,
+        stockItemName: result.updated.name,
+        movementType: result.createdMovement.movementType,
+        quantity: result.createdMovement.quantity,
+        requestedBy: result.createdMovement.requestedBy,
+        projectFor: result.createdMovement.projectFor,
+        status: result.createdMovement.status,
+        remark: result.createdMovement.remark,
+        occurredAt: result.createdMovement.occurredAt,
+      });
+    }
+
+    res.json(result.updated);
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_PROJECT") {
       res.status(400).json({ code: "INVALID_PROJECT", message: "projectFor must exist in inventory master data" });
@@ -698,7 +982,7 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
   }
 });
 
-router.delete("/:id", requireAuth, requirePermission("inventory:delete"), auditMutation("StockItem", "DELETE"), async (req, res) => {
+router.delete("/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), auditMutation("StockItem", "DELETE"), async (req, res) => {
   await prisma.stockItem.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
 });

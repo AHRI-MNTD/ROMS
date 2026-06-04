@@ -1,38 +1,83 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useInventoryData } from "./useInventoryData";
+import { useAuth } from "../../../auth/useAuth";
+import { apiClient } from "../../../api/client";
 
 type StockFilter = "all" | "low" | "out" | "healthy";
 
 export default function CurrentInventoryPage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
+
   const [searchTerm, setSearchTerm] = React.useState("");
   const [stockFilter, setStockFilter] = React.useState<StockFilter>("all");
+  const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  const handleSyncGoogleSheets = async () => {
+    setIsSyncing(true);
+    try {
+      const resp = await apiClient.post<{ message?: string }>("/domains/inventory/google-sheets/sync", {});
+      alert(resp.data.message || "Successfully synchronized inventory with Google Sheets!");
+      await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+    } catch (err: any) {
+      alert(err.message || "Failed to synchronize with Google Sheets.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const { data, isLoading, error, isFetching } = useInventoryData({ page, pageSize });
   const { data: allInventoryData } = useInventoryData({ all: true });
 
+  // Extract unique categories dynamically from all available inventory items
+  const categories = React.useMemo(() => {
+    const uniqueCats = new Set<string>();
+    (allInventoryData?.data ?? []).forEach((row) => {
+      const cat = row.category ?? "General";
+      if (cat) uniqueCats.add(cat);
+    });
+    return Array.from(uniqueCats).sort();
+  }, [allInventoryData?.data]);
+
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredRows = (data?.data ?? []).filter((row) => {
+  
+  // Use allInventoryData for filtering when filters are active to search across all data
+  const isFilteringActive = stockFilter !== "all" || categoryFilter !== "all" || normalizedSearch.length > 0;
+  const sourceRows = isFilteringActive ? (allInventoryData?.data ?? []) : (data?.data ?? []);
+  
+  const filteredRows = sourceRows.filter((row) => {
     const quantity = Number(row.quantity ?? 0);
     const minThreshold = Number(row.minThreshold ?? 0);
     const isOut = quantity <= 0;
     const isLow = quantity > 0 && quantity <= minThreshold;
     const isHealthy = quantity > minThreshold;
+    const rowCategory = row.category ?? "General";
 
+    // Category Filter
+    if (categoryFilter !== "all" && rowCategory.toLowerCase() !== categoryFilter.toLowerCase()) {
+      return false;
+    }
+
+    // Search Filter
     const matchesSearch =
       !normalizedSearch ||
       String(row.sourceCode ?? "").toLowerCase().includes(normalizedSearch) ||
       String(row.sku ?? "").toLowerCase().includes(normalizedSearch) ||
       String(row.name ?? "").toLowerCase().includes(normalizedSearch) ||
-      String(row.category ?? "").toLowerCase().includes(normalizedSearch) ||
+      String(rowCategory).toLowerCase().includes(normalizedSearch) ||
       String(row.unit ?? "").toLowerCase().includes(normalizedSearch);
 
     if (!matchesSearch) {
       return false;
     }
 
+    // Stock Filter
     if (stockFilter === "out") {
       return isOut;
     }
@@ -54,7 +99,17 @@ export default function CurrentInventoryPage() {
 
   const outOfStockCount = inventoryRows.filter((row) => Number(row.quantity ?? 0) <= 0).length;
   const totalStock = inventoryRows.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / pageSize));
+  
+  // When active filtering is used, paginate on the client. Otherwise, use backend pagination count.
+  const displayTotal = isFilteringActive ? filteredRows.length : (data?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(displayTotal / pageSize));
+
+  // Sliced rows for UI display
+  const paginatedRows = React.useMemo(() => {
+    if (!isFilteringActive) return filteredRows; // already page-sliced by the backend hook
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, isFilteringActive, page, pageSize]);
 
   React.useEffect(() => {
     if (page > totalPages) {
@@ -64,7 +119,76 @@ export default function CurrentInventoryPage() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [pageSize]);
+  }, [pageSize, searchTerm, stockFilter, categoryFilter]);
+
+  const handleExportCSV = () => {
+    // We export all matches of the current filter criteria across the entire database
+    const exportRows = allInventoryData?.data ? allInventoryData.data.filter((row) => {
+      const quantity = Number(row.quantity ?? 0);
+      const minThreshold = Number(row.minThreshold ?? 0);
+      const isOut = quantity <= 0;
+      const isLow = quantity > 0 && quantity <= minThreshold;
+      const isHealthy = quantity > minThreshold;
+      const rowCategory = row.category ?? "General";
+
+      if (categoryFilter !== "all" && rowCategory.toLowerCase() !== categoryFilter.toLowerCase()) {
+        return false;
+      }
+
+      const matchesSearch =
+        !normalizedSearch ||
+        String(row.sourceCode ?? "").toLowerCase().includes(normalizedSearch) ||
+        String(row.sku ?? "").toLowerCase().includes(normalizedSearch) ||
+        String(row.name ?? "").toLowerCase().includes(normalizedSearch) ||
+        String(rowCategory).toLowerCase().includes(normalizedSearch) ||
+        String(row.unit ?? "").toLowerCase().includes(normalizedSearch);
+
+      if (!matchesSearch) return false;
+      if (stockFilter === "out") return isOut;
+      if (stockFilter === "low") return isLow;
+      if (stockFilter === "healthy") return isHealthy;
+      return true;
+    }) : [];
+
+    if (exportRows.length === 0) {
+      alert("No data matched current filters for export.");
+      return;
+    }
+
+    const headers = ["Code / SKU", "Description", "Category", "Unit", "Check-In Total", "Check-Out Total", "Current Quantity", "Min Threshold", "Status"];
+    const csvRows = [
+      headers.join(","),
+      ...exportRows.map((row) => {
+        const qty = Number(row.quantity ?? 0);
+        const minT = Number(row.minThreshold ?? 0);
+        const checkOut = Number(row.checkOutTotal ?? 0);
+        const checkIn = Number(row.checkInTotal ?? qty + checkOut);
+        const status = qty <= 0 ? "Out of Stock" : qty <= minT ? "Low Stock" : "Healthy";
+
+        return [
+          `"${String(row.sourceCode ?? row.sku ?? "—").replace(/"/g, '""')}"`,
+          `"${String(row.name ?? "—").replace(/"/g, '""')}"`,
+          `"${String(row.category ?? "General").replace(/"/g, '""')}"`,
+          `"${String(row.unit ?? "—").replace(/"/g, '""')}"`,
+          checkIn,
+          checkOut,
+          qty,
+          minT,
+          `"${status}"`
+        ].join(",");
+      })
+    ];
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `roms_inventory_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const quickLinkStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.18)",
@@ -151,18 +275,13 @@ export default function CurrentInventoryPage() {
               <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "38px", lineHeight: 1.03, color: "var(--color-text)" }}>
                 Current inventory
               </h2>
-              
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>
-              <Link to="../check-out" style={quickLinkStyle}>- Check Out</Link>
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
             <div style={heroStatStyle("#01696f")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Items on page</div>
-              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{data?.data.length ?? 0}</div>
+              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Items matching</div>
+              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{displayTotal}</div>
             </div>
             <div style={heroStatStyle("#b45309")}>
               <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Low stock</div>
@@ -183,11 +302,46 @@ export default function CurrentInventoryPage() {
       <div style={{ ...panelStyle, padding: 14 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>
+            {isAdmin && <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>}
             <Link to="../check-out" style={quickLinkStyle}>- Check Out</Link>
+            <button
+              onClick={handleExportCSV}
+              style={{
+                ...quickLinkStyle,
+                cursor: "pointer",
+                border: "1px solid rgba(22, 101, 52, 0.25)",
+                background: "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))",
+                color: "#15803d",
+              }}
+            >
+              📥 Export CSV
+            </button>
+            {isAdmin && (
+              <button
+                onClick={handleSyncGoogleSheets}
+                disabled={isSyncing}
+                style={{
+                  ...quickLinkStyle,
+                  cursor: isSyncing ? "not-allowed" : "pointer",
+                  border: "1px solid rgba(59, 130, 246, 0.25)",
+                  background: "linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.95))",
+                  color: "#1d4ed8",
+                }}
+              >
+                {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}
+              </button>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search SKU / name / unit" style={inputStyle} />
+            
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={toolbarButtonStyle}>
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+
             <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value as StockFilter)} style={toolbarButtonStyle}>
               <option value="all">All Status</option>
               <option value="healthy">Healthy</option>
@@ -203,8 +357,6 @@ export default function CurrentInventoryPage() {
         </div>
       </div>
 
-     
-
       {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
       {!isLoading && isFetching && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)" }}>Refreshing…</div>}
 
@@ -217,7 +369,7 @@ export default function CurrentInventoryPage() {
       {!isLoading && !error && data && (
         <>
           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Showing {filteredRows.length} of {data.data.length} item{data.data.length === 1 ? "" : "s"} on page {page} (total records: {data.total})
+            Showing {paginatedRows.length} of {displayTotal} item{displayTotal === 1 ? "" : "s"} on page {page} (total records: {data.total})
           </div>
           <div style={{ ...panelStyle, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
@@ -236,7 +388,7 @@ export default function CurrentInventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                {filteredRows.map((row, index) => {
+                {paginatedRows.map((row, index) => {
                   const quantity = Number(row.quantity ?? 0);
                   const minThreshold = Number(row.minThreshold ?? 0);
                   const checkOutTotal = Number(row.checkOutTotal ?? 0);
@@ -245,7 +397,7 @@ export default function CurrentInventoryPage() {
                   const percentBalance = Number(row.balancePercent ?? (minThreshold > 0 ? (balance / minThreshold) * 100 : 0));
                   const isOutOfStock = quantity <= 0;
                   const isLowStock = quantity > 0 && quantity <= minThreshold;
-                  const category = row.category ?? "—";
+                  const category = row.category ?? "General";
 
                   let statusLabel = "Healthy";
                   let statusColor = "#166534";
@@ -334,7 +486,7 @@ export default function CurrentInventoryPage() {
         </>
       )}
 
-      {!isLoading && !error && (!data || data.total === 0) && (
+      {!isLoading && !error && (!data || displayTotal === 0) && (
         <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
           No inventory records found.
         </div>
