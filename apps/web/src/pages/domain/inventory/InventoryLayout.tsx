@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
+import { useAuth } from "../../../auth/useAuth";
 
 const tabs = [
   { to: "dashboard", label: "Dashboard" },
@@ -12,8 +13,19 @@ const tabs = [
 ];
 
 export default function InventoryLayout() {
+  const { user } = useAuth();
+  
+  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
+
+  const visibleTabs = tabs.filter((tab) => {
+    if (!isAdmin) {
+      return ["dashboard", "current-inventory", "check-out", "requests"].includes(tab.to);
+    }
+    return true;
+  });
+
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1100 }}>
+    <div style={{ padding: "24px 28px", maxWidth: 1400 }}>
       <div
         style={{
           display: "flex",
@@ -36,7 +48,7 @@ export default function InventoryLayout() {
         </div>
 
         <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }} aria-label="Inventory sections">
-          {tabs.map((tab) => (
+          {visibleTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}

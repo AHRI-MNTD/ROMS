@@ -13,7 +13,7 @@ const tabs = [
 
 export default function HRLayout() {
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1100 }}>
+    <div style={{ padding: "24px 28px", maxWidth: 1400 }}>
       <div
         style={{
           display: "flex",

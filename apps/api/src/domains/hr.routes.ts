@@ -26,7 +26,7 @@ router.get("/staff", requireAuth, requirePermission("hr:read"), async (req, res)
 
 router.get("/approvals", requireAuth, requirePermission("hr:read"), async (req, res) => {
   const status = req.query.status as string | undefined;
-  const where = status ? { approvalStatus: status } : {};
+  const where = status ? { approvalStatus: status as any } : {};
   const data = await prisma.staffProfile.findMany({
     where,
     include: {

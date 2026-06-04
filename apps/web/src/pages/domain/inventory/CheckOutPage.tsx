@@ -1,16 +1,8 @@
 import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
-
-interface CheckOutLogEntry {
-  id: string;
-  timestamp: string;
-  itemLabel: string;
-  quantity: number;
-  destination: string;
-}
 
 interface LabelOverrides {
   mainTitle?: string;
@@ -37,7 +29,47 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
   const [checkOutStatus, setCheckOutStatus] = React.useState<"APPROVED" | "PENDING" | "REJECTED">("APPROVED");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [logs, setLogs] = React.useState<CheckOutLogEntry[]>([]);
+
+  interface CartItem {
+    id: string;
+    stockItemId: string;
+    itemLabel: string;
+    quantity: number;
+    projectFor: string;
+    requestedBy: string;
+    remark: string;
+  }
+  const [cart, setCart] = React.useState<CartItem[]>([]);
+
+  const bulkCheckoutMutation = useMutation({
+    mutationFn: async (items: Omit<CartItem, "id" | "itemLabel">[]) => {
+      const resp = await apiClient.post("/domains/inventory/bulk-checkout", { items });
+      return resp.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-checkout-movements"] });
+      setFeedback({
+        type: "success",
+        message: `Successfully checked out batch of ${cart.length} item(s).`,
+      });
+      setCart([]);
+    },
+    onError: (err) => {
+      setFeedback({ type: "error", message: err instanceof Error ? err.message : "Bulk check-out failed." });
+    },
+  });
+  
+  const { data: checkOutMovementsData } = useQuery({
+    queryKey: ["inventory-checkout-movements"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/movements", {
+        params: { type: "CHECK_OUT", limit: 50 },
+      });
+      return resp.data as { data: any[]; total: number };
+    },
+  });
+
   const [projects, setProjects] = React.useState<string[]>([]);
   const [staffMembers, setStaffMembers] = React.useState<string[]>([]);
 
@@ -147,16 +179,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         message: `Checked out ${result.quantity} unit(s) for ${result.itemLabel} to ${result.destination}.`,
       });
 
-      setLogs((prev) => [
-        {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          timestamp: new Date().toISOString(),
-          itemLabel: result.itemLabel,
-          quantity: result.quantity,
-          destination: result.destination,
-        },
-        ...prev,
-      ].slice(0, 8));
+      await queryClient.invalidateQueries({ queryKey: ["inventory-checkout-movements"] });
+
 
       setCheckOutQty(1);
       setDateRequested(new Date().toISOString().slice(0, 10));
@@ -282,33 +306,166 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
             {!isLoading && error && "Inventory list unavailable."}
             {!isLoading && !error && `Loaded ${(data?.data ?? []).length} items`}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setFeedback(null);
-              checkOutMutation.mutate();
-            }}
-            disabled={checkOutMutation.isPending}
-            style={{
-              border: "1px solid var(--color-border)",
-              background: "var(--color-accent-soft)",
-              color: "var(--color-text)",
-              borderRadius: "var(--radius-sm)",
-              padding: "8px 12px",
-              fontSize: "var(--fs-xs)",
-              fontWeight: 700,
-              cursor: checkOutMutation.isPending ? "not-allowed" : "pointer",
-            }}
-          >
-            {checkOutMutation.isPending ? "Submitting..." : "Submit"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                if (!selectedItem) {
+                  setFeedback({ type: "error", message: "Select an item to add to batch." });
+                  return;
+                }
+                if (!Number.isFinite(checkOutQty) || checkOutQty <= 0) {
+                  setFeedback({ type: "error", message: "Quantity must be greater than zero." });
+                  return;
+                }
+                if (checkOutQty > currentQty) {
+                  setFeedback({ type: "error", message: "Quantity cannot exceed current stock." });
+                  return;
+                }
+                if (!projectFor.trim()) {
+                  setFeedback({ type: "error", message: "Project for is required." });
+                  return;
+                }
+                if (!requestedBy.trim()) {
+                  setFeedback({ type: "error", message: "Requested by is required." });
+                  return;
+                }
+
+                const newItem: CartItem = {
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  stockItemId: selectedItem.id!,
+                  itemLabel: `${selectedItem.sku ?? ""} ${selectedItem.name ?? ""}`.trim(),
+                  quantity: checkOutQty,
+                  projectFor: projectFor.trim(),
+                  requestedBy: requestedBy.trim(),
+                  remark: note.trim() || "Batch checkout",
+                };
+                setCart((prev) => [...prev, newItem]);
+                setFeedback({ type: "success", message: `Added ${checkOutQty} units of ${selectedItem.name} to batch.` });
+                
+                setSelectedItemId("");
+                setCheckOutQty(1);
+                setNote("");
+              }}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 12px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              ➕ Add to Batch Cart
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                checkOutMutation.mutate();
+              }}
+              disabled={checkOutMutation.isPending}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-accent-soft)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 12px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: checkOutMutation.isPending ? "not-allowed" : "pointer",
+              }}
+            >
+              {checkOutMutation.isPending ? "Submitting..." : "Submit Direct"}
+            </button>
+          </div>
         </div>
       </div>
 
+      {cart.length > 0 && (
+        <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "grid", gap: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Checkout Cart ({cart.length} items)</div>
+            <button
+              type="button"
+              onClick={() => setCart([])}
+              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+            >
+              Clear Cart
+            </button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Recipient</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
+                  <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 100 }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.projectFor}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedBy}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark}</td>
+                    <td style={{ padding: "8px", textAlign: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => setCart((prev) => prev.filter((i) => i.id !== item.id))}
+                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                      >
+                        🗑️ Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                const payload = cart.map((i) => ({
+                  stockItemId: i.stockItemId,
+                  quantity: i.quantity,
+                  projectFor: i.projectFor,
+                  requestedBy: i.requestedBy,
+                  remark: i.remark,
+                }));
+                bulkCheckoutMutation.mutate(payload);
+              }}
+              disabled={bulkCheckoutMutation.isPending}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-accent-soft)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 16px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
+              }}
+            >
+              {bulkCheckoutMutation.isPending ? "Checking out batch..." : "🚀 Submit Batch Check-Out"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Check-Out Activity (Session)</div>
-        {logs.length === 0 ? (
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No check-out actions recorded yet in this session.</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Check-Out Activity</div>
+        {(!checkOutMovementsData || checkOutMovementsData.data.length === 0) ? (
+          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No check-out actions recorded yet.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -321,12 +478,12 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 </tr>
               </thead>
               <tbody>
-                {logs.map((entry) => (
+                {checkOutMovementsData.data.slice(0, 8).map((entry) => (
                   <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.createdAt).toLocaleString()}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${entry.stockItem?.sku ?? ""} - ${entry.stockItem?.name ?? ""}`}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.destination}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.projectFor ?? entry.destination ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -336,7 +493,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
       </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>{labelOverrides?.referenceTable || "Check-Out Reference Table"}</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>{labelOverrides?.referenceTable || "Check-Out Reference Table (History)"}</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -348,33 +505,33 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit_Description</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Category</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date_Requested</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested_By</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project_For</th>
+                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date Requested</th>
+                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
+                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project For</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
               </tr>
             </thead>
             <tbody>
-              {inventoryReferenceRows.length === 0 ? (
+              {!checkOutMovementsData || checkOutMovementsData.data.length === 0 ? (
                 <tr>
                   <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    No records available.
+                    No check-out history records available.
                   </td>
                 </tr>
               ) : (
-                inventoryReferenceRows.map((row, index) => (
-                  <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.codeNo}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.barcode}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.itemDescription}</td>
+                checkOutMovementsData.data.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.name ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unit}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unitDescription}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.category}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.dateRequested}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.unit ?? "units"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${row.stockItem?.unit ?? "units"} per pack`}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.category ?? "General"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(row.occurredAt).toLocaleDateString()}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark ?? "—"}</td>
                   </tr>
                 ))
               )}
