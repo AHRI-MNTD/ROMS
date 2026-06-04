@@ -34,7 +34,7 @@ export default function CheckInPage() {
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkInQty, setCheckInQty] = React.useState(1);
   const [note, setNote] = React.useState("");
-  const [projectFor, setProjectFor] = React.useState("ROMS Inventory");
+  const [projectFor, setProjectFor] = React.useState("");
   const [dateReceived, setDateReceived] = React.useState(() => toDateInputValue());
   const [expiryDate, setExpiryDate] = React.useState<string>("");
   const [projects, setProjects] = React.useState<string[]>([]);
@@ -160,7 +160,7 @@ export default function CheckInPage() {
         const list = resp.data?.projects ?? [];
         if (!mounted) return;
         setProjects(list);
-        setProjectFor((prev) => (prev && prev !== "ROMS Inventory" ? prev : list[0] ?? "ROMS Inventory"));
+        setProjectFor((prev) => (prev ? prev : list[0] ?? ""));
       })
       .catch(() => {});
     return () => {
@@ -261,7 +261,7 @@ export default function CheckInPage() {
         const nextQuantity = Number(selectedItem.quantity ?? 0) + checkInQty;
         await apiClient.patch(`/domains/inventory/${selectedItem.id}`, {
           quantity: nextQuantity,
-          projectFor: projectFor.trim() || "ROMS Inventory",
+          projectFor: projectFor.trim() || projects[0],
           dateReceived: dateReceived || undefined,
           expiryDate: expiryDate || undefined,
           remark: note.trim() || undefined,
@@ -300,7 +300,7 @@ export default function CheckInPage() {
         unitDescription,
         quantity: Math.max(0, Math.floor(newOpeningQty)),
         category,
-        projectFor: projectFor.trim() || "ROMS Inventory",
+        projectFor: projectFor.trim() || projects[0],
         dateReceived: dateReceived || undefined,
         expiryDate: newExpiryDate || undefined,
         remark: note.trim() || undefined,
@@ -338,7 +338,13 @@ export default function CheckInPage() {
         setSelectedItemId("");
         setSelectedItemQuery("");
       } else {
-        setNewSku("");
+        // Optimistically increment from the SKU just submitted so the field
+        // shows the correct next value before the refetch completes.
+        const submittedNum = newSku.trim().match(/(\d+)$/);
+        const nextSku = submittedNum
+          ? newSku.trim().replace(/(\d+)$/, String(Number(submittedNum[1]) + 1))
+          : computeNextSku;
+        setNewSku(nextSku);
         setNewBarcode("");
         setNewName("");
         setNewUnit("units");
@@ -346,7 +352,7 @@ export default function CheckInPage() {
         setNewUnitDescription("");
         setNewCategory("");
         setNote("");
-        setProjectFor("ROMS Inventory");
+        // do NOT reset projectFor — keep the valid selected project
       }
     },
     onError: (err) => {

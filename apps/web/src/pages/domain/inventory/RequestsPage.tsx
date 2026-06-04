@@ -74,6 +74,8 @@ export default function RequestsPage() {
 
   const [cartItems, setCartItems] = React.useState<Array<{ id: string; sku?: string; name?: string; quantity: number }>>([]);
   const [isReviewOpen, setIsReviewOpen] = React.useState(false);
+  const [decidedBatchIds, setDecidedBatchIds] = React.useState<Set<string>>(new Set());
+  const [showAllLogs, setShowAllLogs] = React.useState(false);
 
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
   const currentQty = Number(selectedItem?.quantity ?? 0);
@@ -280,6 +282,7 @@ export default function RequestsPage() {
         })
       );
       setFeedback({ type: "success", message: `Saved decisions for ${modalItems.length} item(s).` });
+      if (activeLog) setDecidedBatchIds((prev) => new Set([...prev, activeLog.id]));
       await refetchPersistedRequests();
       setModalOpen(false);
       setActiveLog(null);
@@ -607,45 +610,58 @@ export default function RequestsPage() {
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Request Activity (Session)</div>
-        {logs.length === 0 ? (
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No request actions recorded yet in this session.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    style={{ borderBottom: "1px solid var(--color-divider)", cursor: entry.items?.length ? "pointer" : "default" }}
-                    onClick={() => {
-                      if (!entry) return;
-                      // open modal for bulk or single entry
-                      const items = entry.items && entry.items.length > 0 ? entry.items : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
-                      setActiveLog(entry);
-                      setModalItems(items.map((it) => ({ id: it.id, movementId: it.movementId ?? it.id, sku: it.sku, name: it.name, quantity: it.quantity, status: "PENDING" as const, acceptedQuantity: it.quantity })));
-                      setModalOpen(true);
-                    }}
-                  >
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedBy}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedFor || '—'}</td>
+        {(() => {
+          const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
+          if (pendingLogs.length === 0) return (
+            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No request actions recorded yet in this session.</div>
+          );
+          const visibleLogs = showAllLogs ? pendingLogs : pendingLogs.slice(0, 5);
+          return (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {visibleLogs.map((entry) => (
+                    <tr
+                      key={entry.id}
+                      style={{ borderBottom: "1px solid var(--color-divider)", cursor: entry.items?.length ? "pointer" : "default" }}
+                      onClick={() => {
+                        if (!entry) return;
+                        const items = entry.items && entry.items.length > 0 ? entry.items : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
+                        setActiveLog(entry);
+                        setModalItems(items.map((it) => ({ id: it.id, movementId: it.movementId ?? it.id, sku: it.sku, name: it.name, quantity: it.quantity, status: "PENDING" as const, acceptedQuantity: it.quantity })));
+                        setModalOpen(true);
+                      }}
+                    >
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedBy}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedFor || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {pendingLogs.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllLogs((v) => !v)}
+                  style={{ marginTop: 8, fontSize: "var(--fs-xs)", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
+                >
+                  {showAllLogs ? `Show less` : `Show all ${pendingLogs.length} requests`}
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bulk request modal */}
@@ -731,7 +747,7 @@ export default function RequestsPage() {
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Request/s Reference Table</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Code_No</th>
@@ -758,26 +774,29 @@ export default function RequestsPage() {
                   </td>
                 </tr>
               ) : (
-                orderedReferenceRows.map((row, index) => (
-                  <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.codeNo}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.barcode}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.itemDescription}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unit}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unitDescription}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.category}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.dateRequested}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedFor}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.project}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.team}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", minWidth: 130 }}>
+                orderedReferenceRows.map((row, index) => {
+                  const cellStyle: React.CSSProperties = { padding: "0 8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                  const truncCell = (maxW: number): React.CSSProperties => ({ ...cellStyle, maxWidth: maxW });
+                  return (
+                    <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 40, maxHeight: 40 }}>
+                      <td style={cellStyle} title={row.codeNo}>{row.codeNo}</td>
+                      <td style={cellStyle} title={row.barcode}>{row.barcode}</td>
+                      <td style={truncCell(200)} title={row.itemDescription}>{row.itemDescription}</td>
+                      <td style={cellStyle} title={String(row.quantity)}>{row.quantity}</td>
+                      <td style={cellStyle} title={row.unit}>{row.unit}</td>
+                      <td style={truncCell(160)} title={row.unitDescription}>{row.unitDescription}</td>
+                      <td style={cellStyle} title={row.category}>{row.category}</td>
+                      <td style={cellStyle} title={row.dateRequested}>{row.dateRequested}</td>
+                      <td style={truncCell(160)} title={row.requestedBy}>{row.requestedBy}</td>
+                      <td style={truncCell(160)} title={row.requestedFor}>{row.requestedFor}</td>
+                      <td style={truncCell(160)} title={row.project}>{row.project}</td>
+                      <td style={cellStyle} title={row.team}>{row.team}</td>
+                      <td style={truncCell(160)} title={row.remark}>{row.remark}</td>
+                      <td style={{ padding: "0 8px", fontSize: "var(--fs-xs)", minWidth: 130, whiteSpace: "nowrap" }}>
                         <div
                           style={{
                             display: "inline-block",
-                            padding: "6px 8px",
+                            padding: "4px 8px",
                             borderRadius: 8,
                             fontWeight: 700,
                             ...referenceStatusStyles[referenceStatuses[String(row.rowKey)] ?? "PENDING"],
@@ -792,8 +811,9 @@ export default function RequestsPage() {
                           })()}
                         </div>
                       </td>
-                  </tr>
-                ))
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
