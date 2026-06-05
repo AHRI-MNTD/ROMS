@@ -41,7 +41,6 @@ interface RequestReferenceRow {
 
 export default function RequestsPage() {
   const user = useAuth((state) => state.user);
-  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
   const { data: persistedRequests, refetch: refetchPersistedRequests } = useQuery({
@@ -84,7 +83,7 @@ export default function RequestsPage() {
 
   // no status badges here anymore; requests are submitted for review
 
-  const inventoryReferenceRows = React.useMemo<RequestReferenceRow[]>(() => {
+  const inventoryReferenceRows = React.useMemo(() => {
     return (data?.data ?? []).map((item, index) => {
       const quantity = Number(item.quantity ?? 0);
       const minThreshold = Number(item.minThreshold ?? 0);
@@ -207,7 +206,92 @@ export default function RequestsPage() {
     ACCEPT: { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" },
     PENDING: { background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a" },
     REJECTED: { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" },
+    PARTIAL: { background: "#fff7ed", color: "#9a3412", border: "1px solid #fdba74" },
   };
+
+  const orderedReferenceRows = React.useMemo(() => {
+    const source = referenceRows.length > 0 ? referenceRows : inventoryReferenceRows;
+    const orderIndex = new Map(referenceDecisionOrder.map((id, index) => [id, index]));
+
+    return [...source].sort((left, right) => {
+      const leftOrder = orderIndex.get(String(left.rowKey));
+      const rightOrder = orderIndex.get(String(right.rowKey));
+      const leftDecided = leftOrder !== undefined;
+      const rightDecided = rightOrder !== undefined;
+
+      if (leftDecided !== rightDecided) {
+        return leftDecided ? -1 : 1;
+      }
+
+      if (leftDecided && rightDecided) {
+        return (leftOrder ?? 0) - (rightOrder ?? 0);
+      }
+
+      return String(left.itemDescription).localeCompare(String(right.itemDescription));
+    });
+  }, [inventoryReferenceRows, referenceDecisionOrder, referenceRows]);
+
+  const saveDecisionMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeLog) {
+        throw new Error("No request is open.");
+      }
+
+      const toServerStatus = (status: "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL") => {
+        if (status === "ACCEPT") return "APPROVED" as const;
+        if (status === "REJECT") return "REJECTED" as const;
+        return status as "PENDING" | "PARTIAL";
+      };
+
+      const resp = await apiClient.post("/domains/inventory/request-decisions", {
+        requestedBy: activeLog.requestedBy,
+        requestedFor: activeLog.requestedFor,
+        project: activeLog.project,
+        team: activeLog.team,
+        timestamp: activeLog.timestamp,
+        items: modalItems.map((item) => ({
+          movementId: item.movementId ?? item.id,
+          sku: item.sku,
+          name: item.name,
+          quantity: item.quantity,
+          status: toServerStatus(item.status),
+          acceptedQuantity: item.acceptedQuantity,
+        })),
+      });
+
+      return resp.data as { data: Array<{ stockItemId: string; status: "APPROVED" | "PENDING" | "REJECTED" | "PARTIAL"; quantity: number }> };
+    },
+    onSuccess: async () => {
+      const decidedIds = modalItems.map((item) => item.id);
+      setReferenceStatuses((prev) => {
+        const next = { ...prev };
+        for (const item of modalItems) {
+          next[item.id] = item.status === "REJECT" ? "REJECTED" : item.status;
+        }
+        return next;
+      });
+      setReferenceDecisionOrder((prev) => [...decidedIds, ...prev.filter((id) => !decidedIds.includes(id))]);
+      // Update referenceRows entries to reflect decisions and accepted quantities
+      setReferenceRows((prev) =>
+        prev.map((r) => {
+          const mi = modalItems.find((m) => String(m.id) === String(r.rowKey));
+          if (!mi) return r;
+          const status = mi.status === "REJECT" ? "REJECTED" : mi.status;
+          const qty = mi.status === "PARTIAL" ? (mi.acceptedQuantity ?? mi.quantity) : mi.status === "REJECT" ? 0 : r.quantity;
+          return { ...r, status, quantity: qty };
+        })
+      );
+      setFeedback({ type: "success", message: `Saved decisions for ${modalItems.length} item(s).` });
+      if (activeLog) setDecidedBatchIds((prev) => new Set([...prev, activeLog.id]));
+      await refetchPersistedRequests();
+      setModalOpen(false);
+      setActiveLog(null);
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : "Saving decisions failed.";
+      setFeedback({ type: "error", message });
+    },
+  });
 
   const bulkRequestMutation = useMutation({
     mutationFn: async (items: Array<{ id: string; quantity: number }>) => {
@@ -240,7 +324,7 @@ export default function RequestsPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100}}>
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Request</div>
 
         {feedback && (
@@ -344,8 +428,8 @@ export default function RequestsPage() {
           </div>
           <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Validation</div>
-            <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b45309" : "#166534", fontWeight: 700 }}>
-              {!selectedItem ? "Select item" : requestQty > currentQty ? "⚠ Exceeds stock" : "Valid"}
+            <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b91c1c" : "#166534", fontWeight: 700 }}>
+              {!selectedItem ? "Select item" : requestQty > currentQty ? "Exceeds stock" : "Valid"}
             </div>
           </div>
         </div>
@@ -364,7 +448,7 @@ export default function RequestsPage() {
                 setFeedback(null);
                 if (!selectedItem?.id) return setFeedback({ type: 'error', message: 'Select an item first.' });
                 if (!Number.isFinite(requestQty) || requestQty <= 0) return setFeedback({ type: 'error', message: 'Quantity must be > 0.' });
-                // Allow requests exceeding current stock — Project Manager will decide
+                if (requestQty > currentQty) return setFeedback({ type: 'error', message: 'Quantity exceeds current stock.' });
                 const sid = selectedItem.id as string;
                 const sSku = selectedItem.sku ?? "";
                 const sName = selectedItem.name ?? "";
@@ -524,109 +608,148 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100 }}>
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Request Activity (Session)</div>
-        {logs.length === 0 ? (
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No request actions recorded yet in this session.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((entry) => (
-                  <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedBy}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedFor || '—'}</td>
+        {(() => {
+          const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
+          if (pendingLogs.length === 0) return (
+            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No request actions recorded yet in this session.</div>
+          );
+          const visibleLogs = showAllLogs ? pendingLogs : pendingLogs.slice(0, 5);
+          return (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {visibleLogs.map((entry) => (
+                    <tr
+                      key={entry.id}
+                      style={{ borderBottom: "1px solid var(--color-divider)", cursor: entry.items?.length ? "pointer" : "default" }}
+                      onClick={() => {
+                        if (!entry) return;
+                        const items = entry.items && entry.items.length > 0 ? entry.items : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
+                        setActiveLog(entry);
+                        setModalItems(items.map((it) => ({ id: it.id, movementId: it.movementId ?? it.id, sku: it.sku, name: it.name, quantity: it.quantity, status: "PENDING" as const, acceptedQuantity: it.quantity })));
+                        setModalOpen(true);
+                      }}
+                    >
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedBy}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedFor || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {pendingLogs.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllLogs((v) => !v)}
+                  style={{ marginTop: 8, fontSize: "var(--fs-xs)", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
+                >
+                  {showAllLogs ? `Show less` : `Show all ${pendingLogs.length} requests`}
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Request/s Reference Table</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <input
-              value={requestSearch}
-              onChange={(e) => {
-                setRequestSearch(e.target.value);
-                setRequestPage(1);
-              }}
-              placeholder="Search by Tracking ID, Item, Requested By, Project..."
-              style={{
-                minWidth: 300,
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--color-surface)",
-                color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-              }}
-            />
-            <select
-              value={requestStatusFilter}
-              onChange={(e) => {
-                setRequestStatusFilter(e.target.value);
-                setRequestPage(1);
-              }}
-              style={{
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--color-surface)",
-                color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 600,
-              }}
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">PENDING</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="PARTIAL">PARTIAL</option>
-              <option value="REJECTED">REJECTED</option>
-            </select>
-            <select
-              value={String(requestPageSize)}
-              onChange={(e) => {
-                setRequestPageSize(Number(e.target.value));
-                setRequestPage(1);
-              }}
-              style={{
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--color-surface)",
-                color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-              }}
-            >
-              <option value="10">10 / page</option>
-              <option value="25">25 / page</option>
-              <option value="50">50 / page</option>
-              <option value="100">100 / page</option>
-            </select>
+      {/* Bulk request modal */}
+      {modalOpen && activeLog && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60 }} onClick={() => { setModalOpen(false); setActiveLog(null); }}>
+          <div style={{ width: 980, maxWidth: "96%", maxHeight: "88vh", overflow: "hidden", background: "var(--color-surface)", borderRadius: 14, padding: 18, boxShadow: "0 24px 60px rgba(0,0,0,0.28)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: "var(--fs-md)", fontWeight: 800 }}>Request details</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(activeLog.timestamp).toLocaleString()}</div>
+            </div>
+
+            <div style={{ maxHeight: "68vh", overflow: "auto", paddingRight: 4 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <th style={{ textAlign: "left", padding: 8 }}>Item</th>
+                    <th style={{ textAlign: "left", padding: 8, width: 90 }}>Requested</th>
+                    <th style={{ textAlign: "left", padding: 8, width: 220 }}>Decision</th>
+                    <th style={{ textAlign: "left", padding: 8, width: 140 }}>Accepted qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalItems.map((it, idx) => (
+                    <tr key={`${it.id}-${idx}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 56 }}>
+                      <td style={{ padding: 8, verticalAlign: "middle", maxWidth: 0 }} title={it.sku ? `${it.sku} — ${it.name}` : it.name}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sku ? `${it.sku} — ${it.name}` : it.name}</div>
+                      </td>
+                      <td style={{ padding: 8 }}>{it.quantity}</td>
+                      <td style={{ padding: 8 }}>
+                        <select
+                          value={it.status}
+                          onChange={(e) => {
+                            const nextStatus = e.target.value as "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL";
+                            setModalItems((prev) => {
+                              const next = [...prev];
+                              if (nextStatus === "PARTIAL") {
+                                next[idx] = { ...next[idx], status: nextStatus, acceptedQuantity: Math.min(next[idx].quantity, next[idx].acceptedQuantity ?? next[idx].quantity) };
+                              } else if (nextStatus === "REJECT") {
+                                next[idx] = { ...next[idx], status: nextStatus, acceptedQuantity: 0 };
+                              } else {
+                                next[idx] = { ...next[idx], status: nextStatus, acceptedQuantity: next[idx].quantity };
+                              }
+                              return next;
+                            });
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "7px 9px",
+                            borderRadius: 8,
+                            border: "1px solid #e5e7eb",
+                            fontWeight: 700,
+                            background: it.status === "ACCEPT" ? "#dcfce7" : it.status === "REJECT" ? "#fee2e2" : it.status === "PARTIAL" ? "#fff7ed" : "#f3f4f6",
+                            color: it.status === "ACCEPT" ? "#166534" : it.status === "REJECT" ? "#991b1b" : it.status === "PARTIAL" ? "#9a3412" : "#374151",
+                          }}
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="ACCEPT">Accept</option>
+                          <option value="PARTIAL">Partial</option>
+                          <option value="REJECT">Reject</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: 8 }}>
+                        {it.status === "PARTIAL" ? (
+                          <input type="number" value={it.acceptedQuantity ?? 0} min={0} max={it.quantity} onChange={(e) => setModalItems((prev) => { const n = [...prev]; n[idx] = { ...n[idx], acceptedQuantity: Math.max(0, Math.min(it.quantity, Number(e.target.value) || 0)) }; return n; })} style={{ width: 100, padding: 6 }} />
+                        ) : (
+                          <div>{it.acceptedQuantity ?? (it.status === "REJECT" ? 0 : it.quantity)}</div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+              <button onClick={() => { setModalOpen(false); setActiveLog(null); }} style={{ padding: "8px 12px" }}>Close</button>
+              <button onClick={() => saveDecisionMutation.mutate()} disabled={saveDecisionMutation.isPending} style={{ padding: "8px 12px", background: "var(--color-primary)", color: "#fff", borderRadius: 6, opacity: saveDecisionMutation.isPending ? 0.7 : 1 }}>Save decisions</button>
+            </div>
           </div>
         </div>
+      )}
 
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Request/s Reference Table</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1500 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1400 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Tracking ID</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Code_No</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Barcode</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item_Description</th>
@@ -644,39 +767,37 @@ export default function RequestsPage() {
                 </tr>
             </thead>
             <tbody>
-              {inventoryReferenceRows.length === 0 ? (
+              {orderedReferenceRows.length === 0 ? (
                 <tr>
-                    <td colSpan={15} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textAlign: "center" }}>
-                    No matching records available.
+                    <td colSpan={14} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                    No records available.
                   </td>
                 </tr>
               ) : (
-                inventoryReferenceRows.map((row, index) => (
-                  <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.codeNo}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.barcode}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.itemDescription}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unit}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unitDescription}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.category}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.dateRequested}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedFor}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.project}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.team}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", minWidth: 130 }}>
-                        <select
-                          value={referenceStatuses[String(row.rowKey)] ?? "PENDING"}
-                          onChange={(e) => {
-                            const next = e.target.value as "ACCEPT" | "PENDING" | "REJECTED";
-                            setReferenceStatuses((prev) => ({ ...prev, [String(row.rowKey)]: next }));
-                          }}
+                orderedReferenceRows.map((row, index) => {
+                  const cellStyle: React.CSSProperties = { padding: "0 8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                  const truncCell = (maxW: number): React.CSSProperties => ({ ...cellStyle, maxWidth: maxW });
+                  return (
+                    <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 40, maxHeight: 40 }}>
+                      <td style={cellStyle} title={row.codeNo}>{row.codeNo}</td>
+                      <td style={cellStyle} title={row.barcode}>{row.barcode}</td>
+                      <td style={truncCell(200)} title={row.itemDescription}>{row.itemDescription}</td>
+                      <td style={cellStyle} title={String(row.quantity)}>{row.quantity}</td>
+                      <td style={cellStyle} title={row.unit}>{row.unit}</td>
+                      <td style={truncCell(160)} title={row.unitDescription}>{row.unitDescription}</td>
+                      <td style={cellStyle} title={row.category}>{row.category}</td>
+                      <td style={cellStyle} title={row.dateRequested}>{row.dateRequested}</td>
+                      <td style={truncCell(160)} title={row.requestedBy}>{row.requestedBy}</td>
+                      <td style={truncCell(160)} title={row.requestedFor}>{row.requestedFor}</td>
+                      <td style={truncCell(160)} title={row.project}>{row.project}</td>
+                      <td style={cellStyle} title={row.team}>{row.team}</td>
+                      <td style={truncCell(160)} title={row.remark}>{row.remark}</td>
+                      <td style={{ padding: "0 8px", fontSize: "var(--fs-xs)", minWidth: 130, whiteSpace: "nowrap" }}>
+                        <div
                           style={{
-                            ...inputStyle,
-                            minWidth: 120,
-                            padding: "6px 8px",
+                            display: "inline-block",
+                            padding: "4px 8px",
+                            borderRadius: 8,
                             fontWeight: 700,
                             ...referenceStatusStyles[referenceStatuses[String(row.rowKey)] ?? "PENDING"],
                           }}
@@ -696,46 +817,6 @@ export default function RequestsPage() {
               )}
             </tbody>
           </table>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Page {requestPage} of {requestTotalPages} (total records: {filteredRequests.length})
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => setRequestPage((p) => Math.max(1, p - 1))}
-              disabled={requestPage <= 1}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: requestPage <= 1 ? "var(--color-surface)" : "var(--color-surface-2)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-                cursor: requestPage <= 1 ? "not-allowed" : "pointer",
-              }}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setRequestPage((p) => Math.min(requestTotalPages, p + 1))}
-              disabled={requestPage >= requestTotalPages}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: requestPage >= requestTotalPages ? "var(--color-surface)" : "var(--color-surface-2)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-                cursor: requestPage >= requestTotalPages ? "not-allowed" : "pointer",
-              }}
-            >
-              Next
-            </button>
-          </div>
         </div>
       </div>
     </div>
