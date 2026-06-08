@@ -42,6 +42,7 @@ function formatDate(value?: string | null) {
 export default function ApproveEmployeePage() {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [listView, setListView] = useState<"approved" | "rejected" | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["hr-employee-approvals"],
@@ -186,7 +187,25 @@ export default function ApproveEmployeePage() {
 
       <div style={{ display: "grid", gap: 12 }}>
         <div style={approvalPanelStyle("rgba(186, 197, 34, 0.18)", "rgba(240, 253, 244, 0.98)", "rgba(16, 24, 40, 0.05)")}> 
-          <div style={approvalHeaderStyle}>Pending employee approvals</div>
+          <div style={{ ...approvalHeaderStyle, display: "flex", justifyContent: "space-between", alignItems: "center", textAlign: "left" }}>
+            <span>Pending employee approvals</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setListView((v) => v === "approved" ? null : "approved")}
+                style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #86efac", background: listView === "approved" ? "#059669" : "#f0fdf4", color: listView === "approved" ? "#fff" : "#059669", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
+              >
+                Approved list ({approved.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setListView((v) => v === "rejected" ? null : "rejected")}
+                style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fca5a5", background: listView === "rejected" ? "#dc2626" : "#fef2f2", color: listView === "rejected" ? "#fff" : "#dc2626", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
+              >
+                Rejected list ({rejected.length})
+              </button>
+            </div>
+          </div>
           <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the employee profile, then approve or disapprove access.</div>
           <div>
             {pending.length > 0 ? (
@@ -214,8 +233,8 @@ export default function ApproveEmployeePage() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 12 }}>
-          <div style={approvalPanelStyle("rgba(34, 197, 94, 0.18)", "rgba(240, 253, 244, 0.98)", "rgba(16, 24, 40, 0.05)")}> 
+        {listView === "approved" && (
+          <div style={approvalPanelStyle("rgba(34, 197, 94, 0.18)", "rgba(240, 253, 244, 0.98)", "rgba(16, 24, 40, 0.05)")}>
             <div style={approvalHeaderStyle}>Approved list</div>
             <div>
               {approved.length > 0 ? (
@@ -232,17 +251,17 @@ export default function ApproveEmployeePage() {
                       <th style={{ textAlign: "left", padding: "5px 6px", width: "26%" }}>Reviewed</th>
                     </tr>
                   </thead>
-                  <tbody>
-                      {approved.map((row, i) => renderRow(row, false, i))}
-                  </tbody>
+                  <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
                 </table>
               ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>No approved employees yet.</div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No approved employees yet.</div>
               )}
             </div>
           </div>
+        )}
 
-          <div style={approvalPanelStyle("rgba(239, 68, 68, 0.18)", "rgba(254, 242, 242, 0.98)", "rgba(185, 28, 28, 0.05)")}> 
+        {listView === "rejected" && (
+          <div style={approvalPanelStyle("rgba(239, 68, 68, 0.18)", "rgba(254, 242, 242, 0.98)", "rgba(185, 28, 28, 0.05)")}>
             <div style={approvalHeaderStyle}>Rejected list</div>
             <div>
               {rejected.length > 0 ? (
@@ -259,16 +278,14 @@ export default function ApproveEmployeePage() {
                       <th style={{ textAlign: "left", padding: "5px 6px", width: "26%" }}>Reviewed</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {rejected.map((row, i) => renderRow(row, false, i))}
-                  </tbody>
+                  <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
                 </table>
               ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>No rejected employees yet.</div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No rejected employees yet.</div>
               )}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

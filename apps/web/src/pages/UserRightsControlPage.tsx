@@ -293,7 +293,7 @@ export default function UserRightsControlPage() {
             <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>User matrix</div>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 4 }}>Click a user row to edit the privileges in a right-side overlay.</div>
           </div>
-          <Badge label="Green check = at least 1 right" color="success" />
+          <Badge label="Green check = at least 1 right" color="success" style={{ background: "none" }} />
         </div>
 
         <div>

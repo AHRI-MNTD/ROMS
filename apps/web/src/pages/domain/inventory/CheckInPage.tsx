@@ -352,17 +352,18 @@ export default function CheckInPage() {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Check In</div>
-
-        <div style={{ display: "flex", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            <input type="radio" name="checkin-mode" checked={mode === "existing"} onChange={() => setMode("existing")} />
-            Existing item
-          </label>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            <input type="radio" name="checkin-mode" checked={mode === "new"} onChange={() => setMode("new")} />
-            New item
-          </label>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check In</div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              <input type="radio" name="checkin-mode" checked={mode === "existing"} onChange={() => setMode("existing")} />
+              Existing item
+            </label>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              <input type="radio" name="checkin-mode" checked={mode === "new"} onChange={() => setMode("new")} />
+              New item
+            </label>
+          </div>
         </div>
 
         {feedback && (

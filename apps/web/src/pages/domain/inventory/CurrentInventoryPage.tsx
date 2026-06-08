@@ -272,7 +272,7 @@ export default function CurrentInventoryPage() {
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
             <div style={{ maxWidth: 700 }}>
               <div style={chipStyle}>Live inventory snapshot</div>
-              <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "38px", lineHeight: 1.03, color: "var(--color-text)" }}>
+              <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "30px", lineHeight: 1.03, color: "var(--color-text)" }}>
                 Current inventory
               </h2>
             </div>

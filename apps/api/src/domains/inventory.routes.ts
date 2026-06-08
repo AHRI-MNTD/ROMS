@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import prisma from "@roms/db";
-import { requireAuth, requirePermission } from "../auth/auth.middleware";
+import { requireAuth, requirePermission, requireRole } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
 import { CreateStockItemSchema, Role } from "@roms/shared";
 import { logger } from "../utils/logger";
@@ -197,13 +197,6 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
   res.json({ projects });
 });
 
-// GET /master-data/projects - return distinct project names from master data
-router.get("/master-data/projects", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
-  const rows = await prisma.inventoryMasterData.findMany({ select: { project: true } });
-  const projects = Array.from(new Set(rows.map((r: any) => String(r.project ?? "")).filter((p: string) => p.trim().length > 0)));
-  res.json({ projects });
-});
-
 // POST /master-data - add a new master data record
 router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
@@ -254,7 +247,7 @@ router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESE
     res.status(404).json({ error: "Master data record not found." });
   }
 });
-=======
+
 // POST /master-data - add a new master data record
 router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
@@ -530,7 +523,6 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
   }
 });
 
->>>>>>> 5534be5 (feat(inventory): requests page UX improvements and checkin 500 fix)
 router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
   const [stockItems, movements] = await Promise.all([
     prisma.stockItem.findMany({
