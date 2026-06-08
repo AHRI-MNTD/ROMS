@@ -8,7 +8,7 @@ const EnvSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("8h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   REDIS_URL: z.string().optional(),
-  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:5174,http://172.26.41.42:5173,http://172.26.41.42:5174"),
+  CORS_ORIGINS: z.string().default("http://localhost:5173,http://localhost:5174,http://localhost:5175"),
   NOTIFICATION_SERVICE_URL: z.string().optional(),
   INTEGRATION_SERVICE_URL: z.string().optional(),
 });
