@@ -429,7 +429,7 @@ export default function AnalyticsPage() {
             <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.12em", color: "#0f766e", fontWeight: 800, marginBottom: 8 }}>
               Executive Inventory Analytics
             </div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px, 4vw, 44px)", color: "var(--color-text)", lineHeight: 1.05, marginBottom: 10 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px, 4vw, 30px)", color: "var(--color-text)", lineHeight: 1.05, marginBottom: 10 }}>
               Inventory health, demand pressure, and risk exposure at a glance.
             </h2>
             <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.7 }}>

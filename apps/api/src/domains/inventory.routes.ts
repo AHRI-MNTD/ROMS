@@ -1,6 +1,9 @@
 import { Router, Request, Response } from "express";
 import prisma from "@roms/db";
+<<<<<<< HEAD
 import { randomUUID } from "node:crypto";
+=======
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
 import { requireAuth, requirePermission, requireRole } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
 import { CreateStockItemSchema, Role } from "@roms/shared";
@@ -201,6 +204,7 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
 // POST /master-data - add a new master data record
 router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
+<<<<<<< HEAD
   if (!category || !unit) {
     return res.status(400).json({ error: "category and unit are required fields." });
   }
@@ -209,6 +213,13 @@ router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_A
     data: {
       category: String(category).trim(),
       unit: String(unit).trim(),
+=======
+
+  const record = await prisma.inventoryMasterData.create({
+    data: {
+      category: category ? String(category).trim() : "",
+      unit: unit ? String(unit).trim() : "",
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
       project: project ? String(project).trim() : null,
       staff: staff ? String(staff).trim() : null,
     },
@@ -222,16 +233,74 @@ router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARC
   const { id } = req.params;
   const { category, unit, project, staff } = req.body;
 
+<<<<<<< HEAD
   if (!category || !unit) {
     return res.status(400).json({ error: "category and unit are required fields." });
   }
+=======
+  try {
+    const record = await prisma.inventoryMasterData.update({
+      where: { id },
+      data: {
+        category: category ? String(category).trim() : "",
+        unit: unit ? String(unit).trim() : "",
+        project: project ? String(project).trim() : null,
+        staff: staff ? String(staff).trim() : null,
+      },
+    });
+    res.json(record);
+  } catch (error) {
+    res.status(404).json({ error: "Master data record not found." });
+  }
+});
+
+// DELETE /master-data/:id - delete a master data record
+router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.inventoryMasterData.delete({
+      where: { id },
+    });
+    res.json({ success: true, message: "Record deleted successfully." });
+  } catch (error) {
+    res.status(404).json({ error: "Master data record not found." });
+  }
+});
+
+// POST /master-data - add a new master data record
+router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const { category, unit, project, staff } = req.body;
+
+  const record = await prisma.inventoryMasterData.create({
+    data: {
+      category: category ? String(category).trim() : "",
+      unit: unit ? String(unit).trim() : "",
+      project: project ? String(project).trim() : null,
+      staff: staff ? String(staff).trim() : null,
+    },
+  });
+
+  res.status(201).json(record);
+});
+
+// PUT /master-data/:id - update an existing master data record
+router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { category, unit, project, staff } = req.body;
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
 
   try {
     const record = await prisma.inventoryMasterData.update({
       where: { id },
       data: {
+<<<<<<< HEAD
         category: String(category).trim(),
         unit: String(unit).trim(),
+=======
+        category: category ? String(category).trim() : "",
+        unit: unit ? String(unit).trim() : "",
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
         project: project ? String(project).trim() : null,
         staff: staff ? String(staff).trim() : null,
       },

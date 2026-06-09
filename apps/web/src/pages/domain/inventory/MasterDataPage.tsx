@@ -110,6 +110,7 @@ export default function MasterDataPage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+<<<<<<< HEAD
     if (!newCategory.trim() || !newUnit.trim()) {
       setFormFeedback({ type: "error", message: "Category and Unit fields are required." });
       return;
@@ -117,6 +118,11 @@ export default function MasterDataPage() {
     createMutation.mutate({
       category: newCategory.trim(),
       unit: newUnit.trim(),
+=======
+    createMutation.mutate({
+      category: newCategory.trim() || "",
+      unit: newUnit.trim() || "",
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
       project: newProject.trim() || null,
       staff: newStaff.trim() || null,
     });
@@ -135,10 +141,13 @@ export default function MasterDataPage() {
   };
 
   const handleSaveEdit = (id: string) => {
+<<<<<<< HEAD
     if (!editCategory.trim() || !editUnit.trim()) {
       setFormFeedback({ type: "error", message: "Category and Unit fields are required." });
       return;
     }
+=======
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
     updateMutation.mutate({
       id,
       payload: {
@@ -227,25 +236,39 @@ export default function MasterDataPage() {
           <div style={{ fontSize: "var(--fs-xs)", fontWeight: 800, color: "var(--color-text-muted)", textTransform: "uppercase" }}>New Master Data Entry</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             <div>
+<<<<<<< HEAD
               <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category *</label>
+=======
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category</label>
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
               <input
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 placeholder="e.g. Consumables"
                 style={formInputStyle}
+<<<<<<< HEAD
                 required
               />
             </div>
             <div>
               <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit *</label>
+=======
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit</label>
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
               <input
                 type="text"
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 placeholder="e.g. Vial, Pack"
                 style={formInputStyle}
+<<<<<<< HEAD
                 required
+=======
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
               />
             </div>
             <div>
@@ -377,6 +400,7 @@ export default function MasterDataPage() {
         </div>
       )}
 
+<<<<<<< HEAD
       {!isLoading && !error && (
         <div style={{ overflowX: "auto", border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -523,6 +547,98 @@ export default function MasterDataPage() {
           </table>
         </div>
       )}
+=======
+      {!isLoading && !error && (() => {
+        const rows = data?.data ?? [];
+
+        type ColKey = "category" | "unit" | "project" | "staff";
+        const colDefs: Array<{ key: ColKey; label: string; editValue: string; setEdit: (v: string) => void }> = [
+          { key: "category", label: "Categories", editValue: editCategory, setEdit: setEditCategory },
+          { key: "unit",     label: "Units",      editValue: editUnit,     setEdit: setEditUnit },
+          { key: "project",  label: "Projects",   editValue: editProject,  setEdit: setEditProject },
+          { key: "staff",    label: "Staff",      editValue: editStaff,    setEdit: setEditStaff },
+        ];
+
+        const colRows = (key: ColKey) =>
+          rows
+            .filter((r) => String(r[key] ?? "").trim() !== "")
+            .sort((a, b) => String(a[key] ?? "").localeCompare(String(b[key] ?? "")));
+
+        const hasAny = colDefs.some((c) => colRows(c.key).length > 0);
+        if (!hasAny) {
+          return (
+            <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)", padding: "10px 12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              No master data rows found.
+            </div>
+          );
+        }
+
+        const thStyle: React.CSSProperties = { padding: "7px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", borderBottom: "1px solid var(--color-divider)", background: "var(--color-surface)" };
+
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            {colDefs.map((c) => {
+              const entries = colRows(c.key);
+              return (
+                <div key={c.key} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)", overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...thStyle, width: 28, textAlign: "right", paddingRight: 6 }}>#</th>
+                        <th style={thStyle}>{c.label}</th>
+                        <th style={{ ...thStyle, width: 60, textAlign: "center" }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>—</td>
+                        </tr>
+                      ) : (
+                        entries.map((entry, idx) => {
+                          const isEditing = editingId === entry.id;
+                          return (
+                            <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)", background: isEditing ? "rgba(1,105,111,0.04)" : "none" }}>
+                              <td style={{ padding: "5px 6px 5px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "right", verticalAlign: "middle" }}>{idx + 1}</td>
+                              <td style={{ padding: "5px 10px", verticalAlign: "middle" }}>
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={c.editValue}
+                                    onChange={(e) => c.setEdit(e.target.value)}
+                                    style={{ ...formInputStyle, padding: "4px 8px" }}
+                                    autoFocus
+                                  />
+                                ) : (
+                                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(entry[c.key] ?? "")}</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "5px 8px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap" }}>
+                                {isEditing ? (
+                                  <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
+                                    <button onClick={() => handleSaveEdit(entry.id)} disabled={updateMutation.isPending} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 4, padding: "3px 7px", fontSize: "10px", cursor: "pointer" }}>Save</button>
+                                    <button onClick={handleCancelEdit} style={{ background: "#64748b", color: "white", border: "none", borderRadius: 4, padding: "3px 7px", fontSize: "10px", cursor: "pointer" }}>✕</button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: "flex", gap: 2, justifyContent: "center" }}>
+                                    <button onClick={() => handleStartEdit(entry)} style={{ background: "none", border: "none", color: "#0d9488", cursor: "pointer", fontSize: "12px", padding: 2 }} title="Edit">✏️</button>
+                                    <button onClick={() => handleDelete(entry.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 2 }} title="Delete">🗑️</button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+>>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
