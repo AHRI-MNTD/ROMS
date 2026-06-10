@@ -1,6 +1,5 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import { apiClient } from "../../../api/client";
 
 export default function InventoryDashboardPage() {
@@ -87,21 +86,6 @@ export default function InventoryDashboardPage() {
     color: tone,
     fontSize: 20,
   });
-
-  const actionButtonStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 14px",
-    borderRadius: 12,
-    background: "var(--color-surface)",
-    border: "1px solid var(--color-border)",
-    color: "var(--color-text)",
-    fontWeight: 700,
-    fontSize: "var(--fs-sm)",
-    textDecoration: "none",
-    transition: "all 0.2s ease-in-out",
-  };
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
@@ -219,31 +203,6 @@ export default function InventoryDashboardPage() {
                   </span>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Quick Actions Panel */}
-          <div style={{ padding: "16px 20px", borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", fontWeight: 800, letterSpacing: "0.05em" }}>Quick Actions Command Console</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Link to="../check-in" style={actionButtonStyle}>
-                <span>➕</span> Check In / Restock
-              </Link>
-              <Link to="../check-out" style={actionButtonStyle}>
-                <span>➖</span> Check Out / Issue Material
-              </Link>
-              <Link to="../requests" style={{ ...actionButtonStyle, border: pendingRequestsCount > 0 ? "1px solid #3b82f6" : "1px solid var(--color-border)", background: pendingRequestsCount > 0 ? "#eff6ff" : "var(--color-surface)" }}>
-                <span>📋</span> Request Operations {pendingRequestsCount > 0 && <span style={{ background: "#3b82f6", color: "white", borderRadius: 999, fontSize: 10, padding: "2px 6px", marginLeft: 4 }}>{pendingRequestsCount}</span>}
-              </Link>
-              <Link to="../current-inventory" style={actionButtonStyle}>
-                <span>🔍</span> Browse Catalog
-              </Link>
-              <Link to="../analytics" style={actionButtonStyle}>
-                <span>📈</span> Analytics Dashboard
-              </Link>
-              <Link to="../master-data" style={actionButtonStyle}>
-                <span>⚙️</span> Master Configurations
-              </Link>
             </div>
           </div>
 

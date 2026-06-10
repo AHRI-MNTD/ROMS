@@ -221,16 +221,24 @@ export default function UserRightsControlPage() {
   const pageStyle: React.CSSProperties = {
     padding: "20px 28px 32px",
     maxWidth: 1600,
-    margin: "0 auto",
   };
 
   const surfaceStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.12)",
-    borderRadius: 24,
     background: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,248,245,0.92))",
     boxShadow: "0 20px 48px rgba(16, 24, 40, 0.08)",
   };
 
+  const summaryCard = (tone: string): React.CSSProperties => ({
+    padding: "10px 20px",
+
+    borderRadius: 12,
+    border: `1px solid ${tone}22`,
+    background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
+    boxShadow: "0 14px 30px rgba(16, 24, 40, 0.06)",
+    minWidth: 60,
+    maxWidth: 160,
+  });
   const editorCardStyle: React.CSSProperties = {
     padding: 12,
     borderRadius: 18,
@@ -272,18 +280,30 @@ export default function UserRightsControlPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 18 }}>
-        <Card title="Seeded Users" subtitle="From staff profiles" style={{ boxShadow: "0 14px 30px rgba(16, 24, 40, 0.06)" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{DEMO_USERS.length}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: 18 }}>
+        <Card style={summaryCard("#b45309")}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Seeded Users</span>
+            <span>{DEMO_USERS.length}</span>
+          </div>
         </Card>
-        <Card title="Domains" subtitle="Columns in the matrix" style={{ boxShadow: "0 14px 30px rgba(16, 24, 40, 0.06)" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{DOMAIN_CATALOG.length}</div>
+        <Card style={summaryCard("#0f766e")}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Domains</span>
+            <span>{DOMAIN_CATALOG.length}</span>
+          </div>
         </Card>
-        <Card title="Assigned Rights" subtitle="Across all users" style={{ boxShadow: "0 14px 30px rgba(16, 24, 40, 0.06)" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{totalAssignedRights}</div>
+        <Card style={summaryCard("#dc2626")}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Assigned Rights</span>
+            <span>{totalAssignedRights}</span>
+          </div>
         </Card>
-        <Card title="Users With Access" subtitle="At least one domain right" style={{ boxShadow: "0 14px 30px rgba(16, 24, 40, 0.06)" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>{usersWithAnyAccess}</div>
+        <Card style={summaryCard("#047857")}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Users With Access</span>
+            <span>{usersWithAnyAccess}</span>
+          </div>
         </Card>
       </div>
 

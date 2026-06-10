@@ -27,7 +27,7 @@ const HRDashboardPage = lazy(() => import("./pages/domain/hr/HRDashboardPage"));
 const StaffDirectoryPage = lazy(() => import("./pages/domain/hr/StaffDirectoryPage"));
 const TrainingRecordsPage = lazy(() => import("./pages/domain/hr/TrainingRecordsPage"));
 const LeavePage = lazy(() => import("./pages/domain/hr/LeavePage"));
-const OnboardingPage = lazy(() => import("./pages/domain/hr/OnboardingPage"));
+const ApprovedPage = lazy(() => import("./pages/domain/hr/ApprovedPage"));
 const ApproveEmployeePage = lazy(() => import("./pages/domain/hr/ApproveEmployeePage"));
 const HRAnalyticsPage = lazy(() => import("./pages/domain/hr/AnalyticsPage"));
 const FinancePage = lazy(() => import("./pages/domain/FinancePage"));
@@ -82,7 +82,7 @@ export const routes: RouteObject[] = [
           { path: "staff-directory", element: <StaffDirectoryPage /> },
           { path: "training-records", element: <TrainingRecordsPage /> },
           { path: "leave", element: <LeavePage /> },
-          { path: "onboarding", element: <OnboardingPage /> },
+          { path: "approved", element: <ApprovedPage /> },
           { path: "approve-employee", element: <ApproveEmployeePage /> },
           { path: "analytics", element: <HRAnalyticsPage /> },
         ],

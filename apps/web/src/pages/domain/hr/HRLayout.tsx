@@ -6,7 +6,7 @@ const tabs = [
   { to: "staff-directory", label: "Staff Directory" },
   { to: "training-records", label: "Training Records" },
   { to: "leave", label: "Leave" },
-  { to: "onboarding", label: "Onboarding" },
+  { to: "approved", label: "Approved" },
   { to: "approve-employee", label: "Approve Employee" },
   { to: "analytics", label: "Analytics" },
 ];

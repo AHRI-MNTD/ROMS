@@ -46,11 +46,11 @@ export default function CurrentInventoryPage() {
   }, [allInventoryData?.data]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  
+
   // Use allInventoryData for filtering when filters are active to search across all data
   const isFilteringActive = stockFilter !== "all" || categoryFilter !== "all" || normalizedSearch.length > 0;
   const sourceRows = isFilteringActive ? (allInventoryData?.data ?? []) : (data?.data ?? []);
-  
+
   const filteredRows = sourceRows.filter((row) => {
     const quantity = Number(row.quantity ?? 0);
     const minThreshold = Number(row.minThreshold ?? 0);
@@ -99,7 +99,7 @@ export default function CurrentInventoryPage() {
 
   const outOfStockCount = inventoryRows.filter((row) => Number(row.quantity ?? 0) <= 0).length;
   const totalStock = inventoryRows.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-  
+
   // When active filtering is used, paginate on the client. Otherwise, use backend pagination count.
   const displayTotal = isFilteringActive ? filteredRows.length : (data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(displayTotal / pageSize));
@@ -272,7 +272,7 @@ export default function CurrentInventoryPage() {
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
             <div style={{ maxWidth: 700 }}>
               <div style={chipStyle}>Live inventory snapshot</div>
-              <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "30px", lineHeight: 1.03, color: "var(--color-text)" }}>
+              <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "22px", lineHeight: 1.03, color: "var(--color-text)" }}>
                 Current inventory
               </h2>
             </div>
@@ -280,20 +280,28 @@ export default function CurrentInventoryPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
             <div style={heroStatStyle("#01696f")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Items matching</div>
-              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{displayTotal}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)" }}>
+                <span style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 0, letterSpacing: "0.05em", textTransform: "uppercase" }}>Items matching</span>
+                <span style={{ color: "var(--color-text)", fontSize: "20px", fontWeight: 800, lineHeight: 1 }}>{displayTotal}</span>
+              </div>
             </div>
             <div style={heroStatStyle("#b45309")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Low stock</div>
-              <div style={{ color: "#92400e", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{lowStockCount}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)" }}>
+                <span style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 0, letterSpacing: "0.05em", textTransform: "uppercase" }}>Low stock</span>
+                <span style={{ color: "#92400e", fontSize: "20px", fontWeight: 800, lineHeight: 1 }}>{lowStockCount}</span>
+              </div>
             </div>
             <div style={heroStatStyle("#991b1b")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Out of stock</div>
-              <div style={{ color: "#991b1b", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{outOfStockCount}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)" }}>
+                <span style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 0, letterSpacing: "0.05em", textTransform: "uppercase" }}>Out of stock</span>
+                <span style={{ color: "#991b1b", fontSize: "20px", fontWeight: 800, lineHeight: 1 }}>{outOfStockCount}</span>
+              </div>
             </div>
             <div style={heroStatStyle("#0c4e54")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Total stock</div>
-              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{totalStock}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)" }}>
+                <span style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 0, letterSpacing: "0.05em", textTransform: "uppercase" }}>Total stock</span>
+                <span style={{ color: "var(--color-text)", fontSize: "20px", fontWeight: 800, lineHeight: 1 }}>{totalStock}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -334,7 +342,7 @@ export default function CurrentInventoryPage() {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search SKU / name / unit" style={inputStyle} />
-            
+
             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={toolbarButtonStyle}>
               <option value="all">All Categories</option>
               {categories.map((cat) => (
@@ -388,55 +396,55 @@ export default function CurrentInventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                {paginatedRows.map((row, index) => {
-                  const quantity = Number(row.quantity ?? 0);
-                  const minThreshold = Number(row.minThreshold ?? 0);
-                  const checkOutTotal = Number(row.checkOutTotal ?? 0);
-                  const checkInTotal = Number(row.checkInTotal ?? quantity + checkOutTotal);
-                  const balance = quantity;
-                  const percentBalance = Number(row.balancePercent ?? (minThreshold > 0 ? (balance / minThreshold) * 100 : 0));
-                  const isOutOfStock = quantity <= 0;
-                  const isLowStock = quantity > 0 && quantity <= minThreshold;
-                  const category = row.category ?? "General";
+                  {paginatedRows.map((row, index) => {
+                    const quantity = Number(row.quantity ?? 0);
+                    const minThreshold = Number(row.minThreshold ?? 0);
+                    const checkOutTotal = Number(row.checkOutTotal ?? 0);
+                    const checkInTotal = Number(row.checkInTotal ?? quantity + checkOutTotal);
+                    const balance = quantity;
+                    const percentBalance = Number(row.balancePercent ?? (minThreshold > 0 ? (balance / minThreshold) * 100 : 0));
+                    const isOutOfStock = quantity <= 0;
+                    const isLowStock = quantity > 0 && quantity <= minThreshold;
+                    const category = row.category ?? "General";
 
-                  let statusLabel = "Healthy";
-                  let statusColor = "#166534";
-                  let statusBackground = "#dcfce7";
+                    let statusLabel = "Healthy";
+                    let statusColor = "#166534";
+                    let statusBackground = "#dcfce7";
 
-                  if (isOutOfStock) {
-                    statusLabel = "Out of Stock";
-                    statusColor = "#991b1b";
-                    statusBackground = "#fee2e2";
-                  } else if (isLowStock) {
-                    statusLabel = "Low Stock";
-                    statusColor = "#92400e";
-                    statusBackground = "#fef3c7";
-                  }
+                    if (isOutOfStock) {
+                      statusLabel = "Out of Stock";
+                      statusColor = "#991b1b";
+                      statusBackground = "#fee2e2";
+                    } else if (isLowStock) {
+                      statusLabel = "Low Stock";
+                      statusColor = "#92400e";
+                      statusBackground = "#fef3c7";
+                    }
 
-                  return (
-                    <tr
-                      key={`${row.sku ?? "row"}-${index}`}
-                      style={{
-                        borderBottom: "1px solid var(--color-divider)",
-                        background: isOutOfStock || isLowStock ? "linear-gradient(90deg, rgba(185, 28, 28, 0.03), transparent)" : index % 2 === 0 ? "rgba(255,255,255,0.45)" : "rgba(249,248,245,0.5)",
-                      }}
-                    >
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{String(row.sourceCode ?? row.sku ?? "—")}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>{String(row.name ?? "—")}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{category}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.unit ?? "—")}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkInTotal}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkOutTotal}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: isOutOfStock || isLowStock ? "#b91c1c" : "var(--color-text)", fontWeight: isOutOfStock || isLowStock ? 800 : 600 }}>{balance}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${Math.round(percentBalance)}%`}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "5px 10px", fontWeight: 700, color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr
+                        key={`${row.sku ?? "row"}-${index}`}
+                        style={{
+                          borderBottom: "1px solid var(--color-divider)",
+                          background: isOutOfStock || isLowStock ? "linear-gradient(90deg, rgba(185, 28, 28, 0.03), transparent)" : index % 2 === 0 ? "rgba(255,255,255,0.45)" : "rgba(249,248,245,0.5)",
+                        }}
+                      >
+                        <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{String(row.sourceCode ?? row.sku ?? "—")}</td>
+                        <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>{String(row.name ?? "—")}</td>
+                        <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{category}</td>
+                        <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.unit ?? "—")}</td>
+                        <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkInTotal}</td>
+                        <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkOutTotal}</td>
+                        <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: isOutOfStock || isLowStock ? "#b91c1c" : "var(--color-text)", fontWeight: isOutOfStock || isLowStock ? 800 : 600 }}>{balance}</td>
+                        <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${Math.round(percentBalance)}%`}</td>
+                        <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "5px 10px", fontWeight: 700, color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
