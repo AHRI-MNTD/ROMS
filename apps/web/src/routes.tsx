@@ -34,6 +34,7 @@ const FinancePage = lazy(() => import("./pages/domain/FinancePage"));
 const ParticipantPage = lazy(() => import("./pages/domain/ParticipantPage"));
 const RegulatoryPage = lazy(() => import("./pages/domain/RegulatoryPage"));
 const UserRightsControlPage = lazy(() => import("./pages/UserRightsControlPage"));
+const SubfunctionPlaceholderPage = lazy(() => import("./pages/domain/SubfunctionPlaceholderPage"));
 
 export const routes: RouteObject[] = [
   {
@@ -47,50 +48,142 @@ export const routes: RouteObject[] = [
       { index: true, element: <DashboardPage /> },
       { path: "architecture", element: <ArchitecturePage /> },
       { path: "operations", element: <OperationsPage /> },
-      { path: "domains/biospecimen", element: <BiospecimenPage /> },
+      
+      // Biospecimen & Biorepository
+      {
+        path: "domains/biospecimen",
+        children: [
+          { index: true, element: <Navigate to="/domains/biospecimen/sample-collection-intake" replace /> },
+          { path: "sample-collection-intake", element: <BiospecimenPage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
+      // Lab Inventory & Supply Chain
       {
         path: "domains/inventory",
-        element: <InventoryLayout />,
         children: [
-          { index: true, element: <Navigate to="dashboard" replace /> },
-          { path: "dashboard", element: <InventoryDashboardPage /> },
-          { path: "current-inventory", element: <CurrentInventoryPage /> },
-          { path: "check-in", element: <CheckInPage /> },
-          { path: "check-out", element: <CheckOutPage /> },
-          { path: "requests", element: <RequestsPage /> },
-          { path: "analytics", element: <AnalyticsPage /> },
-          { path: "master-data", element: <MasterDataPage /> },
+          { index: true, element: <Navigate to="/domains/inventory/stock-management" replace /> },
+          {
+            path: "stock-management",
+            element: <InventoryLayout />,
+            children: [
+              { index: true, element: <Navigate to="dashboard" replace /> },
+              { path: "dashboard", element: <InventoryDashboardPage /> },
+              { path: "current-inventory", element: <CurrentInventoryPage /> },
+              { path: "check-in", element: <CheckInPage /> },
+              { path: "check-out", element: <CheckOutPage /> },
+              { path: "requests", element: <RequestsPage /> },
+              { path: "analytics", element: <AnalyticsPage /> },
+              { path: "master-data", element: <MasterDataPage /> },
+            ],
+          },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
         ],
       },
+      
+      // SOPs & Quality Management
       {
         path: "domains/qms",
-        element: <QMSLayout />,
         children: [
-          { index: true, element: <QMSPage /> },
-          { path: "create-sop", element: <CreateSOPPage /> },
+          { index: true, element: <Navigate to="/domains/qms/sop-authoring-control" replace /> },
+          {
+            path: "sop-authoring-control",
+            element: <QMSLayout />,
+            children: [
+              { index: true, element: <QMSPage /> },
+              { path: "create-sop", element: <CreateSOPPage /> },
+            ],
+          },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
         ],
       },
-      { path: "domains/lab-workflow", element: <LabWorkflowPage /> },
-      { path: "domains/data-management", element: <DataManagementPage /> },
-      { path: "domains/infrastructure", element: <InfrastructurePage /> },
+      
+      // Lab Workflow & Experiments
+      {
+        path: "domains/lab-workflow",
+        children: [
+          { index: true, element: <Navigate to="/domains/lab-workflow/protocol-design-tracking" replace /> },
+          { path: "protocol-design-tracking", element: <LabWorkflowPage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
+      // Research Data Management
+      {
+        path: "domains/data-management",
+        children: [
+          { index: true, element: <Navigate to="/domains/data-management/data-capture-edc" replace /> },
+          { path: "data-capture-edc", element: <DataManagementPage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
+      // Infrastructure & IT Services
+      {
+        path: "domains/infrastructure",
+        children: [
+          { index: true, element: <Navigate to="/domains/infrastructure/platform-administration" replace /> },
+          { path: "platform-administration", element: <InfrastructurePage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
+      // HR & Staff Operations
       {
         path: "domains/hr",
-        element: <HRLayout />,
         children: [
-          { index: true, element: <Navigate to="dashboard" replace /> },
-          { path: "dashboard", element: <HRDashboardPage /> },
-          { path: "staff-directory", element: <StaffDirectoryPage /> },
-          { path: "training-records", element: <TrainingRecordsPage /> },
-          { path: "leave", element: <LeavePage /> },
-          { path: "approved", element: <ApprovedPage /> },
-          { path: "approve-employee", element: <ApproveEmployeePage /> },
-          { path: "analytics", element: <HRAnalyticsPage /> },
+          { index: true, element: <Navigate to="/domains/hr/recruitment-onboarding" replace /> },
+          {
+            path: "recruitment-onboarding",
+            element: <HRLayout />,
+            children: [
+              { index: true, element: <Navigate to="dashboard" replace /> },
+              { path: "dashboard", element: <HRDashboardPage /> },
+              { path: "staff-directory", element: <StaffDirectoryPage /> },
+              { path: "training-records", element: <TrainingRecordsPage /> },
+              { path: "leave", element: <LeavePage /> },
+              { path: "approved", element: <ApprovedPage /> },
+              { path: "approve-employee", element: <ApproveEmployeePage /> },
+              { path: "analytics", element: <HRAnalyticsPage /> },
+            ],
+          },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
         ],
       },
-      { path: "domains/finance", element: <FinancePage /> },
-      { path: "domains/participant", element: <ParticipantPage /> },
-      { path: "domains/regulatory", element: <RegulatoryPage /> },
+      
+      // Finance & Grant Management
+      {
+        path: "domains/finance",
+        children: [
+          { index: true, element: <Navigate to="/domains/finance/pre-award-management" replace /> },
+          { path: "pre-award-management", element: <FinancePage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
+      // Participant & Community Engagement
+      {
+        path: "domains/participant",
+        children: [
+          { index: true, element: <Navigate to="/domains/participant/recruitment-screening" replace /> },
+          { path: "recruitment-screening", element: <ParticipantPage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
+      // Regulatory, Ethics & Compliance
+      {
+        path: "domains/regulatory",
+        children: [
+          { index: true, element: <Navigate to="/domains/regulatory/ethics-submissions" replace /> },
+          { path: "ethics-submissions", element: <RegulatoryPage /> },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+      
       { path: "admin/user-rights", element: <UserRightsControlPage /> },
     ],
   },
 ];
+

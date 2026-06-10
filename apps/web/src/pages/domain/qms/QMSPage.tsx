@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
-import logoAhri from "../../../assets/logo_ahri.png";
+import logoAhri from "../../assets/logo_ahri.png";
 import QMSDashboardView from "./QMSDashboardView";
 import QMSReviewerView from "./QMSReviewerView";
 import QMSViewerView from "./QMSViewerView";
