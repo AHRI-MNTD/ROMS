@@ -110,7 +110,6 @@ export default function MasterDataPage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-<<<<<<< HEAD
     if (!newCategory.trim() || !newUnit.trim()) {
       setFormFeedback({ type: "error", message: "Category and Unit fields are required." });
       return;
@@ -118,11 +117,6 @@ export default function MasterDataPage() {
     createMutation.mutate({
       category: newCategory.trim(),
       unit: newUnit.trim(),
-=======
-    createMutation.mutate({
-      category: newCategory.trim() || "",
-      unit: newUnit.trim() || "",
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
       project: newProject.trim() || null,
       staff: newStaff.trim() || null,
     });
@@ -141,13 +135,10 @@ export default function MasterDataPage() {
   };
 
   const handleSaveEdit = (id: string) => {
-<<<<<<< HEAD
     if (!editCategory.trim() || !editUnit.trim()) {
       setFormFeedback({ type: "error", message: "Category and Unit fields are required." });
       return;
     }
-=======
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
     updateMutation.mutate({
       id,
       payload: {
@@ -236,39 +227,25 @@ export default function MasterDataPage() {
           <div style={{ fontSize: "var(--fs-xs)", fontWeight: 800, color: "var(--color-text-muted)", textTransform: "uppercase" }}>New Master Data Entry</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             <div>
-<<<<<<< HEAD
               <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category *</label>
-=======
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category</label>
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
               <input
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 placeholder="e.g. Consumables"
                 style={formInputStyle}
-<<<<<<< HEAD
                 required
               />
             </div>
             <div>
               <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit *</label>
-=======
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit</label>
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
               <input
                 type="text"
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 placeholder="e.g. Vial, Pack"
                 style={formInputStyle}
-<<<<<<< HEAD
                 required
-=======
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
               />
             </div>
             <div>
@@ -399,155 +376,6 @@ export default function MasterDataPage() {
           Could not load master data from API.
         </div>
       )}
-
-<<<<<<< HEAD
-      {!isLoading && !error && (
-        <div style={{ overflowX: "auto", border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                <th style={{ padding: "9px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Categories</th>
-                <th style={{ padding: "9px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Units</th>
-                <th style={{ padding: "9px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Projects</th>
-                <th style={{ padding: "9px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Staff</th>
-                <th style={{ padding: "9px 10px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 140 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.data ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    No master data rows found.
-                  </td>
-                </tr>
-              ) : (
-                (data?.data ?? []).map((row) => {
-                  const isEditing = editingId === row.id;
-                  return (
-                    <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", background: isEditing ? "rgba(1, 105, 111, 0.03)" : "none" }}>
-                      <td style={{ padding: "6px 10px" }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editCategory}
-                            onChange={(e) => setEditCategory(e.target.value)}
-                            style={{ ...formInputStyle, padding: "4px 8px" }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.category || "—"}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "6px 10px" }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editUnit}
-                            onChange={(e) => setEditUnit(e.target.value)}
-                            style={{ ...formInputStyle, padding: "4px 8px" }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.unit || "—"}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "6px 10px" }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editProject}
-                            onChange={(e) => setEditProject(e.target.value)}
-                            style={{ ...formInputStyle, padding: "4px 8px" }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.project || "—"}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "6px 10px" }}>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editStaff}
-                            onChange={(e) => setEditStaff(e.target.value)}
-                            style={{ ...formInputStyle, padding: "4px 8px" }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.staff || "—"}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                        {isEditing ? (
-                          <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                            <button
-                              onClick={() => handleSaveEdit(row.id)}
-                              disabled={updateMutation.isPending}
-                              style={{
-                                background: "#16a34a",
-                                color: "white",
-                                border: "none",
-                                borderRadius: 4,
-                                padding: "4px 8px",
-                                fontSize: "11px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              style={{
-                                background: "#64748b",
-                                color: "white",
-                                border: "none",
-                                borderRadius: 4,
-                                padding: "4px 8px",
-                                fontSize: "11px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                            <button
-                              onClick={() => handleStartEdit(row)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#0d9488",
-                                cursor: "pointer",
-                                fontSize: "var(--fs-xs)",
-                                padding: 2,
-                              }}
-                              title="Edit Row"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDelete(row.id)}
-                              style={{
-                                background: "none",
-                                border: "none",
-                                color: "#dc2626",
-                                cursor: "pointer",
-                                fontSize: "var(--fs-xs)",
-                                padding: 2,
-                              }}
-                              title="Delete Row"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-=======
       {!isLoading && !error && (() => {
         const rows = data?.data ?? [];
 
@@ -568,7 +396,7 @@ export default function MasterDataPage() {
         if (!hasAny) {
           return (
             <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)", padding: "10px 12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              No master data rows found.
+               No master data rows found.
             </div>
           );
         }
@@ -638,7 +466,6 @@ export default function MasterDataPage() {
           </div>
         );
       })()}
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>

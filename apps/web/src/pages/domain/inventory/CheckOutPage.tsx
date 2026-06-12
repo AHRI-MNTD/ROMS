@@ -359,11 +359,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 cursor: "pointer",
               }}
             >
-<<<<<<< HEAD
-              ➕ Add to Batch Cart
-=======
               ➕ Add to Cart
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
             </button>
             <button
               type="button"
@@ -460,11 +456,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 cursor: bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
               }}
             >
-<<<<<<< HEAD
               {bulkCheckoutMutation.isPending ? "Checking out batch..." : "🚀 Submit Batch Check-Out"}
-=======
-              {bulkCheckoutMutation.isPending ? "Checking out batch..." : " Submit "}
->>>>>>> 19695712bbb54d83183fc944182a4fc0e9aa7e33
             </button>
           </div>
         </div>

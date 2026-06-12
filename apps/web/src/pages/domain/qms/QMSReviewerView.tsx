@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import logoAhri from "../../assets/logo_ahri.png";
+import logoAhri from "../../../assets/logo_ahri.png";
 
 interface SOPItem {
   id: string;
