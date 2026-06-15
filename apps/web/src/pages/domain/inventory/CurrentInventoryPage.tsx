@@ -236,12 +236,6 @@ export default function CurrentInventoryPage() {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-        <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "6px 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", background: "rgba(1, 105, 111, 0.08)", color: "#0c4e54" }}>Live inventory snapshot</div>
-          <h2 style={{ margin: "6px 0 0", fontFamily: "var(--font-display)", fontSize: "22px", color: "var(--color-text)", fontWeight: 800 }}>
-            Current inventory
-          </h2>
-        </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
           <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(1, 105, 111, 0.14)", background: "linear-gradient(180deg, rgba(1, 105, 111, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
@@ -340,9 +334,6 @@ export default function CurrentInventoryPage() {
 
       {!isLoading && !error && data && (
         <>
-          <div>
-            Showing {paginatedRows.length} of {displayTotal} item{displayTotal === 1 ? "" : "s"} on page {page} (total records: {data.total})
-          </div>
           <div style={{ border: "1px solid var(--color-divider)", borderRadius: 12, background: "var(--color-surface-2)", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>

@@ -88,34 +88,6 @@ export default function InventoryDashboardPage() {
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      {/* Dashboard Sub-Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
-            Operational Command Dashboard
-          </h2>
-          <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
-            Real-time telemetry and management controls for the research inventory system.
-          </p>
-        </div>
-        <button
-          onClick={handleRefreshAll}
-          style={{
-            background: "none",
-            border: "1px solid var(--color-border)",
-            borderRadius: 8,
-            padding: "6px 12px",
-            fontSize: "var(--fs-xs)",
-            color: "var(--color-text-muted)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          🔄 Refresh Telemetry
-        </button>
-      </div>
 
       {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Syncing live inventory data…</div>}
 
@@ -130,23 +102,23 @@ export default function InventoryDashboardPage() {
           {/* Aggregated KPI Cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
             <div style={statCardStyle("#01696f")}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={statIconStyle("#01696f")} aria-hidden="true">📦</div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalItems}</div>
               </div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Registered Items</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Registered Items</div>
             </div>
 
             <div style={statCardStyle("#0c4e54")}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={statIconStyle("#0c4e54")} aria-hidden="true">🧪</div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalQuantity}</div>
               </div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Quantity</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Total Quantity</div>
             </div>
 
             <div style={statCardStyle("#3b82f6")}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={statIconStyle("#3b82f6")} aria-hidden="true">📋</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: pendingRequestsCount > 0 ? "#2563eb" : "var(--color-text)", fontWeight: 800 }}>
@@ -159,19 +131,19 @@ export default function InventoryDashboardPage() {
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Pending Requests</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Pending Requests</div>
             </div>
 
             <div style={statCardStyle("#b45309")}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={statIconStyle("#b45309")} aria-hidden="true">⬇️</div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalCheckOut}</div>
               </div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Cumulative Checkout</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Cumulative Checkout</div>
             </div>
 
             <div style={statCardStyle("#dc2626")}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={statIconStyle("#dc2626")} aria-hidden="true">⚠️</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: summary.lowStockItems > 0 ? "#dc2626" : "var(--color-text)", fontWeight: 800 }}>
@@ -184,11 +156,11 @@ export default function InventoryDashboardPage() {
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Low Stock items</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Low Stock items</div>
             </div>
 
             <div style={statCardStyle("#7f1d1d")}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <div style={statIconStyle("#7f1d1d")} aria-hidden="true">🛑</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: summary.outOfStockItems > 0 ? "#7f1d1d" : "var(--color-text)", fontWeight: 800 }}>
@@ -201,7 +173,7 @@ export default function InventoryDashboardPage() {
                   )}
                 </div>
               </div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Out of Stock</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Out of Stock</div>
             </div>
           </div>
 
@@ -209,6 +181,36 @@ export default function InventoryDashboardPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 16 }}>
             {/* Column 1: Recent Activity & Top Demand */}
             <div style={{ display: "grid", gap: 16 }}>
+              {/* Top Demand Items */}
+              <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface)", overflow: "hidden" }}>
+                <div style={{ padding: "14px 16px", fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)", borderBottom: "1px solid var(--color-border)" }}>
+                  🔥 High-Demand Inventory
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {topDemandItems.slice(0, 5).map((item: any, index: number) => (
+                      <tr key={item.id ?? index} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name ?? "Unknown item"}</div>
+                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                            SKU: {item.sku} · Category: {item.category}
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.checkOutTotal} used</div>
+                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>Qty left: {item.quantity}</div>
+                        </td>
+                      </tr>
+                    ))}
+                    {topDemandItems.length === 0 && (
+                      <tr>
+                        <td style={{ padding: "16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>No data available.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
               {/* Recent Activity Timeline */}
               <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 <div style={{ padding: "14px 16px", fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "between", alignItems: "center" }}>
@@ -227,7 +229,6 @@ export default function InventoryDashboardPage() {
                           borderRadius: 8,
                           background: isCheckIn ? "#f0fdf4" : "#fffbeb",
                           color: isCheckIn ? "#16a34a" : "#d97706",
-                          fontWeight: 800,
                           fontSize: 12,
                           minWidth: 80,
                           textAlign: "center"
@@ -235,13 +236,13 @@ export default function InventoryDashboardPage() {
                           {isCheckIn ? "CHECK IN" : "CHECK OUT"}
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>
+                          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>
                             {m.stockItem?.name ?? "Unknown Item"} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({m.quantity} {m.stockItem?.unit ?? "units"})</span>
                           </div>
                           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
                             {m.projectFor ? `${m.projectFor} · ` : ""}{m.requestedBy ?? "System"} · {formattedDate}
                           </div>
-                          {m.remark && (
+                          {m.remark && m.remark !== "Imported from check-in CSV" && (
                             <div style={{ fontSize: "11px", fontStyle: "italic", color: "var(--color-text-muted)", marginTop: 4, background: "#f8fafc", padding: "4px 8px", borderRadius: 4 }}>
                               "{m.remark}"
                             </div>
@@ -257,36 +258,6 @@ export default function InventoryDashboardPage() {
                   )}
                 </div>
               </div>
-
-              {/* Top Demand Items */}
-              <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface)", overflow: "hidden" }}>
-                <div style={{ padding: "14px 16px", fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)", borderBottom: "1px solid var(--color-border)" }}>
-                  🔥 High-Demand Inventory
-                </div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <tbody>
-                    {topDemandItems.slice(0, 5).map((item: any, index: number) => (
-                      <tr key={item.id ?? index} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                        <td style={{ padding: "12px 16px" }}>
-                          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700 }}>{item.name ?? "Unknown item"}</div>
-                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-                            SKU: {item.sku} · Category: {item.category}
-                          </div>
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, color: "var(--color-text)" }}>{item.checkOutTotal} used</div>
-                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>Qty left: {item.quantity}</div>
-                        </td>
-                      </tr>
-                    ))}
-                    {topDemandItems.length === 0 && (
-                      <tr>
-                        <td style={{ padding: "16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>No data available.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
             </div>
 
             {/* Column 2: Critical / Low Stock Alert Panel */}
@@ -297,46 +268,37 @@ export default function InventoryDashboardPage() {
                   Needs Reorder
                 </span>
               </div>
-              <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-                {criticalItems.slice(0, 8).map((item: any, index: number) => {
-                  const qty = Number(item.quantity ?? 0);
-                  const isOut = qty <= 0;
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <tbody>
+                  {criticalItems.slice(0, 8).map((item: any, index: number) => {
+                    const qty = Number(item.quantity ?? 0);
+                    const isOut = qty <= 0;
 
-                  return (
-                    <div
-                      key={item.id ?? index}
-                      style={{
-                        padding: 12,
-                        borderRadius: 12,
-                        border: isOut ? "1px solid rgba(239, 68, 68, 0.15)" : "1px solid rgba(217, 119, 6, 0.15)",
-                        background: isOut ? "rgba(254, 242, 242, 0.6)" : "rgba(255, 251, 235, 0.6)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center"
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: isOut ? "#991b1b" : "#92400e" }}>
-                          {item.name}
-                        </div>
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-                          SKU: {item.sku} · Threshold: {item.minThreshold} {item.unit ?? "units"}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: isOut ? 12 : "var(--fs-md)", fontWeight: 800, color: isOut ? "#dc2626" : "#d97706" }}>
-                          {isOut ? "OUT OF STOCK" : `${qty} left`}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {criticalItems.length === 0 && (
-                  <div style={{ padding: "40px 0", textAlign: "center", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 700 }}>
-                    ✅ All inventory levels are healthy and above minimal thresholds!
-                  </div>
-                )}
-              </div>
+                    return (
+                      <tr key={item.id ?? index} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name}</div>
+                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                            SKU: {item.sku} · Threshold: {item.minThreshold} {item.unit ?? "units"}
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                          <div style={{ fontSize: "var(--fs-sm)", color: isOut ? "#dc2626" : "#d97706" }}>
+                            {isOut ? "OUT OF STOCK" : `${qty} left`}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {criticalItems.length === 0 && (
+                    <tr>
+                      <td colSpan={2} style={{ padding: "40px 16px", textAlign: "center", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 700 }}>
+                        ✅ All inventory levels are healthy and above minimal thresholds!
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>

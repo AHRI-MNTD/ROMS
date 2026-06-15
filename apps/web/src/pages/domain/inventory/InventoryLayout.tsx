@@ -1,5 +1,4 @@
-import React from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
 
 const tabs = [
@@ -14,6 +13,8 @@ const tabs = [
 
 export default function InventoryLayout() {
   const { user } = useAuth();
+  const location = useLocation();
+  const activePath = location.pathname.split("/").pop() || "";
   
   const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
 
@@ -23,6 +24,32 @@ export default function InventoryLayout() {
     }
     return true;
   });
+
+  let title = "📦 Lab Inventory & Supply Chain";
+  let subtitle = "Manage lab inventory & supply chain records. Showing live data from the ROMS API.";
+
+  if (activePath === "dashboard" || activePath === "stock-management") {
+    title = "Operational Command Dashboard";
+    subtitle = "Real-time telemetry and management controls for the research inventory system.";
+  } else if (activePath === "current-inventory") {
+    title = "LIVE INVENTORY SNAPSHOT";
+    subtitle = "Current inventory";
+  } else if (activePath === "check-in") {
+    title = "Inventory Receipt & Check-In";
+    subtitle = "Log incoming supply shipments and adjust stock levels.";
+  } else if (activePath === "check-out") {
+    title = "Material Disbursement & Check-Out";
+    subtitle = "Record stock item withdrawals and track allocations.";
+  } else if (activePath === "requests") {
+    title = "Requisitions & Requests";
+    subtitle = "Review, approve, and track lab staff material requisitions.";
+  } else if (activePath === "analytics") {
+    title = "Inventory Analytics & Insights";
+    subtitle = "Monitor stock usage patterns, replenishment telemetry, and trends.";
+  } else if (activePath === "master-data") {
+    title = "Inventory Catalog & Master Data";
+    subtitle = "Manage standard item catalogs, categories, and system references.";
+  }
 
   return (
     <div style={{ padding: "24px 28px", maxWidth: 1400 }}>
@@ -40,10 +67,10 @@ export default function InventoryLayout() {
       >
         <div style={{ minWidth: 280 }}>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", marginBottom: 4 }}>
-            📦 Lab Inventory & Supply Chain
+            {title}
           </h1>
           <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>
-            Manage lab inventory & supply chain records. Showing live data from the ROMS API.
+            {subtitle}
           </p>
         </div>
 

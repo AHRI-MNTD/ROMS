@@ -429,7 +429,7 @@ export default function AnalyticsPage() {
             <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.12em", color: "#0f766e", fontWeight: 800, marginBottom: 8 }}>
               Executive Inventory Analytics
             </div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px, 4vw, 30px)", color: "var(--color-text)", lineHeight: 1.05, marginBottom: 10 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px, 4vw, 20px)", color: "var(--color-text)", lineHeight: 1.05, marginBottom: 10 }}>
               Inventory health, demand pressure, and risk exposure at a glance.
             </h2>
             <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.7 }}>
@@ -456,7 +456,7 @@ export default function AnalyticsPage() {
             </button>
           </div>
 
-          <div style={{ minWidth: 260,  padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.74)", border: "1px solid rgba(1, 105, 111, 0.14)" }}>
+          <div style={{ minWidth: 260, padding: 16, borderRadius: 18, background: "rgba(255,255,255,0.74)", border: "1px solid rgba(1, 105, 111, 0.14)" }}>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Leadership Brief</div>
             <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", lineHeight: 1.7 }}>{executiveSummary}</div>
           </div>
@@ -476,31 +476,31 @@ export default function AnalyticsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
             <div className="report-card" style={{ ...cardStyle("#01696f"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
               <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0f766e", marginBottom: 8, fontWeight: 800 }}>Tracked Items</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--color-text)" }}>{formatNumber(summary.totalItems)}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalItems)}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Distinct inventory records currently in view.</div>
             </div>
 
             <div className="report-card" style={{ ...cardStyle("#0f766e"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
               <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0f766e", marginBottom: 8, fontWeight: 800 }}>Units On Hand</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--color-text)" }}>{formatNumber(summary.totalQuantity)}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalQuantity)}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Total current stock across all items.</div>
             </div>
 
             <div className="report-card" style={{ ...cardStyle("#0d6f89"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
               <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0d6f89", marginBottom: 8, fontWeight: 800 }}>Check-In Volume</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--color-text)" }}>{formatNumber(summary.totalCheckIn)}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalCheckIn)}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Cumulative inbound movement recorded.</div>
             </div>
 
             <div className="report-card" style={{ ...cardStyle("#b45309"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
               <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#b45309", marginBottom: 8, fontWeight: 800 }}>Check-Out Volume</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--color-text)" }}>{formatNumber(summary.totalCheckOut)}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalCheckOut)}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Cumulative outbound demand and consumption.</div>
             </div>
 
             <div className="report-card" style={{ ...cardStyle("#92400e"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
               <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#92400e", marginBottom: 8, fontWeight: 800 }}>At-Risk Items</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 34, color: "var(--color-text)" }}>{formatNumber(summary.atRiskItems)}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.atRiskItems)}</div>
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Items that need replenishment attention.</div>
             </div>
           </div>

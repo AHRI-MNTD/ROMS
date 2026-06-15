@@ -381,7 +381,7 @@ export default function RequestsPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100}}>
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Request</div>
 
         {feedback && (
@@ -647,7 +647,7 @@ export default function RequestsPage() {
         )}
       </div>
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100 }}>
+      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Pending requests</div>
         {(() => {
           const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
