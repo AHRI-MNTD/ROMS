@@ -73,8 +73,18 @@ export default function RequestsPage() {
   const [referenceDecisionOrder, setReferenceDecisionOrder] = React.useState<string[]>([]);
   const [referenceRows, setReferenceRows] = React.useState<RequestReferenceRow[]>([]);
 
-  const [cartItems, setCartItems] = React.useState<Array<{ id: string; sku?: string; name?: string; quantity: number }>>([]);
-  const [isReviewOpen, setIsReviewOpen] = React.useState(false);
+  interface CartItem {
+    id: string;
+    stockItemId: string;
+    itemLabel: string;
+    quantity: number;
+    project: string;
+    requestedBy: string;
+    requestedFor: string;
+    team: string;
+    remark: string;
+  }
+  const [cartItems, setCartItems] = React.useState<CartItem[]>([]);
   const [decidedBatchIds, setDecidedBatchIds] = React.useState<Set<string>>(new Set());
   const [showAllLogs, setShowAllLogs] = React.useState(false);
 
@@ -341,25 +351,25 @@ export default function RequestsPage() {
   });
 
   const bulkRequestMutation = useMutation({
-    mutationFn: async (items: Array<{ id: string; quantity: number }>) => {
+    mutationFn: async (items: CartItem[]) => {
       if (items.length === 0) throw new Error("Cart is empty.");
+      const firstItem = items[0];
 
       const resp = await apiClient.post("/domains/inventory/requests", {
-        requestedBy,
-        requestedFor,
-        project,
-        team,
+        requestedBy: firstItem.requestedBy,
+        requestedFor: firstItem.requestedFor || undefined,
+        project: firstItem.project,
+        team: firstItem.team || undefined,
         timestamp: new Date().toISOString(),
-        items: items.map((it) => ({ id: it.id, quantity: it.quantity, remark: note.trim() || undefined })),
+        items: items.map((it) => ({ id: it.stockItemId, quantity: it.quantity, remark: it.remark || undefined })),
       });
 
       return resp.data as { data: RequestReferenceRow[] };
     },
     onSuccess: async (resp) => {
-      setFeedback({ type: "success", message: `Submitted ${cartItems.length} request(s) for review.` });
+      setFeedback({ type: "success", message: `Submitted request(s) for review.` });
       await refetchPersistedRequests();
       setCartItems([]);
-      setIsReviewOpen(false);
       setRequestQty(1);
       setNote("");
     },
@@ -491,20 +501,45 @@ export default function RequestsPage() {
             <button
               type="button"
               onClick={() => {
-                // add selected item to cart
                 setFeedback(null);
-                if (!selectedItem?.id) return setFeedback({ type: 'error', message: 'Select an item first.' });
-                if (!Number.isFinite(requestQty) || requestQty <= 0) return setFeedback({ type: 'error', message: 'Quantity must be > 0.' });
-                // Allow requests exceeding current stock — Project Manager will decide
-                const sid = selectedItem.id as string;
-                const sSku = selectedItem.sku ?? "";
-                const sName = selectedItem.name ?? "";
-                setCartItems((c) => [...c, { id: sid, sku: sSku, name: sName, quantity: requestQty }]);
+                if (!selectedItem) {
+                  setFeedback({ type: 'error', message: 'Select an item first.' });
+                  return;
+                }
+                if (!Number.isFinite(requestQty) || requestQty <= 0) {
+                  setFeedback({ type: 'error', message: 'Quantity must be > 0.' });
+                  return;
+                }
+                if (!project.trim()) {
+                  setFeedback({ type: "error", message: "Project is required." });
+                  return;
+                }
+                if (!requestedBy.trim()) {
+                  setFeedback({ type: "error", message: "Requested by is required." });
+                  return;
+                }
+
+                const newItem: CartItem = {
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  stockItemId: selectedItem.id!,
+                  itemLabel: `${selectedItem.sku ?? ""} - ${selectedItem.name ?? ""}`.trim(),
+                  quantity: requestQty,
+                  project: project.trim(),
+                  requestedBy: requestedBy.trim(),
+                  requestedFor: requestedFor.trim(),
+                  team: team.trim(),
+                  remark: note.trim() || "Request item",
+                };
+                setCartItems((prev) => [...prev, newItem]);
+                setFeedback({ type: 'success', message: `Added ${requestQty} units of ${selectedItem.name} to cart.` });
+                
+                setSelectedItemId("");
                 setRequestQty(1);
+                setNote("");
               }}
               style={{
                 border: "1px solid var(--color-border)",
-                background: "var(--color-accent-soft)",
+                background: "var(--color-surface)",
                 color: "var(--color-text)",
                 borderRadius: "var(--radius-sm)",
                 padding: "8px 12px",
@@ -513,150 +548,107 @@ export default function RequestsPage() {
                 cursor: 'pointer',
               }}
             >
-              Add to Cart
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsReviewOpen(true)}
-              disabled={cartItems.length === 0}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "var(--color-primary)",
-                color: "#fff",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 12px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: cartItems.length === 0 ? 'not-allowed' : 'pointer',
-              }}
-            >
-              Review
+              ➕ Add to Cart
             </button>
           </div>
         </div>
 
-        {/* Cart and Review container: review stays inside the cart block and only adds one footer row */}
-        <div style={{ position: 'relative', marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: isReviewOpen ? 'rgba(212, 233, 229, 0.82)' : 'var(--color-surface)' }}>
-          {cartItems.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, marginBottom: 8, padding: '10px 10px 0 10px' }}>
-                {isReviewOpen ? 'Review Request(s)' : 'Cart'}
-              </div>
-
-              <div style={{ overflowX: 'auto', padding: '0 10px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                  <colgroup>
-                    <col style={{ width: '42%' }} />
-                    <col style={{ width: isReviewOpen ? '12%' : '18%' }} />
-                    <col style={{ width: isReviewOpen ? '12%' : '40%' }} />
-                    {isReviewOpen && <col style={{ width: '12%' }} />}
-                    {isReviewOpen && <col style={{ width: '12%' }} />}
-                    {isReviewOpen && <col style={{ width: '12%' }} />}
-                  </colgroup>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--color-divider)' }}>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>Item</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>Qty</th>
-                      {isReviewOpen ? (
-                        <>
-                          <th style={{ padding: '8px', textAlign: 'left' }}>Requested By</th>
-                          <th style={{ padding: '8px', textAlign: 'left' }}>Requested For</th>
-                          <th style={{ padding: '8px', textAlign: 'left' }}>Project</th>
-                          <th style={{ padding: '8px', textAlign: 'left' }}>Team</th>
-                        </>
-                      ) : (
-                        <th style={{ padding: '8px', textAlign: 'right' }}>Actions</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cartItems.map((c, i) => (
-                      <tr key={`${c.id}-${i}`} style={{ borderBottom: '1px solid var(--color-divider)', height: 40 }}>
-                        <td style={{ padding: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sku} - {c.name}</td>
-                        <td style={{ padding: '8px' }}>{c.quantity}</td>
-                        {isReviewOpen ? (
-                          <>
-                            <td style={{ padding: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{requestedBy}</td>
-                            <td style={{ padding: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{requestedFor || '—'}</td>
-                            <td style={{ padding: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{project}</td>
-                            <td style={{ padding: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team || '—'}</td>
-                          </>
-                        ) : (
-                          <td style={{ padding: '8px', textAlign: 'right' }}>
-                            <div style={{ display: 'inline-flex', gap: 8, justifyContent: 'flex-end', width: '100%' }}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                              setSelectedItemId(c.id);
-                              setRequestQty(c.quantity);
-                              setCartItems((rows) => rows.filter((_, idx) => idx !== i));
-                                }}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  padding: '4px 8px',
-                                  borderRadius: '999px',
-                                  border: '1px solid #93c5fd',
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
-                                  cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  lineHeight: 1,
-                                }}
-                                aria-label="Edit item"
-                                title="Edit"
-                              >
-                                <span aria-hidden="true">✎</span>
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setCartItems((rows) => rows.filter((_, idx) => idx !== i))}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  padding: '4px 8px',
-                                  borderRadius: '999px',
-                                  border: '1px solid #fca5a5',
-                                  background: '#fef2f2',
-                                  color: '#dc2626',
-                                  cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: 700,
-                                  lineHeight: 1,
-                                }}
-                                aria-label="Delete item"
-                                title="Delete"
-                              >
-                                <span aria-hidden="true">X</span>
-                                <span>Delete</span>
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {isReviewOpen && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px', borderTop: '1px solid var(--color-divider)', background: 'rgba(17, 24, 39, 0.08)' }}>
-                  <button onClick={() => setIsReviewOpen(false)} style={{ padding: '8px 12px' }}>Back</button>
-                  <button onClick={() => bulkRequestMutation.mutate(cartItems.map((c) => ({ id: c.id, quantity: c.quantity })))} style={{ padding: '8px 12px', background: 'var(--color-primary)', color: '#fff', borderRadius: '6px' }}>Submit</button>
-                </div>
-              )}
+        {cartItems.length > 0 && (
+          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "grid", gap: 12, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Request Cart ({cartItems.length} items)</div>
+              <button
+                type="button"
+                onClick={() => setCartItems([])}
+                style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+              >
+                Clear Cart
+              </button>
             </div>
-          )}
-        </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Team</th>
+                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
+                    <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 140 }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cartItems.map((item) => (
+                    <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.project}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedBy}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedFor || "—"}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.team || "—"}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark}</td>
+                      <td style={{ padding: "8px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedItemId(item.stockItemId);
+                              setRequestQty(item.quantity);
+                              setProject(item.project);
+                              setRequestedBy(item.requestedBy);
+                              setRequestedFor(item.requestedFor);
+                              setTeam(item.team);
+                              setNote(item.remark);
+                              setCartItems((prev) => prev.filter((i) => i.id !== item.id));
+                            }}
+                            style={{ background: "none", border: "none", color: "var(--color-text)", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCartItems((prev) => prev.filter((i) => i.id !== item.id))}
+                            style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                          >
+                            🗑️ Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedback(null);
+                  bulkRequestMutation.mutate(cartItems);
+                }}
+                disabled={bulkRequestMutation.isPending}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-primary)",
+                  color: "#fff",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "8px 12px",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: bulkRequestMutation.isPending ? "not-allowed" : "pointer",
+                }}
+              >
+                {bulkRequestMutation.isPending ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", maxWidth: 1100 }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Request Activity (Session)</div>
+        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Pending requests</div>
         {(() => {
           const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
           if (pendingLogs.length === 0) return (
@@ -862,37 +854,60 @@ export default function RequestsPage() {
         </div>
 
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1500 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "7%" }} /> {/* Tracking ID */}
+              <col style={{ width: "6%" }} /> {/* Code No */}
+              <col style={{ width: "6%" }} /> {/* Barcode */}
+              <col style={{ width: "13%" }} /> {/* Item Description */}
+              <col style={{ width: "4%" }} /> {/* Quantity */}
+              <col style={{ width: "4%" }} /> {/* Unit */}
+              <col style={{ width: "8%" }} /> {/* Unit Description */}
+              <col style={{ width: "6%" }} /> {/* Category */}
+              <col style={{ width: "8%" }} /> {/* Date Requested */}
+              <col style={{ width: "8%" }} /> {/* Requested By */}
+              <col style={{ width: "8%" }} /> {/* Requested For */}
+              <col style={{ width: "8%" }} /> {/* Project */}
+              <col style={{ width: "4%" }} /> {/* Team */}
+              <col style={{ width: "10%" }} /> {/* Remark */}
+              <col style={{ width: "10%" }} /> {/* Status */}
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Tracking ID</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Code_No</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Barcode</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item_Description</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Quantity</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit_Description</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Category</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date_Requested</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested_By</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested_For</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Team</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Status</th>
-                </tr>
+                {(() => {
+                  const thStyle: React.CSSProperties = { padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                  return (
+                    <>
+                      <th style={thStyle} title="Tracking ID">Tracking ID</th>
+                      <th style={thStyle} title="Code_No">Code_No</th>
+                      <th style={thStyle} title="Barcode">Barcode</th>
+                      <th style={thStyle} title="Item_Description">Item_Description</th>
+                      <th style={thStyle} title="Quantity">Quantity</th>
+                      <th style={thStyle} title="Unit">Unit</th>
+                      <th style={thStyle} title="Unit_Description">Unit_Description</th>
+                      <th style={thStyle} title="Category">Category</th>
+                      <th style={thStyle} title="Date_Requested">Date_Requested</th>
+                      <th style={thStyle} title="Requested_By">Requested_By</th>
+                      <th style={thStyle} title="Requested_For">Requested_For</th>
+                      <th style={thStyle} title="Project">Project</th>
+                      <th style={thStyle} title="Team">Team</th>
+                      <th style={thStyle} title="Remark">Remark</th>
+                      <th style={thStyle} title="Status">Status</th>
+                    </>
+                  );
+                })()}
+              </tr>
             </thead>
             <tbody>
               {paginatedRequests.length === 0 ? (
                 <tr>
-                    <td colSpan={15} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textAlign: "center" }}>
+                  <td colSpan={15} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textAlign: "center" }}>
                     No matching records available.
                   </td>
                 </tr>
               ) : (
                 paginatedRequests.map((row, index) => {
                   const cellStyle: React.CSSProperties = { padding: "0 8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-                  const truncCell = (maxW: number): React.CSSProperties => ({ ...cellStyle, maxWidth: maxW });
                   const s = (v: unknown) => (v == null ? "" : String(v));
                   const fullTrackingId = row.requestBatchId ?? row.movementId ?? row.rowKey;
                   return (
@@ -900,18 +915,18 @@ export default function RequestsPage() {
                       <td style={{ ...cellStyle, fontWeight: 700 }} title={s(fullTrackingId)}>{s(fullTrackingId).slice(-8).toUpperCase()}</td>
                       <td style={cellStyle} title={s(row.codeNo)}>{s(row.codeNo)}</td>
                       <td style={cellStyle} title={s(row.barcode)}>{s(row.barcode)}</td>
-                      <td style={truncCell(200)} title={s(row.itemDescription)}>{s(row.itemDescription)}</td>
+                      <td style={cellStyle} title={s(row.itemDescription)}>{s(row.itemDescription)}</td>
                       <td style={cellStyle} title={s(row.quantity)}>{s(row.quantity)}</td>
                       <td style={cellStyle} title={s(row.unit)}>{s(row.unit)}</td>
-                      <td style={truncCell(160)} title={s(row.unitDescription)}>{s(row.unitDescription)}</td>
+                      <td style={cellStyle} title={s(row.unitDescription)}>{s(row.unitDescription)}</td>
                       <td style={cellStyle} title={s(row.category)}>{s(row.category)}</td>
                       <td style={cellStyle} title={s(row.dateRequested)}>{s(row.dateRequested)}</td>
-                      <td style={truncCell(160)} title={s(row.requestedBy)}>{s(row.requestedBy)}</td>
-                      <td style={truncCell(160)} title={s(row.requestedFor)}>{s(row.requestedFor)}</td>
-                      <td style={truncCell(160)} title={s(row.project)}>{s(row.project)}</td>
+                      <td style={cellStyle} title={s(row.requestedBy)}>{s(row.requestedBy)}</td>
+                      <td style={cellStyle} title={s(row.requestedFor)}>{s(row.requestedFor)}</td>
+                      <td style={cellStyle} title={s(row.project)}>{s(row.project)}</td>
                       <td style={cellStyle} title={s(row.team)}>{s(row.team)}</td>
-                      <td style={truncCell(160)} title={s(row.remark)}>{s(row.remark)}</td>
-                      <td style={{ padding: "0 8px", fontSize: "var(--fs-xs)", minWidth: 130, whiteSpace: "nowrap" }}>
+                      <td style={cellStyle} title={s(row.remark)}>{s(row.remark)}</td>
+                      <td style={{ padding: "0 8px", fontSize: "var(--fs-xs)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         <div
                           style={{
                             display: "inline-block",

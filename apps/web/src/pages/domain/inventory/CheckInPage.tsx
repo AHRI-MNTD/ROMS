@@ -51,6 +51,13 @@ export default function CheckInPage() {
     },
   });
 
+  const sortedMovements = React.useMemo(() => {
+    if (!checkInMovementsData?.data) return [];
+    return [...checkInMovementsData.data].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [checkInMovementsData]);
+
   const itemInputRef = React.useRef<HTMLInputElement | null>(null);
   const [itemMenuOpen, setItemMenuOpen] = React.useState(false);
   const [itemActiveIndex, setItemActiveIndex] = React.useState(0);
@@ -384,9 +391,9 @@ export default function CheckInPage() {
 
         {mode === "existing" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-            <div style={{ position: "relative" }}>
-              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block" }}>
-                Select Item
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", position: "relative" }}>
+              Select Item
+              <div style={{ position: "relative", width: "100%" }}>
                 <input
                   ref={itemInputRef}
                   value={selectedItemQuery}
@@ -402,9 +409,25 @@ export default function CheckInPage() {
                   }}
                   onKeyDown={handleItemKeyDown}
                   placeholder="Type SKU or item name"
-                  style={inputStyle}
+                  style={{
+                    ...inputStyle,
+                    paddingRight: "28px",
+                  }}
                 />
-              </label>
+                <div
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    pointerEvents: "none",
+                    color: "var(--color-text-muted)",
+                    fontSize: "8px",
+                  }}
+                >
+                  ▼
+                </div>
+              </div>
 
               {itemMenuOpen && filteredItemSuggestions.length > 0 && (
                 <div
@@ -412,7 +435,9 @@ export default function CheckInPage() {
                     position: "absolute",
                     top: "100%",
                     left: 0,
-                    right: 0,
+                    minWidth: "100%",
+                    width: "max-content",
+                    maxWidth: "500px",
                     zIndex: 20,
                     marginTop: 6,
                     border: "1px solid var(--color-border)",
@@ -441,20 +466,25 @@ export default function CheckInPage() {
                           border: "none",
                           borderBottom: "1px solid var(--color-divider)",
                           background: isActive ? "var(--color-accent-soft)" : "transparent",
-                          padding: "10px 12px",
+                          padding: "8px 12px",
                           cursor: "pointer",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          fontSize: "var(--fs-xs)",
+                          color: "var(--color-text)",
                         }}
                       >
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 700 }}>{item.sku} - {item.name}</div>
-                        <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 4 }}>
-                          Available: {quantity} {item.unit ?? "units"}
-                        </div>
+                        <span style={{ fontWeight: 600 }}>{item.sku} - {item.name}</span>
+                        <span style={{ color: "var(--color-text-muted)", marginLeft: 6 }}>
+                          (Available: {quantity} {item.unit ?? "units"})
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               )}
-            </div>
+            </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Quantity
@@ -614,38 +644,6 @@ export default function CheckInPage() {
       </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Check-In Activity</div>
-        {(!checkInMovementsData || checkInMovementsData.data.length === 0) ? (
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No check-in actions recorded yet.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date Received</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Mode</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkInMovementsData.data.slice(0, 8).map((entry) => (
-                  <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.createdAt).toLocaleString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.occurredAt).toLocaleDateString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.remark && entry.remark.includes("Opening stock") ? "New" : "Existing"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${entry.stockItem?.sku ?? ""} - ${entry.stockItem?.name ?? ""}`}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Check-In Reference Table (History)</div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -654,6 +652,7 @@ export default function CheckInPage() {
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Code_No</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Barcode</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item_Description</th>
+                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Mode</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Quantity</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit</th>
                 <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit_Description</th>
@@ -665,18 +664,19 @@ export default function CheckInPage() {
               </tr>
             </thead>
             <tbody>
-              {!checkInMovementsData || checkInMovementsData.data.length === 0 ? (
+              {sortedMovements.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                  <td colSpan={12} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
                     No check-in history records available.
                   </td>
                 </tr>
               ) : (
-                checkInMovementsData.data.map((row) => (
+                sortedMovements.map((row) => (
                   <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.name ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark && row.remark.includes("Opening stock") ? "New" : "Existing"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.unit ?? "units"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${row.stockItem?.unit ?? "units"} per pack`}</td>

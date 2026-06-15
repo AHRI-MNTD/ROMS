@@ -81,7 +81,6 @@ export default function InventoryDashboardPage() {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
     background: `${tone}15`,
     color: tone,
     fontSize: 20,
@@ -131,78 +130,78 @@ export default function InventoryDashboardPage() {
           {/* Aggregated KPI Cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
             <div style={statCardStyle("#01696f")}>
-              <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={statIconStyle("#01696f")} aria-hidden="true">📦</div>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Registered Items</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalItems}</div>
               </div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalItems}</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Registered Items</div>
             </div>
 
             <div style={statCardStyle("#0c4e54")}>
-              <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={statIconStyle("#0c4e54")} aria-hidden="true">🧪</div>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Quantity</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalQuantity}</div>
               </div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalQuantity}</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Quantity</div>
             </div>
 
             <div style={statCardStyle("#3b82f6")}>
-              <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={statIconStyle("#3b82f6")} aria-hidden="true">📋</div>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Pending Requests</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: pendingRequestsCount > 0 ? "#2563eb" : "var(--color-text)", fontWeight: 800 }}>
-                  {pendingRequestsCount}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: pendingRequestsCount > 0 ? "#2563eb" : "var(--color-text)", fontWeight: 800 }}>
+                    {pendingRequestsCount}
+                  </div>
+                  {pendingRequestsCount > 0 && (
+                    <span style={{ fontSize: "10px", color: "#2563eb", fontWeight: 700, background: "#dbeafe", padding: "1px 5px", borderRadius: 999 }}>
+                      Action
+                    </span>
+                  )}
                 </div>
-                {pendingRequestsCount > 0 && (
-                  <span style={{ fontSize: "var(--fs-xs)", color: "#2563eb", fontWeight: 700, background: "#dbeafe", padding: "2px 6px", borderRadius: 999 }}>
-                    Action required
-                  </span>
-                )}
               </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Pending Requests</div>
             </div>
 
             <div style={statCardStyle("#b45309")}>
-              <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={statIconStyle("#b45309")} aria-hidden="true">⬇️</div>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Cumulative Checkout</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalCheckOut}</div>
               </div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalCheckOut}</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Cumulative Checkout</div>
             </div>
 
             <div style={statCardStyle("#dc2626")}>
-              <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={statIconStyle("#dc2626")} aria-hidden="true">⚠️</div>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Low Stock items</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: summary.lowStockItems > 0 ? "#dc2626" : "var(--color-text)", fontWeight: 800 }}>
-                  {summary.lowStockItems}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: summary.lowStockItems > 0 ? "#dc2626" : "var(--color-text)", fontWeight: 800 }}>
+                    {summary.lowStockItems}
+                  </div>
+                  {summary.lowStockItems > 0 && (
+                    <span style={{ fontSize: "10px", color: "#b91c1c", fontWeight: 700, background: "#fee2e2", padding: "1px 5px", borderRadius: 999 }}>
+                      Attention
+                    </span>
+                  )}
                 </div>
-                {summary.lowStockItems > 0 && (
-                  <span style={{ fontSize: "var(--fs-xs)", color: "#b91c1c", fontWeight: 700, background: "#fee2e2", padding: "2px 6px", borderRadius: 999 }}>
-                    Attention
-                  </span>
-                )}
               </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Low Stock items</div>
             </div>
 
             <div style={statCardStyle("#7f1d1d")}>
-              <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div style={statIconStyle("#7f1d1d")} aria-hidden="true">🛑</div>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Out of Stock</div>
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 32, color: summary.outOfStockItems > 0 ? "#7f1d1d" : "var(--color-text)", fontWeight: 800 }}>
-                  {summary.outOfStockItems}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: summary.outOfStockItems > 0 ? "#7f1d1d" : "var(--color-text)", fontWeight: 800 }}>
+                    {summary.outOfStockItems}
+                  </div>
+                  {summary.outOfStockItems > 0 && (
+                    <span style={{ fontSize: "10px", color: "#7f1d1d", fontWeight: 700, background: "#fee2e2", padding: "1px 5px", borderRadius: 999 }}>
+                      Empty
+                    </span>
+                  )}
                 </div>
-                {summary.outOfStockItems > 0 && (
-                  <span style={{ fontSize: "var(--fs-xs)", color: "#7f1d1d", fontWeight: 700, background: "#fee2e2", padding: "2px 6px", borderRadius: 999 }}>
-                    Empty
-                  </span>
-                )}
               </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Out of Stock</div>
             </div>
           </div>
 
@@ -325,7 +324,7 @@ export default function InventoryDashboardPage() {
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: isOut ? "#dc2626" : "#d97706" }}>
+                        <div style={{ fontSize: isOut ? 12 : "var(--fs-md)", fontWeight: 800, color: isOut ? "#dc2626" : "#d97706" }}>
                           {isOut ? "OUT OF STOCK" : `${qty} left`}
                         </div>
                       </div>
