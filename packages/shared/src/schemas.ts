@@ -165,6 +165,11 @@ export const CreateStaffProfileSchema = z.object({
   department: z.string().min(2).max(128),
   jobTitle: z.string().min(2).max(128),
   startDate: z.coerce.date(),
+  employmentType: z.string().max(64).optional(),
+  contractEndDate: z.coerce.date().optional().nullable(),
+  contractRenewalDate: z.coerce.date().optional().nullable(),
+  phone: z.string().max(32).optional().nullable(),
+  emergencyContact: z.string().max(128).optional().nullable(),
 });
 
 export type CreateStaffProfileInput = z.infer<typeof CreateStaffProfileSchema>;

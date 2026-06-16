@@ -34,6 +34,14 @@ function formatDate(value?: string | null) {
   return parsed.toLocaleDateString();
 }
 
+function formatEmployment(value?: string | null): string {
+  if (!value) return "—";
+  const v = value.toUpperCase().replace(/[-_\s]/g, "");
+  if (v === "CONTRACT" || v === "CONTRACTUAL") return "Contract";
+  if (v === "PERMANENT" || v === "FULLTIME") return "Permanent";
+  return value;
+}
+
 export default function ApproveEmployeePage() {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -81,14 +89,7 @@ export default function ApproveEmployeePage() {
     });
   };
 
-  const summaryCard = (tone: string): React.CSSProperties => ({
-    padding: "10px 14px",
-    borderRadius: 12,
-    border: `1px solid ${tone}22`,
-    background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
-    boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)",
-    minWidth: 150,
-  });
+
 
   const panelStyle = (borderColor: string): React.CSSProperties => ({
     borderRadius: 18,
@@ -129,7 +130,7 @@ export default function ApproveEmployeePage() {
       <td style={{ ...cellStyle, width: "12%" }} title={row.department}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.department}</div></td>
       <td style={{ ...cellStyle, width: "12%" }} title={row.jobTitle}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.jobTitle}</div></td>
       <td style={{ ...cellStyle, whiteSpace: "nowrap", width: "8%" }}>{formatDate(row.startDate)}</td>
-      <td style={{ ...cellStyle, width: "9%" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.employmentType ?? "—"}</div></td>
+      <td style={{ ...cellStyle, width: "9%" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatEmployment(row.employmentType)}</div></td>
       <td style={{ ...cellStyle, width: "8%", whiteSpace: "nowrap" }}>{formatDate(row.contractEndDate ?? null)}</td>
       <td style={{ ...cellStyle, width: "8%", whiteSpace: "nowrap" }}>{formatDate(row.contractRenewalDate ?? null)}</td>
       <td style={{ ...cellStyle, width: showActions ? "11%" : "21%" }}>
@@ -190,26 +191,6 @@ export default function ApproveEmployeePage() {
         </div>
       )}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
-        <div style={summaryCard("#b45309")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Pending Reviews</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--color-text)", fontWeight: 800 }}>{pending.length}</div>
-          </div>
-        </div>
-        <div style={summaryCard("#0f766e")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Approved</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--color-text)", fontWeight: 800 }}>{approved.length}</div>
-          </div>
-        </div>
-        <div style={summaryCard("#dc2626")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Rejected</div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--color-text)", fontWeight: 800 }}>{rejected.length}</div>
-          </div>
-        </div>
-      </div>
 
       <div style={{ display: "grid", gap: 12 }}>
         <div style={panelStyle("rgba(186, 197, 34, 0.18)")}>
