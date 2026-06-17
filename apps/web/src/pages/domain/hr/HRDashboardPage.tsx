@@ -40,22 +40,31 @@ export default function HRDashboardPage() {
     border: `1px solid ${tone}22`,
     background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
     boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)",
-  });
+    minWidth: 120,
+    maxWidth: 150,
+    flex: "1 0 auto"  });
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 12 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: 18 }}>
+
         <div style={cardStyle("#0f766e")}>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Staff</div>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalStaff}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Total Staff</span>
+            <span>{totalStaff}</span>
+          </div>
         </div>
         <div style={cardStyle("#1d4ed8")}>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Departments</div>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{departments}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Departments</span>
+            <span>{departments}</span>
+          </div>
         </div>
         <div style={cardStyle("#b45309")}>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>Training Records</div>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>{totalTraining}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 30, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Training Records</span>
+            <span>{totalTraining}</span>
+          </div>
         </div>
       </div>
 

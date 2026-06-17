@@ -1,3 +1,4 @@
+// inventory.routes.ts
 import { Router, Request, Response } from "express";
 import prisma from "@roms/db";
 import { randomUUID } from "node:crypto";
@@ -88,7 +89,7 @@ function toNumberOrUndefined(value: unknown): number | undefined {
 function toInventoryMovementStatus(value: unknown): "APPROVED" | "PENDING" | "REJECTED" | "PARTIAL" | undefined {
   const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
   if (normalized === "APPROVED" || normalized === "PENDING" || normalized === "REJECTED" || normalized === "PARTIAL") {
-    return normalized;
+    return normalized as any;
   }
   return undefined;
 }
@@ -171,27 +172,21 @@ router.get("/master-data", requireAuth, requirePermission("inventory:read"), asy
     inventoryPrisma.inventoryMasterData.count({ where }),
     inventoryPrisma.inventoryMasterData.findMany({
       where,
-      select: {
-        category: true,
-        unit: true,
-        project: true,
-        staff: true,
-      },
+      select: { category: true, unit: true, project: true, staff: true },
     }),
   ]);
 
   const summary = {
     rows: allRows.length,
-    categories: new Set(allRows.map((row: InventoryMasterDataRecord) => row.category).filter(Boolean)).size,
-    units: new Set(allRows.map((row: InventoryMasterDataRecord) => row.unit).filter(Boolean)).size,
-    projects: new Set(allRows.map((row: InventoryMasterDataRecord) => row.project).filter((value): value is string => Boolean(value))).size,
-    staff: new Set(allRows.map((row: InventoryMasterDataRecord) => row.staff).filter((value): value is string => Boolean(value))).size,
+    categories: new Set(allRows.map((row) => row.category).filter(Boolean)).size,
+    units: new Set(allRows.map((row) => row.unit).filter(Boolean)).size,
+    projects: new Set(allRows.map((row) => row.project).filter((v) => Boolean(v))).size,
+    staff: new Set(allRows.map((row) => row.staff).filter((v) => Boolean(v))).size,
   };
 
   res.json({ data, total, page, pageSize, summary });
 });
 
-// GET /master-data/projects - return distinct project names from master data
 router.get("/master-data/projects", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
   const rows = await prisma.inventoryMasterData.findMany({ select: { project: true } });
   const projects = Array.from(new Set(rows.map((r: any) => String(r.project ?? "")).filter((p: string) => p.trim().length > 0)));
@@ -201,14 +196,11 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
 // POST /master-data - add a new master data record
 router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
-  if (!category || !unit) {
-    return res.status(400).json({ error: "category and unit are required fields." });
-  }
 
   const record = await prisma.inventoryMasterData.create({
     data: {
-      category: String(category).trim(),
-      unit: String(unit).trim(),
+      category: category ? String(category).trim() : "",
+      unit: unit ? String(unit).trim() : "",
       project: project ? String(project).trim() : null,
       staff: staff ? String(staff).trim() : null,
     },
@@ -221,17 +213,12 @@ router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_A
 router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { category, unit, project, staff } = req.body;
-
-  if (!category || !unit) {
-    return res.status(400).json({ error: "category and unit are required fields." });
-  }
-
   try {
     const record = await prisma.inventoryMasterData.update({
       where: { id },
       data: {
-        category: String(category).trim(),
-        unit: String(unit).trim(),
+        category: category ? String(category).trim() : "",
+        unit: unit ? String(unit).trim() : "",
         project: project ? String(project).trim() : null,
         staff: staff ? String(staff).trim() : null,
       },
@@ -280,12 +267,12 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
 router.get("/movements", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const type = req.query.type as string;
   const limit = parseInt(req.query.limit as string) || 100;
-  
+
   const where: any = {};
   if (type === "CHECK_IN" || type === "CHECK_OUT") {
     where.movementType = type;
   }
-  
+
   const data = await prisma.inventoryMovement.findMany({
     where,
     take: limit,
@@ -296,10 +283,8 @@ router.get("/movements", requireAuth, requirePermission("inventory:read"), async
     },
     orderBy: { occurredAt: "desc" },
   });
-  
   res.json({ data, total: data.length });
 });
-
 
 router.post("/requests", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
@@ -496,7 +481,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
         checkOutTotal: true,
       },
     }),
-    movementPrisma.inventoryMovement.findMany({
+    prisma.inventoryMovement.findMany({
       select: {
         stockItemId: true,
         movementType: true,
@@ -661,13 +646,19 @@ router.post("/google-sheets/sync", requireAuth, requireRole(Role.ADMIN, Role.RES
 
 router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req, res) => {
   const item = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
-  if (!item) { res.status(404).json({ code: "NOT_FOUND" }); return; }
+  if (!item) {
+    res.status(404).json({ code: "NOT_FOUND" });
+    return;
+  }
   res.json(item);
 });
 
 router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), auditMutation("StockItem", "CREATE"), async (req, res) => {
   const parsed = CreateStockItemSchema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() });
+    return;
+  }
   const { dateReceived: parsedDateReceived, ...stockItemData } = parsed.data;
   // enforce projectFor exists in master-data
   const projectForValue = String(req.body.projectFor ?? "ROMS Inventory").trim();
@@ -697,7 +688,7 @@ router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), audi
           requestedBy: req.user?.email ?? null,
           projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
           status: String(req.body.status ?? "APPROVED") as "APPROVED" | "PENDING" | "REJECTED",
-          remark: String(req.body.note ?? "Opening stock"),
+          remark: String(req.body.remark ?? req.body.note ?? "Opening stock"),
           occurredAt: parsedDateReceived ?? new Date(),
         },
       });

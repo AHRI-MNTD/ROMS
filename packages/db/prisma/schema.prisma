@@ -509,6 +509,38 @@ model StaffProfile {
   employmentType      String?
   contractEndDate     DateTime?
   contractRenewalDate DateTime?
+  phone               String?
+  emergencyContact    String?
+  sex                 String?
+  personalEmail       String?
+  ahriEmail           String?
+  mntdProject         String?
+  mntdTeams           String[]
+  mntdProjectsInvolved String[]
+  firstDegree         String?
+  firstDegreeUniv     String?
+  firstDegreeUnivOther String?
+  firstDegreeYear     String?
+  secondDegree        String?
+  secondDegreeUniv    String?
+  secondDegreeUnivOther String?
+  secondDegreeYear    String?
+  thirdDegree         String?
+  thirdDegreeUnivCountry String?
+  thirdDegreeYear     String?
+  currentlyStudying   Boolean?
+  studyMastersField   String?
+  studyMastersUniv    String?
+  studyMastersYear    String?
+  studyPhdField       String?
+  studyPhdUniv        String?
+  studyPhdYear        String?
+  studyCertField      String?
+  studyCertUniv       String?
+  studyCertYear       String?
+  totalWorkExp        String?
+  totalWorkExpAhri    String?
+  propertyInventory   Json?
   approvalStatus      StaffApprovalStatus @default(PENDING)
   reviewedById        String?
   reviewedBy          User?               @relation("StaffProfileReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)

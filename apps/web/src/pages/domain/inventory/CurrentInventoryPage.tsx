@@ -46,11 +46,11 @@ export default function CurrentInventoryPage() {
   }, [allInventoryData?.data]);
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  
+
   // Use allInventoryData for filtering when filters are active to search across all data
   const isFilteringActive = stockFilter !== "all" || categoryFilter !== "all" || normalizedSearch.length > 0;
   const sourceRows = isFilteringActive ? (allInventoryData?.data ?? []) : (data?.data ?? []);
-  
+
   const filteredRows = sourceRows.filter((row) => {
     const quantity = Number(row.quantity ?? 0);
     const minThreshold = Number(row.minThreshold ?? 0);
@@ -99,7 +99,7 @@ export default function CurrentInventoryPage() {
 
   const outOfStockCount = inventoryRows.filter((row) => Number(row.quantity ?? 0) <= 0).length;
   const totalStock = inventoryRows.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-  
+
   // When active filtering is used, paginate on the client. Otherwise, use backend pagination count.
   const displayTotal = isFilteringActive ? filteredRows.length : (data?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(displayTotal / pageSize));
@@ -212,28 +212,6 @@ export default function CurrentInventoryPage() {
     backdropFilter: "blur(10px)",
   };
 
-  const heroStatStyle = (accent: string): React.CSSProperties => ({
-    padding: "16px 18px",
-    borderRadius: 18,
-    border: `1px solid ${accent}22`,
-    background: `linear-gradient(180deg, ${accent}12, rgba(255,255,255,0.95))`,
-    boxShadow: "0 14px 26px rgba(16, 24, 40, 0.06)",
-  });
-
-  const chipStyle: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 999,
-    padding: "6px 10px",
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-    background: "rgba(1, 105, 111, 0.08)",
-    color: "#0c4e54",
-  };
-
   const toolbarButtonStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.14)",
     borderRadius: 14,
@@ -257,43 +235,31 @@ export default function CurrentInventoryPage() {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div
-        style={{
-          ...panelStyle,
-          position: "relative",
-          overflow: "hidden",
-          padding: 20,
-          backgroundImage:
-            "radial-gradient(circle at top left, rgba(1, 105, 111, 0.16), transparent 35%), radial-gradient(circle at top right, rgba(239, 172, 40, 0.16), transparent 28%), linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,248,244,0.94))",
-        }}
-      >
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(120deg, rgba(255,255,255,0.24), transparent 34%, rgba(255,255,255,0.1) 60%, transparent)" }} />
-        <div style={{ position: "relative", display: "grid", gap: 16 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ maxWidth: 700 }}>
-              <div style={chipStyle}>Live inventory snapshot</div>
-              <h2 style={{ margin: "10px 0 6px", fontFamily: "var(--font-display)", fontSize: "38px", lineHeight: 1.03, color: "var(--color-text)" }}>
-                Current inventory
-              </h2>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(1, 105, 111, 0.14)", background: "linear-gradient(180deg, rgba(1, 105, 111, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Items matching</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--color-text)", fontWeight: 800 }}>{displayTotal}</span>
             </div>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
-            <div style={heroStatStyle("#01696f")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Items matching</div>
-              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{displayTotal}</div>
+          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(180, 83, 9, 0.14)", background: "linear-gradient(180deg, rgba(180, 83, 9, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Low stock</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "#92400e", fontWeight: 800 }}>{lowStockCount}</span>
             </div>
-            <div style={heroStatStyle("#b45309")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Low stock</div>
-              <div style={{ color: "#92400e", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{lowStockCount}</div>
+          </div>
+          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(153, 27, 27, 0.14)", background: "linear-gradient(180deg, rgba(153, 27, 27, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Out of stock</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "#991b1b", fontWeight: 800 }}>{outOfStockCount}</span>
             </div>
-            <div style={heroStatStyle("#991b1b")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Out of stock</div>
-              <div style={{ color: "#991b1b", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{outOfStockCount}</div>
-            </div>
-            <div style={heroStatStyle("#0c4e54")}>
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 8, letterSpacing: "0.05em", textTransform: "uppercase" }}>Total stock</div>
-              <div style={{ color: "var(--color-text)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, lineHeight: 1 }}>{totalStock}</div>
+          </div>
+          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(12, 78, 84, 0.14)", background: "linear-gradient(180deg, rgba(12, 78, 84, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total stock</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
             </div>
           </div>
         </div>
@@ -334,7 +300,7 @@ export default function CurrentInventoryPage() {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search SKU / name / unit" style={inputStyle} />
-            
+
             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={toolbarButtonStyle}>
               <option value="all">All Categories</option>
               {categories.map((cat) => (
@@ -357,92 +323,116 @@ export default function CurrentInventoryPage() {
         </div>
       </div>
 
-      {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
-      {!isLoading && isFetching && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)" }}>Refreshing…</div>}
+      {isLoading && <div>Loading…</div>}
+      {!isLoading && isFetching && <div>Refreshing…</div>}
 
       {error && (
-        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 14, fontSize: "var(--fs-sm)", color: "#991b1b", boxShadow: "0 12px 24px rgba(185, 28, 28, 0.08)" }}>
+        <div>
           API unavailable — start the API server with <code>pnpm dev</code>
         </div>
       )}
 
       {!isLoading && !error && data && (
         <>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Showing {paginatedRows.length} of {displayTotal} item{displayTotal === 1 ? "" : "s"} on page {page} (total records: {data.total})
-          </div>
-          <div style={{ ...panelStyle, overflow: "hidden" }}>
+          <div style={{ border: "1px solid var(--color-divider)", borderRadius: 12, background: "var(--color-surface-2)", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "10%" }} />
+                </colgroup>
                 <thead>
-                  <tr style={{ background: "linear-gradient(180deg, rgba(1, 105, 111, 0.08), rgba(1, 105, 111, 0.03))" }}>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Code_No</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Item_Description</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Category</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Unit</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Check-in total</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Check-out total</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Balance</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>% Balance</th>
-                    <th style={{ padding: "12px 10px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left" }}>Status</th>
+                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    {(() => {
+                      const thStyle: React.CSSProperties = { padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                      return (
+                        <>
+                          <th style={thStyle} title="Code_No">Code_No</th>
+                          <th style={thStyle} title="Item_Description">Item_Description</th>
+                          <th style={thStyle} title="Category">Category</th>
+                          <th style={thStyle} title="Unit">Unit</th>
+                          <th style={thStyle} title="Check-in total">Check-in total</th>
+                          <th style={thStyle} title="Check-out total">Check-out total</th>
+                          <th style={thStyle} title="Balance">Balance</th>
+                          <th style={thStyle} title="% Balance">% Balance</th>
+                          <th style={thStyle} title="Status">Status</th>
+                        </>
+                      );
+                    })()}
                   </tr>
                 </thead>
                 <tbody>
-                {paginatedRows.map((row, index) => {
-                  const quantity = Number(row.quantity ?? 0);
-                  const minThreshold = Number(row.minThreshold ?? 0);
-                  const checkOutTotal = Number(row.checkOutTotal ?? 0);
-                  const checkInTotal = Number(row.checkInTotal ?? quantity + checkOutTotal);
-                  const balance = quantity;
-                  const percentBalance = Number(row.balancePercent ?? (minThreshold > 0 ? (balance / minThreshold) * 100 : 0));
-                  const isOutOfStock = quantity <= 0;
-                  const isLowStock = quantity > 0 && quantity <= minThreshold;
-                  const category = row.category ?? "General";
+                  {paginatedRows.map((row, index) => {
+                    const quantity = Number(row.quantity ?? 0);
+                    const minThreshold = Number(row.minThreshold ?? 0);
+                    const checkOutTotal = Number(row.checkOutTotal ?? 0);
+                    const checkInTotal = Number(row.checkInTotal ?? quantity + checkOutTotal);
+                    const balance = quantity;
+                    const percentBalance = Number(row.balancePercent ?? (minThreshold > 0 ? (balance / minThreshold) * 100 : 0));
+                    const isOutOfStock = quantity <= 0;
+                    const isLowStock = quantity > 0 && quantity <= minThreshold;
+                    const category = row.category ?? "General";
 
-                  let statusLabel = "Healthy";
-                  let statusColor = "#166534";
-                  let statusBackground = "#dcfce7";
+                    let statusLabel = "Healthy";
+                    let statusColor = "#166534";
+                    let statusBackground = "#dcfce7";
 
-                  if (isOutOfStock) {
-                    statusLabel = "Out of Stock";
-                    statusColor = "#991b1b";
-                    statusBackground = "#fee2e2";
-                  } else if (isLowStock) {
-                    statusLabel = "Low Stock";
-                    statusColor = "#92400e";
-                    statusBackground = "#fef3c7";
-                  }
+                    if (isOutOfStock) {
+                      statusLabel = "Out of Stock";
+                      statusColor = "#991b1b";
+                      statusBackground = "#fee2e2";
+                    } else if (isLowStock) {
+                      statusLabel = "Low Stock";
+                      statusColor = "#92400e";
+                      statusBackground = "#fef3c7";
+                    }
 
-                  return (
-                    <tr
-                      key={`${row.sku ?? "row"}-${index}`}
-                      style={{
-                        borderBottom: "1px solid var(--color-divider)",
-                        background: isOutOfStock || isLowStock ? "linear-gradient(90deg, rgba(185, 28, 28, 0.03), transparent)" : index % 2 === 0 ? "rgba(255,255,255,0.45)" : "rgba(249,248,245,0.5)",
-                      }}
-                    >
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{String(row.sourceCode ?? row.sku ?? "—")}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>{String(row.name ?? "—")}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{category}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(row.unit ?? "—")}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkInTotal}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{checkOutTotal}</td>
-                      <td style={{ padding: "12px 10px", fontSize: "var(--fs-xs)", color: isOutOfStock || isLowStock ? "#b91c1c" : "var(--color-text)", fontWeight: isOutOfStock || isLowStock ? 800 : 600 }}>{balance}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${Math.round(percentBalance)}%`}</td>
-                      <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "5px 10px", fontWeight: 700, color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    const cellStyle: React.CSSProperties = {
+                      padding: "8px",
+                      fontSize: "var(--fs-xs)",
+                      color: "var(--color-text-muted)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    };
+
+                    const codeVal = String(row.sourceCode ?? row.sku ?? "—");
+                    const nameVal = String(row.name ?? "—");
+
+                    return (
+                      <tr
+                        key={`${row.sku ?? "row"}-${index}`}
+                        style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}
+                      >
+                        <td style={cellStyle} title={codeVal}>{codeVal}</td>
+                        <td style={cellStyle} title={nameVal}>{nameVal}</td>
+                        <td style={cellStyle} title={category}>{category}</td>
+                        <td style={cellStyle} title={String(row.unit ?? "—")}>{String(row.unit ?? "—")}</td>
+                        <td style={cellStyle}>{checkInTotal}</td>
+                        <td style={cellStyle}>{checkOutTotal}</td>
+                        <td style={cellStyle}>{balance}</td>
+                        <td style={cellStyle}>{`${Math.round(percentBalance)}%`}</td>
+                        <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "5px 10px", fontWeight: 700, color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Page {page} of {totalPages}
             </div>
@@ -452,14 +442,13 @@ export default function CurrentInventoryPage() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
                 style={{
-                  border: "1px solid rgba(1, 105, 111, 0.14)",
-                  background: page <= 1 ? "rgba(255,255,255,0.55)" : "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,246,242,0.92))",
+                  border: "1px solid var(--color-divider)",
+                  background: page <= 1 ? "var(--color-surface-2)" : "var(--color-surface)",
                   color: "var(--color-text)",
-                  borderRadius: 14,
-                  padding: "8px 12px",
+                  borderRadius: 8,
+                  padding: "6px 12px",
                   fontSize: "var(--fs-xs)",
-                  cursor: page <= 1 ? "not-allowed" : "pointer",
-                  boxShadow: "0 8px 18px rgba(16, 24, 40, 0.05)",
+                  cursor: page <= 1 ? "not-allowed" : "pointer"
                 }}
               >
                 Previous
@@ -469,14 +458,13 @@ export default function CurrentInventoryPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
                 style={{
-                  border: "1px solid rgba(1, 105, 111, 0.14)",
-                  background: page >= totalPages ? "rgba(255,255,255,0.55)" : "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,246,242,0.92))",
+                  border: "1px solid var(--color-divider)",
+                  background: page >= totalPages ? "var(--color-surface-2)" : "var(--color-surface)",
                   color: "var(--color-text)",
-                  borderRadius: 14,
-                  padding: "8px 12px",
+                  borderRadius: 8,
+                  padding: "6px 12px",
                   fontSize: "var(--fs-xs)",
-                  cursor: page >= totalPages ? "not-allowed" : "pointer",
-                  boxShadow: "0 8px 18px rgba(16, 24, 40, 0.05)",
+                  cursor: page >= totalPages ? "not-allowed" : "pointer"
                 }}
               >
                 Next
@@ -487,7 +475,7 @@ export default function CurrentInventoryPage() {
       )}
 
       {!isLoading && !error && (!data || displayTotal === 0) && (
-        <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
+        <div style={{ padding: 18, border: "1px solid var(--color-divider)", borderRadius: 12, background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
           No inventory records found.
         </div>
       )}

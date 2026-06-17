@@ -1,8 +1,6 @@
-import React, { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
-
-type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 const POSITIONS = [
   { name: "division_head", label: "Division Head" },
@@ -163,22 +161,15 @@ type ApprovalRow = {
   department: string;
   jobTitle: string;
   startDate: string;
-  approvalStatus: ApprovalStatus;
+  approvalStatus: string;
   reviewNote?: string | null;
   reviewedAt?: string | null;
   createdAt?: string | null;
   employmentType?: string | null;
   contractEndDate?: string | null;
   contractRenewalDate?: string | null;
-  user?: {
-    displayName?: string | null;
-    email?: string | null;
-    roles?: string[] | null;
-  };
-  reviewedBy?: {
-    displayName?: string | null;
-    email?: string | null;
-  } | null;
+  user?: { displayName?: string | null; email?: string | null };
+  reviewedBy?: { displayName?: string | null; email?: string | null } | null;
 
   sex?: string | null;
   personalEmail?: string | null;
@@ -226,7 +217,7 @@ function formatDate(value?: string | null) {
   if (!value) return "—";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString();
+  return parsed.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
 }
 
 function formatEmployment(value?: string | null): string {
@@ -235,7 +226,7 @@ function formatEmployment(value?: string | null): string {
   if (found) return found.label;
   const v = value.toUpperCase().replace(/[-_\s]/g, "");
   if (v === "CONTRACT" || v === "CONTRACTUAL") return "Contract";
-  if (v === "PERMANENT" || v === "FULLTIME") return "Permanent";
+  if (v === "PERMANENT" || v === "FULLTIME" || v === "FULL_TIME") return "Permanent";
   return value;
 }
 
@@ -273,12 +264,10 @@ function getHiredProjectLabel(value?: string | null) {
   return found ? found.label : value;
 }
 
-export default function ApproveEmployeePage() {
-  const queryClient = useQueryClient();
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [listView, setListView] = useState<"approved" | "rejected" | null>(null);
-  const [selected, setSelected] = useState<ApprovalRow | null>(null);
+type SortKey = "name" | "department" | "jobTitle" | "startDate" | "employmentType" | "reviewedAt";
+type SortDir = "asc" | "desc";
 
+export default function ApprovedPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["hr-employee-approvals"],
     queryFn: async () => {
@@ -287,72 +276,118 @@ export default function ApproveEmployeePage() {
     },
   });
 
-  const approveMutation = useMutation({
-    mutationFn: async ({ id, approvalStatus, reviewNote }: { id: string; approvalStatus: ApprovalStatus; reviewNote?: string | undefined }) => {
-      const body: Record<string, unknown> = { approvalStatus };
-      if (reviewNote !== undefined) body.reviewNote = reviewNote;
-      const resp = await apiClient.patch(`/domains/hr/approvals/${id}`, body);
-      return resp.data as ApprovalRow;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["hr-employee-approvals"] });
-      await queryClient.invalidateQueries({ queryKey: ["hr-dashboard-staff"] });
-      setSelected(null);
-    },
-  });
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<"" | "Contract" | "Permanent" | "MSc Student">("");
+  const [sortKey, setSortKey] = useState<SortKey>("reviewedAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selected, setSelected] = useState<ApprovalRow | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
-  const rows = data?.data ?? [];
-  const sortByRecent = (a: ApprovalRow, b: ApprovalRow) => {
-    const ta = new Date(a.createdAt ?? a.reviewedAt ?? a.startDate ?? 0).getTime();
-    const tb = new Date(b.createdAt ?? b.reviewedAt ?? b.startDate ?? 0).getTime();
-    return tb - ta;
-  };
+  const approved = useMemo(() => {
+    return (data?.data ?? []).filter((r) => r.approvalStatus === "APPROVED");
+  }, [data]);
 
-  const pending = useMemo(() => rows.filter((row) => row.approvalStatus === "PENDING").slice().sort(sortByRecent), [rows]);
-  const approved = useMemo(() => rows.filter((row) => row.approvalStatus === "APPROVED").slice().sort(sortByRecent), [rows]);
-  const rejected = useMemo(() => rows.filter((row) => row.approvalStatus === "REJECTED").slice().sort(sortByRecent), [rows]);
-
-  const handleDecision = async (id: string, approvalStatus: ApprovalStatus) => {
-    const note = notes[id]?.trim();
-    await approveMutation.mutateAsync({ id, approvalStatus, reviewNote: note || undefined });
-    setNotes((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
+  const filtered = useMemo(() => {
+    let rows = [...approved];
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      rows = rows.filter(
+        (r) =>
+          (r.user?.displayName ?? "").toLowerCase().includes(q) ||
+          r.department.toLowerCase().includes(q) ||
+          r.jobTitle.toLowerCase().includes(q) ||
+          (r.user?.email ?? "").toLowerCase().includes(q)
+      );
+    }
+    if (filterType) {
+      rows = rows.filter((r) => formatEmployment(r.employmentType) === filterType);
+    }
+    rows.sort((a, b) => {
+      let va = "";
+      let vb = "";
+      if (sortKey === "name") { va = a.user?.displayName ?? ""; vb = b.user?.displayName ?? ""; }
+      else if (sortKey === "department") { va = a.department; vb = b.department; }
+      else if (sortKey === "jobTitle") { va = a.jobTitle; vb = b.jobTitle; }
+      else if (sortKey === "startDate") { va = a.startDate ?? ""; vb = b.startDate ?? ""; }
+      else if (sortKey === "employmentType") { va = formatEmployment(a.employmentType); vb = formatEmployment(b.employmentType); }
+      else if (sortKey === "reviewedAt") { va = a.reviewedAt ?? a.createdAt ?? ""; vb = b.reviewedAt ?? b.createdAt ?? ""; }
+      const cmp = va.localeCompare(vb);
+      return sortDir === "asc" ? cmp : -cmp;
     });
+    return rows;
+  }, [approved, search, filterType, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
-  const panelStyle = (borderColor: string): React.CSSProperties => ({
-    borderRadius: 18,
-    border: `1px solid ${borderColor}`,
-    background: "var(--color-surface-2)",
-    overflow: "hidden",
+  const sortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <span style={{ opacity: 0.3, fontSize: 10 }}>⇅</span>;
+    return <span style={{ fontSize: 10 }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
+  };
+
+  const handlePrint = () => {
+    if (!selected) return;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<html><head><title>Employee Profile — ${selected.user?.displayName ?? "Unknown"}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 40px; color: #111; line-height: 1.5; }
+      h1 { font-size: 22px; margin: 0 0 4px; }
+      .subtitle { color: #555; font-size: 14px; margin-bottom: 24px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      td, th { padding: 8px 12px; border: 1px solid #ddd; font-size: 13px; text-align: left; }
+      th { background: #f1f5f9; font-weight: 700; }
+      td.label { font-weight: 700; width: 35%; background: #f8fafc; }
+      .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 8px; border-bottom: 2px solid #334155; padding-bottom: 4px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.03em; }
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      @media print { body { padding: 10px; } }
+    </style></head><body>${printRef.current?.innerHTML ?? ""}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); w.close(); }, 400);
+  };
+
+  const handleShare = async () => {
+    if (!selected) return;
+    const text = `Employee: ${selected.user?.displayName ?? "Unknown"}\nDepartment: ${selected.department}\nJob Title: ${getPositionLabel(selected.jobTitle)}\nEmployment: ${formatEmployment(selected.employmentType)}\nStart Date: ${formatDate(selected.startDate)}`;
+    if (navigator.share) {
+      await navigator.share({ title: "Employee Profile", text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert("Profile info copied to clipboard!");
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    handlePrint();
+  };
+
+  const thStyle = (key: SortKey): React.CSSProperties => ({
+    padding: "8px 10px",
+    textAlign: "left",
+    fontSize: "var(--fs-xs)",
+    color: "var(--color-text-muted)",
+    fontWeight: 700,
+    cursor: "pointer",
+    userSelect: "none",
+    whiteSpace: "nowrap",
+    borderBottom: "1px solid var(--color-divider)",
+    background: sortKey === key ? "rgba(99,102,241,0.05)" : "transparent",
   });
-
-  const headerStyle: React.CSSProperties = {
-    padding: "10px 14px",
-    fontSize: "var(--fs-md)",
-    fontWeight: 800,
-    color: "var(--color-text)",
-    borderBottom: "1px solid var(--color-divider)",
-    letterSpacing: "0.02em",
-  };
-
-  const rowStyle: React.CSSProperties = {
-    borderBottom: "1px solid var(--color-divider)",
-    height: 36,
-    overflow: "hidden",
-  };
 
   const cellStyle: React.CSSProperties = {
-    padding: "4px 6px",
-    verticalAlign: "middle",
+    padding: "8px 10px",
     fontSize: "var(--fs-xs)",
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    borderBottom: "1px solid var(--color-divider)",
   };
 
-  const sharedTh = (width: string) => ({ textAlign: "left" as const, padding: "5px 6px", width });
-
-  // Process selected inventory
+  // Process inventory object
   const activeInventory = useMemo(() => {
     if (!selected?.propertyInventory) return [];
     try {
@@ -376,158 +411,118 @@ export default function ApproveEmployeePage() {
     }
   }, [selected]);
 
-  const renderRow = (row: ApprovalRow, showActions: boolean, index: number) => (
-    <tr 
-      key={row.id} 
-      onClick={() => setSelected(row)}
-      style={{ ...rowStyle, cursor: "pointer", transition: "background 0.1s", ...(index === 0 ? { borderTop: "2px solid var(--color-divider)" } : {}) }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-    >
-      <td style={{ ...cellStyle, width: "3%", textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700 }}>{index + 1}</td>
-      <td style={{ ...cellStyle, width: "11%" }}>
-        <div title={row.user?.displayName ?? "Unknown"} style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 700, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.user?.displayName ?? "Unknown"}</div>
-      </td>
-      <td style={{ ...cellStyle, width: "12%" }} title={row.department}>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.department}</div>
-      </td>
-      <td style={{ ...cellStyle, width: "12%" }} title={getPositionLabel(row.jobTitle)}>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getPositionLabel(row.jobTitle)}</div>
-      </td>
-      <td style={{ ...cellStyle, whiteSpace: "nowrap", width: "8%" }}>{formatDate(row.startDate)}</td>
-      <td style={{ ...cellStyle, width: "9%" }}>
-        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatEmployment(row.employmentType)}</div>
-      </td>
-      <td style={{ ...cellStyle, width: "8%", whiteSpace: "nowrap" }}>{formatDate(row.contractEndDate ?? null)}</td>
-      <td style={{ ...cellStyle, width: "8%", whiteSpace: "nowrap" }}>{formatDate(row.contractRenewalDate ?? null)}</td>
-      <td style={{ ...cellStyle, width: showActions ? "15%" : "21%" }} onClick={(e) => e.stopPropagation()}>
-        {showActions ? (
-          <input
-            value={notes[row.id] ?? ""}
-            onChange={(e) => setNotes((cur) => ({ ...cur, [row.id]: e.target.value }))}
-            placeholder="Remark"
-            style={{ width: "100%", height: 26, padding: "3px 6px", borderRadius: 5, border: "1px solid var(--color-divider)", background: "rgba(255,255,255,0.95)", font: "inherit", fontSize: "var(--fs-xs)", boxSizing: "border-box" }}
-          />
-        ) : (
-          <div title={row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"} style={{ lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"}</div>
-        )}
-      </td>
-      {showActions ? (
-        <td style={{ ...cellStyle, textAlign: "right", whiteSpace: "nowrap", width: "14%" }} onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => handleDecision(row.id, "APPROVED")} disabled={approveMutation.isPending} style={{ marginRight: 4, background: "#059669", color: "white", border: "none", padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}>
-            ✓ Approve
-          </button>
-          <button type="button" onClick={() => handleDecision(row.id, "REJECTED")} disabled={approveMutation.isPending} style={{ background: "#dc2626", color: "white", border: "none", padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}>
-            ✕ Reject
-          </button>
-        </td>
-      ) : (
-        <td style={{ ...cellStyle, textAlign: "right", whiteSpace: "nowrap", width: "8%" }}>
-          <span style={{ fontSize: "var(--fs-xs)", color: "#6366f1", fontWeight: 700, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6, padding: "2px 8px" }}>Details</span>
-        </td>
-      )}
-    </tr>
-  );
-
-  const listThead = (showActions: boolean) => (
-    <thead>
-      <tr style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-        <th style={{ textAlign: "right", padding: "5px 6px", width: "3%" }}>#</th>
-        <th style={sharedTh("11%")}>Name</th>
-        <th style={sharedTh("12%")}>Department</th>
-        <th style={sharedTh("12%")}>Job title</th>
-        <th style={sharedTh("8%")}>Start date</th>
-        <th style={sharedTh("9%")}>Employment</th>
-        <th style={sharedTh("8%")}>Contract end</th>
-        <th style={sharedTh("8%")}>Renewal date</th>
-        {showActions ? (
-          <>
-            <th style={sharedTh("15%")}>Remark</th>
-            <th style={{ padding: "5px 6px", width: "14%", textAlign: "right" }}>Actions</th>
-          </>
-        ) : (
-          <>
-            <th style={sharedTh("21%")}>Reviewed</th>
-            <th style={sharedTh("8%")}>Action</th>
-          </>
-        )}
-      </tr>
-    </thead>
-  );
-
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
-
+      {isLoading && <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Loading…</div>}
       {error && (
-        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b" }}>
-          Approval API error — start the API server with <code>pnpm --filter @roms/api dev</code> and ensure you're signed in.
+        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: "var(--fs-sm)", color: "#991b1b" }}>
+          Failed to load personnel data.
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={panelStyle("rgba(186, 197, 34, 0.18)")}>
-          <div style={{ ...headerStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Pending employee approvals</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setListView((v) => v === "approved" ? null : "approved")}
-                style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #86efac", background: listView === "approved" ? "#059669" : "#f0fdf4", color: listView === "approved" ? "#fff" : "#059669", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
-              >
-                Approved list ({approved.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setListView((v) => v === "rejected" ? null : "rejected")}
-                style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fca5a5", background: listView === "rejected" ? "#dc2626" : "#fef2f2", color: listView === "rejected" ? "#fff" : "#dc2626", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
-              >
-                Rejected list ({rejected.length})
-              </button>
-            </div>
+      <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Personnel Database</span>
+            <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "#059669", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 10px" }}>
+              {filtered.length} {filtered.length === approved.length ? "total" : `of ${approved.length}`}
+            </span>
           </div>
-          <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the employee profile, then approve or disapprove access. Click row to see full profile details.</div>
-          <div>
-            {pending.length > 0 ? (
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                {listThead(true)}
-                <tbody>{pending.map((row, i) => renderRow(row, true, i))}</tbody>
-              </table>
-            ) : (
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No pending employee approvals.</div>
+
+          {/* Controls */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Search */}
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--color-text-muted)", pointerEvents: "none" }}>🔍</span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, dept, role…"
+                style={{ paddingLeft: 28, paddingRight: 8, height: 30, borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", width: 200 }}
+              />
+            </div>
+
+            {/* Filter */}
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as any)}
+              style={{ height: 30, borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", padding: "0 8px", cursor: "pointer" }}
+            >
+              <option value="">All Employment Types</option>
+              <option value="Permanent">Permanent</option>
+              <option value="Contract">Contract</option>
+              <option value="MSc Student">MSc Student</option>
+            </select>
+
+            {(search || filterType) && (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setFilterType(""); }}
+                style={{ height: 30, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", cursor: "pointer" }}
+              >
+                ✕ Clear
+              </button>
             )}
           </div>
         </div>
 
-        {listView === "approved" && (
-          <div style={panelStyle("rgba(34, 197, 94, 0.18)")}>
-            <div style={headerStyle}>Approved list</div>
-            <div>
-              {approved.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                  {listThead(false)}
-                  <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
-                </table>
-              ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No approved employees yet.</div>
-              )}
-            </div>
+        {filtered.length === 0 ? (
+          <div style={{ padding: "24px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
+            {approved.length === 0 ? "No personnel records yet." : "No results match your search or filter."}
           </div>
-        )}
-
-        {listView === "rejected" && (
-          <div style={panelStyle("rgba(239, 68, 68, 0.18)")}>
-            <div style={headerStyle}>Rejected list</div>
-            <div>
-              {rejected.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                  {listThead(false)}
-                  <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
-                </table>
-              ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No rejected employees yet.</div>
-              )}
-            </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle("name"), width: "3%", cursor: "default" }}>#</th>
+                  <th style={{ ...thStyle("name"), width: "18%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
+                  <th style={{ ...thStyle("department"), width: "17%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
+                  <th style={{ ...thStyle("jobTitle"), width: "17%" }} onClick={() => toggleSort("jobTitle")}>Job Title {sortIcon("jobTitle")}</th>
+                  <th style={{ ...thStyle("startDate"), width: "11%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
+                  <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Employment {sortIcon("employmentType")}</th>
+                  <th style={{ ...thStyle("reviewedAt"), width: "11%", cursor: "default" }}>Contract End</th>
+                  <th style={{ ...thStyle("reviewedAt"), width: "12%" }} onClick={() => toggleSort("reviewedAt")}>Approved On {sortIcon("reviewedAt")}</th>
+                  <th style={{ ...thStyle("name"), width: "8%", cursor: "default" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row, i) => {
+                  const empLabel = formatEmployment(row.employmentType);
+                  const empColor = 
+                    empLabel === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } : 
+                    empLabel === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } : 
+                    empLabel === "MSc Student" ? { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" } :
+                    { bg: "transparent", text: "var(--color-text-muted)", border: "transparent" };
+                  return (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelected(row)}
+                      style={{ cursor: "pointer", transition: "background 0.15s" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "3%" }}>{i + 1}</td>
+                      <td style={{ ...cellStyle, fontWeight: 700, width: "18%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
+                      <td style={{ ...cellStyle, width: "17%" }} title={row.department}>{row.department}</td>
+                      <td style={{ ...cellStyle, width: "17%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
+                      <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.startDate)}</td>
+                      <td style={{ ...cellStyle, width: "11%" }}>
+                        <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "2px 8px" }}>
+                          {empLabel}
+                        </span>
+                      </td>
+                      <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.contractEndDate)}</td>
+                      <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.reviewedAt)}</td>
+                      <td style={{ ...cellStyle, width: "8%", textAlign: "center" }}>
+                        <span style={{ fontSize: "var(--fs-xs)", color: "#6366f1", fontWeight: 700, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6, padding: "2px 8px" }}>View</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -555,17 +550,7 @@ export default function ApproveEmployeePage() {
 
             {/* Status Badge */}
             <div style={{ padding: "10px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ 
-                fontSize: "var(--fs-xs)", 
-                fontWeight: 700, 
-                background: selected.approvalStatus === "PENDING" ? "#fef9c3" : selected.approvalStatus === "APPROVED" ? "#dcfce7" : "#fef2f2", 
-                color: selected.approvalStatus === "PENDING" ? "#854d0e" : selected.approvalStatus === "APPROVED" ? "#166534" : "#991b1b", 
-                border: `1px solid ${selected.approvalStatus === "PENDING" ? "#fde047" : selected.approvalStatus === "APPROVED" ? "#86efac" : "#fca5a5"}`, 
-                borderRadius: 999, 
-                padding: "3px 12px" 
-              }}>
-                {selected.approvalStatus}
-              </span>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ APPROVED</span>
               {(() => {
                 const emp = formatEmployment(selected.employmentType);
                 const empColor = 
@@ -576,9 +561,14 @@ export default function ApproveEmployeePage() {
               })()}
             </div>
 
-            {/* Content Details */}
-            <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
-              
+            {/* Printable content */}
+            <div ref={printRef} style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Hidden print header */}
+              <div style={{ display: "none" }} className="print-header">
+                <h1 style={{ margin: 0 }}>Employee Profile — {selected.user?.displayName ?? "Unknown"}</h1>
+                <p className="subtitle">{selected.user?.email ?? ""} · APPROVED</p>
+              </div>
+
               {/* Section 1: Personal Info */}
               <Section title="Section 1: Personal & Contact Information">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -720,60 +710,24 @@ export default function ApproveEmployeePage() {
                 )}
               </Section>
 
-              {/* Review History */}
-              {selected.reviewedBy && (
-                <Section title="Review Details">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <InfoRow label="Reviewed By" value={selected.reviewedBy.displayName ?? selected.reviewedBy.email ?? "System"} />
-                    <InfoRow label="Reviewed On" value={formatDate(selected.reviewedAt)} />
-                    {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Reviewer Notes" value={selected.reviewNote} /></div>}
-                  </div>
-                </Section>
-              )}
+              {/* Approval Info */}
+              <Section title="Approval History">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <InfoRow label="Approved On" value={formatDate(selected.reviewedAt)} />
+                  <InfoRow label="Approved By" value={selected.reviewedBy?.displayName ?? selected.reviewedBy?.email ?? "System"} />
+                  {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Reviewer Remarks" value={selected.reviewNote} /></div>}
+                </div>
+              </Section>
             </div>
 
-            {/* Review Action Controls / Buttons inside Modal */}
-            <div style={{ padding: "16px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12, background: "rgba(0,0,0,0.02)" }}>
-              {selected.approvalStatus === "PENDING" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 700 }}>
-                    <span>Approval Remarks / Notes (Optional)</span>
-                    <input
-                      value={notes[selected.id] ?? ""}
-                      onChange={(e) => setNotes((cur) => ({ ...cur, [selected.id]: e.target.value }))}
-                      placeholder="Enter a review note..."
-                      style={{ width: "100%", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
-                    />
-                  </label>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDecision(selected.id, "REJECTED")} 
-                      disabled={approveMutation.isPending} 
-                      style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
-                    >
-                      ✕ Reject Profile
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDecision(selected.id, "APPROVED")} 
-                      disabled={approveMutation.isPending} 
-                      style={{ background: "#059669", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
-                    >
-                      ✓ Approve Profile
-                    </button>
-                    <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
-                    Close Details
-                  </button>
-                </div>
-              )}
+            {/* Action Buttons */}
+            <div style={{ padding: "14px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <ActionBtn onClick={handleShare} color="#6366f1" icon="🔗" label="Share" />
+              <ActionBtn onClick={handleDownloadPdf} color="#0f766e" icon="⬇" label="Download PDF" />
+              <ActionBtn onClick={handlePrint} color="#1d4ed8" icon="🖨" label="Print" />
+              <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -785,7 +739,7 @@ export default function ApproveEmployeePage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: "var(--fs-xs)", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
+      <div className="section-title" style={{ fontSize: "var(--fs-xs)", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
         {title}
       </div>
       <div style={{ display: "grid", gap: 6 }}>{children}</div>
@@ -799,5 +753,17 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
       <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{label}</span>
       <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500 }}>{value || "—"}</span>
     </div>
+  );
+}
+
+function ActionBtn({ onClick, color, icon, label }: { onClick: () => void; color: string; icon: string; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: color, color: "#fff", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+    >
+      <span>{icon}</span> {label}
+    </button>
   );
 }

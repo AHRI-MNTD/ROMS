@@ -70,6 +70,13 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
     },
   });
 
+  const sortedMovements = React.useMemo(() => {
+    if (!checkOutMovementsData?.data) return [];
+    return [...checkOutMovementsData.data].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [checkOutMovementsData]);
+
   const [projects, setProjects] = React.useState<string[]>([]);
   const [staffMembers, setStaffMembers] = React.useState<string[]>([]);
 
@@ -359,7 +366,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 cursor: "pointer",
               }}
             >
-              ➕ Add to Batch Cart
+              ➕ Add to Cart
             </button>
             <button
               type="button"
@@ -410,24 +417,42 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 </tr>
               </thead>
               <tbody>
-                {cart.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.projectFor}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedBy}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark}</td>
-                    <td style={{ padding: "8px", textAlign: "center" }}>
-                      <button
-                        type="button"
-                        onClick={() => setCart((prev) => prev.filter((i) => i.id !== item.id))}
-                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
-                      >
-                        🗑️ Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {cart.map((item) => {
+                  return (
+                    <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.projectFor}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedBy}</td>
+                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark}</td>
+                      <td style={{ padding: "8px", textAlign: "center" }}>
+                        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedItemId(item.stockItemId);
+                              setCheckOutQty(item.quantity);
+                              setProjectFor(item.projectFor);
+                              setRequestedBy(item.requestedBy);
+                              setNote(item.remark);
+                              setCart((prev) => prev.filter((i) => i.id !== item.id));
+                            }}
+                            style={{ background: "none", border: "none", color: "var(--color-text)", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCart((prev) => prev.filter((i) => i.id !== item.id))}
+                            style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                          >
+                            🗑️ Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -456,41 +481,11 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 cursor: bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
               }}
             >
-              {bulkCheckoutMutation.isPending ? "Checking out batch..." : "🚀 Submit Batch Check-Out"}
+              {bulkCheckoutMutation.isPending ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
       )}
-
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Recent Check-Out Activity</div>
-        {(!checkOutMovementsData || checkOutMovementsData.data.length === 0) ? (
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No check-out actions recorded yet.</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Destination</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkOutMovementsData.data.slice(0, 8).map((entry) => (
-                  <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.createdAt).toLocaleString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${entry.stockItem?.sku ?? ""} - ${entry.stockItem?.name ?? ""}`}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.projectFor ?? entry.destination ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
       <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>{labelOverrides?.referenceTable || "Check-Out Reference Table (History)"}</div>
@@ -512,18 +507,30 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
               </tr>
             </thead>
             <tbody>
-              {!checkOutMovementsData || checkOutMovementsData.data.length === 0 ? (
+              {sortedMovements.length === 0 ? (
                 <tr>
                   <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
                     No check-out history records available.
                   </td>
                 </tr>
               ) : (
-                checkOutMovementsData.data.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                sortedMovements.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", height: "40px" }}>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.name ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                      <div
+                        title={row.stockItem?.name ?? ""}
+                        style={{
+                          maxWidth: "180px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {row.stockItem?.name ?? "—"}
+                      </div>
+                    </td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.unit ?? "units"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${row.stockItem?.unit ?? "units"} per pack`}</td>
@@ -531,7 +538,19 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(row.occurredAt).toLocaleDateString()}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor ?? "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark ?? "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                      <div
+                        title={row.remark ?? ""}
+                        style={{
+                          maxWidth: "150px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {row.remark ?? "—"}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}

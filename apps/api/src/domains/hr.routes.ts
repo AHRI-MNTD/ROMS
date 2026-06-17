@@ -48,9 +48,27 @@ router.post("/staff", requireAuth, requirePermission("hr:write"), auditMutation(
   const parsed = CreateStaffProfileSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
   try {
-    const p = await prisma.staffProfile.create({ data: parsed.data });
+    const p = await prisma.staffProfile.upsert({
+      where: { userId: parsed.data.userId },
+      create: {
+        ...parsed.data,
+        approvalStatus: "PENDING",
+      },
+      update: {
+        ...parsed.data,
+        // Reset approval on re-submission so HR must re-review
+        approvalStatus: "PENDING",
+        reviewedById: null,
+        reviewedAt: null,
+        reviewNote: null,
+      },
+    });
     res.status(201).json(p);
-  } catch (err) { logger.error(err); res.status(500).json({ code: "INTERNAL_ERROR" }); }
+  } catch (err: any) {
+    logger.error("StaffProfile CREATE/UPSERT error:", err);
+    const message = process.env.NODE_ENV !== "production" && err?.message ? err.message : "An internal error occurred.";
+    res.status(500).json({ code: "INTERNAL_ERROR", message });
+  }
 });
 
 router.patch("/staff/:id", requireAuth, requirePermission("hr:write"), auditMutation("StaffProfile", "UPDATE"), async (req, res) => {
