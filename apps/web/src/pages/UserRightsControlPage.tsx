@@ -1,6 +1,8 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { Badge, Button, Card } from "@roms/ui";
+import { apiClient } from "../api/client";
 
 type ControlUser = {
   id: string;
@@ -13,27 +15,6 @@ type ControlUser = {
 };
 
 type PermissionState = Record<string, Set<string>>;
-
-const DEMO_USERS: ControlUser[] = [
-  {
-    id: "staff-alice",
-    displayName: "Alice Mwangi",
-    email: "scientist@roms.dev",
-    department: "Lab Operations",
-    jobTitle: "Laboratory Scientist",
-    role: "LAB_SCIENTIST",
-    startDate: "2026-01-12T00:00:00.000Z",
-  },
-  {
-    id: "staff-brian",
-    displayName: "Brian Okonkwo",
-    email: "datamanager@roms.dev",
-    department: "Data Management",
-    jobTitle: "Data Manager",
-    role: "DATA_MANAGER",
-    startDate: "2026-01-18T00:00:00.000Z",
-  },
-];
 
 const DOMAIN_RIGHTS: Record<string, string[]> = {
   biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
@@ -145,28 +126,83 @@ function selectedRightsByDomain(selection: PermissionState) {
 
 export default function UserRightsControlPage() {
   const sidebarWidth = 220;
-  const [assignments, setAssignments] = React.useState<Record<string, PermissionState>>(() =>
-    Object.fromEntries(DEMO_USERS.map((user) => [user.id, buildPermissionState(user)])) as Record<string, PermissionState>
-  );
+
+  // Fetch approved employees from the HR API
+  const { data: approvedData, isLoading, isError } = useQuery({
+    queryKey: ["hr-approved-staff"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/hr/approvals", { params: { status: "APPROVED" } });
+      return resp.data;
+    },
+  });
+
+  // Map API response to ControlUser[]
+  const users: ControlUser[] = React.useMemo(() => {
+    if (!approvedData?.data) return [];
+    return (approvedData.data as any[]).map((profile: any) => ({
+      id: profile.id,
+      displayName: profile.user?.displayName ?? "—",
+      email: profile.user?.email ?? "—",
+      department: profile.department ?? "—",
+      jobTitle: profile.jobTitle ?? "—",
+      role: (profile.user?.roles?.[0] ?? profile.jobTitle ?? "STAFF").toUpperCase().replace(/\s+/g, "_"),
+      startDate: profile.startDate ?? profile.createdAt ?? "",
+    }));
+  }, [approvedData]);
+
+  const [assignments, setAssignments] = React.useState<Record<string, PermissionState>>({});
   const [editorUserId, setEditorUserId] = React.useState<string | null>(null);
   const [draftPermissions, setDraftPermissions] = React.useState<PermissionState | null>(null);
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [roleFilter, setRoleFilter] = React.useState("");
 
-  const activeUser = DEMO_USERS.find((user) => user.id === editorUserId) ?? null;
+  // Seed default permissions for new users that don't have assignments yet
+  React.useEffect(() => {
+    if (users.length === 0) return;
+    setAssignments((prev) => {
+      const next = { ...prev };
+      for (const user of users) {
+        if (!next[user.id]) {
+          next[user.id] = buildPermissionState(user);
+        }
+      }
+      return next;
+    });
+  }, [users]);
+
+  const activeUser = users.find((user) => user.id === editorUserId) ?? null;
   const activeSelection = draftPermissions;
 
   const matrixRows = React.useMemo(() => {
-    return DEMO_USERS.map((user) => {
+    return users.map((user) => {
       const selection = assignments[user.id] ?? buildPermissionState(user);
       const enabledDomains = DOMAIN_CATALOG.filter((domain) => hasAnyRights(selection, domain.slug)).length;
       const enabledRights = DOMAIN_CATALOG.reduce((sum, domain) => sum + (selection[domain.slug]?.size ?? 0), 0);
       return { user, selection, enabledDomains, enabledRights };
     });
-  }, [assignments]);
+  }, [assignments, users]);
 
   const totalAssignedRights = matrixRows.reduce((sum, row) => sum + row.enabledRights, 0);
   const usersWithAnyAccess = matrixRows.filter((row) => row.enabledDomains > 0).length;
+
+  const filteredRows = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return matrixRows.filter((row) => {
+      const matchesSearch =
+        q === "" ||
+        row.user.displayName.toLowerCase().includes(q) ||
+        row.user.email.toLowerCase().includes(q);
+      const matchesRole = roleFilter === "" || row.user.role === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [matrixRows, searchQuery, roleFilter]);
+
+  const allRoles = React.useMemo(
+    () => Array.from(new Set(users.map((u) => u.role))).sort(),
+    [users]
+  );
 
   const openEditor = (user: ControlUser) => {
     const current = assignments[user.id] ?? buildPermissionState(user);
@@ -270,7 +306,7 @@ export default function UserRightsControlPage() {
           <Badge label="Admin access matrix" color="primary" />
         </div>
         <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", maxWidth: 920, lineHeight: 1.6 }}>
-          Two seeded staff users are loaded here so you can click a user, edit domain-level privileges, review the selected rights, and save the result.
+          Approved employees from HR Personnel Database appear here. Click a user to edit domain-level privileges, review the selected rights, and save the result.
         </p>
       </div>
 
@@ -280,37 +316,85 @@ export default function UserRightsControlPage() {
         </div>
       )}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginBottom: 18 }}>
-        <Card style={summaryCard("#b45309")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
-            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Seeded Users</span>
-            <span>{DEMO_USERS.length}</span>
-          </div>
-        </Card>
-        <Card style={summaryCard("#0f766e")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
-            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Domains</span>
-            <span>{DOMAIN_CATALOG.length}</span>
-          </div>
-        </Card>
-        <Card style={summaryCard("#dc2626")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
-            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Assigned Rights</span>
-            <span>{totalAssignedRights}</span>
-          </div>
-        </Card>
-        <Card style={summaryCard("#047857")}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)" }}>
-            <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Users With Access</span>
-            <span>{usersWithAnyAccess}</span>
-          </div>
-        </Card>
-      </div>
+      {isLoading && (
+        <div style={{ padding: "48px 20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>⏳</div>
+          Loading approved employees…
+        </div>
+      )}
 
+      {isError && (
+        <div style={{ padding: "20px", borderRadius: 14, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)", color: "#991b1b", fontSize: "var(--fs-sm)", fontWeight: 600, marginBottom: 16 }}>
+          ⚠️ Failed to load employees. Please check your connection and try again.
+        </div>
+      )}
+
+      {!isLoading && !isError && (
       <div style={{ ...surfaceStyle, overflow: "hidden" }}>
-        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div>
+        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>User matrix</div>
+            <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)", background: "rgba(1,105,111,0.08)", border: "1px solid rgba(1,105,111,0.14)", borderRadius: 999, padding: "2px 10px", letterSpacing: "0.04em" }}>
+              {filteredRows.length === matrixRows.length ? `${matrixRows.length} users` : `${filteredRows.length} / ${matrixRows.length} users`}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <span style={{ position: "absolute", left: 10, fontSize: 13, color: "var(--color-text-faint)", pointerEvents: "none" }}>🔍</span>
+              <input
+                id="user-matrix-search"
+                type="text"
+                placeholder="Search users…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  paddingLeft: 30, paddingRight: 10, paddingTop: 6, paddingBottom: 6,
+                  fontSize: "var(--fs-xs)", borderRadius: 10,
+                  border: "1px solid rgba(1,105,111,0.18)",
+                  background: "rgba(255,255,255,0.85)",
+                  color: "var(--color-text)",
+                  outline: "none", width: 180,
+                  transition: "border-color 0.15s",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.5)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.18)"; }}
+              />
+            </div>
+            <select
+              id="user-matrix-role-filter"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              style={{
+                padding: "6px 28px 6px 10px",
+                fontSize: "var(--fs-xs)", borderRadius: 10,
+                border: "1px solid rgba(1,105,111,0.18)",
+                background: "rgba(255,255,255,0.85)",
+                color: roleFilter ? "var(--color-text)" : "var(--color-text-muted)",
+                outline: "none", cursor: "pointer",
+                appearance: "none",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 8px center",
+              }}
+            >
+              <option value="">All roles</option>
+              {allRoles.map((role) => (
+                <option key={role} value={role}>{role.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+            {(searchQuery || roleFilter) && (
+              <button
+                onClick={() => { setSearchQuery(""); setRoleFilter(""); }}
+                style={{
+                  padding: "5px 12px", fontSize: "var(--fs-xs)", fontWeight: 700,
+                  borderRadius: 10, border: "1px solid rgba(220,38,38,0.22)",
+                  background: "rgba(220,38,38,0.06)", color: "#b91c1c",
+                  cursor: "pointer",
+                }}
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -318,10 +402,10 @@ export default function UserRightsControlPage() {
           <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th style={{ ...columnHeaderStyle, width: "4.5%" }}>No_</th>
-                <th style={{ ...columnHeaderStyle, width: "18%", textAlign: "left" }}>Users</th>
+                <th style={{ ...columnHeaderStyle, width: "4%" }}>No_</th>
+                <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left" }}>Users</th>
                 {DOMAIN_CATALOG.map((domain) => (
-                  <th key={domain.slug} style={{ ...columnHeaderStyle, width: "7.75%" }}>
+                  <th key={domain.slug} style={{ ...columnHeaderStyle, width: "8.3%" }}>
                     <div style={{ display: "grid", justifyItems: "center", gap: 4 }}>
                       <span style={{ fontSize: 16, lineHeight: 1 }}>{domain.emoji}</span>
                       <span>{domain.name}</span>
@@ -331,7 +415,17 @@ export default function UserRightsControlPage() {
               </tr>
             </thead>
             <tbody>
-              {matrixRows.map((row, index) => (
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={DOMAIN_CATALOG.length + 2}
+                    style={{ padding: "28px 12px", textAlign: "center", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}
+                  >
+                    No users match your search or filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((row, index) => (
                 <tr
                   key={row.user.id}
                   onClick={() => openEditor(row.user)}
@@ -343,19 +437,15 @@ export default function UserRightsControlPage() {
                     (event.currentTarget as HTMLTableRowElement).style.background = "transparent";
                   }}
                 >
-                  <td style={{ padding: "12px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", verticalAlign: "top" }}>{index + 1}</td>
-                  <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                    <div style={{ fontWeight: 800, color: "var(--color-text)", lineHeight: 1.25, marginBottom: 6 }}>{row.user.displayName}</div>
-                    <div style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                      <Badge label={row.user.role.replace(/_/g, " ")} color="muted" />
-                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)", lineHeight: 1.2 }}>{row.user.department}</span>
-                    </div>
+                  <td style={{ padding: "10px 12px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", verticalAlign: "middle" }}>{index + 1}</td>
+                  <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
+                    <div style={{ fontWeight: 700, color: "var(--color-text)", lineHeight: 1.25 }}>{row.user.displayName}</div>
                   </td>
                   {DOMAIN_CATALOG.map((domain) => {
                     const count = row.selection[domain.slug]?.size ?? 0;
                     const active = count > 0;
                     return (
-                      <td key={domain.slug} style={{ padding: "10px 6px", verticalAlign: "top", textAlign: "center" }}>
+                      <td key={domain.slug} style={{ padding: "10px 6px", verticalAlign: "middle", textAlign: "center" }}>
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 999, background: active ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.10)", color: active ? "#047857" : "#991b1b", fontWeight: 800, fontSize: "10px", minWidth: 42, justifyContent: "center" }}>
                           <span aria-hidden="true">{active ? "✓" : "✕"}</span>
                           <span>{count}</span>
@@ -364,12 +454,13 @@ export default function UserRightsControlPage() {
                     );
                   })}
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
-
+      )}
       {activeUser && activeSelection && (
         <div
           style={{

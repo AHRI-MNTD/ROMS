@@ -110,10 +110,6 @@ export default function MasterDataPage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCategory.trim() || !newUnit.trim()) {
-      setFormFeedback({ type: "error", message: "Category and Unit fields are required." });
-      return;
-    }
     createMutation.mutate({
       category: newCategory.trim(),
       unit: newUnit.trim(),
@@ -135,10 +131,6 @@ export default function MasterDataPage() {
   };
 
   const handleSaveEdit = (id: string) => {
-    if (!editCategory.trim() || !editUnit.trim()) {
-      setFormFeedback({ type: "error", message: "Category and Unit fields are required." });
-      return;
-    }
     updateMutation.mutate({
       id,
       payload: {
@@ -227,25 +219,23 @@ export default function MasterDataPage() {
           <div style={{ fontSize: "var(--fs-xs)", fontWeight: 800, color: "var(--color-text-muted)", textTransform: "uppercase" }}>New Master Data Entry</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category *</label>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category</label>
               <input
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 placeholder="e.g. Consumables"
                 style={formInputStyle}
-                required
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit *</label>
+              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit</label>
               <input
                 type="text"
                 value={newUnit}
                 onChange={(e) => setNewUnit(e.target.value)}
                 placeholder="e.g. Vial, Pack"
                 style={formInputStyle}
-                required
               />
             </div>
             <div>
@@ -382,9 +372,9 @@ export default function MasterDataPage() {
         type ColKey = "category" | "unit" | "project" | "staff";
         const colDefs: Array<{ key: ColKey; label: string; editValue: string; setEdit: (v: string) => void }> = [
           { key: "category", label: "Categories", editValue: editCategory, setEdit: setEditCategory },
-          { key: "unit",     label: "Units",      editValue: editUnit,     setEdit: setEditUnit },
-          { key: "project",  label: "Projects",   editValue: editProject,  setEdit: setEditProject },
-          { key: "staff",    label: "Staff",      editValue: editStaff,    setEdit: setEditStaff },
+          { key: "unit", label: "Units", editValue: editUnit, setEdit: setEditUnit },
+          { key: "project", label: "Projects", editValue: editProject, setEdit: setEditProject },
+          { key: "staff", label: "Staff", editValue: editStaff, setEdit: setEditStaff },
         ];
 
         const colRows = (key: ColKey) =>
@@ -396,7 +386,7 @@ export default function MasterDataPage() {
         if (!hasAny) {
           return (
             <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)", padding: "10px 12px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-               No master data rows found.
+              No master data rows found.
             </div>
           );
         }

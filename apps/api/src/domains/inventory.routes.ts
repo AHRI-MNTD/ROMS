@@ -196,9 +196,6 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
 // POST /master-data - add a new master data record
 router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
-  if (!category || !unit) {
-    return res.status(400).json({ error: "category and unit are required fields." });
-  }
 
   const record = await prisma.inventoryMasterData.create({
     data: {
@@ -216,9 +213,6 @@ router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_A
 router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { category, unit, project, staff } = req.body;
-  if (!category || !unit) {
-    return res.status(400).json({ error: "category and unit are required fields." });
-  }
   try {
     const record = await prisma.inventoryMasterData.update({
       where: { id },

@@ -18,34 +18,279 @@ const DEPARTMENTS = [
   "Other",
 ];
 
+const POSITIONS = [
+  { name: "division_head", label: "Division Head" },
+  { name: "lead_scientist", label: "Lead Scientist" },
+  { name: "senior_scientist", label: "Senior Scientist" },
+  { name: "post-doctoral_researcher", label: "Post-Doctoral Researcher" },
+  { name: "researcher_ii", label: "Researcher II" },
+  { name: "researcher_i", label: "Researcher I" },
+  { name: "associate_researcher_ii", label: "Associate Researcher II" },
+  { name: "associate_researcher_i", label: "Associate Researcher I" },
+  { name: "assistant_researcher_ii", label: "Assistant Researcher II" },
+  { name: "assistant_researcher_i", label: "Assistant Researcher I" },
+  { name: "assistant_researcher", label: "Assistant Researcher" },
+  { name: "junior_researcher", label: "Junior Researcher" },
+  { name: "project_manager", label: "Project Manager" },
+  { name: "assistant_project_management", label: "Assistant Project Management" },
+  { name: "project_coordinator", label: "Project Coordinator" },
+  { name: "senior_project_accountant", label: "Senior Project Accountant" },
+  { name: "project_accountant", label: "Project Accountant" },
+  { name: "junior_administration_officer", label: "Junior Administration Officer" },
+  { name: "driver", label: "Driver" }
+];
+
+const EMPLOYMENT_TYPES = [
+  { name: "permanent", label: "Permanent" },
+  { name: "contract", label: "Contract" },
+  { name: "msc_student", label: "MSc Student" }
+];
+
+const MNTD_HIRED_PROJECTS = [
+  { name: "achides", label: "ACHIDES" },
+  { name: "cease", label: "CEASE" },
+  { name: "dpp", label: "DPP" },
+  { name: "drivax", label: "DRIVAX" },
+  { name: "emagen", label: "EMAGEN" },
+  { name: "hamms", label: "HAMMS" },
+  { name: "hrp", label: "HRP" },
+  { name: "indie", label: "INDIE" },
+  { name: "leishaccess", label: "LeishAccess" },
+  { name: "optivivax", label: "OptiVivax" },
+  { name: "pvstatem", label: "PvSTATEM" },
+  { name: "sharp", label: "SHARP" },
+  { name: "vispa", label: "VISPA" },
+  { name: "CDC", label: "CDC" },
+  { name: "AnoSTEP", label: "AnoSTEP" },
+  { name: "AMNET", label: "AMNET" },
+  { name: "PvSeroRDT", label: "PvSeroRDT" }
+];
+
+const MNTD_TEAMS = [
+  { name: "Leadership", label: "Leadership (Division Head & Principal Investigators)" },
+  { name: "Project_Management/Coordination", label: "Project Management/Coordination" },
+  { name: "Team_Leader", label: "Team Leader" },
+  { name: "Laboratory_Team", label: "Laboratory Team" },
+  { name: "Field_Team", label: "Field Team" },
+  { name: "Entomology_Team", label: "Entomology Team" },
+  { name: "Data_Team", label: "Data Team" },
+  { name: "Social_Science_Team", label: "Social Science Team" },
+  { name: "Health_Economics_Team", label: "Health Economics Team" },
+  { name: "logistics_finance_team", label: "Logistics/Finance Team" }
+];
+
+const MNTD_PROJECTS = [
+  { name: "ACHIDES_(Dr._Fitsum)", label: "ACHIDES (Dr. Fitsum)" },
+  { name: "CEASE_(Dr._Endalamaw)", label: "CEASE (Dr. Endalamaw)" },
+  { name: "CONVINCE_(Dr._Fitsum)", label: "CONVINCE (Dr. Fitsum)" },
+  { name: "DPP_(Dr._Endalamaw)", label: "DPP (Dr. Endalamaw)" },
+  { name: "DRIVAX_(Dr._Fitsum)", label: "DRIVAX (Dr. Fitsum)" },
+  { name: "EMAGEN_(Dr._Fitsum)", label: "EMAGEN (Dr. Fitsum)" },
+  { name: "eSPT_(Dr._Endalamaw)", label: "eSPT (Dr. Endalamaw)" },
+  { name: "HAMMS_(Dr._Fitsum)", label: "HAMMS (Dr. Fitsum)" },
+  { name: "HRP_(Dr._Endalamaw)", label: "HRP (Dr. Endalamaw)" },
+  { name: "INDIE_(Dr._Fitsum)", label: "INDIE (Dr. Fitsum)" },
+  { name: "LeishAccess_(Dr._Endalamaw)", label: "LeishAccess (Dr. Endalamaw)" },
+  { name: "OptiVivax_(Dr._Fitsum)", label: "OptiVivax (Dr. Fitsum)" },
+  { name: "PvSTATEM_(Dr._Fitsum)", label: "PvSTATEM (Dr. Fitsum)" },
+  { name: "RESONATE_(Dr._Yohannes)", label: "RESONATE (Dr. Yohannes)" },
+  { name: "SHARP_(Dr._Endalamaw)", label: "SHARP (Dr. Endalamaw)" },
+  { name: "SouthMap_(Dr._Endalamaw)", label: "SouthMap (Dr. Endalamaw)" },
+  { name: "TES2022_(Dr._Fitsum)_1", label: "TES2020 (Dr. Fitsum)" },
+  { name: "TES2022_(Dr._Fitsum)", label: "TES2022 (Dr. Fitsum)" },
+  { name: "TES2024_(Dr._Fitsum)", label: "TES2024 (Dr. Fitsum)" },
+  { name: "tMDA_(Dr._Fitsum)", label: "tMDA (Dr. Fitsum)" },
+  { name: "VISPA_(Dr._Fitsum)", label: "VISPA (Dr. Fitsum)" },
+  { name: "VivAction_(Dr._Endalamaw)", label: "VivAction (Dr. Endalamaw)" },
+  { name: "VL-LAMP_(Dr._Endalamaw)", label: "VL-LAMP (Dr. Endalamaw)" },
+  { name: "CDC_(Dr._Fitsum)", label: "CDC (Dr. Fitsum)" },
+  { name: "AnoSTEP_(Dr._Fitsum)", label: "AnoSTEP (Dr. Fitsum)" },
+  { name: "AMNET_(Dr._Fitsum)", label: "AMNET (Dr. Fitsum)" },
+  { name: "PVseroRDT_(Dr._Fitsum)", label: "PVseroRDT (Dr. Fitsum)" }
+];
+
+const UNIVERSITIES = [
+  { name: "adama_science_and_technology_university", label: "Adama Science and Technology University" },
+  { name: "addis_ababa_science_and_technology_university", label: "Addis Ababa Science and Technology University" },
+  { name: "addis_ababa_university", label: "Addis Ababa University" },
+  { name: "adigrat_university", label: "Adigrat University" },
+  { name: "ambo_university", label: "Ambo University" },
+  { name: "arba_minch_university", label: "Arba Minch University" },
+  { name: "arsi_university", label: "Arsi University" },
+  { name: "assosa_university", label: "Assosa University" },
+  { name: "axum_university", label: "Axum University" },
+  { name: "bahir_dar_university", label: "Bahir Dar University" },
+  { name: "bonga_university", label: "Bonga University" },
+  { name: "borana_university", label: "Borana University" },
+  { name: "bule_hora_university", label: "Bule Hora University" },
+  { name: "dambi_dollo_university", label: "Dambi Dollo University" },
+  { name: "debark_university", label: "Debark University" },
+  { name: "debre_berhan_university", label: "Debre Berhan University" },
+  { name: "debre_markos_university", label: "Debre Markos University" },
+  { name: "debre_tabor_university", label: "Debre Tabor University" },
+  { name: "defence_university", label: "Defence University" },
+  { name: "dilla_university", label: "Dilla University" },
+  { name: "dire_dawa_university", label: "Dire Dawa University" },
+  { name: "ethiopian_civil_service_university", label: "Ethiopian Civil Service University" },
+  { name: "ethiopian_police_university_college", label: "Ethiopian Police University College" },
+  { name: "gambella_university", label: "Gambella University" },
+  { name: "haramaya_university", label: "Haramaya University" },
+  { name: "hawassa_university", label: "Hawassa University" },
+  { name: "injibara_university", label: "Injibara University" },
+  { name: "jijiga_university", label: "Jijiga University" },
+  { name: "jimma_university", label: "Jimma University" },
+  { name: "jinka_university", label: "Jinka University" },
+  { name: "kebri_dehar_university", label: "Kebri Dehar University" },
+  { name: "kotebe_metropolitan_university", label: "Kotebe Metropolitan University" },
+  { name: "meda_walabu_university", label: "Meda Walabu University" },
+  { name: "mekdela_amba_university", label: "Mekdela Amba University" },
+  { name: "mekelle_university", label: "Mekelle University" },
+  { name: "mettu_university", label: "Mettu University" },
+  { name: "mizan_tepi_university", label: "Mizan Tepi University" },
+  { name: "oda_bultum_university", label: "Oda Bultum University" },
+  { name: "oromia_state_university", label: "Oromia State University" },
+  { name: "raya_university", label: "Raya University" },
+  { name: "salale_university", label: "Salale University" },
+  { name: "semera_university", label: "Semera University" },
+  { name: "university_of_gondar", label: "University of Gondar" },
+  { name: "wachamo_university", label: "Wachamo University" },
+  { name: "werabe_university", label: "Werabe University" },
+  { name: "wolaita_sodo_university", label: "Wolaita Sodo University" },
+  { name: "woldia_university", label: "Woldia University" },
+  { name: "wolkite_university", label: "Wolkite University" },
+  { name: "wollega_university", label: "Wollega University" },
+  { name: "wollo_university", label: "Wollo University" },
+  { name: "other", label: "OTHER" }
+];
+
+const WORK_EXP_OPTIONS = [
+  { name: "less_than_1_year", label: "Less than 1 Year" },
+  { name: "1_to_2_years", label: "1 to 2 Years" },
+  { name: "2_to_3_years", label: "2 to 3 Years" },
+  { name: "3_to_4_years", label: "3 to 4 Years" },
+  { name: "4_to_5_years", label: "4 to 5 Years" },
+  { name: "more_than_5_years", label: "More than 5 Years" }
+];
+
+const PROPERTY_ITEMS = [
+  { id: "it_desktop_computer", label: "IT - Desktop Computer" },
+  { id: "it_laptop_computer", label: "IT - Laptop Computer" },
+  { id: "it_computer_screen", label: "IT - Computer Screen" },
+  { id: "portable_device_tablet", label: "Portable Device - Tablet" },
+  { id: "portable_device_external_hard_drive", label: "Portable Device - External Hard Drive" },
+  { id: "portable_device_wi_fi", label: "Portable Device - Wi-Fi" },
+  { id: "portable_device_gps", label: "Portable Device - GPS" },
+  { id: "office_photocopy_printer_scanner_1", label: "Office - Photocopier/Printer/Scanner" },
+  { id: "laboratory_equipment_instruments", label: "Laboratory - Equipment/Instruments" },
+  { id: "field_equipment_instruments", label: "Field - Equipment/Instruments" }
+];
+
 type FormData = {
+  fullName: string;
+  sex: string;
+  phone: string;
+  personalEmail: string;
+  ahriEmail: string;
+  emergencyContact: string;
+
   department: string;
   jobTitle: string;
   startDate: string;
   employmentType: string;
   contractEndDate: string;
-  contractRenewalDate: string;
-  phone: string;
-  emergencyContact: string;
+  mntdProject: string;
+  mntdTeams: string[];
+  mntdProjectsInvolved: string[];
+
+  firstDegree: string;
+  firstDegreeUniv: string;
+  firstDegreeUnivOther: string;
+  firstDegreeYear: string;
+
+  secondDegree: string;
+  secondDegreeUniv: string;
+  secondDegreeUnivOther: string;
+  secondDegreeYear: string;
+
+  thirdDegree: string;
+  thirdDegreeUnivCountry: string;
+  thirdDegreeYear: string;
+
+  currentlyStudying: string;
+  studyMastersField: string;
+  studyMastersUniv: string;
+  studyMastersYear: string;
+  studyPhdField: string;
+  studyPhdUniv: string;
+  studyPhdYear: string;
+  studyCertField: string;
+  studyCertUniv: string;
+  studyCertYear: string;
+
+  totalWorkExp: string;
+  totalWorkExpAhri: string;
+
+  propertyInventory: Record<string, { quantity: number; brand: string }>;
 };
 
-const empty: FormData = {
-  department: "",
-  jobTitle: "",
-  startDate: "",
-  employmentType: "",
-  contractEndDate: "",
-  contractRenewalDate: "",
-  phone: "",
-  emergencyContact: "",
+const emptyForm = (): FormData => {
+  const inventory: Record<string, { quantity: number; brand: string }> = {};
+  PROPERTY_ITEMS.forEach(item => {
+    inventory[item.id] = { quantity: 0, brand: "" };
+  });
+
+  return {
+    fullName: "",
+    sex: "",
+    phone: "",
+    personalEmail: "",
+    ahriEmail: "",
+    emergencyContact: "",
+    department: "",
+    jobTitle: "",
+    startDate: "",
+    employmentType: "",
+    contractEndDate: "",
+    mntdProject: "",
+    mntdTeams: [],
+    mntdProjectsInvolved: [],
+    firstDegree: "",
+    firstDegreeUniv: "",
+    firstDegreeUnivOther: "",
+    firstDegreeYear: "",
+    secondDegree: "",
+    secondDegreeUniv: "",
+    secondDegreeUnivOther: "",
+    secondDegreeYear: "",
+    thirdDegree: "",
+    thirdDegreeUnivCountry: "",
+    thirdDegreeYear: "",
+    currentlyStudying: "",
+    studyMastersField: "",
+    studyMastersUniv: "",
+    studyMastersYear: "",
+    studyPhdField: "",
+    studyPhdUniv: "",
+    studyPhdYear: "",
+    studyCertField: "",
+    studyCertUniv: "",
+    studyCertYear: "",
+    totalWorkExp: "",
+    totalWorkExpAhri: "",
+    propertyInventory: inventory
+  };
 };
 
 type Status = "idle" | "success" | "error";
 
 export default function TrainingRecordsPage() {
   const user = useAuth((s) => s.user);
-  const [form, setForm] = useState<FormData>(empty);
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [form, setForm] = useState<FormData>(() => {
+    const f = emptyForm();
+    if (user?.displayName) f.fullName = user.displayName;
+    return f;
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [apiError, setApiError] = useState<string>("");
 
@@ -56,30 +301,129 @@ export default function TrainingRecordsPage() {
     },
     onSuccess: () => {
       setStatus("success");
-      setForm(empty);
+      setForm(emptyForm());
       setErrors({});
     },
     onError: (err: any) => {
       setStatus("error");
-      const msg = err?.response?.data?.errors
-        ? JSON.stringify(err.response.data.errors)
-        : err?.response?.data?.code ?? "Registration failed. Please try again.";
+      const respData = err?.response?.data;
+      let msg = "Registration failed. Please try again.";
+      if (respData?.message) {
+        msg = respData.message;
+      } else if (respData?.errors) {
+        msg = JSON.stringify(respData.errors);
+      } else if (respData?.code) {
+        msg = respData.code;
+      }
       setApiError(msg);
     },
   });
 
-  const set = (key: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const handleChange = (key: keyof FormData, value: any) => {
+    setForm((f) => ({ ...f, [key]: value }));
     setErrors((er) => ({ ...er, [key]: "" }));
     if (status !== "idle") setStatus("idle");
   };
 
+  const handleInventoryChange = (itemId: string, field: "quantity" | "brand", value: any) => {
+    setForm((f) => ({
+      ...f,
+      propertyInventory: {
+        ...f.propertyInventory,
+        [itemId]: {
+          ...f.propertyInventory[itemId],
+          [field]: value
+        }
+      }
+    }));
+    if (status !== "idle") setStatus("idle");
+  };
+
+  const handleCheckboxChange = (key: "mntdTeams" | "mntdProjectsInvolved", item: string, checked: boolean) => {
+    const list = [...form[key]];
+    if (checked) {
+      if (!list.includes(item)) list.push(item);
+    } else {
+      const idx = list.indexOf(item);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+    handleChange(key, list);
+  };
+
   const validate = (): boolean => {
-    const e: Partial<FormData> = {};
+    const e: Record<string, string> = {};
+    
+    // Personal Info
+    if (!form.fullName.trim()) {
+      e.fullName = "Full name is required.";
+    } else {
+      const parts = form.fullName.trim().split(/\s+/);
+      if (parts.length < 3) {
+        e.fullName = "Please enter First Name, Father's Name and Grand Father's Name (at least 3 words).";
+      }
+    }
+    if (!form.sex) e.sex = "Sex is required.";
+    
+    if (!form.phone.trim()) {
+      e.phone = "Phone number is required.";
+    } else if (!/^[0-9]{10}$/.test(form.phone.trim())) {
+      e.phone = "Phone number must be exactly 10 digits (e.g. 09xxxxxxxx).";
+    }
+
+    if (!form.personalEmail.trim()) {
+      e.personalEmail = "Personal Email Address is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.personalEmail.trim())) {
+      e.personalEmail = "Please enter a valid email address.";
+    }
+
+    if (form.ahriEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.ahriEmail.trim())) {
+      e.ahriEmail = "Please enter a valid AHRI email address.";
+    }
+
+    if (!form.emergencyContact.trim()) e.emergencyContact = "Emergency contact info is required.";
+
+    // Employment
     if (!form.department) e.department = "Department is required.";
-    if (!form.jobTitle.trim()) e.jobTitle = "Job title is required.";
-    if (!form.startDate) e.startDate = "Start date is required.";
+    if (!form.jobTitle) e.jobTitle = "Job title is required.";
+    if (!form.startDate) e.startDate = "Start Date is required.";
     if (!form.employmentType) e.employmentType = "Employment type is required.";
+    
+    if (form.employmentType === "contract") {
+      if (!form.contractEndDate) e.contractEndDate = "Contract End Date is required.";
+      if (!form.mntdProject) e.mntdProject = "MNTD Project is required.";
+    }
+
+    if (form.mntdTeams.length === 0) e.mntdTeams = "Please select at least one applicable team.";
+    if (form.mntdProjectsInvolved.length === 0) e.mntdProjectsInvolved = "Please select at least one project.";
+
+    // Education
+    if (!form.firstDegree.trim()) e.firstDegree = "First Degree details are required.";
+    if (!form.firstDegreeUniv) e.firstDegreeUniv = "First Degree University is required.";
+    if (form.firstDegreeUniv === "other" && !form.firstDegreeUnivOther.trim()) {
+      e.firstDegreeUnivOther = "Please specify university name and country.";
+    }
+    if (!form.firstDegreeYear) e.firstDegreeYear = "First Degree Completion Year is required.";
+
+    if (form.secondDegreeUniv === "other" && !form.secondDegreeUnivOther.trim()) {
+      e.secondDegreeUnivOther = "Please specify university name and country.";
+    }
+
+    if (!form.currentlyStudying) e.currentlyStudying = "Please select study status.";
+
+    if (form.currentlyStudying === "yes") {
+      const mastersOk = form.studyMastersField.trim() && form.studyMastersUniv.trim() && form.studyMastersYear.trim();
+      const phdOk = form.studyPhdField.trim() && form.studyPhdUniv.trim() && form.studyPhdYear.trim();
+      const certOk = form.studyCertField.trim() && form.studyCertUniv.trim() && form.studyCertYear.trim();
+      
+      if (!mastersOk && !phdOk && !certOk) {
+        e.currentlyStudying = "Please complete study details for at least one program (Masters, PhD or Certifications).";
+      }
+    }
+
+    // Work Experience
+    if (!form.totalWorkExp) e.totalWorkExp = "Total work experience selection is required.";
+    if (!form.totalWorkExpAhri) e.totalWorkExpAhri = "Total work experience at AHRI selection is required.";
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -87,19 +431,67 @@ export default function TrainingRecordsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) { setStatus("error"); setApiError("You must be logged in to register."); return; }
-    if (!validate()) return;
-    const body: Record<string, unknown> = {
+    if (!validate()) {
+      const firstErr = Object.keys(errors)[0];
+      if (firstErr) {
+        setApiError("Form contains validation errors. Please scroll up and fix them.");
+        setStatus("error");
+      }
+      return;
+    }
+
+    // Prepare payload
+    const payload: Record<string, any> = {
       userId: user.id,
       department: form.department,
-      jobTitle: form.jobTitle.trim(),
-      startDate: form.startDate,
-      employmentType: form.employmentType || undefined,
-      contractEndDate: form.contractEndDate || null,
-      contractRenewalDate: form.contractRenewalDate || null,
-      phone: form.phone.trim() || null,
-      emergencyContact: form.emergencyContact.trim() || null,
+      jobTitle: form.jobTitle,
+      startDate: new Date(form.startDate),
+      employmentType: form.employmentType,
+      contractEndDate: form.contractEndDate ? new Date(form.contractEndDate) : null,
+      
+      phone: form.phone.trim(),
+      emergencyContact: form.emergencyContact.trim(),
+      sex: form.sex,
+      personalEmail: form.personalEmail.trim(),
+      ahriEmail: form.ahriEmail.trim() || null,
+      mntdProject: form.mntdProject || null,
+      mntdTeams: form.mntdTeams,
+      mntdProjectsInvolved: form.mntdProjectsInvolved,
+      
+      firstDegree: form.firstDegree.trim(),
+      firstDegreeUniv: form.firstDegreeUniv,
+      firstDegreeUnivOther: form.firstDegreeUniv === "other" ? form.firstDegreeUnivOther.trim() : null,
+      firstDegreeYear: form.firstDegreeYear,
+      
+      secondDegree: form.secondDegree.trim() || null,
+      secondDegreeUniv: form.secondDegreeUniv || null,
+      secondDegreeUnivOther: form.secondDegreeUniv === "other" ? form.secondDegreeUnivOther.trim() : null,
+      secondDegreeYear: form.secondDegreeYear || null,
+      
+      thirdDegree: form.thirdDegree.trim() || null,
+      thirdDegreeUnivCountry: form.thirdDegreeUnivCountry.trim() || null,
+      thirdDegreeYear: form.thirdDegreeYear || null,
+      
+      currentlyStudying: form.currentlyStudying === "yes",
+      studyMastersField: form.studyMastersField.trim() || null,
+      studyMastersUniv: form.studyMastersUniv.trim() || null,
+      studyMastersYear: form.studyMastersYear.trim() || null,
+      
+      studyPhdField: form.studyPhdField.trim() || null,
+      studyPhdUniv: form.studyPhdUniv.trim() || null,
+      studyPhdYear: form.studyPhdYear.trim() || null,
+      
+      studyCertField: form.studyCertField.trim() || null,
+      studyCertUniv: form.studyCertUniv.trim() || null,
+      studyCertYear: form.studyCertYear.trim() || null,
+      
+      totalWorkExp: form.totalWorkExp,
+      totalWorkExpAhri: form.totalWorkExpAhri,
+      
+      propertyInventory: form.propertyInventory
     };
-    mutation.mutate(body);
+
+    mutation.mutate(payload);
   };
 
   // ── Styles ──────────────────────────────────────────────────────────
@@ -108,16 +500,17 @@ export default function TrainingRecordsPage() {
     border: "1px solid var(--color-border)",
     background: "var(--color-surface-2)",
     overflow: "hidden",
+    marginBottom: 20
   };
 
   const sectionHeader: React.CSSProperties = {
-    padding: "10px 20px",
+    padding: "12px 20px",
     fontSize: "var(--fs-xs)",
-    fontWeight: 800,
+    fontWeight: 850,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
     color: "var(--color-text-muted)",
-    background: "rgba(99,102,241,0.04)",
+    background: "rgba(99,102,241,0.06)",
     borderBottom: "1px solid var(--color-divider)",
   };
 
@@ -126,6 +519,10 @@ export default function TrainingRecordsPage() {
     gridTemplateColumns: "1fr 1fr",
     gap: "14px 20px",
     padding: "18px 20px",
+  };
+
+  const fullWidth: React.CSSProperties = {
+    gridColumn: "1 / -1"
   };
 
   const labelStyle: React.CSSProperties = {
@@ -138,10 +535,10 @@ export default function TrainingRecordsPage() {
   };
 
   const inputStyle = (hasError: boolean): React.CSSProperties => ({
-    height: 36,
-    padding: "0 10px",
+    height: 38,
+    padding: "0 12px",
     borderRadius: 8,
-    border: `1px solid ${hasError ? "#f87171" : "var(--color-divider)"}`,
+    border: `1px solid ${hasError ? "#ef4444" : "var(--color-divider)"}`,
     background: "var(--color-surface)",
     fontSize: "var(--fs-xs)",
     color: "var(--color-text)",
@@ -154,16 +551,14 @@ export default function TrainingRecordsPage() {
     fontSize: 11,
     color: "#ef4444",
     marginTop: 2,
+    fontWeight: 500
   };
 
   const required = <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>;
 
   return (
-    <div style={{ display: "grid", gap: 20 }}>
-
-      {/* ── Page title ── */}
-
-
+    <div style={{ display: "grid", gap: 10, maxWidth: 1000, margin: "0 auto" }}>
+      
       {/* ── Success notification ── */}
       {status === "success" && (
         <div style={{
@@ -174,15 +569,17 @@ export default function TrainingRecordsPage() {
           display: "flex",
           gap: 14,
           alignItems: "flex-start",
+          marginBottom: 16
         }}>
           <span style={{ fontSize: 28, lineHeight: 1 }}>✅</span>
           <div>
             <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, color: "#15803d", marginBottom: 4 }}>
-              Registration Submitted Successfully
+              Personnel Profile Submitted Successfully
             </div>
             <div style={{ fontSize: "var(--fs-xs)", color: "#166534", lineHeight: 1.7 }}>
-              You are now in <strong>pending state</strong>. You will have authorized access as soon as the HR team
-              approves your request. Please check back later or contact your HR administrator for updates.
+              Your personnel profile registration has been received and is currently in the <strong>pending review state</strong>. 
+              Once the HR management team approves your profile, your system privileges will be activated. 
+              Please contact the HR administrator if you have any questions.
             </div>
           </div>
         </div>
@@ -190,102 +587,606 @@ export default function TrainingRecordsPage() {
 
       {/* ── API error ── */}
       {status === "error" && (
-        <div style={{ padding: "12px 16px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fca5a5", fontSize: "var(--fs-xs)", color: "#991b1b" }}>
+        <div style={{ padding: "14px 18px", borderRadius: 12, background: "#fef2f2", border: "1px solid #fca5a5", fontSize: "var(--fs-xs)", color: "#991b1b", marginBottom: 16 }}>
           <strong>Error:</strong> {apiError}
         </div>
       )}
 
-      {/* ── Form ── */}
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }} noValidate>
-
-        {/* Section 1 – Work Details */}
+      <form onSubmit={handleSubmit} noValidate>
+        
+        {/* SECTION 1: PERSONAL AND CONTACT INFORMATION */}
         <div style={card}>
-          <div style={sectionHeader}>Work Details</div>
+          <div style={sectionHeader}>Section 1: Personal and Contact Information</div>
+          <div style={grid2}>
+            {/* Full Name */}
+            <label style={{ ...labelStyle, ...fullWidth }}>
+              <span>Full Name {required}</span>
+              <input 
+                type="text" 
+                value={form.fullName} 
+                onChange={(e) => handleChange("fullName", e.target.value)} 
+                placeholder="Enter First Name, Father's Name and Grand Father's Name" 
+                style={inputStyle(!!errors.fullName)} 
+              />
+              {errors.fullName ? <span style={errSpan}>{errors.fullName}</span> : <span style={{ fontSize: 10, color: "var(--color-text-muted)" }}>Must match: First Father Grandfather</span>}
+            </label>
+
+            {/* Sex */}
+            <label style={labelStyle}>
+              <span>Sex {required}</span>
+              <select 
+                value={form.sex} 
+                onChange={(e) => handleChange("sex", e.target.value)} 
+                style={{ ...inputStyle(!!errors.sex), cursor: "pointer" }}
+              >
+                <option value="">— Select Sex —</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+              {errors.sex && <span style={errSpan}>{errors.sex}</span>}
+            </label>
+
+            {/* Phone Number */}
+            <label style={labelStyle}>
+              <span>Phone Number (Format: 09xxxxxxxx) {required}</span>
+              <input 
+                type="tel" 
+                value={form.phone} 
+                onChange={(e) => handleChange("phone", e.target.value)} 
+                placeholder="e.g. 0912345678" 
+                style={inputStyle(!!errors.phone)} 
+              />
+              {errors.phone && <span style={errSpan}>{errors.phone}</span>}
+            </label>
+
+            {/* Personal Email Address */}
+            <label style={labelStyle}>
+              <span>Personal Email Address {required}</span>
+              <input 
+                type="email" 
+                value={form.personalEmail} 
+                onChange={(e) => handleChange("personalEmail", e.target.value)} 
+                placeholder="e.g. username@gmail.com" 
+                style={inputStyle(!!errors.personalEmail)} 
+              />
+              {errors.personalEmail && <span style={errSpan}>{errors.personalEmail}</span>}
+            </label>
+
+            {/* AHRI Email Address */}
+            <label style={labelStyle}>
+              <span>AHRI Email Address (if any)</span>
+              <input 
+                type="email" 
+                value={form.ahriEmail} 
+                onChange={(e) => handleChange("ahriEmail", e.target.value)} 
+                placeholder="e.g. first.last@ahri.gov.et" 
+                style={inputStyle(!!errors.ahriEmail)} 
+              />
+              {errors.ahriEmail && <span style={errSpan}>{errors.ahriEmail}</span>}
+            </label>
+
+            {/* Emergency Contact */}
+            <label style={{ ...labelStyle, ...fullWidth }}>
+              <span>Emergency Contact Name and Phone Number {required}</span>
+              <input 
+                type="text" 
+                value={form.emergencyContact} 
+                onChange={(e) => handleChange("emergencyContact", e.target.value)} 
+                placeholder="e.g. Abebe Bekele (Father) - 0911000000" 
+                style={inputStyle(!!errors.emergencyContact)} 
+              />
+              {errors.emergencyContact && <span style={errSpan}>{errors.emergencyContact}</span>}
+            </label>
+          </div>
+        </div>
+
+        {/* SECTION 2: AHRI EMPLOYMENT INFORMATION */}
+        <div style={card}>
+          <div style={sectionHeader}>Section 2: AHRI Employment Information</div>
           <div style={grid2}>
             {/* Department */}
             <label style={labelStyle}>
               <span>Department {required}</span>
-              <select value={form.department} onChange={set("department")} style={{ ...inputStyle(!!errors.department), cursor: "pointer" }}>
-                <option value="">— Select department —</option>
+              <select 
+                value={form.department} 
+                onChange={(e) => handleChange("department", e.target.value)} 
+                style={{ ...inputStyle(!!errors.department), cursor: "pointer" }}
+              >
+                <option value="">— Select Department —</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
               {errors.department && <span style={errSpan}>{errors.department}</span>}
             </label>
 
-            {/* Job Title */}
+            {/* Current Position at AHRI */}
             <label style={labelStyle}>
-              <span>Job Title {required}</span>
-              <input type="text" value={form.jobTitle} onChange={set("jobTitle")} placeholder="e.g. Senior Research Associate" style={inputStyle(!!errors.jobTitle)} />
+              <span>Current Position at AHRI {required}</span>
+              <select 
+                value={form.jobTitle} 
+                onChange={(e) => handleChange("jobTitle", e.target.value)} 
+                style={{ ...inputStyle(!!errors.jobTitle), cursor: "pointer" }}
+              >
+                <option value="">— Select Position —</option>
+                {POSITIONS.map((p) => <option key={p.name} value={p.name}>{p.label}</option>)}
+              </select>
               {errors.jobTitle && <span style={errSpan}>{errors.jobTitle}</span>}
             </label>
 
-            {/* Start Date */}
+            {/* Type of Employment */}
             <label style={labelStyle}>
-              <span>Start Date {required}</span>
-              <input type="date" value={form.startDate} onChange={set("startDate")} style={inputStyle(!!errors.startDate)} />
-              {errors.startDate && <span style={errSpan}>{errors.startDate}</span>}
-            </label>
-
-            {/* Employment Type */}
-            <label style={labelStyle}>
-              <span>Employment Type {required}</span>
-              <select value={form.employmentType} onChange={set("employmentType")} style={{ ...inputStyle(!!errors.employmentType), cursor: "pointer" }}>
-                <option value="">— Select type —</option>
-                <option value="Permanent">Permanent</option>
-                <option value="Contract">Contract</option>
+              <span>Type of Employment at AHRI {required}</span>
+              <select 
+                value={form.employmentType} 
+                onChange={(e) => handleChange("employmentType", e.target.value)} 
+                style={{ ...inputStyle(!!errors.employmentType), cursor: "pointer" }}
+              >
+                <option value="">— Select Employment Type —</option>
+                {EMPLOYMENT_TYPES.map((t) => <option key={t.name} value={t.name}>{t.label}</option>)}
               </select>
               {errors.employmentType && <span style={errSpan}>{errors.employmentType}</span>}
             </label>
 
-            {/* Contract End Date */}
-            <label style={labelStyle}>
-              <span>Contract End Date <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}>(if applicable)</span></span>
-              <input type="date" value={form.contractEndDate} onChange={set("contractEndDate")} style={inputStyle(false)} />
+            {/* Contract Date (conditional) */}
+            <label style={{ ...labelStyle, opacity: form.employmentType === "contract" ? 1 : 0.4 }}>
+              <span>If Contract, enter current AHRI contract end date {form.employmentType === "contract" && required}</span>
+              <input 
+                type="date" 
+                value={form.contractEndDate} 
+                disabled={form.employmentType !== "contract"}
+                onChange={(e) => handleChange("contractEndDate", e.target.value)} 
+                style={inputStyle(!!errors.contractEndDate)} 
+              />
+              {errors.contractEndDate && <span style={errSpan}>{errors.contractEndDate}</span>}
             </label>
 
-            {/* Contract Renewal Date */}
-            <label style={labelStyle}>
-              <span>Contract Renewal Date <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}>(if applicable)</span></span>
-              <input type="date" value={form.contractRenewalDate} onChange={set("contractRenewalDate")} style={inputStyle(false)} />
+            {/* Project Hired On (conditional) */}
+            <label style={{ ...labelStyle, ...fullWidth, opacity: form.employmentType === "contract" ? 1 : 0.4 }}>
+              <span>If Contract, select the MNTD Project you are hired on {form.employmentType === "contract" && required}</span>
+              <select 
+                value={form.mntdProject} 
+                disabled={form.employmentType !== "contract"}
+                onChange={(e) => handleChange("mntdProject", e.target.value)} 
+                style={{ ...inputStyle(!!errors.mntdProject), cursor: "pointer" }}
+              >
+                <option value="">— Select Project —</option>
+                {MNTD_HIRED_PROJECTS.map((p) => <option key={p.name} value={p.name}>{p.label}</option>)}
+              </select>
+              {errors.mntdProject && <span style={errSpan}>{errors.mntdProject}</span>}
             </label>
+
+            {/* Start Date */}
+            <label style={labelStyle}>
+              <span>AHRI Start Date {required}</span>
+              <input 
+                type="date" 
+                value={form.startDate} 
+                onChange={(e) => handleChange("startDate", e.target.value)} 
+                style={inputStyle(!!errors.startDate)} 
+              />
+              {errors.startDate && <span style={errSpan}>{errors.startDate}</span>}
+            </label>
+
+            <div style={{ ...fullWidth, borderBottom: "1px solid var(--color-divider)", margin: "10px 0" }} />
+
+            {/* MNTD Teams Checkboxes */}
+            <div style={{ ...fullWidth, display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
+                Select your applicable MNTD team(s) {required}
+              </span>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)" }}>
+                {MNTD_TEAMS.map((t) => (
+                  <label key={t.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
+                    <input 
+                      type="checkbox" 
+                      checked={form.mntdTeams.includes(t.name)} 
+                      onChange={(e) => handleCheckboxChange("mntdTeams", t.name, e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>{t.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.mntdTeams && <span style={errSpan}>{errors.mntdTeams}</span>}
+            </div>
+
+            {/* MNTD Projects involved Checkboxes */}
+            <div style={{ ...fullWidth, display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
+                Select all the MNTD projects you are currently involved in {required}
+              </span>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 200, overflowY: "auto" }}>
+                {MNTD_PROJECTS.map((p) => (
+                  <label key={p.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
+                    <input 
+                      type="checkbox" 
+                      checked={form.mntdProjectsInvolved.includes(p.name)} 
+                      onChange={(e) => handleCheckboxChange("mntdProjectsInvolved", p.name, e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>{p.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.mntdProjectsInvolved && <span style={errSpan}>{errors.mntdProjectsInvolved}</span>}
+            </div>
           </div>
         </div>
 
-        {/* Section 2 – Contact Info */}
+        {/* SECTION 3: EDUCATIONAL/ACADEMIC BACKGROUND */}
         <div style={card}>
-          <div style={sectionHeader}>Contact Information</div>
+          <div style={sectionHeader}>Section 3: Educational/Academic Background</div>
           <div style={grid2}>
+            
+            {/* Undergraduate Degree header */}
+            <div style={{ ...fullWidth, fontWeight: 800, fontSize: 13, color: "var(--color-text)", borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
+              Undergraduate/First Degree (BSc, BA, MD, DVM etc.)
+            </div>
+
+            {/* First Degree Field of Study */}
             <label style={labelStyle}>
-              <span>Phone Number</span>
-              <input type="tel" value={form.phone} onChange={set("phone")} placeholder="+251 9XX XXX XXX" style={inputStyle(false)} />
+              <span>Degree & Field of Study (Format: B.Sc. in Biology) {required}</span>
+              <input 
+                type="text" 
+                value={form.firstDegree} 
+                onChange={(e) => handleChange("firstDegree", e.target.value)} 
+                placeholder="e.g. B.Sc. in Biology" 
+                style={inputStyle(!!errors.firstDegree)} 
+              />
+              {errors.firstDegree && <span style={errSpan}>{errors.firstDegree}</span>}
             </label>
+
+            {/* First Degree University */}
             <label style={labelStyle}>
-              <span>Emergency Contact</span>
-              <input type="text" value={form.emergencyContact} onChange={set("emergencyContact")} placeholder="Name — Relationship — Phone" style={inputStyle(false)} />
+              <span>First Degree University Name {required}</span>
+              <select 
+                value={form.firstDegreeUniv} 
+                onChange={(e) => handleChange("firstDegreeUniv", e.target.value)} 
+                style={{ ...inputStyle(!!errors.firstDegreeUniv), cursor: "pointer" }}
+              >
+                <option value="">— Select University —</option>
+                {UNIVERSITIES.map((u) => <option key={u.name} value={u.name}>{u.label}</option>)}
+              </select>
+              {errors.firstDegreeUniv && <span style={errSpan}>{errors.firstDegreeUniv}</span>}
+            </label>
+
+            {/* First Degree University Other */}
+            {form.firstDegreeUniv === "other" && (
+              <label style={{ ...labelStyle, ...fullWidth }}>
+                <span>If other, enter First Degree University Name and Country {required}</span>
+                <input 
+                  type="text" 
+                  value={form.firstDegreeUnivOther} 
+                  onChange={(e) => handleChange("firstDegreeUnivOther", e.target.value)} 
+                  placeholder="e.g. Harvard University, USA" 
+                  style={inputStyle(!!errors.firstDegreeUnivOther)} 
+                />
+                {errors.firstDegreeUnivOther && <span style={errSpan}>{errors.firstDegreeUnivOther}</span>}
+              </label>
+            )}
+
+            {/* First Degree Year Completed */}
+            <label style={labelStyle}>
+              <span>First Degree Year Completed (Format: YYYY-MM) {required}</span>
+              <input 
+                type="month" 
+                value={form.firstDegreeYear} 
+                onChange={(e) => handleChange("firstDegreeYear", e.target.value)} 
+                style={inputStyle(!!errors.firstDegreeYear)} 
+              />
+              {errors.firstDegreeYear && <span style={errSpan}>{errors.firstDegreeYear}</span>}
+            </label>
+
+            {/* Postgraduate Degree header */}
+            <div style={{ ...fullWidth, fontWeight: 800, fontSize: 13, color: "var(--color-text)", borderBottom: "1px solid var(--color-divider)", paddingBottom: 4, marginTop: 10 }}>
+              Postgraduate/Second Degree (MSc, MA, MPH, etc.) - Optional
+            </div>
+
+            {/* Second Degree Field of Study */}
+            <label style={labelStyle}>
+              <span>Degree & Field of Study</span>
+              <input 
+                type="text" 
+                value={form.secondDegree} 
+                onChange={(e) => handleChange("secondDegree", e.target.value)} 
+                placeholder="e.g. MPH in Epidemiology" 
+                style={inputStyle(false)} 
+              />
+            </label>
+
+            {/* Second Degree University */}
+            <label style={labelStyle}>
+              <span>Second Degree University Name</span>
+              <select 
+                value={form.secondDegreeUniv} 
+                onChange={(e) => handleChange("secondDegreeUniv", e.target.value)} 
+                style={{ ...inputStyle(false), cursor: "pointer" }}
+              >
+                <option value="">— Select University —</option>
+                {UNIVERSITIES.map((u) => <option key={u.name} value={u.name}>{u.label}</option>)}
+              </select>
+            </label>
+
+            {/* Second Degree University Other */}
+            {form.secondDegreeUniv === "other" && (
+              <label style={{ ...labelStyle, ...fullWidth }}>
+                <span>If other, enter Second Degree University Name and Country {required}</span>
+                <input 
+                  type="text" 
+                  value={form.secondDegreeUnivOther} 
+                  onChange={(e) => handleChange("secondDegreeUnivOther", e.target.value)} 
+                  placeholder="e.g. London School of Hygiene, UK" 
+                  style={inputStyle(!!errors.secondDegreeUnivOther)} 
+                />
+                {errors.secondDegreeUnivOther && <span style={errSpan}>{errors.secondDegreeUnivOther}</span>}
+              </label>
+            )}
+
+            {/* Second Degree Year Completed */}
+            <label style={labelStyle}>
+              <span>Second Degree Year Completed (Format: YYYY-MM)</span>
+              <input 
+                type="month" 
+                value={form.secondDegreeYear} 
+                onChange={(e) => handleChange("secondDegreeYear", e.target.value)} 
+                style={inputStyle(false)} 
+              />
+            </label>
+
+            {/* PhD Degree header */}
+            <div style={{ ...fullWidth, fontWeight: 800, fontSize: 13, color: "var(--color-text)", borderBottom: "1px solid var(--color-divider)", paddingBottom: 4, marginTop: 10 }}>
+              Postgraduate/Third Degree (PhD) - Optional
+            </div>
+
+            {/* Third Degree Field of Study */}
+            <label style={labelStyle}>
+              <span>PhD Field of Study/Program</span>
+              <input 
+                type="text" 
+                value={form.thirdDegree} 
+                onChange={(e) => handleChange("thirdDegree", e.target.value)} 
+                placeholder="e.g. PhD in Molecular Genetics" 
+                style={inputStyle(false)} 
+              />
+            </label>
+
+            {/* Third Degree University & Country */}
+            <label style={labelStyle}>
+              <span>PhD University Name and Country</span>
+              <input 
+                type="text" 
+                value={form.thirdDegreeUnivCountry} 
+                onChange={(e) => handleChange("thirdDegreeUnivCountry", e.target.value)} 
+                placeholder="e.g. Addis Ababa University, Ethiopia" 
+                style={inputStyle(false)} 
+              />
+            </label>
+
+            {/* Third Degree Year Completed */}
+            <label style={labelStyle}>
+              <span>PhD Year Completed (Format: YYYY-MM)</span>
+              <input 
+                type="month" 
+                value={form.thirdDegreeYear} 
+                onChange={(e) => handleChange("thirdDegreeYear", e.target.value)} 
+                style={inputStyle(false)} 
+              />
+            </label>
+
+            {/* Currently Studying */}
+            <div style={{ ...fullWidth, borderBottom: "1px solid var(--color-divider)", margin: "10px 0" }} />
+            
+            <label style={{ ...labelStyle, ...fullWidth }}>
+              <span>Are you currently studying? {required}</span>
+              <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--color-text)" }}>
+                  <input 
+                    type="radio" 
+                    name="currentlyStudying" 
+                    value="yes"
+                    checked={form.currentlyStudying === "yes"}
+                    onChange={() => handleChange("currentlyStudying", "yes")}
+                  />
+                  Yes
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--color-text)" }}>
+                  <input 
+                    type="radio" 
+                    name="currentlyStudying" 
+                    value="no"
+                    checked={form.currentlyStudying === "no"}
+                    onChange={() => handleChange("currentlyStudying", "no")}
+                  />
+                  No
+                </label>
+              </div>
+              {errors.currentlyStudying && <span style={errSpan}>{errors.currentlyStudying}</span>}
+            </label>
+
+            {/* Currently Studying Details Grid */}
+            {form.currentlyStudying === "yes" && (
+              <div style={{ ...fullWidth, background: "rgba(99,102,241,0.02)", padding: 16, borderRadius: 8, border: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 14 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
+                  Current Studies Details (Provide at least one)
+                </span>
+                
+                {/* Masters Header */}
+                <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 120px", gap: 10, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)" }}>Masters</span>
+                  <input 
+                    type="text" 
+                    value={form.studyMastersField} 
+                    onChange={(e) => handleChange("studyMastersField", e.target.value)} 
+                    placeholder="Field of study" 
+                    style={inputStyle(false)} 
+                  />
+                  <input 
+                    type="text" 
+                    value={form.studyMastersUniv} 
+                    onChange={(e) => handleChange("studyMastersUniv", e.target.value)} 
+                    placeholder="University" 
+                    style={inputStyle(false)} 
+                  />
+                  <input 
+                    type="month" 
+                    value={form.studyMastersYear} 
+                    onChange={(e) => handleChange("studyMastersYear", e.target.value)} 
+                    style={inputStyle(false)} 
+                  />
+                </div>
+
+                {/* PhD Header */}
+                <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 120px", gap: 10, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)" }}>PhD</span>
+                  <input 
+                    type="text" 
+                    value={form.studyPhdField} 
+                    onChange={(e) => handleChange("studyPhdField", e.target.value)} 
+                    placeholder="Field of study" 
+                    style={inputStyle(false)} 
+                  />
+                  <input 
+                    type="text" 
+                    value={form.studyPhdUniv} 
+                    onChange={(e) => handleChange("studyPhdUniv", e.target.value)} 
+                    placeholder="University" 
+                    style={inputStyle(false)} 
+                  />
+                  <input 
+                    type="month" 
+                    value={form.studyPhdYear} 
+                    onChange={(e) => handleChange("studyPhdYear", e.target.value)} 
+                    style={inputStyle(false)} 
+                  />
+                </div>
+
+                {/* Certifications Header */}
+                <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 1fr 120px", gap: 10, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text-muted)" }}>Certifications</span>
+                  <input 
+                    type="text" 
+                    value={form.studyCertField} 
+                    onChange={(e) => handleChange("studyCertField", e.target.value)} 
+                    placeholder="Cert Field/Topic" 
+                    style={inputStyle(false)} 
+                  />
+                  <input 
+                    type="text" 
+                    value={form.studyCertUniv} 
+                    onChange={(e) => handleChange("studyCertUniv", e.target.value)} 
+                    placeholder="Institution" 
+                    style={inputStyle(false)} 
+                  />
+                  <input 
+                    type="month" 
+                    value={form.studyCertYear} 
+                    onChange={(e) => handleChange("studyCertYear", e.target.value)} 
+                    style={inputStyle(false)} 
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* SECTION 4: WORK EXPERIENCE(S) */}
+        <div style={card}>
+          <div style={sectionHeader}>Section 4: Work Experience(s)</div>
+          <div style={grid2}>
+            {/* Total work exp */}
+            <label style={labelStyle}>
+              <span>Total Work Experience(s) in Years {required}</span>
+              <select 
+                value={form.totalWorkExp} 
+                onChange={(e) => handleChange("totalWorkExp", e.target.value)} 
+                style={{ ...inputStyle(!!errors.totalWorkExp), cursor: "pointer" }}
+              >
+                <option value="">— Select Experience —</option>
+                {WORK_EXP_OPTIONS.map((o) => <option key={o.name} value={o.name}>{o.label}</option>)}
+              </select>
+              {errors.totalWorkExp && <span style={errSpan}>{errors.totalWorkExp}</span>}
+            </label>
+
+            {/* Total work exp at AHRI */}
+            <label style={labelStyle}>
+              <span>Total Work Experience(s) in Years at AHRI {required}</span>
+              <select 
+                value={form.totalWorkExpAhri} 
+                onChange={(e) => handleChange("totalWorkExpAhri", e.target.value)} 
+                style={{ ...inputStyle(!!errors.totalWorkExpAhri), cursor: "pointer" }}
+              >
+                <option value="">— Select Experience —</option>
+                {WORK_EXP_OPTIONS.map((o) => <option key={o.name} value={o.name}>{o.label}</option>)}
+              </select>
+              {errors.totalWorkExpAhri && <span style={errSpan}>{errors.totalWorkExpAhri}</span>}
             </label>
           </div>
         </div>
 
-        {/* Section 3 – Account Info (read-only) */}
+        {/* SECTION 5: PROPERTY INVENTORY */}
         <div style={card}>
-          <div style={sectionHeader}>Account (Auto-filled from your login)</div>
-          <div style={{ ...grid2, opacity: 0.85 }}>
-            <label style={labelStyle}>
-              <span>Full Name</span>
-              <input type="text" value={user?.displayName ?? "—"} readOnly style={{ ...inputStyle(false), background: "rgba(0,0,0,0.03)", cursor: "not-allowed" }} />
-            </label>
-            <label style={labelStyle}>
-              <span>Email Address</span>
-              <input type="text" value={user?.email ?? "—"} readOnly style={{ ...inputStyle(false), background: "rgba(0,0,0,0.03)", cursor: "not-allowed" }} />
-            </label>
+          <div style={sectionHeader}>Section 5: Property Inventory</div>
+          <div style={{ padding: "18px 20px" }}>
+            <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 14 }}>
+              Enter the quantities and types of all IT/electronic, office, laboratory and field equipment/instruments/devices under your name.
+            </div>
+
+            {/* Table Header */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "250px 100px 1fr",
+              gap: 12,
+              paddingBottom: 8,
+              borderBottom: "2px solid var(--color-border)",
+              fontWeight: 800,
+              fontSize: 11,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--color-text-muted)"
+            }}>
+              <span>Equipment Type</span>
+              <span>Quantity</span>
+              <span>Brand Name/Model</span>
+            </div>
+
+            {/* Table Rows */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+              {PROPERTY_ITEMS.map((item) => {
+                const data = form.propertyInventory[item.id] || { quantity: 0, brand: "" };
+                return (
+                  <div key={item.id} style={{
+                    display: "grid",
+                    gridTemplateColumns: "250px 100px 1fr",
+                    gap: 12,
+                    alignItems: "center"
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text)" }}>{item.label}</span>
+                    <input 
+                      type="number" 
+                      min="0"
+                      value={data.quantity === 0 ? "" : data.quantity} 
+                      onChange={(e) => handleInventoryChange(item.id, "quantity", parseInt(e.target.value) || 0)} 
+                      placeholder="0"
+                      style={{ ...inputStyle(false), textAlign: "center" }}
+                    />
+                    <input 
+                      type="text" 
+                      value={data.brand} 
+                      onChange={(e) => handleInventoryChange(item.id, "brand", e.target.value)} 
+                      placeholder="e.g. Dell Latitude 5420 / HP Laserjet" 
+                      style={inputStyle(false)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {/* Submit */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginBottom: 40 }}>
           <button
             type="button"
-            onClick={() => { setForm(empty); setErrors({}); setStatus("idle"); }}
+            onClick={() => { setForm(emptyForm()); setErrors({}); setStatus("idle"); }}
             style={{ padding: "10px 22px", borderRadius: 10, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}
           >
             Reset
@@ -307,7 +1208,7 @@ export default function TrainingRecordsPage() {
               transition: "all 0.2s",
             }}
           >
-            {mutation.isPending ? "Submitting…" : "📨 Register"}
+            {mutation.isPending ? "Submitting…" : "📨 Submit Profile Registration"}
           </button>
         </div>
       </form>
