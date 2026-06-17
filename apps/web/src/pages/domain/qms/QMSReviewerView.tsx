@@ -11,15 +11,784 @@ interface SOPItem {
   status: string;
   author: string;
   lastUpdated: string;
+  sopType?: "Procedure SOP" | "Equipment SOP" | "Analysis SOP";
   details?: Record<string, any>;
 }
 
 interface QMSReviewerViewProps {
   sops: SOPItem[];
   onSopUpdate: (updatedSops: SOPItem[]) => void;
+  onPrintRequest: (sop: SOPItem) => void;
+  onShareRequest: (sop: SOPItem) => void;
 }
 
-export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewProps) {
+const ViewIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 18, height: 18, display: "inline-block", verticalAlign: "middle" }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+  </svg>
+);
+
+const formatRichTextLocal = (text: string) => {
+  if (!text) return "N/A";
+  if (!/<[a-z][\s\S]*>/i.test(text)) {
+    return text.replace(/\n/g, "<br/>");
+  }
+  return text;
+};
+
+const getReviewSections = (sopType: string, details: any) => {
+  const sections: any[] = [
+    {
+      label: "Purpose, Scope & Background",
+      render: () => {
+        const purp = details?.purpose || details?.objectScope || details?.objectivesScope || "";
+        const sc = details?.scope || "";
+        const bg = details?.background || "";
+        if (!purp && !sc && !bg) return null;
+        return (
+          <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+            {purp && (
+              <div>
+                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Purpose (verbatim):</strong>
+                <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(purp) }} />
+              </div>
+            )}
+            {sc && (
+              <div>
+                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Scope:</strong>
+                <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(sc) }} />
+              </div>
+            )}
+            {bg && (
+              <div>
+                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Background / Introduction:</strong>
+                <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(bg) }} />
+              </div>
+            )}
+          </div>
+        );
+      }
+    },
+    { label: "Abbreviations & Definitions", text: details?.abbreviationsDefinitions },
+    {
+      label: "Tasks, Responsibilities & Accountabilities",
+      render: () => {
+        const narrative = details?.responsibilityAccountability || "";
+        const grid = details?.tasksGrid || [];
+        const hasGrid = Array.isArray(grid) && grid.some((r: any) => r.task || r.authorized || r.responsible);
+        if (!narrative && !hasGrid) return null;
+        return (
+          <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+            {narrative && (
+              <div>
+                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Responsibility & accountability (narrative):</strong>
+                <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+              </div>
+            )}
+            {hasGrid && (
+              <div>
+                <strong style={{ display: "block", marginBottom: 6, color: "var(--color-text-muted)" }}>Tasks & Roles Matrix:</strong>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
+                  <thead>
+                    <tr style={{ background: "var(--color-surface-2)" }}>
+                      <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Task</th>
+                      <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Authorized</th>
+                      <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Responsible</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grid.map((row: any, ridx: number) => {
+                      const auth = Array.isArray(row.authorized) ? row.authorized.join(", ") : (row.authorized || "");
+                      const resp = Array.isArray(row.responsible) ? row.responsible.join(", ") : (row.responsible || "");
+                      return (
+                        <tr key={ridx} style={{ background: "var(--color-surface)" }}>
+                          <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.task}</td>
+                          <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{auth}</td>
+                          <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{resp}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      }
+    }
+  ];
+
+  if (sopType === "Equipment SOP") {
+    sections.push(
+      { label: "Equipment Description", text: details?.equipmentDescription },
+      {
+        label: "Environmental & Safety Controls",
+        render: () => {
+          const ppe = Array.isArray(details?.ppeRequired) ? details.ppeRequired : [];
+          const ppeOther = details?.ppeRequiredOther || "";
+          const bsl = details?.bslRequired || "";
+          const hazards = Array.isArray(details?.hazardsRelevant) ? details.hazardsRelevant : [];
+          const hazardsOther = details?.hazardsRelevantOther || "";
+          const waste = details?.wasteHandling || "";
+          const addSafety = details?.additionalSafety || details?.safetyEnvironment || "";
+
+          const hasAny = ppe.length > 0 || bsl || hazards.length > 0 || waste || addSafety;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {bsl && (
+                <div>
+                  <strong>Biosafety Level (BSL) Required:</strong>
+                  <span style={{ marginLeft: 8, padding: "2px 8px", background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: 12, fontWeight: "bold", fontSize: "11px" }}>{bsl}</span>
+                </div>
+              )}
+              {ppe.length > 0 && (
+                <div>
+                  <strong>PPE Required:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {ppe.map((p: string) => (
+                      <span key={p} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {p === "Other (specify)" && ppeOther ? `Other: ${ppeOther}` : p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hazards.length > 0 && (
+                <div>
+                  <strong>Hazards Relevant to this Procedure:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {hazards.map((h: string) => (
+                      <span key={h} style={{ padding: "3px 8px", background: "#fee2e2", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {h === "Other (specify)" && hazardsOther ? `Other: ${hazardsOther}` : h}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {waste && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Waste Handling Instructions:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(waste) }} />
+                </div>
+              )}
+              {addSafety && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Additional Safety / Environmental Controls:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(addSafety) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      { label: "Calibration protocol", text: details?.calibration },
+      { label: "Controls schedule", text: details?.controls },
+      { label: "Maintenance instructions", text: details?.maintenance },
+      { label: "Operation steps", text: details?.operation },
+      { label: "Troubleshooting & Problem Solving", text: details?.problemSolving }
+    );
+  } else if (sopType === "Analysis SOP") {
+    sections.push(
+      { label: "Scientific Principle", text: details?.principleMethodologicalBasis || details?.principle },
+      {
+        label: "Samples / Specimens Covered",
+        render: () => {
+          const matrices = Array.isArray(details?.sampleMatrices) ? details.sampleMatrices : [];
+          const matricesOther = details?.sampleMatricesOther || "";
+          const inputs = Array.isArray(details?.inputMaterialTypes) ? details.inputMaterialTypes : [];
+          const inputsOther = details?.inputMaterialTypesOther || "";
+          const volume = details?.sampleVolume || "";
+          const acceptance = details?.sampleAcceptance || "";
+          const rejection = details?.sampleRejection || "";
+
+          const hasAny = matrices.length > 0 || inputs.length > 0 || volume || acceptance || rejection || details?.sample;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {details?.sample && !acceptance && !rejection && (
+                <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(details.sample) }} />
+              )}
+              {matrices.length > 0 && (
+                <div>
+                  <strong>Sample Matrices Covered:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {matrices.map((m: string) => (
+                      <span key={m} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {m === "Other" && matricesOther ? `Other: ${matricesOther}` : m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {inputs.length > 0 && (
+                <div>
+                  <strong>Input Material Type(s):</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {inputs.map((i: string) => (
+                      <span key={i} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {i === "Other" && inputsOther ? `Other: ${inputsOther}` : i}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {volume && (
+                <div>
+                  <strong>Volume/Amount Required per Sample:</strong>
+                  <span style={{ marginLeft: 8, fontWeight: 500 }}>{volume}</span>
+                </div>
+              )}
+              {acceptance && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Sample Acceptance Criteria:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(acceptance) }} />
+                </div>
+              )}
+              {rejection && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Sample Rejection Criteria:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(rejection) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Reagents & Supplies",
+        render: () => {
+          const narrative = details?.reagentsNarrative || "";
+          const onePerLine = details?.reagentsOnePerLine || "";
+          const hasGrid = Array.isArray(details?.reagentsGrid) && details.reagentsGrid.some((r: any) => r.item || r.location || r.condition);
+
+          if (!narrative && !onePerLine && !hasGrid) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reagents & Supplies Narrative:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+              {onePerLine && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reagents list:</strong>
+                  <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                    {onePerLine.split("\n").filter((line: string) => line.trim()).map((line: string, idx: number) => (
+                      <li key={idx}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {hasGrid && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 6, color: "var(--color-text-muted)" }}>Reagents & Chemicals Matrix (Legacy):</strong>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
+                    <thead>
+                      <tr style={{ background: "var(--color-surface-2)" }}>
+                        <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Item (SOP ref)</th>
+                        <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Storage Location</th>
+                        <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Storage Condition</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {details.reagentsGrid.map((row: any, ridx: number) => (
+                        <tr key={ridx} style={{ background: "var(--color-surface)" }}>
+                          <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.item}</td>
+                          <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.location}</td>
+                          <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.condition}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Equipment & Instruments",
+        render: () => {
+          const equip = Array.isArray(details?.primaryEquipment) ? details.primaryEquipment : [];
+          const equipOther = details?.primaryEquipmentOther || "";
+          const narrative = details?.equipmentOnePerLine || details?.equipmentSupplies || "";
+
+          const hasAny = equip.length > 0 || narrative;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {equip.length > 0 && (
+                <div>
+                  <strong>Primary Equipment Used:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {equip.map((e: string) => (
+                      <span key={e} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {e === "Other" && equipOther ? `Other: ${equipOther}` : e}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Equipment & Instruments details:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Environmental & Safety Controls",
+        render: () => {
+          const ppe = Array.isArray(details?.ppeRequired) ? details.ppeRequired : [];
+          const ppeOther = details?.ppeRequiredOther || "";
+          const bsl = details?.bslRequired || "";
+          const hazards = Array.isArray(details?.hazardsRelevant) ? details.hazardsRelevant : [];
+          const hazardsOther = details?.hazardsRelevantOther || "";
+          const waste = details?.wasteHandling || "";
+          const addSafety = details?.additionalSafety || details?.safetyEnvironment || "";
+
+          const hasAny = ppe.length > 0 || bsl || hazards.length > 0 || waste || addSafety;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {bsl && (
+                <div>
+                  <strong>Biosafety Level (BSL) Required:</strong>
+                  <span style={{ marginLeft: 8, padding: "2px 8px", background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: 12, fontWeight: "bold", fontSize: "11px" }}>{bsl}</span>
+                </div>
+              )}
+              {ppe.length > 0 && (
+                <div>
+                  <strong>PPE Required:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {ppe.map((p: string) => (
+                      <span key={p} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {p === "Other (specify)" && ppeOther ? `Other: ${ppeOther}` : p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hazards.length > 0 && (
+                <div>
+                  <strong>Hazards Relevant to this Procedure:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {hazards.map((h: string) => (
+                      <span key={h} style={{ padding: "3px 8px", background: "#fee2e2", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {h === "Other (specify)" && hazardsOther ? `Other: ${hazardsOther}` : h}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {waste && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Waste Handling Instructions:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(waste) }} />
+                </div>
+              )}
+              {addSafety && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Additional Safety / Environmental Controls:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(addSafety) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Quality Control procedures",
+        render: () => {
+          const controls = Array.isArray(details?.controlsIncluded) ? details.controlsIncluded : [];
+          const controlsOther = details?.controlsIncludedOther || "";
+          const methods = Array.isArray(details?.qcMethods) ? details.qcMethods : [];
+          const methodsOther = details?.qcMethodsOther || "";
+          const criteria = details?.acceptanceRejectionCriteria || "";
+          const narrative = details?.qcNarrative || details?.qualityControl || "";
+
+          const hasAny = controls.length > 0 || methods.length > 0 || criteria || narrative;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {controls.length > 0 && (
+                <div>
+                  <strong>Controls Included:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {controls.map((c: string) => (
+                      <span key={c} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {c === "Other" && controlsOther ? `Other: ${controlsOther}` : c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {methods.length > 0 && (
+                <div>
+                  <strong>DNA/RNA QC Methods Specified:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {methods.map((m: string) => (
+                      <span key={m} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {m === "Other" && methodsOther ? `Other: ${methodsOther}` : m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {criteria && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Acceptance / Rejection Criteria:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(criteria) }} />
+                </div>
+              )}
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Quality Control Narrative:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Procedure Sequence",
+        render: () => {
+          const narrative = details?.procedureNarrative || details?.procedure || "";
+          const steps = details?.procedureOnePerLine || "";
+
+          if (!narrative && !steps) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Procedure Narrative:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+              {steps && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Step-by-step list:</strong>
+                  <ol style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                    {steps.split("\n").filter((line: string) => line.trim()).map((line: string, idx: number) => (
+                      <li key={idx} style={{ marginBottom: 4 }}>{line}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Calculations / Data Analysis",
+        render: () => {
+          const formulas = details?.calculationsFormulas || "";
+          const tools = details?.softwareAnalysisTools || "";
+          const rules = details?.interpretationThresholds || "";
+
+          const hasAny = formulas || tools || rules;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {formulas && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Calculations & Formulas:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(formulas) }} />
+                </div>
+              )}
+              {tools && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Software / Analysis Tools Used:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(tools) }} />
+                </div>
+              )}
+              {rules && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Interpretation Rules & Thresholds:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(rules) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Result Reporting & Interpretation",
+        render: () => {
+          const format = details?.reportingFormat || "";
+          const cutoffs = details?.cutOffsThresholds || "";
+          const lims = details?.limsDatabaseMapping || "";
+          const narrative = details?.resultReportingNarrative || "";
+
+          const hasAny = format || cutoffs || lims || narrative;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {format && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reporting Format (units, layout):</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(format) }} />
+                </div>
+              )}
+              {cutoffs && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Cut-offs / Thresholds:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(cutoffs) }} />
+                </div>
+              )}
+              {lims && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>LIMS / Database Field Mapping:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(lims) }} />
+                </div>
+              )}
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Result Reporting Narrative:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      },
+      {
+        label: "Storage & Transport Requirements",
+        render: () => {
+          const stTypes = Array.isArray(details?.storageSampleTypes) ? details.storageSampleTypes : [];
+          const stTypesOther = details?.storageSampleTypesOther || "";
+          const temp = details?.storageTemperature || "";
+          const duration = details?.maxStorageDuration || "";
+          const modes = Array.isArray(details?.acceptableTransportModes) ? details.acceptableTransportModes : [];
+          const modesOther = details?.acceptableTransportModesOther || "";
+          const narrative = details?.storageTransportNarrative || "";
+
+          const hasAny = stTypes.length > 0 || temp || duration || modes.length > 0 || narrative;
+          if (!hasAny) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {stTypes.length > 0 && (
+                <div>
+                  <strong>Sample Types Stored/Transported:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {stTypes.map((t: string) => (
+                      <span key={t} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {t === "Other" && stTypesOther ? `Other: ${stTypesOther}` : t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {temp && (
+                <div>
+                  <strong>Recommended Storage Temperature:</strong>
+                  <span style={{ marginLeft: 8, padding: "2px 8px", background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: 12, fontWeight: "bold", fontSize: "11px" }}>{temp}</span>
+                </div>
+              )}
+              {duration && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Maximum Storage Duration:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(duration) }} />
+                </div>
+              )}
+              {modes.length > 0 && (
+                <div>
+                  <strong>Acceptable Transport Modes:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                    {modes.map((m: string) => (
+                      <span key={m} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
+                        {m === "Other" && modesOther ? `Other: ${modesOther}` : m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Storage & Transport Narrative:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+            </div>
+          );
+        }
+      }
+    );
+  } else {
+    // Procedure SOP or default
+    sections.push(
+      {
+        label: "Procedure Sequence",
+        render: () => {
+          const narrative = details?.procedureNarrative || details?.procedure || "";
+          const steps = details?.procedureOnePerLine || "";
+
+          if (!narrative && !steps) return null;
+
+          return (
+            <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
+              {narrative && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Procedure Narrative:</strong>
+                  <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
+                </div>
+              )}
+              {steps && (
+                <div>
+                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Step-by-step list:</strong>
+                  <ol style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                    {steps.split("\n").filter((line: string) => line.trim()).map((line: string, idx: number) => (
+                      <li key={idx} style={{ marginBottom: 4 }}>{line}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          );
+        }
+      }
+    );
+  }
+
+  // Common trailing related documents sections
+  sections.push(
+    { label: "Related Documents", text: details?.relatedDocuments },
+    { label: "Related Forms", text: details?.relatedForms },
+    { label: "References", text: details?.references },
+    { label: "Attachments & Annexes", text: details?.attachments }
+  );
+
+  return sections;
+};
+
+const getDiffSections = (sopType: string): any[] => {
+  const sections: any[] = [
+    { title: "Purpose (verbatim)", key: "purpose", textOnly: true },
+    { title: "Scope", key: "scope", textOnly: true },
+    { title: "Background / Introduction", key: "background", textOnly: true },
+    { title: "Objectives & Scope (Legacy)", key: "objectivesScope", textOnly: true },
+    { title: "Abbreviations & Definitions", key: "abbreviationsDefinitions", textOnly: true },
+    { title: "Responsibility & Accountability (Narrative)", key: "responsibilityAccountability", textOnly: true },
+    { title: "Tasks & Responsibilities Matrix", key: "tasksGrid", gridType: "tasks" }
+  ];
+
+  if (sopType === "Equipment SOP") {
+    sections.push(
+      { title: "Equipment Description", key: "equipmentDescription", textOnly: true },
+      { title: "Biosafety Level (BSL) Required", key: "bslRequired", textOnly: true },
+      { title: "PPE Required", key: "ppeRequired", arrayType: true },
+      { title: "Hazards Relevant to this Procedure", key: "hazardsRelevant", arrayType: true },
+      { title: "Waste Handling Instructions", key: "wasteHandling", textOnly: true },
+      { title: "Additional Safety / Environmental Controls", key: "additionalSafety", textOnly: true },
+      { title: "Safety & Environment Instructions (Legacy)", key: "safetyEnvironment", textOnly: true },
+      { title: "Calibration protocol", key: "calibration", textOnly: true },
+      { title: "Controls schedule", key: "controls", textOnly: true },
+      { title: "Maintenance instructions", key: "maintenance", textOnly: true },
+      { title: "Operation steps", key: "operation", textOnly: true },
+      { title: "Troubleshooting & Problem Solving", key: "problemSolving", textOnly: true },
+      { title: "Related Documents", key: "relatedDocuments", textOnly: true },
+      { title: "Related Forms", key: "relatedForms", textOnly: true },
+      { title: "References", key: "references", textOnly: true },
+      { title: "Attachments & Annexes", key: "attachments", textOnly: true }
+    );
+  } else if (sopType === "Analysis SOP") {
+    sections.push(
+      { title: "Scientific Principle / Methodological basis", key: "principleMethodologicalBasis", textOnly: true },
+      { title: "Scientific Principle (Legacy)", key: "principle", textOnly: true },
+      { title: "Sample Matrices Covered", key: "sampleMatrices", arrayType: true },
+      { title: "Input Material Type(s)", key: "inputMaterialTypes", arrayType: true },
+      { title: "Volume/Amount Required per Sample", key: "sampleVolume", textOnly: true },
+      { title: "Sample Acceptance Criteria", key: "sampleAcceptance", textOnly: true },
+      { title: "Sample Rejection Criteria", key: "sampleRejection", textOnly: true },
+      { title: "Sample Criteria (Legacy)", key: "sample", textOnly: true },
+      { title: "Reagents & Supplies Narrative", key: "reagentsNarrative", textOnly: true },
+      { title: "Reagents list (one per line)", key: "reagentsOnePerLine", textOnly: true },
+      { title: "Reagents & Chemicals Matrix (Legacy)", key: "reagentsGrid", gridType: "reagents" },
+      { title: "Primary Equipment Used", key: "primaryEquipment", arrayType: true },
+      { title: "Equipment & instruments (one per line)", key: "equipmentOnePerLine", textOnly: true },
+      { title: "Equipment & Supplies required (Legacy)", key: "equipmentSupplies", textOnly: true },
+      { title: "Biosafety Level (BSL) Required", key: "bslRequired", textOnly: true },
+      { title: "PPE Required", key: "ppeRequired", arrayType: true },
+      { title: "Hazards Relevant to this Procedure", key: "hazardsRelevant", arrayType: true },
+      { title: "Waste Handling Instructions", key: "wasteHandling", textOnly: true },
+      { title: "Additional Safety / Environmental Controls", key: "additionalSafety", textOnly: true },
+      { title: "Safety & Environment Instructions (Legacy)", key: "safetyEnvironment", textOnly: true },
+      { title: "Controls Included", key: "controlsIncluded", arrayType: true },
+      { title: "DNA/RNA QC Methods Specified", key: "qcMethods", arrayType: true },
+      { title: "Acceptance / Rejection Criteria", key: "acceptanceRejectionCriteria", textOnly: true },
+      { title: "Quality Control Narrative", key: "qcNarrative", textOnly: true },
+      { title: "Quality Control procedures (Legacy)", key: "qualityControl", textOnly: true },
+      { title: "Procedure Narrative", key: "procedureNarrative", textOnly: true },
+      { title: "Stepwise procedure (one per line)", key: "procedureOnePerLine", textOnly: true },
+      { title: "Procedure Sequence (Legacy)", key: "procedure", textOnly: true },
+      { title: "Calculations / Formulas Used", key: "calculationsFormulas", textOnly: true },
+      { title: "Software / Analysis Tools Used", key: "softwareAnalysisTools", textOnly: true },
+      { title: "Interpretation Rules / Thresholds", key: "interpretationThresholds", textOnly: true },
+      { title: "Reporting Format (units, layout)", key: "reportingFormat", textOnly: true },
+      { title: "Cut-offs / Thresholds", key: "cutOffsThresholds", textOnly: true },
+      { title: "LIMS / Database Field Mapping", key: "limsDatabaseMapping", textOnly: true },
+      { title: "Result Reporting Narrative", key: "resultReportingNarrative", textOnly: true },
+      { title: "Sample Types Stored/Transported", key: "storageSampleTypes", arrayType: true },
+      { title: "Recommended Storage Temperature", key: "storageTemperature", textOnly: true },
+      { title: "Maximum Storage Duration", key: "maxStorageDuration", textOnly: true },
+      { title: "Acceptable Transport Modes", key: "acceptableTransportModes", arrayType: true },
+      { title: "Storage & Transport Narrative", key: "storageTransportNarrative", textOnly: true },
+      { title: "Related Documents", key: "relatedDocuments", textOnly: true },
+      { title: "Related Forms", key: "relatedForms", textOnly: true },
+      { title: "References", key: "references", textOnly: true },
+      { title: "Attachments & Annexes", key: "attachments", textOnly: true }
+    );
+  } else {
+    // Procedure SOP or default
+    sections.push(
+      { title: "Procedure Narrative", key: "procedureNarrative", textOnly: true },
+      { title: "Step-by-step list (one per line)", key: "procedureOnePerLine", textOnly: true },
+      { title: "Procedure Sequence (Legacy)", key: "procedure", textOnly: true },
+      { title: "Related Documents", key: "relatedDocuments", textOnly: true },
+      { title: "Related Forms", key: "relatedForms", textOnly: true },
+      { title: "References", key: "references", textOnly: true },
+      { title: "Attachments & Annexes", key: "attachments", textOnly: true }
+    );
+  }
+
+  return sections;
+};
+
+const formatGridToString = (gridData: any[], type: string) => {
+  if (!Array.isArray(gridData) || gridData.length === 0) return "";
+  if (type === "tasks") {
+    return gridData
+      .map(row => {
+        const auth = Array.isArray(row.authorized) ? row.authorized.join(", ") : (row.authorized || "");
+        const resp = Array.isArray(row.responsible) ? row.responsible.join(", ") : (row.responsible || "");
+        return `Task: ${row.task || ""}\nAuthorized: ${auth}\nResponsible: ${resp}`;
+      })
+      .join("\n\n");
+  } else {
+    return gridData
+      .map(row => `Item: ${row.item || ""}\nLocation: ${row.location || ""}\nCondition: ${row.condition || ""}`)
+      .join("\n\n");
+  }
+};
+
+export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest }: QMSReviewerViewProps) {
   // Local state
   const [searchText, setSearchText] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
@@ -31,10 +800,11 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
   const [returnReason, setReturnReason] = useState<string>("");
   const [showReturnModal, setShowReturnModal] = useState<boolean>(false);
   const [showDiffView, setShowDiffView] = useState<boolean>(false);
+  const [panelRole, setPanelRole] = useState<string>("Verifier (User)");
 
   // Compute reviewer metrics
   const metrics = useMemo(() => {
-    const pending = sops.filter(s => s.status.toUpperCase() === "UNDER REVIEW" || s.status.toUpperCase() === "REVIEW" || s.status.toUpperCase() === "SUBMITTED").length;
+    const pending = sops.filter(s => s.status.toUpperCase() === "UNDER REVIEW" || s.status.toUpperCase() === "REVIEW" || s.status.toUpperCase() === "SUBMITTED" || s.status.toUpperCase() === "PANEL REVIEW").length;
     const returned = sops.filter(s => s.status.toUpperCase() === "RETURNED").length;
     const approvedToday = sops.filter(s => {
       if (s.status.toUpperCase() !== "APPROVED" && s.status.toUpperCase() !== "ACTIVE / APPROVED") return false;
@@ -55,7 +825,7 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
     return { pending, returned, approvedToday, reviewed };
   }, [sops]);
 
-  // Review Queue list (Submitted or Under Review items)
+  // Review Queue list (Submitted, Under Review, Panel Review or Approved items)
   const reviewQueue = useMemo(() => {
     return sops.filter(sop => {
       const isReviewable =
@@ -63,7 +833,11 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
         sop.status.toUpperCase() === "REVIEW" ||
         sop.status.toUpperCase() === "SUBMITTED" ||
         sop.status.toUpperCase() === "AWAITING AUTHOR RESPONSE" ||
-        sop.status.toUpperCase() === "RETURNED"; // Reviewer can view returned ones too
+        sop.status.toUpperCase() === "RETURNED" ||
+        sop.status.toUpperCase() === "PANEL REVIEW" ||
+        sop.status.toUpperCase() === "APPROVED" ||
+        sop.status.toUpperCase() === "ACTIVE / APPROVED" ||
+        sop.status.toUpperCase() === "ACTIVE";
 
       const matchesSearch =
         sop.title.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -92,15 +866,6 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
     ) || null;
   }, [selectedSopForReview, sops]);
 
-  // Helper to format text
-  const formatRichTextLocal = (text: string) => {
-    if (!text) return "N/A";
-    if (!/<[a-z][\s\S]*>/i.test(text)) {
-      return text.replace(/\n/g, "<br/>");
-    }
-    return text;
-  };
-
   // Add Comment Action
   const handleAddComment = () => {
     if (!selectedSopForReview || !commentText.trim()) return;
@@ -126,43 +891,124 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
     setCommentText("");
   };
 
-  // Approve SOP Action
-  const handleApproveSop = () => {
+  // Send SOP to Panel Review / Collaboration Action
+  const handleSendToPanelReview = () => {
     if (!selectedSopForReview) return;
 
-    if (window.confirm(`Are you sure you want to APPROVE SOP: ${selectedSopForReview.code}?`)) {
+    if (window.confirm(`Are you sure you want to send SOP ${selectedSopForReview.code} to Panel Review & Collaboration?`)) {
       const todayStr = new Date().toLocaleDateString();
       const updatedSop = { ...selectedSopForReview };
+      updatedSop.status = "Panel Review";
 
-      updatedSop.status = "Approved";
       if (!updatedSop.details) updatedSop.details = {};
-      if (!updatedSop.details.signoff) updatedSop.details.signoff = {};
-
-      updatedSop.details.signoff = {
-        ...updatedSop.details.signoff,
-        reviewedByName: "Quality Officer",
-        reviewedByRole: "Technical Reviewer",
-        reviewedDate: todayStr,
-        approvedByName: "Lab Director",
-        approvedByRole: "Approving Authority",
-        approvedDate: todayStr,
-        effectiveDate: todayStr
-      };
+      if (!updatedSop.details.electronicSignatures) {
+        updatedSop.details.electronicSignatures = {
+          author: { name: updatedSop.author || "Author", signedAt: updatedSop.lastUpdated || todayStr },
+          verifierUser: { name: updatedSop.details?.proposedVerifier || "Verifier User", signedAt: "" },
+          verifierQo: { name: "QA Officer", signedAt: "" },
+          authorizerLm: { name: updatedSop.details?.proposedAuthorizer || "Laboratory Manager", signedAt: "" }
+        };
+      }
 
       // Add to audit trail
       if (!updatedSop.details.history) updatedSop.details.history = [];
       updatedSop.details.history.push({
-        action: "Approved",
-        user: "Quality Reviewer",
+        action: "Sent for Panel Review",
+        user: "Quality Officer",
         timestamp: new Date().toLocaleString(),
-        details: "Document approved and signed off for operations."
+        details: "Document forwarded to verifiers and authorizer for digital sign-offs."
       });
 
       const updatedList = sops.map(s => s.code === updatedSop.code ? updatedSop : s);
       localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
       onSopUpdate(updatedList);
+      setSelectedSopForReview(updatedSop);
+      alert(`SOP ${updatedSop.code} has been successfully sent to Panel Review & Collaboration.`);
+    }
+  };
+
+  // Electronic digital sign-off Action
+  const handlePanelSignoff = (role: string) => {
+    if (!selectedSopForReview) return;
+
+    const roleKeyMap: Record<string, string> = {
+      "Verifier (User)": "verifierUser",
+      "Verifier (QO)": "verifierQo",
+      "Authorizer (LM)": "authorizerLm"
+    };
+
+    const key = roleKeyMap[role];
+    if (!key) return;
+
+    const todayStr = new Date().toLocaleDateString();
+    const updatedSop = { ...selectedSopForReview };
+
+    if (!updatedSop.details) updatedSop.details = {};
+    if (!updatedSop.details.electronicSignatures) {
+      updatedSop.details.electronicSignatures = {
+        author: { name: updatedSop.author || "Author", signedAt: updatedSop.lastUpdated || todayStr },
+        verifierUser: { name: updatedSop.details?.proposedVerifier || "Verifier User", signedAt: "" },
+        verifierQo: { name: "QA Officer", signedAt: "" },
+        authorizerLm: { name: updatedSop.details?.proposedAuthorizer || "Laboratory Manager", signedAt: "" }
+      };
+    }
+
+    // Mark as approved by this verifier/authorizer
+    updatedSop.details.electronicSignatures = {
+      ...updatedSop.details.electronicSignatures,
+      [key]: {
+        ...updatedSop.details.electronicSignatures[key],
+        signedAt: todayStr
+      }
+    };
+
+    // Add to audit trail
+    if (!updatedSop.details.history) updatedSop.details.history = [];
+    updatedSop.details.history.push({
+      action: `Digitally Signed: ${role}`,
+      user: updatedSop.details.electronicSignatures[key]?.name || role,
+      timestamp: new Date().toLocaleString(),
+      details: `Signed off for electronic verification/approval as ${role}.`
+    });
+
+    // Check if all 3 panel reviewers approved (verifierUser, verifierQo, authorizerLm)
+    const es = updatedSop.details.electronicSignatures;
+    const isFullyApproved = es.verifierUser?.signedAt && es.verifierQo?.signedAt && es.authorizerLm?.signedAt;
+
+    if (isFullyApproved) {
+      updatedSop.status = "Approved";
+
+      // Update legacy signoff fields for printing/compatibility
+      if (!updatedSop.details.signoff) updatedSop.details.signoff = {};
+      updatedSop.details.signoff = {
+        ...updatedSop.details.signoff,
+        preparedByName: es.author?.name || updatedSop.author,
+        preparedDate: es.author?.signedAt || updatedSop.lastUpdated,
+        reviewedByName: `${es.verifierUser?.name || "Verifier (User)"} & ${es.verifierQo?.name || "QA Officer"}`,
+        reviewedDate: `${es.verifierUser?.signedAt} / ${es.verifierQo?.signedAt}`,
+        approvedByName: es.authorizerLm?.name || "Laboratory Manager",
+        approvedDate: es.authorizerLm?.signedAt,
+        effectiveDate: todayStr
+      };
+
+      updatedSop.details.history.push({
+        action: "Final Approved",
+        user: "System",
+        timestamp: new Date().toLocaleString(),
+        details: "SOP successfully approved. All required digital sign-offs are completed."
+      });
+    }
+
+    const updatedList = sops.map(s => s.code === updatedSop.code ? updatedSop : s);
+    localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
+    onSopUpdate(updatedList);
+
+    if (isFullyApproved) {
       setSelectedSopForReview(null);
-      alert(`SOP ${updatedSop.code} has been successfully APPROVED.`);
+      alert(`SOP ${updatedSop.code} has received all required digital signatures and is now officially APPROVED!`);
+    } else {
+      setSelectedSopForReview(updatedSop);
+      alert(`Sign-off recorded for ${role}. Awaiting other digital signatures.`);
     }
   };
 
@@ -252,23 +1098,7 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── METRICS SUMMARY BAR ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { title: "Pending Review", value: metrics.pending, icon: "⏳", bg: "#eff6ff", color: "#1d4ed8" },
-          { title: "Returned for Revision", value: metrics.returned, icon: "↩️", bg: "#fef2f2", color: "#991b1b" },
-          { title: "Approved Today", value: metrics.approvedToday, icon: "✅", bg: "#f0fdf4", color: "#15803d" },
-          { title: "Total Reviewed", value: metrics.reviewed, icon: "📊", bg: "#faf5ff", color: "#6b21a8" }
-        ].map((card, i) => (
-          <div key={i} style={metricCardStyle}>
-            <div style={{ ...iconWrapperStyle, background: card.bg, color: card.color }}>{card.icon}</div>
-            <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-              <span style={metricLabelStyle}>{card.title}</span>
-              <span style={metricValueStyle}>{card.value}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+
 
       {/* ── SEARCH & FILTER PANEL ── */}
       <div style={filterPanelStyle}>
@@ -308,7 +1138,6 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
               <th style={thStyle}>Author</th>
               <th style={thStyle}>Version</th>
               <th style={thStyle}>Category</th>
-              <th style={thStyle}>Priority</th>
               <th style={thStyle}>Status</th>
               <th style={{ ...thStyle, textAlign: "center" }}>Action</th>
             </tr>
@@ -316,33 +1145,24 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
           <tbody>
             {reviewQueue.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
+                <td colSpan={7} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
                   No SOPs currently in the review queue.
                 </td>
               </tr>
             ) : (
               reviewQueue.map((sop) => {
-                // Mock priority level
-                let priority = "Medium";
-                let priorityColor = "#d97706";
-                if (sop.sopSection.includes("NGS") || sop.sopSection.includes("dPCR")) {
-                  priority = "High";
-                  priorityColor = "#dc2626";
-                } else if (sop.sopSection.includes("STANDARD") || sop.sopSection.includes("Equipment")) {
-                  priority = "Low";
-                  priorityColor = "#4b5563";
-                }
-
-                let badgeStyle = { background: "#e0e0e0", color: "#424242" };
+                let badgeStyle = { background: "#e2e8f0", color: "#475569" };
                 const statusUpper = sop.status.toUpperCase();
                 if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW" || statusUpper === "SUBMITTED") {
-                  badgeStyle = { background: "#e3f2fd", color: "#1565c0" };
+                  badgeStyle = { background: "#ffedd5", color: "#c2410c" };
+                } else if (statusUpper === "PANEL REVIEW") {
+                  badgeStyle = { background: "#f3e8ff", color: "#6b21a8" };
                 } else if (statusUpper === "AWAITING AUTHOR RESPONSE") {
-                  badgeStyle = { background: "#fff3e0", color: "#e65100" };
+                  badgeStyle = { background: "#fef3c7", color: "#d97706" };
                 } else if (statusUpper === "RETURNED") {
-                  badgeStyle = { background: "#ffebee", color: "#c62828" };
-                } else if (statusUpper === "APPROVED") {
-                  badgeStyle = { background: "#e8f5e9", color: "#2e7d32" };
+                  badgeStyle = { background: "#fee2e2", color: "#b91c1c" };
+                } else if (statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") {
+                  badgeStyle = { background: "#dcfce7", color: "#15803d" };
                 }
 
                 return (
@@ -353,22 +1173,46 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                     <td style={tdStyle}>v{sop.version}</td>
                     <td style={tdStyle}>{sop.sopSection}</td>
                     <td style={tdStyle}>
-                      <span style={{ fontSize: "10.5px", fontWeight: 700, color: priorityColor, border: `1px solid ${priorityColor}`, padding: "2px 6px", borderRadius: 4, background: "transparent" }}>
-                        {priority}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{ fontSize: "10.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, ...badgeStyle }}>
+                      <span style={{ fontSize: "10.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", ...badgeStyle }}>
                         {sop.status}
                       </span>
                     </td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>
-                      <button
-                        onClick={() => setSelectedSopForReview(sop)}
-                        style={reviewBtnStyle}
-                      >
-                        Review
-                      </button>
+                      <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                        {(statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") ? (
+                          <>
+                            <button
+                              onClick={() => onPrintRequest(sop)}
+                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                              title="Download PDF"
+                            >
+                              🖨️
+                            </button>
+                            <button
+                              onClick={() => onShareRequest(sop)}
+                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                              title="Share SOP"
+                            >
+                              🔗
+                            </button>
+                            <button
+                              onClick={() => setSelectedSopForReview(sop)}
+                              style={{ background: "none", border: "none", cursor: "pointer" }}
+                              title="View Details"
+                            >
+                              <ViewIcon />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setSelectedSopForReview(sop)}
+                            style={{ ...reviewBtnStyle, display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", padding: 0, fontSize: "14px" }}
+                            title="Review SOP"
+                          >
+                            🔍
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -408,24 +1252,39 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                     {showDiffView ? "📄 Exit Compare" : "📑 Compare Revisions"}
                   </button>
                 )}
-                <button
-                  onClick={handleRequestClarification}
-                  style={{ ...btnBaseStyle, border: "1px solid #f59e0b", color: "#b45309", background: "transparent" }}
-                >
-                  ❓ Ask Clarification
-                </button>
-                <button
-                  onClick={() => setShowReturnModal(true)}
-                  style={{ ...btnBaseStyle, background: "#ef4444", color: "#ffffff" }}
-                >
-                  ↩️ Return for Revision
-                </button>
-                <button
-                  onClick={handleApproveSop}
-                  style={{ ...btnBaseStyle, background: "#10b981", color: "#ffffff" }}
-                >
-                  ✅ Approve SOP
-                </button>
+
+                {selectedSopForReview.status.toUpperCase() !== "APPROVED" &&
+                  selectedSopForReview.status.toUpperCase() !== "ACTIVE" &&
+                  selectedSopForReview.status.toUpperCase() !== "ACTIVE / APPROVED" && (
+                    <>
+                      <button
+                        onClick={handleRequestClarification}
+                        style={{ ...btnBaseStyle, border: "1px solid #f59e0b", color: "#b45309", background: "transparent" }}
+                      >
+                        ❓ Ask Clarification
+                      </button>
+                      <button
+                        onClick={() => setShowReturnModal(true)}
+                        style={{ ...btnBaseStyle, background: "#ef4444", color: "#ffffff" }}
+                      >
+                        ↩️ Return for Revision
+                      </button>
+
+                      {selectedSopForReview.status.toUpperCase() !== "PANEL REVIEW" ? (
+                        <button
+                          onClick={handleSendToPanelReview}
+                          style={{ ...btnBaseStyle, background: "#10b981", color: "#ffffff" }}
+                        >
+                          👥 Send for Panel Review
+                        </button>
+                      ) : (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "11px", fontWeight: 700, color: "#7b1fa2", background: "#f3e5f5", padding: "6px 12px", borderRadius: "var(--radius-sm)" }}>
+                          👥 In Panel Review
+                        </span>
+                      )}
+                    </>
+                  )}
+
                 <button
                   onClick={() => {
                     setSelectedSopForReview(null);
@@ -451,29 +1310,9 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                       ⚠️ Comparing current revision (v{selectedSopForReview.version}) with previous revision (v{previousVersionSop.version}). Changed sections are marked below.
                     </div>
 
-                    {[
-                      { title: "Revision History", key: "revision", f: ["revisionNumber", "revisionDate", "revisionSummary", "revisionRationale"] },
-                      { title: "Purpose & Scope", key: "purposeScope", f: ["purpose", "scopeCovers", "scopeExcluded", "background"] },
-                      { title: "Definitions", key: "definitions", f: ["definitions", "abbreviations"] },
-                      { title: "Responsibility", key: "responsibility", f: ["roles", "responsibilityNarrative"] },
-                      { title: "Principle", key: "principle", textOnly: true },
-                      { title: "Samples", key: "samples", f: ["matrices", "inputMaterials", "volumeRequired", "acceptance", "rejection"] },
-                      { title: "Reagents", key: "reagents", f: ["narrative", "list"] },
-                      { title: "Equipment", key: "equipment", f: ["primary", "list"] },
-                      { title: "Safety", key: "safety", f: ["ppe", "level", "hazards", "waste", "additional"] },
-                      { title: "Quality Control", key: "qualityControl", f: ["controls", "methods", "acceptance", "narrative"] },
-                      { title: "Procedure", key: "procedure", f: ["narrative", "steps"] },
-                      { title: "Calculations", key: "calculation", f: ["formulas", "software", "thresholds"] },
-                      { title: "Reporting", key: "resultReporting", f: ["format", "thresholds", "lims", "narrative"] },
-                      { title: "Storage", key: "storage", f: ["types", "temp", "duration", "transport", "narrative"] },
-                      { title: "References", key: "references", textOnly: true }
-                    ].map((section, idx) => {
-                      const curVal = section.textOnly
-                        ? selectedSopForReview.details?.[section.key]
-                        : selectedSopForReview.details?.[section.key];
-                      const prevVal = section.textOnly
-                        ? previousVersionSop.details?.[section.key]
-                        : previousVersionSop.details?.[section.key];
+                    {getDiffSections(selectedSopForReview.sopType || selectedSopForReview.sopSection || "Procedure SOP").map((section, idx) => {
+                      const curVal = selectedSopForReview.details?.[section.key];
+                      const prevVal = previousVersionSop.details?.[section.key];
 
                       let curString = "";
                       let prevString = "";
@@ -481,14 +1320,29 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                       if (section.textOnly) {
                         curString = curVal || "";
                         prevString = prevVal || "";
-                      } else if (section.f) {
-                        section.f.forEach(field => {
-                          const c = curVal?.[field];
-                          const p = prevVal?.[field];
-                          if (c) curString += `\n[${field}]: ` + (Array.isArray(c) ? c.join(", ") : c);
-                          if (p) prevString += `\n[${field}]: ` + (Array.isArray(p) ? p.join(", ") : p);
-                        });
+                      } else if (section.arrayType) {
+                        const otherKey = section.key + "Other";
+                        const otherValCur = selectedSopForReview.details?.[otherKey] || "";
+                        const otherValPrev = previousVersionSop.details?.[otherKey] || "";
+
+                        const formatArray = (arr: any, otherVal: string) => {
+                          if (!Array.isArray(arr)) return arr || "";
+                          return arr.map((x: string) => {
+                            if ((x === "Other" || x === "Other (specify)") && otherVal) {
+                              return `${x}: ${otherVal}`;
+                            }
+                            return x;
+                          }).join(", ");
+                        };
+
+                        curString = formatArray(curVal, otherValCur);
+                        prevString = formatArray(prevVal, otherValPrev);
+                      } else if (section.gridType) {
+                        curString = formatGridToString(curVal, section.gridType);
+                        prevString = formatGridToString(prevVal, section.gridType);
                       }
+
+                      if (curString.trim() === "" && prevString.trim() === "") return null;
 
                       const hasChanges = curString.trim() !== prevString.trim();
 
@@ -540,7 +1394,8 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                           ["SOP Title", selectedSopForReview.title],
                           ["Document No", selectedSopForReview.code],
                           ["Version No", selectedSopForReview.version],
-                          ["Assay Category", selectedSopForReview.sopSection],
+                          ["Assay Category", selectedSopForReview.details?.assayCategory || selectedSopForReview.sopSection],
+                          ["Method Family", selectedSopForReview.details?.methodFamily || "N/A"],
                           ["Prepared By", `${selectedSopForReview.details?.signoff?.preparedByName || selectedSopForReview.author} on ${selectedSopForReview.details?.signoff?.preparedDate || selectedSopForReview.lastUpdated}`],
                           ["Reviewed By", `${selectedSopForReview.details?.signoff?.reviewedByName || "Awaiting Review"}`],
                           ["Approved By", `${selectedSopForReview.details?.signoff?.approvedByName || "Awaiting Approval"}`]
@@ -552,6 +1407,37 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                         ))}
                       </tbody>
                     </table>
+
+                    {/* Revision & Amendment History */}
+                    {selectedSopForReview.details?.revisionHistory && Array.isArray(selectedSopForReview.details.revisionHistory) && selectedSopForReview.details.revisionHistory.length > 0 && (
+                      <div style={{ border: "1px solid var(--color-border)", borderRadius: 6, overflow: "hidden", marginTop: 16 }}>
+                        <div style={{ background: "var(--color-surface)", padding: "8px 12px", fontSize: "12px", fontWeight: 700 }}>
+                          📜 Revision & Amendment History
+                        </div>
+                        <div style={{ padding: 12 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
+                            <thead>
+                              <tr style={{ background: "var(--color-surface-2)", borderBottom: "1.5px solid var(--color-border)" }}>
+                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", width: "15%", fontWeight: 700 }}>Rev No</th>
+                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", width: "20%", fontWeight: 700 }}>Rev Date</th>
+                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Summary of Changes</th>
+                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Rationale for Change</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedSopForReview.details.revisionHistory.map((rev: any, idx: number) => (
+                                <tr key={idx} style={{ background: "var(--color-surface)" }}>
+                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)", fontWeight: 600 }}>{rev.revNumber}</td>
+                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)" }}>{rev.revDate}</td>
+                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeSummary}</td>
+                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeRationale}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Audit History Block */}
                     {selectedSopForReview.details?.history && selectedSopForReview.details.history.length > 0 && (
@@ -571,148 +1457,59 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                     )}
 
                     {/* Detailed Content loops */}
-                    {[
-                      {
-                        label: "Revision & Amendment History", data: selectedSopForReview.details?.revision, fields: [
-                          { k: "Revision Number", v: "revisionNumber" },
-                          { k: "Revision Date", v: "revisionDate" },
-                          { k: "Summary of changes", v: "revisionSummary", multiline: true },
-                          { k: "Rationale for change", v: "revisionRationale", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Purpose, Scope & Background", data: selectedSopForReview.details?.purposeScope, fields: [
-                          { k: "Purpose", v: "purpose", multiline: true },
-                          { k: "Scope - what this SOP covers", v: "scopeCovers", multiline: true },
-                          { k: "Scope - exclusions", v: "scopeExcluded", multiline: true },
-                          { k: "Background / Introduction", v: "background", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Definitions & Abbreviations", data: selectedSopForReview.details?.definitions, fields: [
-                          { k: "Definitions / Terminology", v: "definitions", multiline: true },
-                          { k: "Abbreviations", v: "abbreviations", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Responsibility & Accountability", data: selectedSopForReview.details?.responsibility, fields: [
-                          { k: "Roles involved", v: "roles", list: true },
-                          { k: "Responsibility & accountability narrative", v: "responsibilityNarrative", multiline: true },
-                        ]
-                      },
-                      { label: "Principle of the Method", text: selectedSopForReview.details?.principle },
-                      {
-                        label: "Samples / Specimens Covered", data: selectedSopForReview.details?.samples, fields: [
-                          { k: "Sample matrices", v: "matrices", list: true },
-                          { k: "Input material types", v: "inputMaterials", list: true },
-                          { k: "Volume / amount required", v: "volumeRequired" },
-                          { k: "Sample acceptance criteria", v: "acceptance", multiline: true },
-                          { k: "Sample rejection criteria", v: "rejection", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Reagents & Supplies", data: selectedSopForReview.details?.reagents, fields: [
-                          { k: "Full narrative", v: "narrative", multiline: true },
-                          { k: "List", v: "list", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Equipment & Instruments", data: selectedSopForReview.details?.equipment, fields: [
-                          { k: "Primary equipment used", v: "primary", list: true },
-                          { k: "Equipment list", v: "list", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Environmental & Safety Controls", data: selectedSopForReview.details?.safety, fields: [
-                          { k: "PPE required", v: "ppe", list: true },
-                          { k: "Biosafety level", v: "level" },
-                          { k: "Hazards", v: "hazards", list: true },
-                          { k: "Waste handling", v: "waste", multiline: true },
-                          { k: "Additional safety controls", v: "additional", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Quality Control", data: selectedSopForReview.details?.qualityControl, fields: [
-                          { k: "Controls included", v: "controls", list: true },
-                          { k: "DNA/RNA QC methods", v: "methods", list: true },
-                          { k: "Acceptance criteria", v: "acceptance", multiline: true },
-                          { k: "QC narrative", v: "narrative", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Stepwise Procedure", data: selectedSopForReview.details?.procedure, fields: [
-                          { k: "Procedure narrative", v: "narrative", multiline: true },
-                          { k: "Stepwise procedure list", v: "steps", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Calculation / Data Analysis", data: selectedSopForReview.details?.calculation, fields: [
-                          { k: "Calculations / formulas", v: "formulas", multiline: true },
-                          { k: "Software tools", v: "software", multiline: true },
-                          { k: "Interpretation rules", v: "thresholds", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Result Reporting & Interpretation", data: selectedSopForReview.details?.resultReporting, fields: [
-                          { k: "Reporting format", v: "format", multiline: true },
-                          { k: "Cut-offs", v: "thresholds", multiline: true },
-                          { k: "LIMS field mapping", v: "lims", multiline: true },
-                          { k: "Narrative", v: "narrative", multiline: true },
-                        ]
-                      },
-                      {
-                        label: "Storage & Transport Requirements", data: selectedSopForReview.details?.storage, fields: [
-                          { k: "Sample types", v: "types", list: true },
-                          { k: "Recommended temp", v: "temp" },
-                          { k: "Max duration", v: "duration" },
-                          { k: "Transport modes", v: "transport", list: true },
-                          { k: "Narrative", v: "narrative", multiline: true },
-                        ]
-                      },
-                      { label: "References & Attachments", text: selectedSopForReview.details?.references }
-                    ].map((sec, sidx) => (
-                      <div key={sidx} style={{ borderBottom: "1px solid var(--color-divider)", paddingBottom: 16 }}>
-                        <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#031755", fontFamily: "Times New Roman", textTransform: "uppercase" }}>
-                          {sec.label}
-                        </h3>
-
-                        {sec.text && (
-                          <div
-                            style={{ fontFamily: "Times New Roman", fontSize: "12px", color: "#000000", textAlign: "justify", lineHeight: "1.5" }}
-                            dangerouslySetInnerHTML={{ __html: formatRichTextLocal(sec.text) }}
-                          />
-                        )}
-
-                        {sec.data && sec.fields && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
-                            {sec.fields.map((f, fidx) => {
-                              const val = sec.data[f.v];
-                              if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) return null;
-
-                              return (
-                                <div key={fidx} style={{ fontSize: "12px" }}>
-                                  <h4 style={{ margin: "0 0 2px 0", fontWeight: "bold", fontSize: "12px", color: "#333" }}>{f.k}:</h4>
-                                  {f.list && Array.isArray(val) ? (
-                                    <ul style={{ margin: "2px 0 4px 20px", padding: 0, listStyleType: "square" }}>
-                                      {val.map((item: string, idx: number) => (
-                                        <li key={idx} style={{ padding: "2px 0", fontFamily: "Times New Roman", fontSize: "12px", color: "#000000", textAlign: "justify" }}>{item}</li>
-                                      ))}
-                                    </ul>
-                                  ) : f.multiline ? (
-                                    <div
-                                      style={{ padding: "0px", margin: "2px 0 4px 0", color: "#000000", fontFamily: "Times New Roman", fontSize: "12px", textAlign: "justify", lineHeight: "1.5" }}
-                                      dangerouslySetInnerHTML={{ __html: formatRichTextLocal(val) }}
-                                    />
-                                  ) : (
-                                    <div style={{ padding: "2px 0", color: "#000000", fontFamily: "Times New Roman", fontSize: "12px", textAlign: "justify" }}>{val}</div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                    {getReviewSections(selectedSopForReview.sopType || selectedSopForReview.sopSection || "Procedure SOP", selectedSopForReview.details).map((sec, sidx) => {
+                      if (sec.render) {
+                        const renderedResult = sec.render();
+                        if (!renderedResult) return null;
+                        return (
+                          <div key={sidx} style={{ borderBottom: "1px solid var(--color-divider)", paddingBottom: 16 }}>
+                            <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#031755", fontFamily: "Times New Roman", textTransform: "uppercase" }}>
+                              {sec.label}
+                            </h3>
+                            {renderedResult}
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        );
+                      }
+
+                      const hasVal = sec.text || (sec.data && Array.isArray(sec.data) && sec.data.some((r: any) => Object.values(r).some(v => v)));
+                      if (!hasVal) return null;
+
+                      return (
+                        <div key={sidx} style={{ borderBottom: "1px solid var(--color-divider)", paddingBottom: 16 }}>
+                          <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#031755", fontFamily: "Times New Roman", textTransform: "uppercase" }}>
+                            {sec.label}
+                          </h3>
+
+                          {sec.text && (
+                            <div
+                              style={{ fontFamily: "Times New Roman", fontSize: "12px", color: "#000000", textAlign: "justify", lineHeight: "1.5" }}
+                              dangerouslySetInnerHTML={{ __html: formatRichTextLocal(sec.text) }}
+                            />
+                          )}
+
+                          {sec.data && sec.grid && (
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)", marginTop: "6px" }}>
+                              <thead>
+                                <tr style={{ background: "var(--color-surface-2)" }}>
+                                  {sec.grid.map((col: any, cidx: number) => (
+                                    <th key={cidx} style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: "bold" }}>{col.h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sec.data.map((row: any, ridx: number) => (
+                                  <tr key={ridx}>
+                                    {sec.grid!.map((col: any, cidx: number) => (
+                                      <td key={cidx} style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row[col.k]}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -726,6 +1523,98 @@ export default function QMSReviewerView({ sops, onSopUpdate }: QMSReviewerViewPr
                     {selectedSopForReview.details?.comments?.length || 0}
                   </span>
                 </h3>
+
+                {/* Panel Review Approvals Section */}
+                {(() => {
+                  const todayStr = new Date().toLocaleDateString();
+                  const es = selectedSopForReview.details?.electronicSignatures || {
+                    author: { name: selectedSopForReview.author || "Author", signedAt: selectedSopForReview.lastUpdated || todayStr },
+                    verifierUser: { name: selectedSopForReview.details?.proposedVerifier || "Verifier User", signedAt: "" },
+                    verifierQo: { name: "QA Officer", signedAt: "" },
+                    authorizerLm: { name: selectedSopForReview.details?.proposedAuthorizer || "Laboratory Manager", signedAt: "" }
+                  };
+                  const isReviewable = ["UNDER REVIEW", "REVIEW", "SUBMITTED", "PANEL REVIEW"].includes(selectedSopForReview.status.toUpperCase());
+                  const isApproved = ["APPROVED", "ACTIVE", "ACTIVE / APPROVED"].includes(selectedSopForReview.status.toUpperCase());
+
+                  if (!isReviewable && !isApproved) return null;
+
+                  return (
+                    <div style={{ border: "1px solid var(--color-primary)", borderRadius: 6, padding: 12, background: "var(--color-primary-soft)", display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                      <h4 style={{ margin: 0, fontSize: "12.5px", fontWeight: "bold", color: "var(--color-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+                        🖋️ Digital Sign-off & Verifications
+                      </h4>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "11px" }}>
+                        {/* Author */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>
+                          <div>
+                            <span style={{ fontWeight: 600 }}>Author:</span> <em style={{ color: "var(--color-text-muted)" }}>{es.author?.name}</em>
+                          </div>
+                          <span style={{ color: "#16a34a", fontWeight: "bold" }}>🟢 Signed {es.author?.signedAt}</span>
+                        </div>
+
+                        {/* Verifier User */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>
+                          <div>
+                            <span style={{ fontWeight: 600 }}>Verifier (User):</span> <em style={{ color: "var(--color-text-muted)" }}>{es.verifierUser?.name}</em>
+                          </div>
+                          {es.verifierUser?.signedAt ? (
+                            <span style={{ color: "#16a34a", fontWeight: "bold" }}>🟢 Verified {es.verifierUser?.signedAt}</span>
+                          ) : (
+                            <span style={{ color: "#d97706", fontWeight: "bold" }}>⏳ Awaiting Sign-off</span>
+                          )}
+                        </div>
+
+                        {/* Verifier QO */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>
+                          <div>
+                            <span style={{ fontWeight: 600 }}>Verifier (QO):</span> <em style={{ color: "var(--color-text-muted)" }}>{es.verifierQo?.name}</em>
+                          </div>
+                          {es.verifierQo?.signedAt ? (
+                            <span style={{ color: "#16a34a", fontWeight: "bold" }}>🟢 Verified {es.verifierQo?.signedAt}</span>
+                          ) : (
+                            <span style={{ color: "#d97706", fontWeight: "bold" }}>⏳ Awaiting Sign-off</span>
+                          )}
+                        </div>
+
+                        {/* Authorizer LM */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div>
+                            <span style={{ fontWeight: 600 }}>Authorizer (LM):</span> <em style={{ color: "var(--color-text-muted)" }}>{es.authorizerLm?.name}</em>
+                          </div>
+                          {es.authorizerLm?.signedAt ? (
+                            <span style={{ color: "#16a34a", fontWeight: "bold" }}>🟢 Authorized {es.authorizerLm?.signedAt}</span>
+                          ) : (
+                            <span style={{ color: "#d97706", fontWeight: "bold" }}>⏳ Awaiting Sign-off</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {isReviewable && (
+                        <div style={{ borderTop: "1px solid var(--color-border)", marginTop: 6, paddingTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <label style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-primary)" }}>SIGN OFF AS ROLE:</label>
+                            <select
+                              value={panelRole}
+                              onChange={(e) => setPanelRole(e.target.value)}
+                              style={{ ...selectStyle, width: "100%", padding: "6px", background: "#ffffff", borderColor: "var(--color-primary)" }}
+                            >
+                              <option value="Verifier (User)">Verifier (User) - compliance with practice</option>
+                              <option value="Verifier (QO)">Verifier (QO) - compliance with standard</option>
+                              <option value="Authorizer (LM)">Authorizer (LM) - line manager approval</option>
+                            </select>
+                          </div>
+                          <button
+                            onClick={() => handlePanelSignoff(panelRole)}
+                            style={{ ...btnBaseStyle, width: "100%", background: "var(--color-primary)", color: "#ffffff", padding: "8px", justifyContent: "center" }}
+                          >
+                            Sign-off & Approve
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Add Comment Section */}
                 <div style={{ border: "1px solid var(--color-border)", borderRadius: 6, padding: 10, background: "var(--color-surface)", display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>

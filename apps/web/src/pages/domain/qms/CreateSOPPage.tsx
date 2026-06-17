@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { fetchSOPs } from "../../../api/domains";
 
 // Custom Circle Option Dropdown (Single-select)
 interface CircleDropdownProps {
@@ -19,7 +20,7 @@ const CircleDropdown: React.FC<CircleDropdownProps> = ({
   options,
   hasOther = false,
   otherValue = "",
-  onOtherChange = () => { },
+  onOtherChange = (_val: string) => { },
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -170,7 +171,7 @@ const RectangleMultiselect: React.FC<RectangleMultiselectProps> = ({
   options,
   hasOther = false,
   otherValue = "",
-  onOtherChange = () => { },
+  onOtherChange = (_val: string) => { },
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -798,7 +799,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      boxShadow: "inset 0 0 2px rgba(0,0,0,0.2)",
                     }}
                     title={c.name}
                   />
@@ -967,7 +967,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           <div style={{ width: 1, height: 16, background: "var(--color-border)", margin: "0 4px" }} />
 
-          {/* Interactive Table & Elements Popover (Sample Image Requirement) */}
+          {/* Interactive Table & Elements Popover */}
           <div ref={tableMenuRef} style={{ position: "relative", display: "inline-block" }}>
             <button
               type="button"
@@ -1159,7 +1159,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                               className={`grid-cell ${isHighlighted ? "highlighted" : ""}`}
                               onMouseEnter={() => {
                                 setHoveredGrid({ r: rowNum, c: colNum });
-                                
+
                                 // Grow the grid dynamically if hovering near current maximums (up to 30x30)
                                 let newRows = gridSize.rows;
                                 let newCols = gridSize.cols;
@@ -1289,7 +1289,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </div>
             )}
           </div>
-
         </div>
 
         {/* Editable Content Div */}
@@ -1333,450 +1332,674 @@ for (let major = 1; major <= 5; major++) {
   }
 }
 
+const ASSAY_CATEGORY_OPTIONS = [
+  "Sample collection / preparation",
+  "Nucleic acid extraction",
+  "Real-time qPCR",
+  "Gel-based PCR (incl. nested PCR)",
+  "Genotyping (MSP1 / MSP2)",
+  "Digital PCR (Pfhrp2 / Pfhrp3)",
+  "NGS library preparation",
+  "Serology / bead-based assays",
+  "Vector / entomology procedure",
+  "Equipment operation / maintenance"
+];
+
+const METHOD_FAMILY_OPTIONS = [
+  "Conventional PCR",
+  "Real-time qPCR",
+  "Digital PCR",
+  "Next-generation sequencing",
+  "Immunoassay / serology",
+  "Nucleic-acid extraction",
+  "Sample collection / preparation",
+  "Vector / entomology",
+  "Equipment SOP",
+  "Other"
+];
+
+const ROLE_OPTIONS = [
+  "Laboratory manager",
+  "Laboratory supervisor",
+  "Senior analyst / research scientist",
+  "Analyst / lab technologist",
+  "Laboratory technician",
+  "Entomologist / vector biologist",
+  "Data manager",
+  "Phlebotomist / clinician",
+  "Trainee / fellow",
+  "QA / QC officer",
+  "Biosafety officer",
+  "Other (specify)"
+];
+
+const SAMPLE_MATRIX_OPTIONS = [
+  "Whole blood",
+  "DBS",
+  "Plasma",
+  "Serum",
+  "RBC pellet",
+  "RNA-protect whole blood",
+  "Mosquito – adult",
+  "Mosquito – larvae",
+  "Mosquito midgut",
+  "Mosquito head-thorax",
+  "Mosquito abdomen",
+  "Purified DNA extract",
+  "Purified RNA extract",
+  "In-vitro culture / control strain",
+  "Other (specify)"
+];
+
+const INPUT_MATERIAL_OPTIONS = [
+  "DBS punch(es)",
+  "Whole blood",
+  "Plasma / serum",
+  "Single mosquito",
+  "Mosquito pool",
+  "Larvae",
+  "Cultured parasites",
+  "Other"
+];
+
+const PRIMARY_EQUIPMENT_OPTIONS = [
+  "GeneRotex 96 automatic nucleic-acid extractor",
+  "KingFisher Flex",
+  "Bio-Rad CFX96 Deep Well",
+  "QIAcuity One Digital PCR",
+  "Luminex MAGPIX",
+  "Oxford Nanopore MinION Mk1C",
+  "Conventional thermocycler",
+  "Gel doc / UV imager",
+  "Centrifuge",
+  "Biosafety cabinet",
+  "Other (specify)"
+];
+
+const PPE_REQUIRED_OPTIONS = [
+  "Lab coat",
+  "Gloves (nitrile)",
+  "Double gloves",
+  "Safety glasses / goggles",
+  "Face shield",
+  "N95 respirator",
+  "Surgical mask",
+  "Closed shoes",
+  "Disposable apron",
+  "Other (specify)"
+];
+
+const BIOSAFETY_LEVEL_OPTIONS = [
+  "BSL-1",
+  "BSL-2",
+  "BSL-2+",
+  "BSL-3"
+];
+
+const HAZARDS_RELEVANT_OPTIONS = [
+  "Biohazardous material",
+  "Chemical hazard",
+  "Phenol / chloroform",
+  "Ethidium bromide / GelRed",
+  "UV radiation",
+  "Liquid nitrogen / cryogenic",
+  "Sharps / needles",
+  "Mosquito / vector bite risk",
+  "Electrical / high voltage",
+  "Other (specify)"
+];
+
+const CONTROLS_INCLUDED_OPTIONS = [
+  "Positive control",
+  "Negative control",
+  "No-template control (NTC)",
+  "Internal / extraction control",
+  "Calibrator / standard curve",
+  "Reference strain (e.g., 3D7)",
+  "Blank",
+  "Other (specify)"
+];
+
+const QC_METHODS_OPTIONS = [
+  "NanoDrop (UV)",
+  "Qubit (fluorometric)",
+  "TapeStation / Bioanalyzer",
+  "Agarose gel",
+  "Not performed",
+  "Other"
+];
+
+const STORAGE_SAMPLE_TYPE_OPTIONS = [
+  "DBS",
+  "Whole blood",
+  "Plasma",
+  "Serum",
+  "Cell pellet",
+  "Whole blood in RNA-protect",
+  "Preserved mosquitoes",
+  "Purified DNA / RNA"
+];
+
+const STORAGE_TEMP_OPTIONS = [
+  "Room temperature",
+  "+4 °C",
+  "−20 °C",
+  "−80 °C",
+  "Liquid nitrogen",
+  "Dry ice (transport)"
+];
+
+const TRANSPORT_MODE_OPTIONS = [
+  "Cold box with ice packs",
+  "Dry ice",
+  "LN2 dry shipper",
+  "Ambient with desiccant (DBS)",
+  "Commercial courier (categorized)",
+  "Hand-carried"
+];
+
+
 export default function CreateSOPPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editCode = searchParams.get("edit");
 
   const formRef = useRef<HTMLFormElement>(null);
-  const [activeSection, setActiveSection] = useState("A");
+  
+  // Dynamic navigation section
+  const [activeSection, setActiveSection] = useState("ID");
+  const [sopType, setSopType] = useState<"Procedure SOP" | "Equipment SOP" | "Analysis SOP">("Procedure SOP");
 
-  // A. SOP Identification
+  // Assay Category & Method Family (Now for all SOP types)
+  const [assayCategory, setAssayCategory] = useState("");
+  const [methodFamily, setMethodFamily] = useState("");
+
+  // Core Identification Info
   const [enteredBy, setEnteredBy] = useState("");
   const [sopTitle, setSopTitle] = useState("");
   const [sopCode, setSopCode] = useState("");
   const [sopVersion, setSopVersion] = useState("1.0");
-  const [supersedes, setSupersedes] = useState("");
   const [effectiveDate, setEffectiveDate] = useState("");
   const [nextReviewDate, setNextReviewDate] = useState("");
   const [sopStatus, setSopStatus] = useState("Draft");
   const [owningSite, setOwningSite] = useState("AHRI – Addis Ababa");
-  const [owningSiteOther, setOwningSiteOther] = useState("");
   const [owningLabUnit, setOwningLabUnit] = useState("MNTD Molecular Lab");
-  const [assayCategory, setAssayCategory] = useState("Sample collection / preparation");
-  const [methodFamily, setMethodFamily] = useState("Conventional PCR");
-  const [methodFamilyOther, setMethodFamilyOther] = useState("");
+  const [proposedVerifier, setProposedVerifier] = useState("QA Officer");
+  const [proposedAuthorizer, setProposedAuthorizer] = useState("Laboratory Manager");
 
-  // B. Revision & Amendment History
-  const [revisionNumber, setRevisionNumber] = useState("");
-  const [revisionDate, setRevisionDate] = useState("");
-  const [revisionSummary, setRevisionSummary] = useState("");
-  const [revisionRationale, setRevisionRationale] = useState("");
+  // Revision & Amendment History
+  const [revisionHistory, setRevisionHistory] = useState<{ revNumber: string; revDate: string; changeSummary: string; changeRationale: string }[]>([
+    { revNumber: "", revDate: "", changeSummary: "", changeRationale: "" }
+  ]);
 
-  // C. Purpose, Scope & Background
+  // Common Sections Content (Purpose, Scope, Background replaces objectivesScope)
   const [purpose, setPurpose] = useState("");
-  const [scopeCovers, setScopeCovers] = useState("");
-  const [scopeExcluded, setScopeExcluded] = useState("");
+  const [scope, setScope] = useState("");
   const [background, setBackground] = useState("");
+  const [abbreviationsDefinitions, setAbbreviationsDefinitions] = useState("");
 
-  // D. Definitions & Abbreviations
-  const [definitions, setDefinitions] = useState("");
-  const [abbreviations, setAbbreviations] = useState("");
+  // Responsibility & Accountability narrative and grid
+  const [responsibilityAccountability, setResponsibilityAccountability] = useState("");
+  const [tasksGrid, setTasksGrid] = useState<{ task: string; authorized: string[]; authorizedOther?: string; responsible: string[]; responsibleOther?: string }[]>([
+    { task: "", authorized: [], authorizedOther: "", responsible: [], responsibleOther: "" }
+  ]);
 
-  // E. Responsibility & Accountability
-  const [rolesInvolved, setRolesInvolved] = useState<string[]>([]);
-  const [rolesInvolvedOther, setRolesInvolvedOther] = useState("");
-  const [responsibilityNarrative, setResponsibilityNarrative] = useState("");
+  const [procedure, setProcedure] = useState("");
+  const [relatedDocuments, setRelatedDocuments] = useState("");
+  const [relatedForms, setRelatedForms] = useState("");
+  const [references, setReferences] = useState("");
+  const [attachments, setAttachments] = useState("");
 
-  // F. Principle of the Method
-  const [principleBasis, setPrincipleBasis] = useState("");
+  // Equipment SOP Specific Sections
+  const [equipmentDescription, setEquipmentDescription] = useState("");
+  const [calibration, setCalibration] = useState("");
+  const [controls, setControls] = useState("");
+  const [maintenance, setMaintenance] = useState("");
+  const [operation, setOperation] = useState("");
+  const [problemSolving, setProblemSolving] = useState("");
 
-  // G. Samples / Specimens Covered
+  // Analysis SOP Specific Sections
+  const [principleMethodologicalBasis, setPrincipleMethodologicalBasis] = useState("");
+  
+  // Samples / Specimens Covered
   const [sampleMatrices, setSampleMatrices] = useState<string[]>([]);
   const [sampleMatricesOther, setSampleMatricesOther] = useState("");
   const [inputMaterialTypes, setInputMaterialTypes] = useState<string[]>([]);
   const [inputMaterialTypesOther, setInputMaterialTypesOther] = useState("");
-  const [volumeRequired, setVolumeRequired] = useState("");
-  const [sampleAcceptanceCriteria, setSampleAcceptanceCriteria] = useState("");
-  const [sampleRejectionCriteria, setSampleRejectionCriteria] = useState("");
+  const [sampleVolume, setSampleVolume] = useState("");
+  const [sampleAcceptance, setSampleAcceptance] = useState("");
+  const [sampleRejection, setSampleRejection] = useState("");
 
-  // H. Reagents & Supplies
-  const [reagentsSuppliesNarrative, setReagentsSuppliesNarrative] = useState("");
-  const [reagentsSuppliesList, setReagentsSuppliesList] = useState("");
+  // Reagents & supplies
+  const [reagentsNarrative, setReagentsNarrative] = useState("");
+  const [reagentsOnePerLine, setReagentsOnePerLine] = useState("");
 
-  // I. Equipment & Instruments
+  // Equipment & Instruments
   const [primaryEquipment, setPrimaryEquipment] = useState<string[]>([]);
   const [primaryEquipmentOther, setPrimaryEquipmentOther] = useState("");
-  const [equipmentList, setEquipmentList] = useState("");
+  const [equipmentOnePerLine, setEquipmentOnePerLine] = useState("");
 
-  // J. Environmental & Safety Controls
+  // Environmental & Safety Controls
   const [ppeRequired, setPpeRequired] = useState<string[]>([]);
   const [ppeRequiredOther, setPpeRequiredOther] = useState("");
-  const [biosafetyLevel, setBiosafetyLevel] = useState("BSL-1");
+  const [bslRequired, setBslRequired] = useState("BSL-2");
   const [hazardsRelevant, setHazardsRelevant] = useState<string[]>([]);
   const [hazardsRelevantOther, setHazardsRelevantOther] = useState("");
   const [wasteHandling, setWasteHandling] = useState("");
-  const [additionalSafetyControls, setAdditionalSafetyControls] = useState("");
+  const [additionalSafety, setAdditionalSafety] = useState("");
 
-  // K. Quality Control
+  // Quality Control
   const [controlsIncluded, setControlsIncluded] = useState<string[]>([]);
   const [controlsIncludedOther, setControlsIncludedOther] = useState("");
   const [qcMethods, setQcMethods] = useState<string[]>([]);
   const [qcMethodsOther, setQcMethodsOther] = useState("");
-  const [qcAcceptanceCriteria, setQcAcceptanceCriteria] = useState("");
+  const [acceptanceRejectionCriteria, setAcceptanceRejectionCriteria] = useState("");
   const [qcNarrative, setQcNarrative] = useState("");
 
-  // L. Stepwise Procedure
+  // Stepwise Procedure
   const [procedureNarrative, setProcedureNarrative] = useState("");
-  const [procedureStepsList, setProcedureStepsList] = useState("");
+  const [procedureOnePerLine, setProcedureOnePerLine] = useState("");
 
-  // M. Calculation / Data Analysis
+  // Calculation / Data Analysis
   const [calculationsFormulas, setCalculationsFormulas] = useState("");
-  const [softwareTools, setSoftwareTools] = useState("");
-  const [interpretationRules, setInterpretationRules] = useState("");
+  const [softwareAnalysisTools, setSoftwareAnalysisTools] = useState("");
+  const [interpretationThresholds, setInterpretationThresholds] = useState("");
 
-  // N. Result Reporting & Interpretation
+  // Result Reporting & Interpretation
   const [reportingFormat, setReportingFormat] = useState("");
   const [cutOffsThresholds, setCutOffsThresholds] = useState("");
   const [limsDatabaseMapping, setLimsDatabaseMapping] = useState("");
   const [resultReportingNarrative, setResultReportingNarrative] = useState("");
 
-  // P. Storage & Transport Requirements
+  // Storage & Transport Requirements
   const [storageSampleTypes, setStorageSampleTypes] = useState<string[]>([]);
-  const [recommendedTemp, setRecommendedTemp] = useState("Room temperature");
+  const [storageSampleTypesOther, setStorageSampleTypesOther] = useState("");
+  const [storageTemperature, setStorageTemperature] = useState("Room temperature");
   const [maxStorageDuration, setMaxStorageDuration] = useState("");
-  const [transportModes, setTransportModes] = useState<string[]>([]);
+  const [acceptableTransportModes, setAcceptableTransportModes] = useState<string[]>([]);
+  const [acceptableTransportModesOther, setAcceptableTransportModesOther] = useState("");
   const [storageTransportNarrative, setStorageTransportNarrative] = useState("");
 
-  // Q. References & Attachments
-  const [referencesText, setReferencesText] = useState("");
-  const [originalSopFile, setOriginalSopFile] = useState<File | null>(null);
-  const [supplementaryFile, setSupplementaryFile] = useState<File | null>(null);
-  const [workflowFile, setWorkflowFile] = useState<File | null>(null);
-
-  // R. Document Control & Sign-off
-  const [preparedByName, setPreparedByName] = useState("");
-  const [preparedByRole, setPreparedByRole] = useState("");
-  const [preparedDate, setPreparedDate] = useState("");
-  const [reviewedByName, setReviewedByName] = useState("");
-  const [reviewedByRole, setReviewedByRole] = useState("");
-  const [reviewedDate, setReviewedDate] = useState("");
-  const [approvedByName, setApprovedByName] = useState("");
-  const [approvedByRole, setApprovedByRole] = useState("");
-  const [approvedDate, setApprovedDate] = useState("");
-  const [controlledCopyNumber, setControlledCopyNumber] = useState("");
-  const [distributionList, setDistributionList] = useState("");
-  const [finalComments, setFinalComments] = useState("");
-
-  // Detect Edit Mode & Load Data
+  // Loading SOP data if editing
   useEffect(() => {
+    const populateFromItem = (item: any) => {
+      setSopCode(item.code || "");
+      setSopTitle(item.title || "");
+      setSopVersion(item.version || "1.0");
+      setSopStatus(item.status || "Draft");
+      setSopType(item.sopType || "Procedure SOP");
+      setEnteredBy(item.author || "");
+
+      const details = item.details || {};
+      setEffectiveDate(details.effectiveDate || "");
+      setNextReviewDate(details.nextReviewDate || "");
+      setOwningSite(details.owningSite || "AHRI – Addis Ababa");
+      setOwningLabUnit(details.owningLabUnit || "MNTD Molecular Lab");
+      setProposedVerifier(details.proposedVerifier || "QA Officer");
+      setProposedAuthorizer(details.proposedAuthorizer || "Laboratory Manager");
+      setAssayCategory(details.assayCategory || "");
+      setMethodFamily(details.methodFamily || "");
+
+      // Revision History
+      setRevisionHistory(details.revisionHistory || [{ revNumber: "", revDate: "", changeSummary: "", changeRationale: "" }]);
+
+      // Common sections
+      setPurpose(details.purpose || details.objectivesScope || "");
+      setScope(details.scope || "");
+      setBackground(details.background || "");
+      setAbbreviationsDefinitions(details.abbreviationsDefinitions || "");
+
+      // Responsibility Narrative
+      setResponsibilityAccountability(details.responsibilityAccountability || "");
+
+      // Tasks Matrix (parse legacy string items into arrays safely)
+      if (details.tasksGrid) {
+        const loadedTasks = details.tasksGrid.map((t: any) => ({
+          task: t.task || "",
+          authorized: Array.isArray(t.authorized) ? t.authorized : (t.authorized ? [t.authorized] : []),
+          authorizedOther: t.authorizedOther || "",
+          responsible: Array.isArray(t.responsible) ? t.responsible : (t.responsible ? [t.responsible] : []),
+          responsibleOther: t.responsibleOther || ""
+        }));
+        setTasksGrid(loadedTasks);
+      } else {
+        setTasksGrid([{ task: "", authorized: [], authorizedOther: "", responsible: [], responsibleOther: "" }]);
+      }
+
+      setProcedure(details.procedure || "");
+      setRelatedDocuments(details.relatedDocuments || "");
+      setRelatedForms(details.relatedForms || "");
+      setReferences(details.references || "");
+      setAttachments(details.attachments || "");
+
+      // Equipment specifics
+      setEquipmentDescription(details.equipmentDescription || "");
+      setCalibration(details.calibration || "");
+      setControls(details.controls || "");
+      setMaintenance(details.maintenance || "");
+      setOperation(details.operation || "");
+      setProblemSolving(details.problemSolving || "");
+
+      // Analysis specifics / Principle
+      setPrincipleMethodologicalBasis(details.principleMethodologicalBasis || details.principle || "");
+
+      // Samples / Specimens Covered
+      setSampleMatrices(details.sampleMatrices || []);
+      setSampleMatricesOther(details.sampleMatricesOther || "");
+      setInputMaterialTypes(details.inputMaterialTypes || []);
+      setInputMaterialTypesOther(details.inputMaterialTypesOther || "");
+      setSampleVolume(details.sampleVolume || "");
+      setSampleAcceptance(details.sampleAcceptance || "");
+      setSampleRejection(details.sampleRejection || "");
+
+      // Reagents
+      setReagentsNarrative(details.reagentsNarrative || "");
+      setReagentsOnePerLine(details.reagentsOnePerLine || "");
+
+      // Equipment & Instruments
+      setPrimaryEquipment(details.primaryEquipment || []);
+      setPrimaryEquipmentOther(details.primaryEquipmentOther || "");
+      setEquipmentOnePerLine(details.equipmentOnePerLine || "");
+
+      // Environmental & Safety Controls
+      setPpeRequired(details.ppeRequired || []);
+      setPpeRequiredOther(details.ppeRequiredOther || "");
+      setBslRequired(details.bslRequired || "BSL-2");
+      setHazardsRelevant(details.hazardsRelevant || []);
+      setHazardsRelevantOther(details.hazardsRelevantOther || "");
+      setWasteHandling(details.wasteHandling || "");
+      setAdditionalSafety(details.additionalSafety || "");
+
+      // Quality Control
+      setControlsIncluded(details.controlsIncluded || []);
+      setControlsIncludedOther(details.controlsIncludedOther || "");
+      setQcMethods(details.qcMethods || []);
+      setQcMethodsOther(details.qcMethodsOther || "");
+      setAcceptanceRejectionCriteria(details.acceptanceRejectionCriteria || "");
+      setQcNarrative(details.qcNarrative || "");
+
+      // Stepwise Procedure
+      setProcedureNarrative(details.procedureNarrative || "");
+      setProcedureOnePerLine(details.procedureOnePerLine || "");
+
+      // Calculations
+      setCalculationsFormulas(details.calculationsFormulas || "");
+      setSoftwareAnalysisTools(details.softwareAnalysisTools || "");
+      setInterpretationThresholds(details.interpretationThresholds || "");
+
+      // Result Reporting
+      setReportingFormat(details.reportingFormat || "");
+      setCutOffsThresholds(details.cutOffsThresholds || "");
+      setLimsDatabaseMapping(details.limsDatabaseMapping || "");
+      setResultReportingNarrative(details.resultReportingNarrative || "");
+
+      // Storage & Transport
+      setStorageSampleTypes(details.storageSampleTypes || []);
+      setStorageSampleTypesOther(details.storageSampleTypesOther || "");
+      setStorageTemperature(details.storageTemperature || "Room temperature");
+      setMaxStorageDuration(details.maxStorageDuration || "");
+      setAcceptableTransportModes(details.acceptableTransportModes || []);
+      setAcceptableTransportModesOther(details.acceptableTransportModesOther || "");
+      setStorageTransportNarrative(details.storageTransportNarrative || "");
+    };
+
     if (editCode) {
+      // 1. Try localStorage first
+      let found = false;
       try {
         const saved = localStorage.getItem("roms_local_sops");
         if (saved) {
           const list = JSON.parse(saved);
           const item = list.find((s: any) => s.code === editCode);
           if (item) {
-            setSopCode(item.code || "");
-            setSopTitle(item.title || "");
-            setSopVersion(item.version || "1.0");
-            setSopStatus(item.status || "Draft");
-            setAssayCategory(item.sopSection || "");
-            setOwningLabUnit(item.sopSubSection || "");
-
-            const details = item.details || {};
-            setEnteredBy(item.author || "");
-            setSupersedes(details.supersedes || "");
-            setEffectiveDate(details.effectiveDate || "");
-            setNextReviewDate(details.nextReviewDate || "");
-
-            const siteStr = details.owningSite || "";
-            if (siteStr.startsWith("Other: ")) {
-              setOwningSite("Other (specify)");
-              setOwningSiteOther(siteStr.replace("Other: ", ""));
-            } else {
-              setOwningSite(siteStr || "AHRI – Addis Ababa");
-            }
-
-            const familyStr = details.methodFamily || "";
-            if (familyStr.startsWith("Other: ")) {
-              setMethodFamily("Other (specify)");
-              setMethodFamilyOther(familyStr.replace("Other: ", ""));
-            } else {
-              setMethodFamily(familyStr || "Conventional PCR");
-            }
-
-            const rev = details.revision || {};
-            setRevisionNumber(rev.revisionNumber || "");
-            setRevisionDate(rev.revisionDate || "");
-            setRevisionSummary(rev.revisionSummary || "");
-            setRevisionRationale(rev.revisionRationale || "");
-
-            const ps = details.purposeScope || {};
-            setPurpose(ps.purpose || "");
-            setScopeCovers(ps.scopeCovers || "");
-            setScopeExcluded(ps.scopeExcluded || "");
-            setBackground(ps.background || "");
-
-            const defs = details.definitions || {};
-            setDefinitions(defs.definitions || "");
-            setAbbreviations(defs.abbreviations || "");
-
-            const resp = details.responsibility || {};
-            const roles: string[] = resp.roles || [];
-            const normalRoles = roles.map(r => {
-              if (r.startsWith("Other: ")) {
-                setRolesInvolvedOther(r.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return r;
-            });
-            setRolesInvolved(normalRoles);
-            setResponsibilityNarrative(resp.responsibilityNarrative || "");
-
-            setPrincipleBasis(details.principle || "");
-
-            const sm = details.samples || {};
-            const mats: string[] = sm.matrices || [];
-            const normalMats = mats.map(m => {
-              if (m.startsWith("Other: ")) {
-                setSampleMatricesOther(m.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return m;
-            });
-            setSampleMatrices(normalMats);
-
-            const inputs: string[] = sm.inputMaterials || [];
-            const normalInputs = inputs.map(i => {
-              if (i.startsWith("Other: ")) {
-                setInputMaterialTypesOther(i.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return i;
-            });
-            setInputMaterialTypes(normalInputs);
-            setVolumeRequired(sm.volumeRequired || "");
-            setSampleAcceptanceCriteria(sm.acceptance || "");
-            setSampleRejectionCriteria(sm.rejection || "");
-
-            const rg = details.reagents || {};
-            setReagentsSuppliesNarrative(rg.narrative || "");
-            setReagentsSuppliesList(rg.list || "");
-
-            const eq = details.equipment || {};
-            const equips: string[] = eq.primary || [];
-            const normalEquips = equips.map(e => {
-              if (e.startsWith("Other: ")) {
-                setPrimaryEquipmentOther(e.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return e;
-            });
-            setPrimaryEquipment(normalEquips);
-            setEquipmentList(eq.list || "");
-
-            const sf = details.safety || {};
-            const ppes: string[] = sf.ppe || [];
-            const normalPpes = ppes.map(p => {
-              if (p.startsWith("Other: ")) {
-                setPpeRequiredOther(p.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return p;
-            });
-            setPpeRequired(normalPpes);
-            setBiosafetyLevel(sf.level || "BSL-1");
-
-            const haz: string[] = sf.hazards || [];
-            const normalHaz = haz.map(h => {
-              if (h.startsWith("Other: ")) {
-                setHazardsRelevantOther(h.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return h;
-            });
-            setHazardsRelevant(normalHaz);
-            setWasteHandling(sf.waste || "");
-            setAdditionalSafetyControls(sf.additional || "");
-
-            const qc = details.qualityControl || {};
-            const ctrls: string[] = qc.controls || [];
-            const normalCtrls = ctrls.map(c => {
-              if (c.startsWith("Other: ")) {
-                setControlsIncludedOther(c.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return c;
-            });
-            setControlsIncluded(normalCtrls);
-
-            const qcm: string[] = qc.methods || [];
-            const normalQcm = qcm.map(q => {
-              if (q.startsWith("Other: ")) {
-                setQcMethodsOther(q.replace("Other: ", ""));
-                return "Other (specify)";
-              }
-              return q;
-            });
-            setQcMethods(normalQcm);
-            setQcAcceptanceCriteria(qc.acceptance || "");
-            setQcNarrative(qc.narrative || "");
-
-            const pr = details.procedure || {};
-            setProcedureNarrative(pr.narrative || "");
-            setProcedureStepsList(pr.steps || "");
-
-            const calc = details.calculation || {};
-            setCalculationsFormulas(calc.formulas || "");
-            setSoftwareTools(calc.software || "");
-            setInterpretationRules(calc.thresholds || "");
-
-            const rr = details.resultReporting || {};
-            setReportingFormat(rr.format || "");
-            setCutOffsThresholds(rr.thresholds || "");
-            setLimsDatabaseMapping(rr.lims || "");
-            setResultReportingNarrative(rr.narrative || "");
-
-            const st = details.storage || {};
-            setStorageSampleTypes(st.types || []);
-            setRecommendedTemp(st.temp || "Room temperature");
-            setMaxStorageDuration(st.duration || "");
-            setTransportModes(st.transport || []);
-            setStorageTransportNarrative(st.narrative || "");
-
-            setReferencesText(details.references || "");
-
-            const sig = details.signoff || {};
-            setPreparedByName(sig.preparedByName || "");
-            setPreparedByRole(sig.preparedByRole || "");
-            setPreparedDate(sig.preparedDate || "");
-            setReviewedByName(sig.reviewedByName || "");
-            setReviewedByRole(sig.reviewedByRole || "");
-            setReviewedDate(sig.reviewedDate || "");
-            setApprovedByName(sig.approvedByName || "");
-            setApprovedByRole(sig.approvedByRole || "");
-            setApprovedDate(sig.approvedDate || "");
-            setControlledCopyNumber(sig.controlledCopyNumber || "");
-            setDistributionList(sig.distributionList || "");
-            setFinalComments(sig.finalComments || "");
+            populateFromItem(item);
+            found = true;
           }
         }
       } catch (e) {
-        console.error("Error loading SOP for editing:", e);
+        console.error("Error loading SOP from localStorage:", e);
+      }
+
+      // 2. Fallback to API if not found locally
+      if (!found) {
+        fetchSOPs(1, 1000)
+          .then((res) => {
+            const apiItems = (res.data || []) as any[];
+            const item = apiItems.find((s: any) => s.code === editCode);
+            if (item) {
+              populateFromItem(item);
+            } else {
+              console.warn(`SOP with code "${editCode}" not found in localStorage or API.`);
+            }
+          })
+          .catch((err) => {
+            console.error("Error fetching SOP from API for editing:", err);
+          });
       }
     }
   }, [editCode]);
 
-  // Save drafts and submit actions
+  // Compute initials for naming convention
+  const getInitials = (name: string) => {
+    if (!name) return "AB";
+    return name
+      .split(" ")
+      .map(n => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 3);
+  };
+
+  const cleanTitle = (title: string) => {
+    if (!title) return "Title";
+    return title
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .trim()
+      .replace(/\s+/g, ".");
+  };
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
+  const filenameSuggestion = `${sopCode || "CODE"}.${cleanTitle(sopTitle)}.${currentYear}.${currentMonth}.${getInitials(enteredBy || "Author")}.docx`;
+
+  const getSectionsList = () => {
+    const commonStart = [
+      { id: "ID", label: "SOP Identification & Metadata" },
+      { id: "REV_HISTORY", label: "Revision & Amendment History" },
+      { id: "PURPOSE_SCOPE", label: "Purpose, Scope & Background" },
+      { id: "ABBREV", label: "Abbreviations & Definitions" },
+      { id: "ROLES", label: "Tasks, Responsibilities & Accountabilities" }
+    ];
+    
+    if (sopType === "Equipment SOP") {
+      return [
+        ...commonStart,
+        { id: "EQUIP_DESC", label: "Equipment Description" },
+        { id: "SAFETY", label: "Environmental & Safety Controls" },
+        { id: "STARTUP_MAINT", label: "Startup & Maintenance" },
+        { id: "OPERATION", label: "Operation" },
+        { id: "PROBLEM_SOLVING", label: "Problem Solving" },
+        { id: "DOCS", label: "Related Documents" },
+        { id: "FORMS", label: "Related Forms" },
+        { id: "REFS", label: "References" },
+        { id: "ATTACHMENTS", label: "Attachments" }
+      ];
+    } else if (sopType === "Analysis SOP") {
+      return [
+        ...commonStart,
+        { id: "PRINCIPLE", label: "Principle of the Method" },
+        { id: "SAFETY", label: "Environmental & Safety Controls" },
+        { id: "SAMPLE", label: "Samples / Specimens Covered" },
+        { id: "REAGENTS", label: "Reagents & supplies" },
+        { id: "EQUIP_SUPPLIES", label: "Equipment & Instruments" },
+        { id: "QC", label: "Quality Control" },
+        { id: "PROCEDURE", label: "Stepwise Procedure" },
+        { id: "CALCULATION", label: "Calculation / Data Analysis" },
+        { id: "REPORTING", label: "Result Reporting & Interpretation" },
+        { id: "STORAGE_TRANSPORT", label: "Storage & Transport Requirements" },
+        { id: "DOCS", label: "Related Documents" },
+        { id: "FORMS", label: "Related Forms" },
+        { id: "REFS", label: "References" },
+        { id: "ATTACHMENTS", label: "Attachments" }
+      ];
+    } else {
+      // Procedure SOP
+      return [
+        ...commonStart,
+        { id: "PROCEDURE", label: "Stepwise Procedure" },
+        { id: "DOCS", label: "Related Documents" },
+        { id: "FORMS", label: "Related Forms" },
+        { id: "REFS", label: "References" },
+        { id: "ATTACHMENTS", label: "Attachments" }
+      ];
+    }
+  };
+
+  const sections = getSectionsList();
+
+  const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    const element = document.getElementById(`section-${id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const saveSOPToLocalStorage = (statusToSave: string) => {
     if (!sopCode || !sopTitle) {
-      alert("SOP Code and SOP Title are required to save draft or submit!");
+      alert("SOP Code and Title are required to save draft or submit!");
       return false;
     }
 
-    const newSopItem = {
-      id: editCode ? `sop-local-${editCode}` : `sop-local-${Date.now()}`,
+    if (!assayCategory || !methodFamily) {
+      alert("Assay Category and Method Family are required!");
+      return false;
+    }
+
+    const saved = localStorage.getItem("roms_local_sops");
+    const list = saved ? JSON.parse(saved) : [];
+    const item = list.find((s: any) => s.code === (editCode || sopCode)) || {};
+
+    const updatedSopItem = {
+      id: item.id || `sop-local-${Date.now()}`,
       code: sopCode,
       title: sopTitle,
-      sopSection: assayCategory,
+      sopSection: sopType,
       sopSubSection: owningLabUnit,
       version: sopVersion,
       status: statusToSave,
-      author: preparedByName || enteredBy || "Data Steward",
+      author: enteredBy || item.author || "Author",
       lastUpdated: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      sopType: sopType,
       details: {
-        supersedes,
+        ...(item.details || {}),
         effectiveDate,
         nextReviewDate,
-        owningSite: owningSite === "Other (specify)" ? `Other: ${owningSiteOther}` : owningSite,
-        methodFamily: methodFamily === "Other (specify)" ? `Other: ${methodFamilyOther}` : methodFamily,
-        revision: {
-          revisionNumber,
-          revisionDate,
-          revisionSummary,
-          revisionRationale
-        },
-        purposeScope: {
-          purpose,
-          scopeCovers,
-          scopeExcluded,
-          background
-        },
-        definitions: {
-          definitions,
-          abbreviations
-        },
-        responsibility: {
-          roles: rolesInvolved.map(r => r === "Other (specify)" ? `Other: ${rolesInvolvedOther}` : r),
-          responsibilityNarrative
-        },
-        principle: principleBasis,
-        samples: {
-          matrices: sampleMatrices.map(s => s === "Other (specify)" ? `Other: ${sampleMatricesOther}` : s),
-          inputMaterials: inputMaterialTypes.map(i => i === "Other (specify)" ? `Other: ${inputMaterialTypesOther}` : i),
-          volumeRequired,
-          acceptance: sampleAcceptanceCriteria,
-          rejection: sampleRejectionCriteria
-        },
-        reagents: {
-          narrative: reagentsSuppliesNarrative,
-          list: reagentsSuppliesList
-        },
-        equipment: {
-          primary: primaryEquipment.map(e => e === "Other (specify)" ? `Other: ${primaryEquipmentOther}` : e),
-          list: equipmentList
-        },
-        safety: {
-          ppe: ppeRequired.map(p => p === "Other (specify)" ? `Other: ${ppeRequiredOther}` : p),
-          level: biosafetyLevel,
-          hazards: hazardsRelevant.map(h => h === "Other (specify)" ? `Other: ${hazardsRelevantOther}` : h),
-          waste: wasteHandling,
-          additional: additionalSafetyControls
-        },
-        qualityControl: {
-          controls: controlsIncluded.map(c => c === "Other (specify)" ? `Other: ${controlsIncludedOther}` : c),
-          methods: qcMethods.map(q => q === "Other (specify)" ? `Other: ${qcMethodsOther}` : q),
-          acceptance: qcAcceptanceCriteria,
-          narrative: qcNarrative
-        },
-        procedure: {
-          narrative: procedureNarrative,
-          steps: procedureStepsList
-        },
-        calculation: {
-          formulas: calculationsFormulas,
-          software: softwareTools,
-          thresholds: interpretationRules
-        },
-        resultReporting: {
-          format: reportingFormat,
-          thresholds: cutOffsThresholds,
-          lims: limsDatabaseMapping,
-          narrative: resultReportingNarrative
-        },
-        storage: {
-          types: storageSampleTypes,
-          temp: recommendedTemp,
-          duration: maxStorageDuration,
-          transport: transportModes,
-          narrative: storageTransportNarrative
-        },
-        references: referencesText,
-        signoff: {
-          preparedByName,
-          preparedByRole,
-          preparedDate,
-          reviewedByName,
-          reviewedByRole,
-          reviewedDate,
-          approvedByName,
-          approvedByRole,
-          approvedDate,
-          controlledCopyNumber,
-          distributionList,
-          finalComments
-        }
+        owningSite,
+        owningLabUnit,
+        proposedVerifier,
+        proposedAuthorizer,
+        assayCategory,
+        methodFamily,
+        
+        // Revision History
+        revisionHistory,
+
+        // Common sections
+        purpose,
+        scope,
+        background,
+        abbreviationsDefinitions,
+
+        // Roles
+        responsibilityAccountability,
+        tasksGrid,
+
+        procedure,
+        relatedDocuments,
+        relatedForms,
+        references,
+        attachments,
+
+        // Equipment specifics
+        equipmentDescription,
+        calibration,
+        controls,
+        maintenance,
+        operation,
+        problemSolving,
+
+        // Analysis specifics
+        principleMethodologicalBasis,
+        
+        // Samples
+        sampleMatrices,
+        sampleMatricesOther,
+        inputMaterialTypes,
+        inputMaterialTypesOther,
+        sampleVolume,
+        sampleAcceptance,
+        sampleRejection,
+
+        // Reagents
+        reagentsNarrative,
+        reagentsOnePerLine,
+
+        // Equipment & Instruments
+        primaryEquipment,
+        primaryEquipmentOther,
+        equipmentOnePerLine,
+
+        // Environmental & Safety Controls
+        ppeRequired,
+        ppeRequiredOther,
+        bslRequired,
+        hazardsRelevant,
+        hazardsRelevantOther,
+        wasteHandling,
+        additionalSafety,
+
+        // Quality Control
+        controlsIncluded,
+        controlsIncludedOther,
+        qcMethods,
+        qcMethodsOther,
+        acceptanceRejectionCriteria,
+        qcNarrative,
+
+        // Stepwise Procedure
+        procedureNarrative,
+        procedureOnePerLine,
+
+        // Calculation / Data Analysis
+        calculationsFormulas,
+        softwareAnalysisTools,
+        interpretationThresholds,
+
+        // Result Reporting & Interpretation
+        reportingFormat,
+        cutOffsThresholds,
+        limsDatabaseMapping,
+        resultReportingNarrative,
+
+        // Storage & Transport Requirements
+        storageSampleTypes,
+        storageSampleTypesOther,
+        storageTemperature,
+        maxStorageDuration,
+        acceptableTransportModes,
+        acceptableTransportModesOther,
+        storageTransportNarrative,
+        
+        // Dynamic Filename
+        filenameSuggestion
       }
     };
 
     try {
-      const existing = localStorage.getItem("roms_local_sops");
-      const list = existing ? JSON.parse(existing) : [];
-      // Remove any existing one with the same code or previous code (editCode) to overwrite
       const codeToFilter = editCode || sopCode;
-      const filtered = list.filter((item: any) => item.code !== codeToFilter);
-      localStorage.setItem("roms_local_sops", JSON.stringify([newSopItem, ...filtered]));
+      const filtered = list.filter((s: any) => s.code !== codeToFilter);
+      localStorage.setItem("roms_local_sops", JSON.stringify([updatedSopItem, ...filtered]));
       return true;
     } catch (e) {
       console.error(e);
@@ -1795,39 +2018,10 @@ export default function CreateSOPPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = saveSOPToLocalStorage(sopStatus || "Under review");
+    const success = saveSOPToLocalStorage("UNDER REVIEW");
     if (success) {
-      alert("SOP Submitted successfully!");
+      alert("SOP submitted for review and approval!");
       navigate("/domains/qms");
-    }
-  };
-
-  // List of sections for the left sidebar
-  const sections = [
-    { id: "A", label: "SOP Identification" },
-    { id: "B", label: "Revision & History" },
-    { id: "C", label: "Purpose & Scope" },
-    { id: "D", label: "Definitions" },
-    { id: "E", label: "Responsibility" },
-    { id: "F", label: "Method Principle" },
-    { id: "G", label: "Samples & Specimens" },
-    { id: "H", label: "Reagents & Supplies" },
-    { id: "I", label: "Equipment & Instruments" },
-    { id: "J", label: "Safety Controls" },
-    { id: "K", label: "Quality Control" },
-    { id: "L", label: "Stepwise Procedure" },
-    { id: "M", label: "Calculation & Analysis" },
-    { id: "N", label: "Result Reporting" },
-    { id: "P", label: "Storage & Transport" },
-    { id: "Q", label: "References & Files" },
-    { id: "R", label: "Control & Sign-off" }
-  ];
-
-  const scrollToSection = (id: string) => {
-    setActiveSection(id);
-    const element = document.getElementById(`section-${id}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -1864,8 +2058,33 @@ export default function CreateSOPPage() {
             textAlign: "left",
           }}
         >
-          ← Back to QMS List
+          ← Back to QMS
         </button>
+
+        {/* Dynamic SOP Type Switcher - only editable if creating a new SOP */}
+        {!editCode && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+            <label style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>SOP Type Framework</label>
+            <select
+              value={sopType}
+              onChange={(e) => setSopType(e.target.value as any)}
+              style={{
+                padding: "8px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface-2)",
+                color: "var(--color-text)",
+                fontSize: "var(--fs-sm)",
+                outline: "none",
+                cursor: "pointer"
+              }}
+            >
+              <option value="Procedure SOP">Procedure SOP</option>
+              <option value="Equipment SOP">Equipment SOP</option>
+              <option value="Analysis SOP">Analysis SOP</option>
+            </select>
+          </div>
+        )}
 
         <h3
           style={{
@@ -1916,26 +2135,66 @@ export default function CreateSOPPage() {
 
       {/* FORM WORKSPACE CONTAINER */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-
-        {/* HEADER BLOCK (Compact, Minimalist) */}
+        
+        {/* HEADER BLOCK */}
         <div
           style={{
-            padding: "10px 24px",
+            padding: "12px 24px",
             background: "var(--color-surface)",
             borderBottom: "1px solid var(--color-border)",
             display: "flex",
-            flexDirection: "column",
+            justifyContent: "space-between",
             alignItems: "center",
-            textAlign: "center",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <div>
             <h1 style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
-              AHRI MNTD – Standard Operating Procedure (SOP) Intake
+              SOP Editor: {sopType}
             </h1>
-            <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: 0 }}>
-              Fill in all fields to complete Full SOP documentation.
-            </p>
+            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+              {sopTitle || "Untitled Document"} ({sopCode || "Awaiting Code Setup"})
+            </span>
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              style={{
+                background: "var(--color-surface-2)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text)",
+                padding: "8px 16px",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+            >
+              Save Draft
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                if (formRef.current) {
+                  formRef.current.requestSubmit();
+                } else {
+                  handleSubmit(e as any);
+                }
+              }}
+              style={{
+                background: "var(--color-primary)",
+                color: "#ffffff",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              Submit SOP
+            </button>
           </div>
         </div>
 
@@ -1952,72 +2211,199 @@ export default function CreateSOPPage() {
             gap: 32,
           }}
         >
-          {/* SECTION A. SOP Identification */}
-          <div id="section-A" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              SOP Identification
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Row 1: Entered by (1/5) and SOP Title (4/5) */}
-              <div style={{ display: "flex", gap: 20, width: "100%" }}>
-                <div style={{ flex: "1 1 20%", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Entered by (data steward) *</label>
-                  <input type="text" required placeholder="Name of data steward" value={enteredBy} onChange={(e) => setEnteredBy(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+          {/* SOP Type Guideline Card */}
+          <div style={{
+            background: "var(--color-primary-soft)",
+            border: "1px solid var(--color-primary)",
+            borderRadius: "var(--radius-lg)",
+            padding: "20px",
+            boxShadow: "var(--shadow-sm)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            color: "var(--color-text)"
+          }}>
+            {sopType === "Analysis SOP" && (
+              <div>
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", fontWeight: 700, color: "var(--color-primary)" }}>🧪 1. Analysis SOPs</h4>
+                <p style={{ margin: "0 0 10px 0", fontSize: "var(--fs-sm)", lineHeight: "1.5" }}>
+                  Analysis SOPs describe how laboratory tests or analyses are performed to ensure accurate and consistent results.
+                </p>
+                <div style={{ fontSize: "var(--fs-sm)", margin: "0 0 10px 0" }}>
+                  <strong>Purpose:</strong>
+                  <ul style={{ margin: "4px 0 0 20px", padding: 0, listStyleType: "disc" }}>
+                    <li>Standardize testing procedures.</li>
+                    <li>Ensure quality and reliability of results.</li>
+                    <li>Guide staff through sample handling, testing, quality control, and result reporting.</li>
+                  </ul>
                 </div>
-                <div style={{ flex: "4 1 80%", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ fontSize: "var(--fs-sm)" }}>
+                  <strong>Typical Contents:</strong> Principle of the test, Sample requirements, Reagents and equipment, Quality control procedures, Step-by-step analytical method, Result calculation and interpretation.
+                  <br />
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block", marginTop: 4 }}>
+                    <strong>Example:</strong> SOP for Blood Glucose Analysis, PCR Testing, or Water Quality Testing.
+                  </span>
+                </div>
+              </div>
+            )}
+            {sopType === "Equipment SOP" && (
+              <div>
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", fontWeight: 700, color: "var(--color-primary)" }}>⚙️ 2. Equipment SOPs</h4>
+                <p style={{ margin: "0 0 10px 0", fontSize: "var(--fs-sm)", lineHeight: "1.5" }}>
+                  Equipment SOPs describe how laboratory instruments and equipment should be operated, calibrated, maintained, and troubleshooted.
+                </p>
+                <div style={{ fontSize: "var(--fs-sm)", margin: "0 0 10px 0" }}>
+                  <strong>Purpose:</strong>
+                  <ul style={{ margin: "4px 0 0 20px", padding: 0, listStyleType: "disc" }}>
+                    <li>Ensure safe and correct use of equipment.</li>
+                    <li>Maintain accuracy and performance.</li>
+                    <li>Reduce equipment failures and downtime.</li>
+                  </ul>
+                </div>
+                <div style={{ fontSize: "var(--fs-sm)" }}>
+                  <strong>Typical Contents:</strong> Equipment description, Safety precautions, Calibration procedures, Maintenance schedules, Operating instructions, Troubleshooting guidelines.
+                  <br />
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block", marginTop: 4 }}>
+                    <strong>Example:</strong> SOP for Centrifuge Operation, Spectrophotometer Maintenance, or ELISA Reader Calibration.
+                  </span>
+                </div>
+              </div>
+            )}
+            {sopType === "Procedure SOP" && (
+              <div>
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "14px", fontWeight: 700, color: "var(--color-primary)" }}>📋 3. Procedure SOPs</h4>
+                <p style={{ margin: "0 0 10px 0", fontSize: "var(--fs-sm)", lineHeight: "1.5" }}>
+                  Procedure SOPs describe administrative, operational, and management processes carried out in the laboratory.
+                </p>
+                <div style={{ fontSize: "var(--fs-sm)", margin: "0 0 10px 0" }}>
+                  <strong>Purpose:</strong>
+                  <ul style={{ margin: "4px 0 0 20px", padding: 0, listStyleType: "disc" }}>
+                    <li>Standardize routine laboratory activities.</li>
+                    <li>Ensure compliance with quality management requirements.</li>
+                    <li>Define responsibilities and workflow.</li>
+                  </ul>
+                </div>
+                <div style={{ fontSize: "var(--fs-sm)" }}>
+                  <strong>Typical Contents:</strong> Objectives and scope, Roles and responsibilities, Step-by-step process description, Documentation requirements, Record management.
+                  <br />
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "block", marginTop: 4 }}>
+                    <strong>Example:</strong> SOP for Document Control, Sample Reception, Staff Training, or Internal Audits.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Summary Table */}
+            <div style={{ borderTop: "1px dashed var(--color-border)", paddingTop: "12px", marginTop: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--color-text-muted)", display: "block", marginBottom: 6 }}>SOP Types Reference Summary</span>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)", background: "var(--color-surface)" }}>
+                <thead>
+                  <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                    <th style={{ padding: "6px 8px", textAlign: "left", borderRight: "1px solid var(--color-border)" }}>SOP Type</th>
+                    <th style={{ padding: "6px 8px", textAlign: "left", borderRight: "1px solid var(--color-border)" }}>Main Focus</th>
+                    <th style={{ padding: "6px 8px", textAlign: "left" }}>Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: "1px solid var(--color-border)", background: sopType === "Analysis SOP" ? "var(--color-primary-soft)" : "transparent" }}>
+                    <td style={{ padding: "6px 8px", fontWeight: 600, borderRight: "1px solid var(--color-border)" }}>Analysis SOP</td>
+                    <td style={{ padding: "6px 8px", borderRight: "1px solid var(--color-border)" }}>How a test/analysis is performed</td>
+                    <td style={{ padding: "6px 8px" }}>Blood Glucose Test SOP</td>
+                  </tr>
+                  <tr style={{ borderBottom: "1px solid var(--color-border)", background: sopType === "Equipment SOP" ? "var(--color-primary-soft)" : "transparent" }}>
+                    <td style={{ padding: "6px 8px", fontWeight: 600, borderRight: "1px solid var(--color-border)" }}>Equipment SOP</td>
+                    <td style={{ padding: "6px 8px", borderRight: "1px solid var(--color-border)" }}>How equipment is operated and maintained</td>
+                    <td style={{ padding: "6px 8px" }}>Centrifuge SOP</td>
+                  </tr>
+                  <tr style={{ background: sopType === "Procedure SOP" ? "var(--color-primary-soft)" : "transparent" }}>
+                    <td style={{ padding: "6px 8px", fontWeight: 600, borderRight: "1px solid var(--color-border)" }}>Procedure SOP</td>
+                    <td style={{ padding: "6px 8px", borderRight: "1px solid var(--color-border)" }}>How laboratory processes are managed</td>
+                    <td style={{ padding: "6px 8px" }}>Document Control SOP</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION ID: SOP Identification */}
+          <div id="section-ID" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+              SOP Identification & Metadata
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ display: "flex", gap: 20 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Title *</label>
-                  <input type="text" required placeholder="Full title of the SOP" value={sopTitle} onChange={(e) => setSopTitle(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Full title of the SOP"
+                    value={sopTitle}
+                    onChange={(e) => setSopTitle(e.target.value)}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
+                  />
+                </div>
+                
+                <div style={{ width: "200px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Author initials/name"
+                    value={enteredBy}
+                    onChange={(e) => setEnteredBy(e.target.value)}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
+                  />
                 </div>
               </div>
 
-              {/* Row 2: SOP Code, Version, Supersedes, Effective Date, Next review date (1/5 space each) */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20, width: "100%" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 20 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Code / number *</label>
-                  <input type="text" required placeholder="e.g. SOP-MNTD-042" value={sopCode} onChange={(e) => setSopCode(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Code (from QO)</label>
+                  <input
+                    type="text"
+                    disabled
+                    placeholder="Auto-assigned by QO"
+                    value={sopCode}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", outline: "none", cursor: "not-allowed" }}
+                  />
                 </div>
 
                 <CircleDropdown
-                  label="SOP version *"
+                  label="Version *"
                   value={sopVersion}
                   onChange={setSopVersion}
                   options={SOP_VERSION_OPTIONS}
                 />
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Supersedes (previous SOP code/version)</label>
-                  <input type="text" placeholder="e.g. SOP-MNTD-030 v1.2" value={supersedes} onChange={(e) => setSupersedes(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Effective Date</label>
+                  <input
+                    type="date"
+                    value={effectiveDate}
+                    onChange={(e) => setEffectiveDate(e.target.value)}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
+                  />
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Effective Date *</label>
-                  <input type="date" required value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Next review date *</label>
-                  <input type="date" required value={nextReviewDate} onChange={(e) => setNextReviewDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Next Review Date</label>
+                  <input
+                    type="date"
+                    value={nextReviewDate}
+                    onChange={(e) => setNextReviewDate(e.target.value)}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
+                  />
                 </div>
               </div>
 
-              {/* Row 3: SOP status, Owning site, Owning Lab Unit, Assay Category, Method Family (1/5 space each) */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20, width: "100%" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <CircleDropdown
-                  label="SOP status *"
-                  value={sopStatus}
-                  onChange={setSopStatus}
-                  options={["Draft", "Under review", "Active / Approved", "Superseded", "Retired / Archived"]}
-                />
-
-                <CircleDropdown
-                  label="Owning site / institution *"
+                  label="Owning Site *"
                   value={owningSite}
                   onChange={setOwningSite}
-                  options={["AHRI – Addis Ababa", "AHRI – Field Site", "Partner Laboratory", "Other (specify)"]}
-                  hasOther={true}
-                  otherValue={owningSiteOther}
-                  onOtherChange={setOwningSiteOther}
+                  options={["AHRI – Addis Ababa", "AHRI – Field Site", "Partner Laboratory"]}
                 />
 
                 <CircleDropdown
@@ -2026,902 +2412,860 @@ export default function CreateSOPPage() {
                   onChange={setOwningLabUnit}
                   options={["MNTD Molecular Lab", "MNTD Serology Lab", "MNTD Vector Entomology Lab", "MNTD NGS / Sequencing Lab", "Field laboratory"]}
                 />
+              </div>
 
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, borderTop: "1px solid var(--color-divider)", paddingTop: 16 }}>
                 <CircleDropdown
-                  label="Assay Category (cascading parent) *"
+                  label="Assay category (cascading parent) *"
                   value={assayCategory}
                   onChange={setAssayCategory}
-                  options={[
-                    "Sample collection / preparation",
-                    "Nucleic acid extraction",
-                    "Real-time qPCR",
-                    "Gel-based PCR (incl. nested PCR)",
-                    "Genotyping (MSP1 / MSP2)",
-                    "Digital PCR (Pfhrp2 / Pfhrp3)",
-                    "NGS library preparation",
-                    "Serology / bead-based assays",
-                    "Vector / entomology procedure",
-                    "Equipment operation / maintenance"
-                  ]}
+                  options={ASSAY_CATEGORY_OPTIONS}
                 />
 
                 <CircleDropdown
-                  label="Method Family *"
+                  label="Method family *"
                   value={methodFamily}
                   onChange={setMethodFamily}
-                  options={[
-                    "Conventional PCR",
-                    "Real-time qPCR",
-                    "Digital PCR",
-                    "Next-generation sequencing",
-                    "Immunoassay / serology",
-                    "Nucleic-acid extraction",
-                    "Sample collection / preparation",
-                    "Vector / entomology",
-                    "Equipment SOP",
-                    "Other (specify)"
-                  ]}
-                  hasOther={true}
-                  otherValue={methodFamilyOther}
-                  onOtherChange={setMethodFamilyOther}
+                  options={METHOD_FAMILY_OPTIONS}
                 />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, borderTop: "1px solid var(--color-divider)", paddingTop: 16 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed Verifier User (assigned by QO)</label>
+                  <input
+                    type="text"
+                    disabled
+                    placeholder="Assigned by QO"
+                    value={proposedVerifier}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", cursor: "not-allowed" }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed Authorizer (LM - assigned by QO)</label>
+                  <input
+                    type="text"
+                    disabled
+                    placeholder="Assigned by QO"
+                    value={proposedAuthorizer}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", cursor: "not-allowed" }}
+                  />
+                </div>
+              </div>
+
+              {/* Naming Convention File Guide */}
+              <div style={{ background: "var(--color-primary-soft)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius)", padding: "12px 16px", marginTop: 10 }}>
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "12px", color: "var(--color-primary)", fontWeight: 700 }}>💾 REQUIRED SAVING NAMING CONVENTION</h4>
+                <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span>Save this document on your computer with the following autogenerated filename:</span>
+                  <strong style={{ fontFamily: "monospace", fontSize: "12.5px", background: "var(--color-surface)", padding: "4px 8px", borderRadius: 4, display: "inline-block", width: "fit-content", border: "1px dashed var(--color-border)", color: "var(--color-text)" }}>
+                    {filenameSuggestion}
+                  </strong>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* SECTION B. Revision & Amendment History */}
-          <div id="section-B" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+          {/* SECTION REV_HISTORY: Revision & Amendment History */}
+          <div id="section-REV_HISTORY" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
               Revision & Amendment History
             </h3>
+            <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "0 0 16px 0" }}>
+              Provide the revision and amendment log details for standard control tracking.
+            </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 16 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Revision Number</label>
-                <input type="text" placeholder="e.g. Rev 1" value={revisionNumber} onChange={(e) => setRevisionNumber(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>
+                <thead>
+                  <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "15%" }}>Revision number</th>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "20%" }}>Revision date</th>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "32.5%" }}>Summary of changes from previous version</th>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "32.5%" }}>Rationale for change</th>
+                    <th style={{ padding: "10px", width: "50px" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {revisionHistory.map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                      <td style={{ padding: "6px" }}>
+                        <input
+                          type="text"
+                          placeholder="e.g. 1.0"
+                          value={row.revNumber}
+                          onChange={(e) => {
+                            const updated = [...revisionHistory];
+                            updated[idx].revNumber = e.target.value;
+                            setRevisionHistory(updated);
+                          }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "4px", background: "var(--color-surface-2)", color: "var(--color-text)" }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px" }}>
+                        <input
+                          type="date"
+                          value={row.revDate}
+                          onChange={(e) => {
+                            const updated = [...revisionHistory];
+                            updated[idx].revDate = e.target.value;
+                            setRevisionHistory(updated);
+                          }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "4px", background: "var(--color-surface-2)", color: "var(--color-text)" }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px" }}>
+                        <textarea
+                          placeholder="Describe changes..."
+                          value={row.changeSummary}
+                          onChange={(e) => {
+                            const updated = [...revisionHistory];
+                            updated[idx].changeSummary = e.target.value;
+                            setRevisionHistory(updated);
+                          }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "4px", background: "var(--color-surface-2)", color: "var(--color-text)", resize: "vertical", minHeight: 40 }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px" }}>
+                        <textarea
+                          placeholder="Describe rationale..."
+                          value={row.changeRationale}
+                          onChange={(e) => {
+                            const updated = [...revisionHistory];
+                            updated[idx].changeRationale = e.target.value;
+                            setRevisionHistory(updated);
+                          }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "4px", background: "var(--color-surface-2)", color: "var(--color-text)", resize: "vertical", minHeight: 40 }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px", textAlign: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => setRevisionHistory(revisionHistory.filter((_, i) => i !== idx))}
+                          disabled={revisionHistory.length <= 1}
+                          style={{ background: "none", border: "none", color: "#ef4444", cursor: revisionHistory.length <= 1 ? "default" : "pointer", fontSize: "16px", opacity: revisionHistory.length <= 1 ? 0.3 : 1 }}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Revision Date</label>
-                <input type="date" value={revisionDate} onChange={(e) => setRevisionDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Summary of changes from previous version"
-                placeholder="Describe the changes made in this revision..."
-                value={revisionSummary}
-                onChange={setRevisionSummary}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Rationale for change"
-                placeholder="Explain the reasons/necessity for making this change..."
-                value={revisionRationale}
-                onChange={setRevisionRationale}
-                rows={3}
-              />
+              <button
+                type="button"
+                onClick={() => setRevisionHistory([...revisionHistory, { revNumber: "", revDate: "", changeSummary: "", changeRationale: "" }])}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  border: "none",
+                  padding: "6px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                + Add Revision record
+              </button>
             </div>
           </div>
 
-          {/* SECTION C. Purpose, Scope & Background */}
-          <div id="section-C" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+          {/* SECTION PURPOSE_SCOPE: Purpose, Scope & Background */}
+          <div id="section-PURPOSE_SCOPE" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 24 }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
               Purpose, Scope & Background
             </h3>
+            
+            <RichTextEditor
+              label="Purpose (verbatim) *"
+              required
+              value={purpose}
+              onChange={setPurpose}
+              placeholder="Verbatim purpose of this SOP..."
+            />
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Purpose (verbatim) *"
-                required={true}
-                placeholder="State the purpose of this SOP exactly as described in the official document..."
-                value={purpose}
-                onChange={setPurpose}
-                rows={4}
-              />
+            <RichTextEditor
+              label="Scope (– what this SOP covers and what is explicitly excluded) *"
+              required
+              value={scope}
+              onChange={setScope}
+              placeholder="What this SOP covers and what is explicitly excluded..."
+            />
 
-              <RichTextEditor
-                label="Scope – what this SOP covers *"
-                required={true}
-                placeholder="Detail the applicability and coverage of this procedure..."
-                value={scopeCovers}
-                onChange={setScopeCovers}
-                rows={3}
-              />
+            <RichTextEditor
+              label="Background / Introduction"
+              value={background}
+              onChange={setBackground}
+              placeholder="Scientific background or introduction..."
+            />
+          </div>
 
-              <RichTextEditor
-                label="Scope – what is explicitly excluded"
-                placeholder="Identify what procedures, parameters or targets are explicitly excluded from this SOP..."
-                value={scopeExcluded}
-                onChange={setScopeExcluded}
-                rows={3}
-              />
+          {/* SECTION ABBREV: Abbreviations and definitions */}
+          <div id="section-ABBREV" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+              Abbreviations and definitions
+            </h3>
+            <RichTextEditor
+              label="List abbreviations and terms with their definitions (refer to first chapter of QM for general ones)"
+              value={abbreviationsDefinitions}
+              onChange={setAbbreviationsDefinitions}
+              placeholder="e.g. SOP: Standard Operating Procedure..."
+            />
+          </div>
 
+          {/* SECTION ROLES: Tasks, responsibilities and accountabilities */}
+          <div id="section-ROLES" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+              Tasks, responsibilities and accountabilities
+            </h3>
+            <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "0 0 16px 0" }}>
+              Describe the responsibilities and authorizations related to the execution of the procedure. Refer to Authorization Matrix for general details.
+            </p>
+
+            <div style={{ marginBottom: 20 }}>
               <RichTextEditor
-                label="Background / Introduction"
-                placeholder="Provide necessary theoretical context or laboratory introduction..."
-                value={background}
-                onChange={setBackground}
-                rows={4}
+                label="Responsibility & accountability (narrative)"
+                value={responsibilityAccountability}
+                onChange={setResponsibilityAccountability}
+                placeholder="Narrative description of responsibilities and accountabilities..."
               />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 10px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>
+                <thead>
+                  <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "30%" }}>Task</th>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "32.5%" }}>Authorized</th>
+                    <th style={{ padding: "10px", textAlign: "left", fontWeight: 600, width: "32.5%" }}>Responsible</th>
+                    <th style={{ padding: "10px", width: "50px" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasksGrid.map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                      <td style={{ padding: "6px", verticalAlign: "top" }}>
+                        <input
+                          type="text"
+                          placeholder="e.g. Run Calibration"
+                          value={row.task}
+                          onChange={(e) => {
+                            const updated = [...tasksGrid];
+                            updated[idx].task = e.target.value;
+                            setTasksGrid(updated);
+                          }}
+                          style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "4px", background: "var(--color-surface-2)", color: "var(--color-text)", minHeight: 40 }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px", verticalAlign: "top" }}>
+                        <RectangleMultiselect
+                          label=""
+                          selectedValues={row.authorized || []}
+                          onChange={(vals) => {
+                            const updated = [...tasksGrid];
+                            updated[idx].authorized = vals;
+                            setTasksGrid(updated);
+                          }}
+                          options={ROLE_OPTIONS}
+                          hasOther={true}
+                          otherValue={row.authorizedOther || ""}
+                          onOtherChange={(val) => {
+                            const updated = [...tasksGrid];
+                            updated[idx].authorizedOther = val;
+                            setTasksGrid(updated);
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px", verticalAlign: "top" }}>
+                        <RectangleMultiselect
+                          label=""
+                          selectedValues={row.responsible || []}
+                          onChange={(vals) => {
+                            const updated = [...tasksGrid];
+                            updated[idx].responsible = vals;
+                            setTasksGrid(updated);
+                          }}
+                          options={ROLE_OPTIONS}
+                          hasOther={true}
+                          otherValue={row.responsibleOther || ""}
+                          onOtherChange={(val) => {
+                            const updated = [...tasksGrid];
+                            updated[idx].responsibleOther = val;
+                            setTasksGrid(updated);
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: "6px", verticalAlign: "top", textAlign: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => setTasksGrid(tasksGrid.filter((_, i) => i !== idx))}
+                          disabled={tasksGrid.length <= 1}
+                          style={{ background: "none", border: "none", color: "#ef4444", cursor: tasksGrid.length <= 1 ? "default" : "pointer", fontSize: "16px", opacity: tasksGrid.length <= 1 ? 0.3 : 1, marginTop: 8 }}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <button
+                type="button"
+                onClick={() => setTasksGrid([...tasksGrid, { task: "", authorized: [], authorizedOther: "", responsible: [], responsibleOther: "" }])}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  border: "none",
+                  padding: "6px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                + Add Task Row
+              </button>
             </div>
           </div>
 
-          {/* SECTION D. Definitions & Abbreviations */}
-          <div id="section-D" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Definitions & Abbreviations
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Definitions / Terminology (narrative)"
-                placeholder="List key terms and their technical definition in context..."
-                value={definitions}
-                onChange={setDefinitions}
-                rows={4}
-              />
-
-              <RichTextEditor
-                label="Abbreviations used in this SOP"
-                placeholder="e.g. DBS: Dried Blood Spot; qPCR: Quantitative Polymerase Chain Reaction..."
-                value={abbreviations}
-                onChange={setAbbreviations}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* SECTION E. Responsibility & Accountability */}
-          <div id="section-E" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Responsibility & Accountability
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RectangleMultiselect
-                label="Roles involved in executing this SOP *"
-                selectedValues={rolesInvolved}
-                onChange={setRolesInvolved}
-                options={[
-                  "Laboratory manager",
-                  "Laboratory supervisor",
-                  "Senior analyst / research scientist",
-                  "Analyst / lab technologist",
-                  "Laboratory technician",
-                  "Entomologist / vector biologist",
-                  "Data manager",
-                  "Phlebotomist / clinician",
-                  "Trainee / fellow",
-                  "QA / QC officer",
-                  "Biosafety officer",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={rolesInvolvedOther}
-                onOtherChange={setRolesInvolvedOther}
-              />
-
-              <RichTextEditor
-                label="Responsibility & accountability (narrative) *"
-                required={true}
-                placeholder="Describe detailed roles and their exact procedural accountability..."
-                value={responsibilityNarrative}
-                onChange={setResponsibilityNarrative}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          {/* SECTION F. Principle of the Method */}
-          <div id="section-F" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Principle of the Method
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Principle / Methodological basis *"
-                required={true}
-                placeholder="Explain the scientific/methodological principles governing the assay..."
-                value={principleBasis}
-                onChange={setPrincipleBasis}
-                rows={6}
-              />
-            </div>
-          </div>
-
-          {/* SECTION G. Samples / Specimens Covered */}
-          <div id="section-G" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Samples / Specimens Covered
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, width: "100%" }}>
-                <RectangleMultiselect
-                  label="Sample matrices covered by this SOP *"
-                  selectedValues={sampleMatrices}
-                  onChange={setSampleMatrices}
-                  options={[
-                    "Whole blood",
-                    "DBS",
-                    "Plasma",
-                    "Serum",
-                    "RBC pellet",
-                    "RNA-protect whole blood",
-                    "Mosquito – adult",
-                    "Mosquito – larvae",
-                    "Mosquito midgut",
-                    "Mosquito head-thorax",
-                    "Mosquito abdomen",
-                    "Purified DNA extract",
-                    "Purified RNA extract",
-                    "In-vitro culture / control strain",
-                    "Other (specify)"
-                  ]}
-                  hasOther={true}
-                  otherValue={sampleMatricesOther}
-                  onOtherChange={setSampleMatricesOther}
-                />
-
-                <RectangleMultiselect
-                  label="Input material type(s) *"
-                  selectedValues={inputMaterialTypes}
-                  onChange={setInputMaterialTypes}
-                  options={[
-                    "DBS punch(es)",
-                    "Whole blood",
-                    "Plasma / serum",
-                    "Single mosquito",
-                    "Mosquito pool",
-                    "Larvae",
-                    "Cultured parasites",
-                    "Other (specify)"
-                  ]}
-                  hasOther={true}
-                  otherValue={inputMaterialTypesOther}
-                  onOtherChange={setInputMaterialTypesOther}
+          {/* Dynamic Sections based on SOP Type */}
+          {sopType === "Equipment SOP" && (
+            <>
+              {/* section-EQUIP_DESC: Description of the piece of equipment */}
+              <div id="section-EQUIP_DESC" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+                  Description of the piece of equipment
+                </h3>
+                <RichTextEditor
+                  label="Short introduction, brand, manufacturer, supplier, measurement range, functions, etc."
+                  value={equipmentDescription}
+                  onChange={setEquipmentDescription}
+                  placeholder="Describe details of the piece of equipment here..."
                 />
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Volume / amount required per sample *</label>
-                <input type="text" required placeholder="e.g. 50 µL or 3 DBS punches" value={volumeRequired} onChange={(e) => setVolumeRequired(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+              {/* section-SAFETY: Environmental & Safety Controls */}
+              <div id="section-SAFETY" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Environmental & Safety Controls
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  <RectangleMultiselect
+                    label="PPE required *"
+                    selectedValues={ppeRequired}
+                    onChange={setPpeRequired}
+                    options={PPE_REQUIRED_OPTIONS}
+                    hasOther={true}
+                    otherValue={ppeRequiredOther}
+                    onOtherChange={setPpeRequiredOther}
+                  />
+                  <CircleDropdown
+                    label="Biosafety level required"
+                    value={bslRequired}
+                    onChange={setBslRequired}
+                    options={BIOSAFETY_LEVEL_OPTIONS}
+                  />
+                </div>
+                <RectangleMultiselect
+                  label="Hazards relevant to this procedure"
+                  selectedValues={hazardsRelevant}
+                  onChange={setHazardsRelevant}
+                  options={HAZARDS_RELEVANT_OPTIONS}
+                  hasOther={true}
+                  otherValue={hazardsRelevantOther}
+                  onOtherChange={setHazardsRelevantOther}
+                />
+                <RichTextEditor
+                  label="Waste handling instructions"
+                  value={wasteHandling}
+                  onChange={setWasteHandling}
+                  placeholder="How to handle waste generated from this procedure..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Additional safety / environmental controls"
+                  value={additionalSafety}
+                  onChange={setAdditionalSafety}
+                  placeholder="Describe other safety and environmental controls..."
+                  rows={3}
+                />
               </div>
 
+              {/* section-STARTUP_MAINT: Startup procedure (calibration and controls) and maintenance */}
+              <div id="section-STARTUP_MAINT" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 24 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Startup procedure (calibration and controls) and maintenance
+                </h3>
+                
+                <RichTextEditor
+                  label="Calibration (frequency, automatic calibration, error code actions, records)"
+                  value={calibration}
+                  onChange={setCalibration}
+                  placeholder="Describe calibration protocols..."
+                  rows={3}
+                />
+
+                <RichTextEditor
+                  label="Controls (internal/external controls schedule, result interpretation, action logs)"
+                  value={controls}
+                  onChange={setControls}
+                  placeholder="Describe controls schedules..."
+                  rows={3}
+                />
+
+                <RichTextEditor
+                  label="Maintenance (schedule daily/weekly/monthly/yearly, staff vs technical expert duties)"
+                  value={maintenance}
+                  onChange={setMaintenance}
+                  placeholder="Describe maintenance protocols..."
+                  rows={3}
+                />
+              </div>
+
+              {/* section-OPERATION: Operation */}
+              <div id="section-OPERATION" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+                  Operation
+                </h3>
+                <RichTextEditor
+                  label="Describe in chronological order the steps for operation (imperative voice, user knowledge levels)"
+                  value={operation}
+                  onChange={setOperation}
+                  placeholder="Chronological operational steps..."
+                />
+              </div>
+
+              {/* section-PROBLEM_SOLVING: Problem solving */}
+              <div id="section-PROBLEM_SOLVING" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+                  Problem solving
+                </h3>
+                <RichTextEditor
+                  label="Describe the most common errors (referring to manual pages is allowed)"
+                  value={problemSolving}
+                  onChange={setProblemSolving}
+                  placeholder="Common troubleshooting steps..."
+                />
+              </div>
+            </>
+          )}
+
+          {sopType === "Analysis SOP" && (
+            <>
+              {/* section-PRINCIPLE: Principle of the Method */}
+              <div id="section-PRINCIPLE" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+                  Principle of the Method
+                </h3>
+                <RichTextEditor
+                  label="Principle / Methodological basis *"
+                  required
+                  value={principleMethodologicalBasis}
+                  onChange={setPrincipleMethodologicalBasis}
+                  placeholder="Describe scientific and methodological basis..."
+                />
+              </div>
+
+              {/* section-SAFETY: Environmental & Safety Controls */}
+              <div id="section-SAFETY" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Environmental & Safety Controls
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  <RectangleMultiselect
+                    label="PPE required *"
+                    selectedValues={ppeRequired}
+                    onChange={setPpeRequired}
+                    options={PPE_REQUIRED_OPTIONS}
+                    hasOther={true}
+                    otherValue={ppeRequiredOther}
+                    onOtherChange={setPpeRequiredOther}
+                  />
+                  <CircleDropdown
+                    label="Biosafety level required"
+                    value={bslRequired}
+                    onChange={setBslRequired}
+                    options={BIOSAFETY_LEVEL_OPTIONS}
+                  />
+                </div>
+                <RectangleMultiselect
+                  label="Hazards relevant to this procedure"
+                  selectedValues={hazardsRelevant}
+                  onChange={setHazardsRelevant}
+                  options={HAZARDS_RELEVANT_OPTIONS}
+                  hasOther={true}
+                  otherValue={hazardsRelevantOther}
+                  onOtherChange={setHazardsRelevantOther}
+                />
+                <RichTextEditor
+                  label="Waste handling instructions"
+                  value={wasteHandling}
+                  onChange={setWasteHandling}
+                  placeholder="How to handle waste generated from this procedure..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Additional safety / environmental controls"
+                  value={additionalSafety}
+                  onChange={setAdditionalSafety}
+                  placeholder="Describe other safety and environmental controls..."
+                  rows={3}
+                />
+              </div>
+
+              {/* section-SAMPLE: Samples / Specimens Covered */}
+              <div id="section-SAMPLE" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Samples / Specimens Covered
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  <RectangleMultiselect
+                    label="Sample matrices covered by this SOP *"
+                    selectedValues={sampleMatrices}
+                    onChange={setSampleMatrices}
+                    options={SAMPLE_MATRIX_OPTIONS}
+                    hasOther={true}
+                    otherValue={sampleMatricesOther}
+                    onOtherChange={setSampleMatricesOther}
+                  />
+                  <RectangleMultiselect
+                    label="Input material type(s)"
+                    selectedValues={inputMaterialTypes}
+                    onChange={setInputMaterialTypes}
+                    options={INPUT_MATERIAL_OPTIONS}
+                    hasOther={true}
+                    otherValue={inputMaterialTypesOther}
+                    onOtherChange={setInputMaterialTypesOther}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Volume/amount required per sample</label>
+                  <textarea
+                    placeholder="Describe volume/amount requirements..."
+                    value={sampleVolume}
+                    onChange={(e) => setSampleVolume(e.target.value)}
+                    style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "4px", background: "var(--color-surface-2)", color: "var(--color-text)", resize: "vertical", minHeight: 40 }}
+                  />
+                </div>
+                <RichTextEditor
+                  label="Sample acceptance criteria"
+                  value={sampleAcceptance}
+                  onChange={setSampleAcceptance}
+                  placeholder="Acceptance guidelines..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Sample rejection criteria"
+                  value={sampleRejection}
+                  onChange={setSampleRejection}
+                  placeholder="Rejection guidelines..."
+                  rows={3}
+                />
+              </div>
+
+              {/* section-REAGENTS: Reagents & supplies */}
+              <div id="section-REAGENTS" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Reagents & supplies
+                </h3>
+                <RichTextEditor
+                  label="Reagents & supplies (full narrative as in SOP)"
+                  value={reagentsNarrative}
+                  onChange={setReagentsNarrative}
+                  placeholder="Verbatim reagents and supplies details..."
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reagents & supplies (one per line)</label>
+                  <textarea
+                    placeholder="Enter items one per line..."
+                    value={reagentsOnePerLine}
+                    onChange={(e) => setReagentsOnePerLine(e.target.value)}
+                    style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", minHeight: 80 }}
+                  />
+                </div>
+              </div>
+
+              {/* section-EQUIP_SUPPLIES: Equipment & Instruments */}
+              <div id="section-EQUIP_SUPPLIES" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Equipment & Instruments
+                </h3>
+                <RectangleMultiselect
+                  label="Primary equipment used"
+                  selectedValues={primaryEquipment}
+                  onChange={setPrimaryEquipment}
+                  options={PRIMARY_EQUIPMENT_OPTIONS}
+                  hasOther={true}
+                  otherValue={primaryEquipmentOther}
+                  onOtherChange={setPrimaryEquipmentOther}
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Equipment & instruments (one per line)</label>
+                  <textarea
+                    placeholder="Enter equipment details one per line..."
+                    value={equipmentOnePerLine}
+                    onChange={(e) => setEquipmentOnePerLine(e.target.value)}
+                    style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", minHeight: 80 }}
+                  />
+                </div>
+              </div>
+
+              {/* section-QC: Quality Control */}
+              <div id="section-QC" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Quality Control
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  <RectangleMultiselect
+                    label="Controls included in this SOP"
+                    selectedValues={controlsIncluded}
+                    onChange={setControlsIncluded}
+                    options={CONTROLS_INCLUDED_OPTIONS}
+                    hasOther={true}
+                    otherValue={controlsIncludedOther}
+                    onOtherChange={setControlsIncludedOther}
+                  />
+                  <RectangleMultiselect
+                    label="DNA/RNA QC methods specified"
+                    selectedValues={qcMethods}
+                    onChange={setQcMethods}
+                    options={QC_METHODS_OPTIONS}
+                    hasOther={true}
+                    otherValue={qcMethodsOther}
+                    onOtherChange={setQcMethodsOther}
+                  />
+                </div>
+                <RichTextEditor
+                  label="Acceptance / rejection criteria"
+                  value={acceptanceRejectionCriteria}
+                  onChange={setAcceptanceRejectionCriteria}
+                  placeholder="QC acceptance guidelines..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Quality control narrative (verbatim from SOP)"
+                  value={qcNarrative}
+                  onChange={setQcNarrative}
+                  placeholder="Verbatim Quality Control narrative details..."
+                />
+              </div>
+
+              {/* section-PROCEDURE: Stepwise Procedure */}
+              <div id="section-PROCEDURE" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Stepwise Procedure
+                </h3>
+                <RichTextEditor
+                  label="Full procedure narrative (verbatim from SOP – preserves original wording) *"
+                  required
+                  value={procedureNarrative}
+                  onChange={setProcedureNarrative}
+                  placeholder="Verbatim step-by-step procedure description..."
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Stepwise procedure (one step per line)</label>
+                  <textarea
+                    placeholder="Enter steps one per line..."
+                    value={procedureOnePerLine}
+                    onChange={(e) => setProcedureOnePerLine(e.target.value)}
+                    style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", minHeight: 80 }}
+                  />
+                </div>
+              </div>
+
+              {/* section-CALCULATION: Calculation / Data Analysis */}
+              <div id="section-CALCULATION" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Calculation / Data Analysis
+                </h3>
+                <RichTextEditor
+                  label="Calculations / formulas used"
+                  value={calculationsFormulas}
+                  onChange={setCalculationsFormulas}
+                  placeholder="Formulas and result calculations..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Software / analysis tools used"
+                  value={softwareAnalysisTools}
+                  onChange={setSoftwareAnalysisTools}
+                  placeholder="Software or statistical tools..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Interpretation rules / thresholds"
+                  value={interpretationThresholds}
+                  onChange={setInterpretationThresholds}
+                  placeholder="Interpretation thresholds and cut-offs..."
+                  rows={3}
+                />
+              </div>
+
+              {/* section-REPORTING: Result Reporting & Interpretation */}
+              <div id="section-REPORTING" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Result Reporting & Interpretation
+                </h3>
+                <RichTextEditor
+                  label="Reporting format (units, layout)"
+                  value={reportingFormat}
+                  onChange={setReportingFormat}
+                  placeholder="Units and result layout..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Cut-offs / thresholds"
+                  value={cutOffsThresholds}
+                  onChange={setCutOffsThresholds}
+                  placeholder="Reference ranges and critical alert cut-offs..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="LIMS / database field mapping"
+                  value={limsDatabaseMapping}
+                  onChange={setLimsDatabaseMapping}
+                  placeholder="Field names in LIMS system database..."
+                  rows={3}
+                />
+                <RichTextEditor
+                  label="Result reporting narrative"
+                  value={resultReportingNarrative}
+                  onChange={setResultReportingNarrative}
+                  placeholder="Detailed result reporting guidelines..."
+                />
+              </div>
+
+              {/* section-STORAGE_TRANSPORT: Storage & Transport Requirements */}
+              <div id="section-STORAGE_TRANSPORT" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                  Storage & Transport Requirements
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  <RectangleMultiselect
+                    label="Sample types this SOP stores / transports"
+                    selectedValues={storageSampleTypes}
+                    onChange={setStorageSampleTypes}
+                    options={STORAGE_SAMPLE_TYPE_OPTIONS}
+                    hasOther={true}
+                    otherValue={storageSampleTypesOther}
+                    onOtherChange={setStorageSampleTypesOther}
+                  />
+                  <CircleDropdown
+                    label="Recommended storage temperature"
+                    value={storageTemperature}
+                    onChange={setStorageTemperature}
+                    options={STORAGE_TEMP_OPTIONS}
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                  <RichTextEditor
+                    label="Maximum storage duration"
+                    value={maxStorageDuration}
+                    onChange={setMaxStorageDuration}
+                    placeholder="e.g. 1 year at -80°C..."
+                    rows={3}
+                  />
+                  <RectangleMultiselect
+                    label="Acceptable transport modes"
+                    selectedValues={acceptableTransportModes}
+                    onChange={setAcceptableTransportModes}
+                    options={TRANSPORT_MODE_OPTIONS}
+                    hasOther={true}
+                    otherValue={acceptableTransportModesOther}
+                    onOtherChange={setAcceptableTransportModesOther}
+                  />
+                </div>
+                <RichTextEditor
+                  label="Storage & transport narrative"
+                  value={storageTransportNarrative}
+                  onChange={setStorageTransportNarrative}
+                  placeholder="Detailed storage and shipping instructions..."
+                />
+              </div>
+            </>
+          )}
+
+          {sopType === "Procedure SOP" && (
+            <div id="section-PROCEDURE" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 20 }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
+                Stepwise Procedure
+              </h3>
               <RichTextEditor
-                label="Sample acceptance criteria *"
-                required={true}
-                placeholder="Detailed criteria for accepting incoming samples..."
-                value={sampleAcceptanceCriteria}
-                onChange={setSampleAcceptanceCriteria}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Sample rejection criteria *"
-                required={true}
-                placeholder="Detailed criteria for rejecting incoming samples..."
-                value={sampleRejectionCriteria}
-                onChange={setSampleRejectionCriteria}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* SECTION H. Reagents & Supplies */}
-          <div id="section-H" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Reagents & Supplies
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Reagents & supplies (full narrative as in SOP) *"
-                required={true}
-                placeholder="Describe full list of materials, concentrations, and manufacturer guidelines..."
-                value={reagentsSuppliesNarrative}
-                onChange={setReagentsSuppliesNarrative}
-                rows={5}
-              />
-
-              <RichTextEditor
-                label="Reagents & supplies (one per line) *"
-                required={true}
-                placeholder="Item 1 - Brand - Cat &#10;Item 2 - Brand - Cat #"
-                value={reagentsSuppliesList}
-                onChange={setReagentsSuppliesList}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          {/* SECTION I. Equipment & Instruments */}
-          <div id="section-I" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Equipment & Instruments
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RectangleMultiselect
-                label="Primary equipment used *"
-                selectedValues={primaryEquipment}
-                onChange={setPrimaryEquipment}
-                options={[
-                  "GeneRotex 96 automatic nucleic-acid extractor",
-                  "KingFisher Flex",
-                  "Bio-Rad CFX96 Deep Well",
-                  "QIAcuity One Digital PCR",
-                  "Luminex MAGPIX",
-                  "Oxford Nanopore MinION Mk1C",
-                  "Conventional thermocycler",
-                  "Gel doc / UV imager",
-                  "Centrifuge",
-                  "Biosafety cabinet",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={primaryEquipmentOther}
-                onOtherChange={setPrimaryEquipmentOther}
-              />
-
-              <RichTextEditor
-                label="Equipment & instruments (one per line) *"
-                required={true}
-                placeholder="Equipment Name - Model - Manufacturer"
-                value={equipmentList}
-                onChange={setEquipmentList}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          {/* SECTION J. Environmental & Safety Controls */}
-          <div id="section-J" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Environmental & Safety Controls
-            </h3>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 20 }}>
-              <RectangleMultiselect
-                label="PPE required *"
-                selectedValues={ppeRequired}
-                onChange={setPpeRequired}
-                options={[
-                  "Lab coat",
-                  "Gloves (nitrile)",
-                  "Double gloves",
-                  "Safety glasses / goggles",
-                  "Face shield",
-                  "N95 respirator",
-                  "Surgical mask",
-                  "Closed shoes",
-                  "Disposable apron",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={ppeRequiredOther}
-                onOtherChange={setPpeRequiredOther}
-              />
-
-              <CircleDropdown
-                label="Biosafety level required *"
-                value={biosafetyLevel}
-                onChange={setBiosafetyLevel}
-                options={["BSL-1", "BSL-2", "BSL-2+", "BSL-3"]}
-              />
-
-              <RectangleMultiselect
-                label="Hazards relevant to this procedure *"
-                selectedValues={hazardsRelevant}
-                onChange={setHazardsRelevant}
-                options={[
-                  "Biohazardous material",
-                  "Chemical hazard",
-                  "Phenol / chloroform",
-                  "Ethidium bromide / GelRed",
-                  "UV radiation",
-                  "Liquid nitrogen / cryogenic",
-                  "Sharps / needles",
-                  "Mosquito / vector bite risk",
-                  "Electrical / high voltage",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={hazardsRelevantOther}
-                onOtherChange={setHazardsRelevantOther}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Waste handling instructions *"
-                required={true}
-                placeholder="Detailed procedures for managing biological, chemical, or sharps waste..."
-                value={wasteHandling}
-                onChange={setWasteHandling}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Additional safety / environmental controls"
-                placeholder="e.g. Spill kits, specialized fume hoods..."
-                value={additionalSafetyControls}
-                onChange={setAdditionalSafetyControls}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* SECTION K. Quality Control */}
-          <div id="section-K" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Quality Control
-            </h3>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-              <RectangleMultiselect
-                label="Controls included in this SOP *"
-                selectedValues={controlsIncluded}
-                onChange={setControlsIncluded}
-                options={[
-                  "Positive control",
-                  "Negative control",
-                  "No-template control (NTC)",
-                  "Internal / extraction control",
-                  "Calibrator / standard curve",
-                  "Reference strain (e.g., 3D7)",
-                  "Blank",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={controlsIncludedOther}
-                onOtherChange={setControlsIncludedOther}
-              />
-
-              <RectangleMultiselect
-                label="DNA/RNA QC methods specified *"
-                selectedValues={qcMethods}
-                onChange={setQcMethods}
-                options={[
-                  "NanoDrop (UV)",
-                  "Qubit (fluorometric)",
-                  "TapeStation / Bioanalyzer",
-                  "Agarose gel",
-                  "Not performed",
-                  "Other (specify)"
-                ]}
-                hasOther={true}
-                otherValue={qcMethodsOther}
-                onOtherChange={setQcMethodsOther}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Acceptance / rejection criteria *"
-                required={true}
-                placeholder="Criteria for validating the assay run based on control outputs..."
-                value={qcAcceptanceCriteria}
-                onChange={setQcAcceptanceCriteria}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Quality control narrative (verbatim from SOP)"
-                placeholder="Verbatim text detailing Quality Control guidelines..."
-                value={qcNarrative}
-                onChange={setQcNarrative}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          {/* SECTION L. Stepwise Procedure */}
-          <div id="section-L" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Stepwise Procedure
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Full procedure narrative (verbatim from SOP) *"
-                required={true}
-                placeholder="Enter the exact wording of the stepwise procedure as described in the SOP document..."
+                label="Full procedure narrative (verbatim from SOP – preserves original wording) *"
+                required
                 value={procedureNarrative}
                 onChange={setProcedureNarrative}
-                rows={8}
+                placeholder="Verbatim stepwise procedure description..."
               />
-
-              <RichTextEditor
-                label="Stepwise procedure (one step per line) *"
-                required={true}
-                placeholder="Step 1: Perform task A&#10;Step 2: Perform task B"
-                value={procedureStepsList}
-                onChange={setProcedureStepsList}
-                rows={6}
-              />
-            </div>
-          </div>
-
-          {/* SECTION M. Calculation / Data Analysis */}
-          <div id="section-M" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Calculation / Data Analysis
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Calculations / formulas used"
-                placeholder="List any math formulas or biological conversion factors needed..."
-                value={calculationsFormulas}
-                onChange={setCalculationsFormulas}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Software / analysis tools used"
-                placeholder="e.g. Bio-Rad CFX Manager, Microsoft Excel, R Studio..."
-                value={softwareTools}
-                onChange={setSoftwareTools}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Interpretation rules / thresholds"
-                placeholder="e.g. Cycle threshold (Ct) value < 37 is positive..."
-                value={interpretationRules}
-                onChange={setInterpretationRules}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* SECTION N. Result Reporting & Interpretation */}
-          <div id="section-N" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Result Reporting & Interpretation
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="Reporting format (units, layout)"
-                placeholder="e.g. parasites/µL, positive/negative..."
-                value={reportingFormat}
-                onChange={setReportingFormat}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Cut-offs / thresholds"
-                placeholder="Indicate boundaries for diagnostic reporting..."
-                value={cutOffsThresholds}
-                onChange={setCutOffsThresholds}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="LIMS / database field mapping"
-                placeholder="Map variables to fields in database schema..."
-                value={limsDatabaseMapping}
-                onChange={setLimsDatabaseMapping}
-                rows={3}
-              />
-
-              <RichTextEditor
-                label="Result reporting narrative"
-                placeholder="Full workflow narrative for reporting..."
-                value={resultReportingNarrative}
-                onChange={setResultReportingNarrative}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          {/* SECTION P. Storage & Transport Requirements */}
-          <div id="section-P" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Storage & Transport Requirements
-            </h3>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-              <RectangleMultiselect
-                label="Sample types this SOP stores / transports *"
-                selectedValues={storageSampleTypes}
-                onChange={setStorageSampleTypes}
-                options={[
-                  "DBS",
-                  "Whole blood",
-                  "Plasma",
-                  "Serum",
-                  "Cell pellet",
-                  "Whole blood in RNA-protect",
-                  "Preserved mosquitoes",
-                  "Purified DNA / RNA"
-                ]}
-              />
-
-              <CircleDropdown
-                label="Recommended storage temperature *"
-                value={recommendedTemp}
-                onChange={setRecommendedTemp}
-                options={["Room temperature", "+4 °C", "−20 °C", "−80 °C", "Liquid nitrogen", "Dry ice (transport)"]}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Maximum storage duration *</label>
-                <input type="text" required placeholder="e.g. 6 months at -20°C, Indefinitely at -80°C" value={maxStorageDuration} onChange={(e) => setMaxStorageDuration(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }} />
+                <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Stepwise procedure (one step per line)</label>
+                <textarea
+                  placeholder="Enter steps one per line..."
+                  value={procedureOnePerLine}
+                  onChange={(e) => setProcedureOnePerLine(e.target.value)}
+                  style={{ width: "100%", padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", resize: "vertical", minHeight: 80 }}
+                />
               </div>
-
-              <RectangleMultiselect
-                label="Acceptable transport modes *"
-                selectedValues={transportModes}
-                onChange={setTransportModes}
-                options={[
-                  "Cold box with ice packs",
-                  "Dry ice",
-                  "LN2 dry shipper",
-                  "Ambient with desiccant (DBS)",
-                  "Commercial courier (categorized)",
-                  "Hand-carried"
-                ]}
-              />
-
-              <RichTextEditor
-                label="Storage & transport narrative"
-                placeholder="Verbatim guidelines for storage container preparation and shipping validation..."
-                value={storageTransportNarrative}
-                onChange={setStorageTransportNarrative}
-                rows={4}
-              />
             </div>
+          )}
+
+          {/* SECTION DOCS: Related Documents */}
+          <div id="section-DOCS" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+              {sopType === "Procedure SOP" ? "6. Related Documents" : sopType === "Equipment SOP" ? "10. Related Documents" : "12. Related Documents"}
+            </h3>
+            <RichTextEditor
+              label="Related SOPs, QM chapters, log sheets, manuals, package inserts (with locations if not coded)"
+              value={relatedDocuments}
+              onChange={setRelatedDocuments}
+              placeholder="e.g. QM1 'General'; Biosafety Manual in Room 102..."
+            />
           </div>
 
-          {/* SECTION Q. References & Attachments */}
-          <div id="section-Q" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+          {/* SECTION FORMS: Related Forms */}
+          <div id="section-FORMS" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              References & Attachments
+              {sopType === "Procedure SOP" ? "7. Related Forms" : sopType === "Equipment SOP" ? "11. Related Forms" : "13. Related Forms"}
             </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <RichTextEditor
-                label="References (citations, manufacturer manuals)"
-                placeholder="Provide academic citations, guidelines or user guides referred to..."
-                value={referencesText}
-                onChange={setReferencesText}
-                rows={4}
-              />
-
-              {/* Three file input fields in one row, 1/3 space each */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, width: "100%" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach the original SOP document (PDF or DOCX) *</label>
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.doc"
-                    onChange={(e) => setOriginalSopFile(e.target.files ? e.target.files[0] : null)}
-                    style={{
-                      padding: "8px 12px",
-                      border: "1px dashed var(--color-border)",
-                      borderRadius: "var(--radius-sm)",
-                      background: "var(--color-surface-2)",
-                      color: "var(--color-text)",
-                      fontSize: "var(--fs-sm)",
-                      cursor: "pointer",
-                      width: "100%",
-                      boxSizing: "border-box"
-                    }}
-                  />
-                  {originalSopFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {originalSopFile.name}</span>}
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach supplementary file (optional)</label>
-                  <input
-                    type="file"
-                    onChange={(e) => setSupplementaryFile(e.target.files ? e.target.files[0] : null)}
-                    style={{
-                      padding: "8px 12px",
-                      border: "1px dashed var(--color-border)",
-                      borderRadius: "var(--radius-sm)",
-                      background: "var(--color-surface-2)",
-                      color: "var(--color-text)",
-                      fontSize: "var(--fs-sm)",
-                      cursor: "pointer",
-                      width: "100%",
-                      boxSizing: "border-box"
-                    }}
-                  />
-                  {supplementaryFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {supplementaryFile.name}</span>}
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Attach workflow diagram (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setWorkflowFile(e.target.files ? e.target.files[0] : null)}
-                    style={{
-                      padding: "8px 12px",
-                      border: "1px dashed var(--color-border)",
-                      borderRadius: "var(--radius-sm)",
-                      background: "var(--color-surface-2)",
-                      color: "var(--color-text)",
-                      fontSize: "var(--fs-sm)",
-                      cursor: "pointer",
-                      width: "100%",
-                      boxSizing: "border-box"
-                    }}
-                  />
-                  {workflowFile && <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-primary)" }}>Selected: {workflowFile.name}</span>}
-                </div>
-              </div>
-            </div>
+            <RichTextEditor
+              label="List forms relevant to this SOP (include locations if not coded)"
+              value={relatedForms}
+              onChange={setRelatedForms}
+              placeholder="e.g. P43F1 'Induction checklist'..."
+            />
           </div>
 
-          {/* SECTION R. Document Control & Sign-off */}
-          <div id="section-R" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+          {/* SECTION REFS: References */}
+          <div id="section-REFS" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
-              Document Control & Sign-off
+              {sopType === "Procedure SOP" ? "8. References" : sopType === "Equipment SOP" ? "12. References" : "14. References"}
             </h3>
+            <RichTextEditor
+              label="Refer to literature used (Books: Title, ed, authors, publisher, year. Journals: name, year/vol/issue, authors)"
+              value={references}
+              onChange={setReferences}
+              placeholder="Literature references..."
+            />
+          </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Row 1 & Row 2: 10 fields, 5 columns of 1/5 width each */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20 }}>
-                {/* Prepared by (name) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared by (name) *</label>
-                  <input type="text" required value={preparedByName} onChange={(e) => setPreparedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Prepared by (role) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared by (role) *</label>
-                  <input type="text" required value={preparedByRole} onChange={(e) => setPreparedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Prepared date */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Prepared date *</label>
-                  <input type="date" required value={preparedDate} onChange={(e) => setPreparedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Reviewed by (name) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed by (name) *</label>
-                  <input type="text" required value={reviewedByName} onChange={(e) => setReviewedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Reviewed by (role) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed by (role) *</label>
-                  <input type="text" required value={reviewedByRole} onChange={(e) => setReviewedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-
-                {/* Row 2 starts here in the same grid flow */}
-                {/* Reviewed date */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reviewed date *</label>
-                  <input type="date" required value={reviewedDate} onChange={(e) => setReviewedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Approved by (name) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved by (name) *</label>
-                  <input type="text" required value={approvedByName} onChange={(e) => setApprovedByName(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Approved by (role) */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved by (role) *</label>
-                  <input type="text" required value={approvedByRole} onChange={(e) => setApprovedByRole(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Approved date */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Approved date *</label>
-                  <input type="date" required value={approvedDate} onChange={(e) => setApprovedDate(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-                {/* Controlled copy number */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Controlled copy number *</label>
-                  <input type="text" required placeholder="e.g. Copy 01" value={controlledCopyNumber} onChange={(e) => setControlledCopyNumber(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-              </div>
-
-              {/* Row 3: Remaining field Distribution list * (1/5 space, so inside a 5-column grid spanning 1 column) */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 20 }}>
-                <div style={{ gridColumn: "span 1", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Distribution list *</label>
-                  <input type="text" required placeholder="Who should receive copies of this SOP" value={distributionList} onChange={(e) => setDistributionList(e.target.value)} style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", width: "100%", boxSizing: "border-box" }} />
-                </div>
-              </div>
-
-              <RichTextEditor
-                label="Final comments / notes"
-                placeholder="Any final comments or notes on document sign-off..."
-                value={finalComments}
-                onChange={setFinalComments}
-                rows={3}
-              />
-            </div>
+          {/* SECTION ATTACHMENTS: Attachments */}
+          <div id="section-ATTACHMENTS" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24, boxShadow: "var(--shadow-sm)" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
+              {sopType === "Procedure SOP" ? "9. Attachments" : sopType === "Equipment SOP" ? "13. Attachments" : "15. Attachments"}
+            </h3>
+            <RichTextEditor
+              label="Annexes list (controlled and uncontrolled annexes, locations)"
+              value={attachments}
+              onChange={setAttachments}
+              placeholder="List of attachments..."
+            />
           </div>
         </form>
-
-        {/* FLOATING ACTION BOTTOM BAR */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            background: "var(--color-surface)",
-            borderTop: "1px solid var(--color-border)",
-            padding: "16px 40px",
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 16,
-            boxShadow: "0 -4px 10px rgba(0,0,0,0.05)",
-            zIndex: 99,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => navigate("/domains/qms")}
-            style={{
-              background: "transparent",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text-muted)",
-              padding: "10px 20px",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            style={{
-              background: "var(--color-surface-2)",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text)",
-              padding: "10px 20px",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Save Draft
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              if (formRef.current) {
-                if (formRef.current.reportValidity()) {
-                  formRef.current.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
-                }
-              }
-            }}
-            style={{
-              background: "var(--color-primary)",
-              color: "#ffffff",
-              border: "none",
-              padding: "10px 24px",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
-              fontWeight: 600,
-              cursor: "pointer",
-              boxShadow: "var(--shadow-sm)",
-            }}
-          >
-            Submit SOP
-          </button>
-        </div>
-
       </div>
     </div>
   );
