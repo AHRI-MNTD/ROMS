@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
@@ -14,7 +13,7 @@ export default function CurrentInventoryPage() {
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [stockFilter, setStockFilter] = React.useState<StockFilter>("all");
-  const [categoryFilter, setCategoryFilter] = React.useState("all");
+
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [isSyncing, setIsSyncing] = React.useState(false);
@@ -35,20 +34,12 @@ export default function CurrentInventoryPage() {
   const { data, isLoading, error, isFetching } = useInventoryData({ page, pageSize });
   const { data: allInventoryData } = useInventoryData({ all: true });
 
-  // Extract unique categories dynamically from all available inventory items
-  const categories = React.useMemo(() => {
-    const uniqueCats = new Set<string>();
-    (allInventoryData?.data ?? []).forEach((row) => {
-      const cat = row.category ?? "General";
-      if (cat) uniqueCats.add(cat);
-    });
-    return Array.from(uniqueCats).sort();
-  }, [allInventoryData?.data]);
+
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   // Use allInventoryData for filtering when filters are active to search across all data
-  const isFilteringActive = stockFilter !== "all" || categoryFilter !== "all" || normalizedSearch.length > 0;
+  const isFilteringActive = stockFilter !== "all" || normalizedSearch.length > 0;
   const sourceRows = isFilteringActive ? (allInventoryData?.data ?? []) : (data?.data ?? []);
 
   const filteredRows = sourceRows.filter((row) => {
@@ -58,11 +49,6 @@ export default function CurrentInventoryPage() {
     const isLow = quantity > 0 && quantity <= minThreshold;
     const isHealthy = quantity > minThreshold;
     const rowCategory = row.category ?? "General";
-
-    // Category Filter
-    if (categoryFilter !== "all" && rowCategory.toLowerCase() !== categoryFilter.toLowerCase()) {
-      return false;
-    }
 
     // Search Filter
     const matchesSearch =
@@ -119,7 +105,7 @@ export default function CurrentInventoryPage() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [pageSize, searchTerm, stockFilter, categoryFilter]);
+  }, [pageSize, searchTerm, stockFilter]);
 
   const handleExportCSV = () => {
     // We export all matches of the current filter criteria across the entire database
@@ -130,10 +116,6 @@ export default function CurrentInventoryPage() {
       const isLow = quantity > 0 && quantity <= minThreshold;
       const isHealthy = quantity > minThreshold;
       const rowCategory = row.category ?? "General";
-
-      if (categoryFilter !== "all" && rowCategory.toLowerCase() !== categoryFilter.toLowerCase()) {
-        return false;
-      }
 
       const matchesSearch =
         !normalizedSearch ||
@@ -235,41 +217,25 @@ export default function CurrentInventoryPage() {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(1, 105, 111, 0.14)", background: "linear-gradient(180deg, rgba(1, 105, 111, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Items matching</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--color-text)", fontWeight: 800 }}>{displayTotal}</span>
-            </div>
-          </div>
-          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(180, 83, 9, 0.14)", background: "linear-gradient(180deg, rgba(180, 83, 9, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Low stock</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "#92400e", fontWeight: 800 }}>{lowStockCount}</span>
-            </div>
-          </div>
-          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(153, 27, 27, 0.14)", background: "linear-gradient(180deg, rgba(153, 27, 27, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Out of stock</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "#991b1b", fontWeight: 800 }}>{outOfStockCount}</span>
-            </div>
-          </div>
-          <div style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(12, 78, 84, 0.14)", background: "linear-gradient(180deg, rgba(12, 78, 84, 0.06), rgba(255,255,255,0.95))", boxShadow: "0 14px 28px rgba(16, 24, 40, 0.06)", minWidth: 140 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Total stock</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div style={{ ...panelStyle, padding: 14 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {isAdmin && <Link to="../check-in" style={quickLinkStyle}>+ Check In</Link>}
-            <Link to="../check-out" style={quickLinkStyle}>- Check Out</Link>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Summary stat badges */}
+            <div style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(180, 83, 9, 0.18)", background: "linear-gradient(180deg, rgba(180, 83, 9, 0.06), rgba(255,255,255,0.95))", display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Low Stock</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#92400e", fontWeight: 800 }}>{lowStockCount}</span>
+            </div>
+            <div style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(153, 27, 27, 0.18)", background: "linear-gradient(180deg, rgba(153, 27, 27, 0.06), rgba(255,255,255,0.95))", display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Out of Stock</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#991b1b", fontWeight: 800 }}>{outOfStockCount}</span>
+            </div>
+            <div style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(12, 78, 84, 0.18)", background: "linear-gradient(180deg, rgba(12, 78, 84, 0.06), rgba(255,255,255,0.95))", display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Total Stock</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
+            </div>
+
+            <div style={{ width: 1, height: 24, background: "rgba(1, 105, 111, 0.15)", margin: "0 4px" }} />
+
             <button
               onClick={handleExportCSV}
               style={{
@@ -301,13 +267,6 @@ export default function CurrentInventoryPage() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search SKU / name / unit" style={inputStyle} />
 
-            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={toolbarButtonStyle}>
-              <option value="all">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-
             <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value as StockFilter)} style={toolbarButtonStyle}>
               <option value="all">All Status</option>
               <option value="healthy">Healthy</option>
@@ -334,7 +293,7 @@ export default function CurrentInventoryPage() {
 
       {!isLoading && !error && data && (
         <>
-          <div style={{ border: "1px solid var(--color-divider)", borderRadius: 12, background: "var(--color-surface-2)", overflow: "hidden" }}>
+          <div style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>

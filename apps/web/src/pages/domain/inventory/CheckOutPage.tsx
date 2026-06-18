@@ -59,7 +59,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
       setFeedback({ type: "error", message: err instanceof Error ? err.message : "Bulk check-out failed." });
     },
   });
-  
+
   const { data: checkOutMovementsData } = useQuery({
     queryKey: ["inventory-checkout-movements"],
     queryFn: async () => {
@@ -70,12 +70,70 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
     },
   });
 
-  const sortedMovements = React.useMemo(() => {
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("date-desc");
+
+  const historyCategories = React.useMemo(() => {
     if (!checkOutMovementsData?.data) return [];
-    return [...checkOutMovementsData.data].sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    const cats = new Set<string>();
+    checkOutMovementsData.data.forEach((row) => {
+      const cat = row.stockItem?.category || "General";
+      cats.add(cat);
     });
+    return Array.from(cats).sort();
   }, [checkOutMovementsData]);
+
+  const filteredAndSortedMovements = React.useMemo(() => {
+    if (!checkOutMovementsData?.data) return [];
+
+    let result = checkOutMovementsData.data.filter((row) => {
+      const sku = (row.stockItem?.sku ?? "").toLowerCase();
+      const name = (row.stockItem?.name ?? "").toLowerCase();
+      const category = (row.stockItem?.category ?? "General").toLowerCase();
+      const project = (row.projectFor ?? "").toLowerCase();
+      const remark = (row.remark ?? "").toLowerCase();
+      const requested = (row.requestedBy ?? "").toLowerCase();
+      const query = searchQuery.trim().toLowerCase();
+
+      const matchesSearch = !query ||
+        sku.includes(query) ||
+        name.includes(query) ||
+        category.includes(query) ||
+        project.includes(query) ||
+        remark.includes(query) ||
+        requested.includes(query);
+
+      const matchesCategory = categoryFilter === "all" ||
+        (row.stockItem?.category ?? "General").toLowerCase() === categoryFilter.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+
+    result.sort((a, b) => {
+      if (sortBy === "date-desc") {
+        return new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
+      }
+      if (sortBy === "date-asc") {
+        return new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
+      }
+      if (sortBy === "qty-desc") {
+        return Number(b.quantity ?? 0) - Number(a.quantity ?? 0);
+      }
+      if (sortBy === "qty-asc") {
+        return Number(a.quantity ?? 0) - Number(b.quantity ?? 0);
+      }
+      if (sortBy === "name-asc") {
+        return (a.stockItem?.name ?? "").localeCompare(b.stockItem?.name ?? "");
+      }
+      if (sortBy === "name-desc") {
+        return (b.stockItem?.name ?? "").localeCompare(a.stockItem?.name ?? "");
+      }
+      return 0;
+    });
+
+    return result;
+  }, [checkOutMovementsData, searchQuery, categoryFilter, sortBy]);
 
   const [projects, setProjects] = React.useState<string[]>([]);
   const [staffMembers, setStaffMembers] = React.useState<string[]>([]);
@@ -128,7 +186,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         setProjectFor(projectList[0] ?? "ROMS Inventory");
         setRequestedBy(staffList[0] ?? "");
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       mounted = false;
     };
@@ -350,7 +408,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 };
                 setCart((prev) => [...prev, newItem]);
                 setFeedback({ type: "success", message: `Added ${checkOutQty} units of ${selectedItem.name} to batch.` });
-                
+
                 setSelectedItemId("");
                 setCheckOutQty(1);
                 setNote("");
@@ -487,8 +545,62 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         </div>
       )}
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>{labelOverrides?.referenceTable || "Check-Out Reference Table (History)"}</div>
+      <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>{labelOverrides?.referenceTable || "Check-Out Reference Table (History)"}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search history..."
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+                minWidth: "160px",
+              }}
+            />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+              }}
+            >
+              <option value="all">All Categories</option>
+              {historyCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+              }}
+            >
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="qty-desc">Quantity (High to Low)</option>
+              <option value="qty-asc">Quantity (Low to High)</option>
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+            </select>
+          </div>
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -507,14 +619,14 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
               </tr>
             </thead>
             <tbody>
-              {sortedMovements.length === 0 ? (
+              {filteredAndSortedMovements.length === 0 ? (
                 <tr>
                   <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
                     No check-out history records available.
                   </td>
                 </tr>
               ) : (
-                sortedMovements.map((row) => (
+                filteredAndSortedMovements.map((row) => (
                   <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", height: "40px" }}>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>

@@ -51,12 +51,68 @@ export default function CheckInPage() {
     },
   });
 
-  const sortedMovements = React.useMemo(() => {
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("date-desc");
+
+  const historyCategories = React.useMemo(() => {
     if (!checkInMovementsData?.data) return [];
-    return [...checkInMovementsData.data].sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    const cats = new Set<string>();
+    checkInMovementsData.data.forEach((row) => {
+      const cat = row.stockItem?.category || "General";
+      cats.add(cat);
     });
+    return Array.from(cats).sort();
   }, [checkInMovementsData]);
+
+  const filteredAndSortedMovements = React.useMemo(() => {
+    if (!checkInMovementsData?.data) return [];
+
+    let result = checkInMovementsData.data.filter((row) => {
+      const sku = (row.stockItem?.sku ?? "").toLowerCase();
+      const name = (row.stockItem?.name ?? "").toLowerCase();
+      const category = (row.stockItem?.category ?? "General").toLowerCase();
+      const project = (row.projectFor ?? "").toLowerCase();
+      const remark = (row.remark ?? "").toLowerCase();
+      const query = searchQuery.trim().toLowerCase();
+
+      const matchesSearch = !query ||
+        sku.includes(query) ||
+        name.includes(query) ||
+        category.includes(query) ||
+        project.includes(query) ||
+        remark.includes(query);
+
+      const matchesCategory = categoryFilter === "all" ||
+        (row.stockItem?.category ?? "General").toLowerCase() === categoryFilter.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+
+    result.sort((a, b) => {
+      if (sortBy === "date-desc") {
+        return new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
+      }
+      if (sortBy === "date-asc") {
+        return new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
+      }
+      if (sortBy === "qty-desc") {
+        return Number(b.quantity ?? 0) - Number(a.quantity ?? 0);
+      }
+      if (sortBy === "qty-asc") {
+        return Number(a.quantity ?? 0) - Number(b.quantity ?? 0);
+      }
+      if (sortBy === "name-asc") {
+        return (a.stockItem?.name ?? "").localeCompare(b.stockItem?.name ?? "");
+      }
+      if (sortBy === "name-desc") {
+        return (b.stockItem?.name ?? "").localeCompare(a.stockItem?.name ?? "");
+      }
+      return 0;
+    });
+
+    return result;
+  }, [checkInMovementsData, searchQuery, categoryFilter, sortBy]);
 
   const itemInputRef = React.useRef<HTMLInputElement | null>(null);
   const [itemMenuOpen, setItemMenuOpen] = React.useState(false);
@@ -170,7 +226,7 @@ export default function CheckInPage() {
         setProjects(list);
         setProjectFor((prev) => (prev ? prev : list[0] ?? ""));
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       mounted = false;
     };
@@ -289,8 +345,8 @@ export default function CheckInPage() {
       const category = newCategory.trim() || (nameLower.includes("tube") || nameLower.includes("plate") || nameLower.includes("dish")
         ? "Consumables"
         : nameLower.includes("meter") || nameLower.includes("thermo")
-        ? "Equipment"
-        : "General");
+          ? "Equipment"
+          : "General");
       const barcode = newBarcode.trim() || newSku.trim();
       const unitDescription = newUnitDescription.trim() || `${newUnit.trim() || "units"} per pack`;
 
@@ -643,8 +699,62 @@ export default function CheckInPage() {
         </div>
       </div>
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Check-In Reference Table (History)</div>
+      <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check-In Reference Table (History)</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search history..."
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+                minWidth: "160px",
+              }}
+            />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+              }}
+            >
+              <option value="all">All Categories</option>
+              {historyCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "6px 10px",
+                fontSize: "var(--fs-xs)",
+              }}
+            >
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="qty-desc">Quantity (High to Low)</option>
+              <option value="qty-asc">Quantity (Low to High)</option>
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+            </select>
+          </div>
+        </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -664,14 +774,14 @@ export default function CheckInPage() {
               </tr>
             </thead>
             <tbody>
-              {sortedMovements.length === 0 ? (
+              {filteredAndSortedMovements.length === 0 ? (
                 <tr>
                   <td colSpan={12} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
                     No check-in history records available.
                   </td>
                 </tr>
               ) : (
-                sortedMovements.map((row) => (
+                filteredAndSortedMovements.map((row) => (
                   <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>

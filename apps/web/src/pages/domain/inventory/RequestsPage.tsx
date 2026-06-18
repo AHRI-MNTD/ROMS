@@ -140,7 +140,7 @@ export default function RequestsPage() {
         setProject(projectList[0] ?? "ROMS Inventory");
         setRequestedBy(staffList[0] ?? "");
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       mounted = false;
     };
@@ -532,7 +532,7 @@ export default function RequestsPage() {
                 };
                 setCartItems((prev) => [...prev, newItem]);
                 setFeedback({ type: 'success', message: `Added ${requestQty} units of ${selectedItem.name} to cart.` });
-                
+
                 setSelectedItemId("");
                 setRequestQty(1);
                 setNote("");
@@ -787,7 +787,7 @@ export default function RequestsPage() {
         </div>
       )}
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+      <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Request/s Reference Table</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>

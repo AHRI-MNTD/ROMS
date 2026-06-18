@@ -61,8 +61,8 @@ export default function InventoryDashboardPage() {
   const recentMovements = movementsData?.data ?? [];
 
   const statCardStyle = (tone: string): React.CSSProperties => ({
-    padding: "20px 16px",
-    borderRadius: 18,
+    padding: "16px 12px",
+    borderRadius: 16,
     border: `1px solid ${tone}22`,
     background: `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
     boxShadow: "0 10px 20px rgba(16, 24, 40, 0.03)",
@@ -75,15 +75,15 @@ export default function InventoryDashboardPage() {
   });
 
   const statIconStyle = (tone: string): React.CSSProperties => ({
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     background: `${tone}15`,
     color: tone,
-    fontSize: 20,
+    fontSize: 17,
   });
 
   return (
@@ -100,9 +100,9 @@ export default function InventoryDashboardPage() {
       {!isLoading && !error && (
         <>
           {/* Aggregated KPI Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
             <div style={statCardStyle("#01696f")}>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <div style={statIconStyle("#01696f")} aria-hidden="true">📦</div>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{summary.totalItems}</div>
               </div>
@@ -193,7 +193,7 @@ export default function InventoryDashboardPage() {
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name ?? "Unknown item"}</div>
                           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-                            SKU: {item.sku} · Category: {item.category}
+                            SKU: {item.sku}
                           </div>
                         </td>
                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
@@ -240,7 +240,7 @@ export default function InventoryDashboardPage() {
                             {m.stockItem?.name ?? "Unknown Item"} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({m.quantity} {m.stockItem?.unit ?? "units"})</span>
                           </div>
                           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-                            {m.projectFor ? `${m.projectFor} · ` : ""}{m.requestedBy ?? "System"} · {formattedDate}
+                            {m.projectFor && m.projectFor !== m.requestedBy ? `${m.projectFor} · ` : ""}{m.requestedBy ?? "System"} · {formattedDate}
                           </div>
                           {m.remark && m.remark !== "Imported from check-in CSV" && (
                             <div style={{ fontSize: "11px", fontStyle: "italic", color: "var(--color-text-muted)", marginTop: 4, background: "#f8fafc", padding: "4px 8px", borderRadius: 4 }}>
@@ -279,7 +279,7 @@ export default function InventoryDashboardPage() {
                         <td style={{ padding: "12px 16px" }}>
                           <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name}</div>
                           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-                            SKU: {item.sku} · Threshold: {item.minThreshold} {item.unit ?? "units"}
+                            SKU: {item.sku}
                           </div>
                         </td>
                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
