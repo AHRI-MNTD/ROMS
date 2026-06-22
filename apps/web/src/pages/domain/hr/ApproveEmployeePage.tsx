@@ -415,10 +415,10 @@ export default function ApproveEmployeePage() {
       {showActions ? (
         <td style={{ ...cellStyle, textAlign: "right", whiteSpace: "nowrap", width: "14%" }} onClick={(e) => e.stopPropagation()}>
           <button type="button" onClick={() => handleDecision(row.id, "APPROVED")} disabled={approveMutation.isPending} style={{ marginRight: 4, background: "#059669", color: "white", border: "none", padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}>
-            ✓ Approve
+            ✓ Verify
           </button>
           <button type="button" onClick={() => handleDecision(row.id, "REJECTED")} disabled={approveMutation.isPending} style={{ background: "#dc2626", color: "white", border: "none", padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}>
-            ✕ Reject
+            ✕ Decline
           </button>
         </td>
       ) : (
@@ -435,19 +435,19 @@ export default function ApproveEmployeePage() {
         <th style={{ textAlign: "right", padding: "5px 6px", width: "3%" }}>#</th>
         <th style={sharedTh("11%")}>Name</th>
         <th style={sharedTh("12%")}>Department</th>
-        <th style={sharedTh("12%")}>Job title</th>
+        <th style={sharedTh("12%")}>Function / Job Title</th>
         <th style={sharedTh("8%")}>Start date</th>
-        <th style={sharedTh("9%")}>Employment</th>
+        <th style={sharedTh("9%")}>Contract Type</th>
         <th style={sharedTh("8%")}>Contract end</th>
         <th style={sharedTh("8%")}>Renewal date</th>
         {showActions ? (
           <>
-            <th style={sharedTh("15%")}>Remark</th>
-            <th style={{ padding: "5px 6px", width: "14%", textAlign: "right" }}>Actions</th>
+            <th style={sharedTh("15%")}>Verification Remark</th>
+            <th style={{ padding: "5px 6px", width: "14%", textAlign: "right" }}>Verification Decisions</th>
           </>
         ) : (
           <>
-            <th style={sharedTh("21%")}>Reviewed</th>
+            <th style={sharedTh("21%")}>Verified By</th>
             <th style={sharedTh("8%")}>Action</th>
           </>
         )}
@@ -468,25 +468,25 @@ export default function ApproveEmployeePage() {
       <div style={{ display: "grid", gap: 12 }}>
         <div style={panelStyle("rgba(186, 197, 34, 0.18)")}>
           <div style={{ ...headerStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Pending employee approvals</span>
+            <span>Pending Personnel File Verifications</span>
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 type="button"
                 onClick={() => setListView((v) => v === "approved" ? null : "approved")}
                 style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #86efac", background: listView === "approved" ? "#059669" : "#f0fdf4", color: listView === "approved" ? "#fff" : "#059669", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
               >
-                Approved list ({approved.length})
+                Verified List ({approved.length})
               </button>
               <button
                 type="button"
                 onClick={() => setListView((v) => v === "rejected" ? null : "rejected")}
                 style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fca5a5", background: listView === "rejected" ? "#dc2626" : "#fef2f2", color: listView === "rejected" ? "#fff" : "#dc2626", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
               >
-                Rejected list ({rejected.length})
+                Unverified List ({rejected.length})
               </button>
             </div>
           </div>
-          <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the employee profile, then approve or disapprove access. Click row to see full profile details.</div>
+          <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the personnel profile, then verify credentials and authorize task access. Click row to see full profile details.</div>
           <div>
             {pending.length > 0 ? (
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -494,14 +494,14 @@ export default function ApproveEmployeePage() {
                 <tbody>{pending.map((row, i) => renderRow(row, true, i))}</tbody>
               </table>
             ) : (
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No pending employee approvals.</div>
+              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No pending personnel file verifications.</div>
             )}
           </div>
         </div>
 
         {listView === "approved" && (
           <div style={panelStyle("rgba(34, 197, 94, 0.18)")}>
-            <div style={headerStyle}>Approved list</div>
+            <div style={headerStyle}>Verified List</div>
             <div>
               {approved.length > 0 ? (
                 <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -509,7 +509,7 @@ export default function ApproveEmployeePage() {
                   <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
                 </table>
               ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No approved employees yet.</div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No verified personnel yet.</div>
               )}
             </div>
           </div>
@@ -517,7 +517,7 @@ export default function ApproveEmployeePage() {
 
         {listView === "rejected" && (
           <div style={panelStyle("rgba(239, 68, 68, 0.18)")}>
-            <div style={headerStyle}>Rejected list</div>
+            <div style={headerStyle}>Unverified List</div>
             <div>
               {rejected.length > 0 ? (
                 <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -525,7 +525,7 @@ export default function ApproveEmployeePage() {
                   <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
                 </table>
               ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No rejected employees yet.</div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No unverified personnel yet.</div>
               )}
             </div>
           </div>
@@ -564,7 +564,7 @@ export default function ApproveEmployeePage() {
                 borderRadius: 999, 
                 padding: "3px 12px" 
               }}>
-                {selected.approvalStatus}
+                {selected.approvalStatus === "PENDING" ? "PENDING VERIFICATION" : selected.approvalStatus === "APPROVED" ? "VERIFIED" : "UNVERIFIED"}
               </span>
               {(() => {
                 const emp = formatEmployment(selected.employmentType);
@@ -580,7 +580,7 @@ export default function ApproveEmployeePage() {
             <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
               
               {/* Section 1: Personal Info */}
-              <Section title="Section 1: Personal & Contact Information">
+              <Section title="Section 1: Personal Details & Contact Information">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
                   <InfoRow label="Sex" value={selected.sex ? selected.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
@@ -592,7 +592,7 @@ export default function ApproveEmployeePage() {
               </Section>
 
               {/* Section 2: Employment Info */}
-              <Section title="Section 2: AHRI Employment Information">
+              <Section title="Section 2: Employment & Position details">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Department" value={selected.department} />
                   <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
@@ -622,7 +622,7 @@ export default function ApproveEmployeePage() {
               </Section>
 
               {/* Section 3: Educational Background */}
-              <Section title="Section 3: Educational / Academic Background">
+              <Section title="Section 3: Qualifications & Academic Background">
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* First Degree */}
                   <div>
@@ -695,7 +695,7 @@ export default function ApproveEmployeePage() {
               </Section>
 
               {/* Section 5: Property Inventory */}
-              <Section title="Section 5: Property Inventory">
+              <Section title="Section 5: Personal Equipment Log">
                 {activeInventory.length > 0 ? (
                   <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
                     <thead>
@@ -722,11 +722,11 @@ export default function ApproveEmployeePage() {
 
               {/* Review History */}
               {selected.reviewedBy && (
-                <Section title="Review Details">
+                <Section title="Verification History">
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <InfoRow label="Reviewed By" value={selected.reviewedBy.displayName ?? selected.reviewedBy.email ?? "System"} />
-                    <InfoRow label="Reviewed On" value={formatDate(selected.reviewedAt)} />
-                    {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Reviewer Notes" value={selected.reviewNote} /></div>}
+                    <InfoRow label="Verified By" value={selected.reviewedBy.displayName ?? selected.reviewedBy.email ?? "System"} />
+                    <InfoRow label="Verified On" value={formatDate(selected.reviewedAt)} />
+                    {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Notes" value={selected.reviewNote} /></div>}
                   </div>
                 </Section>
               )}
@@ -737,11 +737,11 @@ export default function ApproveEmployeePage() {
               {selected.approvalStatus === "PENDING" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 700 }}>
-                    <span>Approval Remarks / Notes (Optional)</span>
+                    <span>Verification Remarks / Notes (Optional)</span>
                     <input
                       value={notes[selected.id] ?? ""}
                       onChange={(e) => setNotes((cur) => ({ ...cur, [selected.id]: e.target.value }))}
-                      placeholder="Enter a review note..."
+                      placeholder="Enter verification notes..."
                       style={{ width: "100%", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
                     />
                   </label>
@@ -752,7 +752,7 @@ export default function ApproveEmployeePage() {
                       disabled={approveMutation.isPending} 
                       style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
                     >
-                      ✕ Reject Profile
+                      ✕ Decline Verification
                     </button>
                     <button 
                       type="button" 
@@ -760,7 +760,7 @@ export default function ApproveEmployeePage() {
                       disabled={approveMutation.isPending} 
                       style={{ background: "#059669", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
                     >
-                      ✓ Approve Profile
+                      ✓ Verify & Authorize
                     </button>
                     <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
                       Cancel

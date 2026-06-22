@@ -55,7 +55,7 @@ export default function StaffDirectoryPage() {
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                   <th style={{ padding: "5px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Department</th>
-                  <th style={{ padding: "5px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Job Title</th>
+                  <th style={{ padding: "5px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Function / Job Title</th>
                   <th style={{ padding: "5px 10px", fontSize: "var(--fs-xs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-faint)", textAlign: "left" }}>Start Date</th>
                 </tr>
               </thead>

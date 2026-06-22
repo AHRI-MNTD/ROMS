@@ -574,12 +574,12 @@ export default function TrainingRecordsPage() {
           <span style={{ fontSize: 28, lineHeight: 1 }}>✅</span>
           <div>
             <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, color: "#15803d", marginBottom: 4 }}>
-              Personnel Profile Submitted Successfully
+              Personnel File Submitted Successfully
             </div>
             <div style={{ fontSize: "var(--fs-xs)", color: "#166534", lineHeight: 1.7 }}>
-              Your personnel profile registration has been received and is currently in the <strong>pending review state</strong>. 
-              Once the HR management team approves your profile, your system privileges will be activated. 
-              Please contact the HR administrator if you have any questions.
+              Your personnel file registration has been received and is currently in the <strong>pending verification state</strong>. 
+              Once the credentials and job files are verified, your task authorizations and system privileges will be activated. 
+              Please contact the system administrator if you have any questions.
             </div>
           </div>
         </div>
@@ -594,9 +594,9 @@ export default function TrainingRecordsPage() {
 
       <form onSubmit={handleSubmit} noValidate>
         
-        {/* SECTION 1: PERSONAL AND CONTACT INFORMATION */}
+        {/* SECTION 1: PERSONAL DETAILS & CONTACT INFORMATION */}
         <div style={card}>
-          <div style={sectionHeader}>Section 1: Personal and Contact Information</div>
+          <div style={sectionHeader}>Section 1: Personal Details & Contact Information</div>
           <div style={grid2}>
             {/* Full Name */}
             <label style={{ ...labelStyle, ...fullWidth }}>
@@ -680,9 +680,9 @@ export default function TrainingRecordsPage() {
           </div>
         </div>
 
-        {/* SECTION 2: AHRI EMPLOYMENT INFORMATION */}
+        {/* SECTION 2: EMPLOYMENT INFORMATION */}
         <div style={card}>
-          <div style={sectionHeader}>Section 2: AHRI Employment Information</div>
+          <div style={sectionHeader}>Section 2: Employment & Position details</div>
           <div style={grid2}>
             {/* Department */}
             <label style={labelStyle}>
@@ -700,7 +700,7 @@ export default function TrainingRecordsPage() {
 
             {/* Current Position at AHRI */}
             <label style={labelStyle}>
-              <span>Current Position at AHRI {required}</span>
+              <span>Function / Job Title {required}</span>
               <select 
                 value={form.jobTitle} 
                 onChange={(e) => handleChange("jobTitle", e.target.value)} 
@@ -714,7 +714,7 @@ export default function TrainingRecordsPage() {
 
             {/* Type of Employment */}
             <label style={labelStyle}>
-              <span>Type of Employment at AHRI {required}</span>
+              <span>Contract / Employment Type {required}</span>
               <select 
                 value={form.employmentType} 
                 onChange={(e) => handleChange("employmentType", e.target.value)} 
@@ -728,7 +728,7 @@ export default function TrainingRecordsPage() {
 
             {/* Contract Date (conditional) */}
             <label style={{ ...labelStyle, opacity: form.employmentType === "contract" ? 1 : 0.4 }}>
-              <span>If Contract, enter current AHRI contract end date {form.employmentType === "contract" && required}</span>
+              <span>If Contract, enter current contract end date {form.employmentType === "contract" && required}</span>
               <input 
                 type="date" 
                 value={form.contractEndDate} 
@@ -812,9 +812,9 @@ export default function TrainingRecordsPage() {
           </div>
         </div>
 
-        {/* SECTION 3: EDUCATIONAL/ACADEMIC BACKGROUND */}
+        {/* SECTION 3: QUALIFICATIONS & ACADEMIC BACKGROUND */}
         <div style={card}>
-          <div style={sectionHeader}>Section 3: Educational/Academic Background</div>
+          <div style={sectionHeader}>Section 3: Qualifications & Academic Background</div>
           <div style={grid2}>
             
             {/* Undergraduate Degree header */}
@@ -1122,9 +1122,9 @@ export default function TrainingRecordsPage() {
           </div>
         </div>
 
-        {/* SECTION 5: PROPERTY INVENTORY */}
+        {/* SECTION 5: PERSONAL EQUIPMENT LOG */}
         <div style={card}>
-          <div style={sectionHeader}>Section 5: Property Inventory</div>
+          <div style={sectionHeader}>Section 5: Personal Equipment Log</div>
           <div style={{ padding: "18px 20px" }}>
             <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginBottom: 14 }}>
               Enter the quantities and types of all IT/electronic, office, laboratory and field equipment/instruments/devices under your name.

@@ -331,7 +331,7 @@ export default function ApprovedPage() {
     if (!selected) return;
     const w = window.open("", "_blank");
     if (!w) return;
-    w.document.write(`<html><head><title>Employee Profile — ${selected.user?.displayName ?? "Unknown"}</title>
+    w.document.write(`<html><head><title>Personnel File — ${selected.user?.displayName ?? "Unknown"}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 40px; color: #111; line-height: 1.5; }
       h1 { font-size: 22px; margin: 0 0 4px; }
@@ -351,9 +351,9 @@ export default function ApprovedPage() {
 
   const handleShare = async () => {
     if (!selected) return;
-    const text = `Employee: ${selected.user?.displayName ?? "Unknown"}\nDepartment: ${selected.department}\nJob Title: ${getPositionLabel(selected.jobTitle)}\nEmployment: ${formatEmployment(selected.employmentType)}\nStart Date: ${formatDate(selected.startDate)}`;
+    const text = `Personnel: ${selected.user?.displayName ?? "Unknown"}\nDepartment: ${selected.department}\nJob Title: ${getPositionLabel(selected.jobTitle)}\nEmployment: ${formatEmployment(selected.employmentType)}\nStart Date: ${formatDate(selected.startDate)}`;
     if (navigator.share) {
-      await navigator.share({ title: "Employee Profile", text });
+      await navigator.share({ title: "Personnel File", text });
     } else {
       await navigator.clipboard.writeText(text);
       alert("Profile info copied to clipboard!");
@@ -424,7 +424,7 @@ export default function ApprovedPage() {
         {/* Header */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Personnel Database</span>
+            <span style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Personnel Registry & Files</span>
             <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "#059669", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 10px" }}>
               {filtered.length} {filtered.length === approved.length ? "total" : `of ${approved.length}`}
             </span>
@@ -479,11 +479,11 @@ export default function ApprovedPage() {
                   <th style={{ ...thStyle("name"), width: "3%", cursor: "default" }}>#</th>
                   <th style={{ ...thStyle("name"), width: "18%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
                   <th style={{ ...thStyle("department"), width: "17%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
-                  <th style={{ ...thStyle("jobTitle"), width: "17%" }} onClick={() => toggleSort("jobTitle")}>Job Title {sortIcon("jobTitle")}</th>
+                  <th style={{ ...thStyle("jobTitle"), width: "17%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
                   <th style={{ ...thStyle("startDate"), width: "11%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
-                  <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Employment {sortIcon("employmentType")}</th>
+                  <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Contract Type {sortIcon("employmentType")}</th>
                   <th style={{ ...thStyle("reviewedAt"), width: "11%", cursor: "default" }}>Contract End</th>
-                  <th style={{ ...thStyle("reviewedAt"), width: "12%" }} onClick={() => toggleSort("reviewedAt")}>Approved On {sortIcon("reviewedAt")}</th>
+                  <th style={{ ...thStyle("reviewedAt"), width: "12%" }} onClick={() => toggleSort("reviewedAt")}>Verified On {sortIcon("reviewedAt")}</th>
                   <th style={{ ...thStyle("name"), width: "8%", cursor: "default" }}>Action</th>
                 </tr>
               </thead>
@@ -550,7 +550,7 @@ export default function ApprovedPage() {
 
             {/* Status Badge */}
             <div style={{ padding: "10px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ APPROVED</span>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
               {(() => {
                 const emp = formatEmployment(selected.employmentType);
                 const empColor = 
@@ -565,12 +565,12 @@ export default function ApprovedPage() {
             <div ref={printRef} style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Hidden print header */}
               <div style={{ display: "none" }} className="print-header">
-                <h1 style={{ margin: 0 }}>Employee Profile — {selected.user?.displayName ?? "Unknown"}</h1>
-                <p className="subtitle">{selected.user?.email ?? ""} · APPROVED</p>
+                <h1 style={{ margin: 0 }}>Personnel File — {selected.user?.displayName ?? "Unknown"}</h1>
+                <p className="subtitle">{selected.user?.email ?? ""} · VERIFIED</p>
               </div>
 
               {/* Section 1: Personal Info */}
-              <Section title="Section 1: Personal & Contact Information">
+              <Section title="Section 1: Personal Details & Contact Information">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
                   <InfoRow label="Sex" value={selected.sex ? selected.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
@@ -582,7 +582,7 @@ export default function ApprovedPage() {
               </Section>
 
               {/* Section 2: Employment Info */}
-              <Section title="Section 2: AHRI Employment Information">
+              <Section title="Section 2: Employment & Position details">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Department" value={selected.department} />
                   <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
@@ -612,7 +612,7 @@ export default function ApprovedPage() {
               </Section>
 
               {/* Section 3: Educational Background */}
-              <Section title="Section 3: Educational / Academic Background">
+              <Section title="Section 3: Qualifications & Academic Background">
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {/* First Degree */}
                   <div>
@@ -685,7 +685,7 @@ export default function ApprovedPage() {
               </Section>
 
               {/* Section 5: Property Inventory */}
-              <Section title="Section 5: Property Inventory">
+              <Section title="Section 5: Personal Equipment Log">
                 {activeInventory.length > 0 ? (
                   <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
                     <thead>
@@ -711,11 +711,11 @@ export default function ApprovedPage() {
               </Section>
 
               {/* Approval Info */}
-              <Section title="Approval History">
+              <Section title="Verification & Authorization History">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <InfoRow label="Approved On" value={formatDate(selected.reviewedAt)} />
-                  <InfoRow label="Approved By" value={selected.reviewedBy?.displayName ?? selected.reviewedBy?.email ?? "System"} />
-                  {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Reviewer Remarks" value={selected.reviewNote} /></div>}
+                  <InfoRow label="Verified On" value={formatDate(selected.reviewedAt)} />
+                  <InfoRow label="Verified By" value={selected.reviewedBy?.displayName ?? selected.reviewedBy?.email ?? "System"} />
+                  {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Remarks" value={selected.reviewNote} /></div>}
                 </div>
               </Section>
             </div>

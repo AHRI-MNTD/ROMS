@@ -3,11 +3,11 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 const tabs = [
   { to: "dashboard", label: "Dashboard" },
-  { to: "staff-directory", label: "Staff Directory" },
-  { to: "training-records", label: "Registration" },
-  { to: "leave", label: "Leave" },
-  { to: "approved", label: "Personnel" },
-  { to: "approve-employee", label: "Approve Employee" },
+  { to: "staff-directory", label: "Personnel Registry" },
+  { to: "training-records", label: "Personnel Registration" },
+  { to: "leave", label: "Personnel Leave" },
+  { to: "approved", label: "Personnel Files" },
+  { to: "approve-employee", label: "Verify Personnel" },
   { to: "analytics", label: "Analytics" },
 ];
 
@@ -17,44 +17,44 @@ const PAGE_META: Record<string, PageMeta> = {
   dashboard: {
     icon: "📊",
     title: "Dashboard",
-    description: "Overview of HR metrics, staff headcount, and recent activity.",
+    description: "Overview of personnel metrics, headcount, and recent activity.",
   },
   "staff-directory": {
     icon: "👥",
-    title: "Staff Directory",
-    description: "Browse and manage the full directory of registered staff members.",
+    title: "Personnel Registry",
+    description: "Browse and manage the full directory of registered laboratory personnel.",
   },
   "training-records": {
     icon: "📋",
     title: "Personnel Registration",
-    description: "Complete all required fields to submit your personnel registration request.",
+    description: "Complete all required fields to submit your personnel file registration.",
   },
   leave: {
     icon: "🏖️",
     title: "Leave Management",
-    description: "Submit, review, and track staff leave requests and balances.",
+    description: "Submit, review, and track personnel leave requests and replacement cover.",
   },
   approved: {
     icon: "🗂️",
-    title: "Personnel Database",
-    description: "View and manage the full records of all approved personnel.",
+    title: "Personnel Files Database",
+    description: "View and manage verified personnel files, qualifications, and credentials.",
   },
   "approve-employee": {
     icon: "✅",
-    title: "Approve Employee",
-    description: "Review pending personnel registration requests and take approval action.",
+    title: "Verify Personnel File",
+    description: "Review submitted personnel profiles and verify credentials."
   },
   analytics: {
     icon: "📈",
-    title: "HR Analytics",
-    description: "Insights, trends, and reporting across all HR operations.",
+    title: "Personnel Analytics",
+    description: "Insights and metrics across laboratory personnel qualifications and training.",
   },
 };
 
 const FALLBACK: PageMeta = {
   icon: "👤",
-  title: "HR & Staff Operations",
-  description: "Manage HR and staff operations records.",
+  title: "Personnel Management",
+  description: "Manage laboratory personnel files, qualifications, and appraisals.",
 };
 
 function useActiveMeta(): PageMeta {
@@ -102,7 +102,7 @@ export default function HRLayout() {
         </div>
 
         {/* Nav tabs */}
-        <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }} aria-label="HR sections">
+        <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }} aria-label="Personnel sections">
           {tabs.map((tab) => (
             <NavLink
               key={tab.to}

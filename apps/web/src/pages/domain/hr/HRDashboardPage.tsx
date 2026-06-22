@@ -55,14 +55,14 @@ export default function HRDashboardPage() {
         <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", padding: 16 }}>
           <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, marginBottom: 8 }}>What is covered</div>
           <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-            This HR workspace is now split into dashboard, staff directory, training records, leave, onboarding, and analytics sections so the domain can grow like inventory.
+            This Personnel workspace is now split into dashboard, personnel registry, personnel registration, leave records, induction, and analytics sections.
           </div>
         </div>
 
         <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", padding: 16 }}>
           <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, marginBottom: 8 }}>Preview</div>
           <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-            Use the Staff Directory tab to review live staff data from the API. The remaining tabs are ready for future HR workflows.
+            Use the Personnel Registry tab to review live personnel data from the API. The remaining tabs are ready for future Personnel workflows.
           </div>
         </div>
       </div>
