@@ -1395,7 +1395,6 @@ const GUIDELINE_SECTIONS = [
   {
     id: "intro",
     title: "Introduction",
-    icon: "📘",
     plainText: "Every organization performs numerous activities on a daily basis ranging from administrative tasks and equipment operation to service delivery and quality assurance To ensure that these activities are carried out consistently and correctly organizations develop Standard Operating Procedures SOPs An SOP is a documented set of instructions that describes how a specific task or process should be performed It provides employees with clear guidance on what to do how to do it who is responsible and what records must be maintained SOPs are fundamental tools for maintaining quality efficiency safety and consistency within an organization They transform organizational knowledge into written instructions that can be followed by all employees regardless of their experience level By establishing a standardized approach to work SOPs minimize variations in performance reduce errors and ensure that activities are conducted according to approved requirements",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1408,7 +1407,6 @@ const GUIDELINE_SECTIONS = [
   {
     id: "purpose",
     title: "Purpose of SOPs",
-    icon: "🎯",
     plainText: "The primary purpose of an SOP is to ensure that tasks are performed in a uniform and controlled manner When procedures are documented and followed consistently organizations can achieve reliable outcomes improve productivity and maintain compliance with quality standards SOPs help organizations to standardize routine and critical activities ensure consistency among different employees reduce operational errors and risks improve quality and reliability of results facilitate employee training and orientation clarify responsibilities and accountability preserve organizational knowledge support auditing monitoring and continuous improvement",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1432,19 +1430,18 @@ const GUIDELINE_SECTIONS = [
   {
     id: "characteristics",
     title: "Characteristics of an Effective SOP",
-    icon: "⭐",
     plainText: "A well-developed SOP should possess several important characteristics Clarity Instructions should be written in simple and understandable language Accuracy Procedures should reflect the actual process being performed Completeness All necessary steps responsibilities and requirements should be included Consistency Similar activities should follow a uniform structure and format Accessibility SOPs should be available to all personnel who need to use them Currency SOPs should be reviewed and updated regularly to reflect changes in procedures equipment or regulations",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <p>A well-developed SOP should possess several important characteristics:</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
           {[
-            { title: "Clarity 💬", desc: "Instructions should be written in simple and understandable language." },
-            { title: "Accuracy 🎯", desc: "Procedures should reflect the actual process being performed." },
-            { title: "Completeness 🔍", desc: "All necessary steps, responsibilities, and requirements should be included." },
-            { title: "Consistency 📏", desc: "Similar activities should follow a uniform structure and format." },
-            { title: "Accessibility 📂", desc: "SOPs should be available to all personnel who need to use them." },
-            { title: "Currency ⏳", desc: "SOPs should be reviewed and updated regularly to reflect changes in procedures, equipment, or regulations." }
+            { title: "Clarity ", desc: "Instructions should be written in simple and understandable language." },
+            { title: "Accuracy ", desc: "Procedures should reflect the actual process being performed." },
+            { title: "Completeness ", desc: "All necessary steps, responsibilities, and requirements should be included." },
+            { title: "Consistency ", desc: "Similar activities should follow a uniform structure and format." },
+            { title: "Accessibility ", desc: "SOPs should be available to all personnel who need to use them." },
+            { title: "Currency ", desc: "SOPs should be reviewed and updated regularly to reflect changes in procedures, equipment, or regulations." }
           ].map(item => (
             <div key={item.title} style={{ padding: "12px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius)" }}>
               <strong style={{ color: "var(--color-primary)", display: "block", marginBottom: 4 }}>{item.title}</strong>
@@ -1458,7 +1455,6 @@ const GUIDELINE_SECTIONS = [
   {
     id: "types",
     title: "Types of SOPs",
-    icon: "📂",
     plainText: "Organizations often classify SOPs into three major categories depending on their purpose and content 1 Procedure SOPs Procedure SOPs describe operational and administrative processes They explain the sequence of activities that employees must follow to complete a specific task or workflow Examples include Document control procedures Inventory management procedures Staff induction procedures Customer service procedures Record management procedures These SOPs typically define objectives responsibilities workflow steps required documents forms and reporting requirements 2 Equipment SOPs Equipment SOPs provide detailed instructions for operating maintaining calibrating and troubleshooting equipment Typical contents include Equipment description Safety precautions Startup procedures Calibration procedures Maintenance requirements Operational instructions Problem-solving guidelines Equipment SOPs help ensure that equipment functions correctly and safely while extending its operational lifespan 3 Analysis SOPs Analysis SOPs describe analytical testing or examination procedures They provide detailed guidance on sample handling reagents quality control analysis methods result interpretation and reporting These SOPs generally include Principle of analysis Sample requirements Equipment and materials Reagents and chemicals Quality control procedures Step-by-step analytical methods Result processing and reporting Analysis SOPs ensure that analytical procedures are performed accurately and consistently leading to reliable and reproducible results",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1498,7 +1494,6 @@ const GUIDELINE_SECTIONS = [
   {
     id: "process",
     title: "SOP Development Process",
-    icon: "⚙️",
     plainText: "Developing an SOP is a systematic process that involves multiple stakeholders Step 1 Identification of Need An employee or department identifies the need for a new SOP or the revision of an existing one Step 2 Assignment of Responsibilities Appropriate personnel are assigned responsibilities for writing reviewing and approving the document Step 3 Drafting the SOP The author prepares the SOP using the appropriate framework and format The document should be based on technical expertise and practical experience Step 4 Review and Verification The draft SOP is reviewed by users and subject-matter experts to ensure technical accuracy practicality and compliance with quality requirements Step 5 Approval Authorized management personnel review and formally approve the SOP before implementation Step 6 Distribution and Implementation The approved SOP is distributed to relevant personnel who receive training on its content and application Step 7 Review and Revision SOPs are periodically reviewed and revised whenever procedures equipment regulations or organizational requirements change",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1527,7 +1522,6 @@ const GUIDELINE_SECTIONS = [
   {
     id: "structure",
     title: "Structure of an SOP",
-    icon: "📋",
     plainText: "Although SOP formats may vary among organizations a standard SOP commonly contains the following sections Title Objectives and Scope Abbreviations and Definitions Responsibilities and Accountabilities Procedure or Method Related Documents Related Forms References Attachments or Annexes This structured approach ensures consistency and makes SOPs easier to understand and use",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1550,7 +1544,6 @@ const GUIDELINE_SECTIONS = [
   {
     id: "benefits",
     title: "Benefits of SOPs",
-    icon: "📈",
     plainText: "The implementation of SOPs provides numerous benefits to organizations Improved Quality Standardized procedures reduce variation and improve the quality of outputs and services Enhanced Efficiency Employees spend less time determining how tasks should be performed because instructions are readily available Reduced Errors Clear guidance minimizes mistakes and operational risks Better Training New employees can quickly learn procedures through documented instructions Increased Accountability Clearly defined responsibilities make it easier to identify and monitor performance Regulatory Compliance SOPs help organizations comply with internal policies industry standards and regulatory requirements Knowledge Retention Critical organizational knowledge remains available even when experienced employees leave the organization",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1577,7 +1570,7 @@ const GUIDELINE_SECTIONS = [
   {
     id: "conclusion",
     title: "Conclusion",
-    icon: "🏁",
+
     plainText: "Standard Operating Procedures are essential management and quality tools that ensure tasks are performed consistently efficiently and safely They provide employees with clear instructions define responsibilities and establish standardized methods for carrying out organizational activities Through proper development implementation and continuous review SOPs contribute significantly to operational excellence quality improvement employee competency and organizational success By documenting best practices and promoting uniformity SOPs serve as the foundation for effective and reliable organizational performance",
     content: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

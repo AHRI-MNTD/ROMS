@@ -931,6 +931,12 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
   const handlePanelSignoff = (role: string) => {
     if (!selectedSopForReview) return;
 
+    // GATE: Sign-off is only allowed once the SOP has been formally sent to Panel Review
+    if (selectedSopForReview.status.toUpperCase() !== "PANEL REVIEW") {
+      alert("Sign-off is not allowed yet. Please click 'Send for Panel Review' first to formally initiate the panel sign-off process.");
+      return;
+    }
+
     const roleKeyMap: Record<string, string> = {
       "Verifier (User)": "verifierUser",
       "Verifier (QO)": "verifierQo",
@@ -951,6 +957,20 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
         verifierQo: { name: "QA Officer", signedAt: "" },
         authorizerLm: { name: updatedSop.details?.proposedAuthorizer || "Laboratory Manager", signedAt: "" }
       };
+    }
+
+    // GATE: Authorizer (LM) can only sign off after both Verifier (User) and Verifier (QO) have signed
+    if (role === "Authorizer (LM)") {
+      const currentEs = updatedSop.details.electronicSignatures;
+      const userVerified = !!currentEs.verifierUser?.signedAt;
+      const qoVerified = !!currentEs.verifierQo?.signedAt;
+      if (!userVerified || !qoVerified) {
+        const missing: string[] = [];
+        if (!userVerified) missing.push("Verifier (User)");
+        if (!qoVerified) missing.push("Verifier (QO)");
+        alert(`Authorizer (LM) sign-off requires both verifiers to sign first.\n\nStill awaiting: ${missing.join(" and ")}.`);
+        return;
+      }
     }
 
     // Mark as approved by this verifier/authorizer
@@ -1592,24 +1612,77 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
                       {isReviewable && (
                         <div style={{ borderTop: "1px solid var(--color-border)", marginTop: 6, paddingTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <label style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-primary)" }}>SIGN OFF AS ROLE:</label>
-                            <select
-                              value={panelRole}
-                              onChange={(e) => setPanelRole(e.target.value)}
-                              style={{ ...selectStyle, width: "100%", padding: "6px", background: "#ffffff", borderColor: "var(--color-primary)" }}
-                            >
-                              <option value="Verifier (User)">Verifier (User) - compliance with practice</option>
-                              <option value="Verifier (QO)">Verifier (QO) - compliance with standard</option>
-                              <option value="Authorizer (LM)">Authorizer (LM) - line manager approval</option>
-                            </select>
-                          </div>
-                          <button
-                            onClick={() => handlePanelSignoff(panelRole)}
-                            style={{ ...btnBaseStyle, width: "100%", background: "var(--color-primary)", color: "#ffffff", padding: "8px", justifyContent: "center" }}
-                          >
-                            Sign-off & Approve
-                          </button>
+                          {selectedSopForReview.status.toUpperCase() === "PANEL REVIEW" ? (
+                            // UNLOCKED: SOP is in Panel Review — sign-offs are allowed
+                            (() => {
+                              const currentEs = selectedSopForReview.details?.electronicSignatures;
+                              const userVerified = !!currentEs?.verifierUser?.signedAt;
+                              const qoVerified = !!currentEs?.verifierQo?.signedAt;
+                              const bothVerifiersSigned = userVerified && qoVerified;
+                              const isAuthorizerSelected = panelRole === "Authorizer (LM)";
+                              const authorizerBlocked = isAuthorizerSelected && !bothVerifiersSigned;
+
+                              return (
+                                <>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                    <label style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-primary)" }}>SIGN OFF AS ROLE:</label>
+                                    <select
+                                      value={panelRole}
+                                      onChange={(e) => setPanelRole(e.target.value)}
+                                      style={{ ...selectStyle, width: "100%", padding: "6px", background: "#ffffff", borderColor: "var(--color-primary)" }}
+                                    >
+                                      <option value="Verifier (User)" disabled={userVerified}>
+                                        Verifier (User) - compliance with practice{userVerified ? " ✅" : ""}
+                                      </option>
+                                      <option value="Verifier (QO)" disabled={qoVerified}>
+                                        Verifier (QO) - compliance with standard{qoVerified ? " ✅" : ""}
+                                      </option>
+                                      <option value="Authorizer (LM)" disabled={!bothVerifiersSigned}>
+                                        Authorizer (LM) - line manager approval{!bothVerifiersSigned ? " 🔒" : ""}
+                                      </option>
+                                    </select>
+                                  </div>
+
+                                  {authorizerBlocked && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px", background: "#fef3c7", border: "1px dashed #f59e0b", borderRadius: 6 }}>
+                                      <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#b45309" }}>
+                                        ⏳ Awaiting Verifier Sign-offs
+                                      </span>
+                                      <span style={{ fontSize: "10px", color: "#78350f", lineHeight: 1.4 }}>
+                                        Authorizer (LM) can only sign off after both {!userVerified && <strong>Verifier (User)</strong>}{!userVerified && !qoVerified && " and "}{!qoVerified && <strong>Verifier (QO)</strong>} {!userVerified && !qoVerified ? "have" : "has"} signed.
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <button
+                                    onClick={() => handlePanelSignoff(panelRole)}
+                                    disabled={authorizerBlocked}
+                                    style={{
+                                      ...btnBaseStyle,
+                                      width: "100%",
+                                      background: authorizerBlocked ? "#d1d5db" : "var(--color-primary)",
+                                      color: authorizerBlocked ? "#9ca3af" : "#ffffff",
+                                      padding: "8px",
+                                      justifyContent: "center",
+                                      cursor: authorizerBlocked ? "not-allowed" : "pointer"
+                                    }}
+                                  >
+                                    🖋️ Sign-off & Approve
+                                  </button>
+                                </>
+                              );
+                            })()
+                          ) : (
+                            // LOCKED: SOP must be sent to Panel Review first
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px", background: "#fef3c7", border: "1px dashed #f59e0b", borderRadius: 6 }}>
+                              <span style={{ fontSize: "11px", fontWeight: 700, color: "#b45309", display: "flex", alignItems: "center", gap: 6 }}>
+                                🔒 Sign-off Locked
+                              </span>
+                              <span style={{ fontSize: "10.5px", color: "#78350f", lineHeight: 1.5 }}>
+                                Digital sign-offs are only available after the document has been formally sent to <strong>Panel Review</strong>. Click the <strong>"👥 Send for Panel Review"</strong> button above to unlock sign-offs.
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
