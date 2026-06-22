@@ -12,8 +12,10 @@ interface LoginResponse {
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -22,12 +24,19 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const resp = await apiClient.post<LoginResponse>("/auth/login", { email, password });
-      const { accessToken, refreshToken, user } = resp.data;
-      login(user, accessToken, refreshToken);
-      navigate("/");
-    } catch {
-      setError("Invalid email or password. Try scientist@roms.dev / password123");
+      if (isSignUp) {
+        const resp = await apiClient.post<LoginResponse>("/auth/register", { email, password, displayName });
+        const { accessToken, refreshToken, user } = resp.data;
+        login(user, accessToken, refreshToken);
+        navigate("/domains/hr/recruitment-onboarding/training-records");
+      } else {
+        const resp = await apiClient.post<LoginResponse>("/auth/login", { email, password });
+        const { accessToken, refreshToken, user } = resp.data;
+        login(user, accessToken, refreshToken);
+        navigate("/");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Authentication failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -53,7 +62,7 @@ export default function LoginPage() {
           boxShadow: "var(--shadow-md)",
         }}
       >
-        <div style={{ marginBottom: 28 }}>
+        <div style={{ marginBottom: 20 }}>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -69,13 +78,79 @@ export default function LoginPage() {
           </div>
         </div>
 
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, borderBottom: "1px solid var(--color-border)" }}>
+          <button
+            type="button"
+            onClick={() => { setIsSignUp(false); setError(""); }}
+            style={{
+              flex: 1,
+              padding: "10px",
+              background: "none",
+              border: "none",
+              borderBottom: !isSignUp ? "2px solid var(--color-primary)" : "none",
+              color: !isSignUp ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: 600,
+              fontSize: "var(--fs-xs)",
+              cursor: "pointer",
+            }}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsSignUp(true); setError(""); }}
+            style={{
+              flex: 1,
+              padding: "10px",
+              background: "none",
+              border: "none",
+              borderBottom: isSignUp ? "2px solid var(--color-primary)" : "none",
+              color: isSignUp ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: 600,
+              fontSize: "var(--fs-xs)",
+              cursor: "pointer",
+            }}
+          >
+            Sign Up
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit}>
+          {isSignUp && (
+            <div style={{ marginBottom: 14 }}>
+              <label
+                htmlFor="displayName"
+                style={{ display: "block", fontSize: "var(--fs-xs)", fontWeight: 600, marginBottom: 4, color: "var(--color-text-muted)" }}
+              >
+                Full Name
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                required
+                placeholder="Jane Doe"
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text)",
+                  fontSize: "var(--fs-base)",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+          )}
+
           <div style={{ marginBottom: 14 }}>
             <label
               htmlFor="email"
               style={{ display: "block", fontSize: "var(--fs-xs)", fontWeight: 600, marginBottom: 4, color: "var(--color-text-muted)" }}
             >
-              Email
+              Email Address
             </label>
             <input
               id="email"
@@ -83,7 +158,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="scientist@roms.dev"
+              placeholder="jane.doe@roms.dev"
               style={{
                 width: "100%",
                 padding: "8px 10px",
@@ -155,12 +230,16 @@ export default function LoginPage() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? (isSignUp ? "Creating account…" : "Signing in…") : (isSignUp ? "Sign Up" : "Sign In")}
           </button>
         </form>
 
         <div style={{ marginTop: 20, fontSize: "var(--fs-xs)", color: "var(--color-text-faint)" }}>
-          Demo: <code>scientist@roms.dev</code> / <code>password123</code>
+          {!isSignUp ? (
+            <>Demo: <code>scientist@roms.dev</code> / <code>password123</code></>
+          ) : (
+            <>Please sign up with your work or personal email address.</>
+          )}
         </div>
       </div>
     </div>

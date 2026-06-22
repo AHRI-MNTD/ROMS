@@ -8,6 +8,56 @@ import { logger } from "../utils/logger";
 
 const router = Router();
 
+// POST /auth/register
+router.post("/register", async (req: Request, res: Response) => {
+  const { email, password, displayName } = req.body;
+  if (!email || !password || !displayName) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Email, password, and display name are required" });
+    return;
+  }
+
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      res.status(400).json({ code: "EMAIL_TAKEN", message: "Email is already registered" });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        email,
+        hashedPassword,
+        displayName,
+        roles: [],
+      },
+    });
+
+    const accessToken = signAccessToken({
+      sub: user.id,
+      email: user.email,
+      roles: user.roles,
+    });
+    const refreshToken = signRefreshToken(user.id);
+
+    logger.info({ userId: user.id, email: user.email }, "User registered");
+
+    res.status(201).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        roles: user.roles,
+      },
+    });
+  } catch (err) {
+    logger.error(err, "Register error");
+    res.status(500).json({ code: "INTERNAL_ERROR", message: "Registration failed" });
+  }
+});
+
 // POST /auth/login
 router.post("/login", async (req: Request, res: Response) => {
   const parsed = LoginSchema.safeParse(req.body);
@@ -105,6 +155,32 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
   } catch (err) {
     logger.error(err, "/me error");
     res.status(500).json({ code: "INTERNAL_ERROR", message: "Failed to fetch user" });
+  }
+});
+
+// PATCH /auth/users/:id/roles
+router.patch("/users/:id/roles", requireAuth, async (req: Request, res: Response) => {
+  if (!req.user?.roles.includes("ADMIN")) {
+    res.status(403).json({ code: "FORBIDDEN", message: "Only administrators can modify roles" });
+    return;
+  }
+
+  const { roles } = req.body;
+  if (!Array.isArray(roles)) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "roles must be an array of strings" });
+    return;
+  }
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { roles },
+      select: { id: true, email: true, displayName: true, roles: true }
+    });
+    res.json(updated);
+  } catch (err) {
+    logger.error(err, "Update roles error");
+    res.status(500).json({ code: "INTERNAL_ERROR", message: "Failed to update user roles" });
   }
 });
 

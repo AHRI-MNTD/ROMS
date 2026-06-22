@@ -1,11 +1,12 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { Badge, Button, Card } from "@roms/ui";
 import { apiClient } from "../api/client";
 
 type ControlUser = {
   id: string;
+  userId: string;
   displayName: string;
   email: string;
   department: string;
@@ -94,6 +95,28 @@ function clonePermissions(source: PermissionState): PermissionState {
 }
 
 function buildPermissionState(user: ControlUser): PermissionState {
+  if (user.role === "ADMIN") {
+    const seed = ROLE_SEEDS.ADMIN ?? {};
+    return Object.fromEntries(
+      DOMAIN_CATALOG.map((domain) => {
+        const rights = seed[domain.slug] ?? [];
+        return [domain.slug, new Set(rights)];
+      })
+    ) as PermissionState;
+  }
+
+  // New/Staff approved users start with exactly and only Training Records under hr
+  if (user.role === "STAFF" || !ROLE_SEEDS[user.role]) {
+    return Object.fromEntries(
+      DOMAIN_CATALOG.map((domain) => {
+        if (domain.slug === "hr") {
+          return ["hr", new Set(["Training Records"])];
+        }
+        return [domain.slug, new Set()];
+      })
+    ) as PermissionState;
+  }
+
   const seed = ROLE_SEEDS[user.role] ?? {};
   return Object.fromEntries(
     DOMAIN_CATALOG.map((domain) => {
@@ -139,15 +162,20 @@ export default function UserRightsControlPage() {
   // Map API response to ControlUser[]
   const users: ControlUser[] = React.useMemo(() => {
     if (!approvedData?.data) return [];
-    return (approvedData.data as any[]).map((profile: any) => ({
-      id: profile.id,
-      displayName: profile.user?.displayName ?? "—",
-      email: profile.user?.email ?? "—",
-      department: profile.department ?? "—",
-      jobTitle: profile.jobTitle ?? "—",
-      role: (profile.user?.roles?.[0] ?? profile.jobTitle ?? "STAFF").toUpperCase().replace(/\s+/g, "_"),
-      startDate: profile.startDate ?? profile.createdAt ?? "",
-    }));
+    return (approvedData.data as any[]).map((profile: any) => {
+      const userRoles = profile.user?.roles ?? [];
+      const primaryRole = userRoles.length > 0 ? userRoles[0] : "STAFF";
+      return {
+        id: profile.id,
+        userId: profile.user?.id ?? "",
+        displayName: profile.user?.displayName ?? "—",
+        email: profile.user?.email ?? "—",
+        department: profile.department ?? "—",
+        jobTitle: profile.jobTitle ?? "—",
+        role: primaryRole.toUpperCase().replace(/\s+/g, "_"),
+        startDate: profile.startDate ?? profile.createdAt ?? "",
+      };
+    });
   }, [approvedData]);
 
   const [assignments, setAssignments] = React.useState<Record<string, PermissionState>>({});
@@ -199,6 +227,9 @@ export default function UserRightsControlPage() {
     });
   }, [matrixRows, searchQuery, roleFilter]);
 
+  const queryClient = useQueryClient();
+  const [selectedRole, setSelectedRole] = React.useState<string>("STAFF");
+
   const allRoles = React.useMemo(
     () => Array.from(new Set(users.map((u) => u.role))).sort(),
     [users]
@@ -207,6 +238,7 @@ export default function UserRightsControlPage() {
   const openEditor = (user: ControlUser) => {
     const current = assignments[user.id] ?? buildPermissionState(user);
     setEditorUserId(user.id);
+    setSelectedRole(user.role);
     setDraftPermissions(clonePermissions(current));
     setReviewOpen(false);
     setStatusMessage(null);
@@ -242,15 +274,23 @@ export default function UserRightsControlPage() {
     setReviewOpen(true);
   };
 
-  const confirmSave = () => {
+  const confirmSave = async () => {
     if (!activeUser || !draftPermissions) {
       return;
     }
-    setAssignments((current) => ({
-      ...current,
-      [activeUser.id]: clonePermissions(draftPermissions),
-    }));
-    setStatusMessage(`Saved rights for ${activeUser.displayName}`);
+    try {
+      await apiClient.patch(`/auth/users/${activeUser.userId}/roles`, {
+        roles: selectedRole === "STAFF" ? [] : [selectedRole],
+      });
+      setAssignments((current) => ({
+        ...current,
+        [activeUser.id]: clonePermissions(draftPermissions),
+      }));
+      setStatusMessage(`Saved rights and assigned role ${selectedRole} for ${activeUser.displayName}`);
+      queryClient.invalidateQueries({ queryKey: ["hr-approved-staff"] });
+    } catch (err) {
+      setStatusMessage("Failed to update user roles on server.");
+    }
     closeEditor();
   };
 
@@ -488,8 +528,55 @@ export default function UserRightsControlPage() {
                   <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)", marginBottom: 6 }}>
                     {activeUser.displayName}
                   </div>
-                  <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+                  <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6, marginBottom: 12 }}>
                     {activeUser.jobTitle} · {activeUser.department} · {activeUser.email}
+                  </div>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>Assigned Role:</span>
+                    <select
+                      value={selectedRole}
+                      onChange={(e) => {
+                        const newRole = e.target.value;
+                        setSelectedRole(newRole);
+                        
+                        const seed = ROLE_SEEDS[newRole] ?? {};
+                        const newPerms = Object.fromEntries(
+                          DOMAIN_CATALOG.map((domain) => {
+                            if (newRole === "STAFF") {
+                              if (domain.slug === "hr") {
+                                return ["hr", new Set(["Training Records"])];
+                              }
+                              return [domain.slug, new Set()];
+                            }
+                            const rights = seed[domain.slug] ?? [];
+                            const allowedRights = (DOMAIN_RIGHTS[domain.slug] ?? []).filter((right) => rights.includes(right));
+                            return [domain.slug, new Set(allowedRights)];
+                          })
+                        ) as PermissionState;
+                        setDraftPermissions(newPerms);
+                      }}
+                      style={{
+                        padding: "6px 28px 6px 10px",
+                        fontSize: "var(--fs-xs)", borderRadius: 10,
+                        border: "1px solid rgba(1,105,111,0.18)",
+                        background: "rgba(255,255,255,0.85)",
+                        color: "var(--color-text)",
+                        outline: "none", cursor: "pointer",
+                        appearance: "none",
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "right 8px center",
+                      }}
+                    >
+                      <option value="STAFF">Staff (Restricted Onboarding)</option>
+                      <option value="LAB_SCIENTIST">Lab Scientist</option>
+                      <option value="DATA_MANAGER">Data Manager</option>
+                      <option value="RESEARCH_ADMIN">Research Admin</option>
+                      <option value="PRINCIPAL_INVESTIGATOR">Principal Investigator</option>
+                      <option value="QA_OFFICER">QA Officer</option>
+                      <option value="COMMUNITY_ENGAGEMENT">Community Engagement</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
@@ -585,7 +672,7 @@ export default function UserRightsControlPage() {
                 Are you sure you want to give these rights to {activeUser.displayName}?
               </div>
               <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-                Confirming will apply {listSelectedRights(draftPermissions).length} selected privilege{listSelectedRights(draftPermissions).length === 1 ? "" : "s"} to this staff user.
+                Confirming will assign the <strong style={{ color: "var(--color-primary)" }}>{selectedRole.replace(/_/g, " ")}</strong> role and apply {listSelectedRights(draftPermissions).length} selected privilege{listSelectedRights(draftPermissions).length === 1 ? "" : "s"} to this staff user.
               </div>
             </div>
             <div style={{ padding: 20, maxHeight: 420, overflowY: "auto" }}>

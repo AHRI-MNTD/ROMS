@@ -17,6 +17,8 @@ export default function CurrentInventoryPage() {
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [isSyncing, setIsSyncing] = React.useState(false);
+  const [isExportHovered, setIsExportHovered] = React.useState(false);
+  const [isSyncHovered, setIsSyncHovered] = React.useState(false);
 
   const handleSyncGoogleSheets = async () => {
     setIsSyncing(true);
@@ -221,15 +223,15 @@ export default function CurrentInventoryPage() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {/* Summary stat badges */}
-            <div style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(180, 83, 9, 0.18)", background: "linear-gradient(180deg, rgba(180, 83, 9, 0.06), rgba(255,255,255,0.95))", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <div style={{ padding: "6px 4px", display: "inline-flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Low Stock</span>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#92400e", fontWeight: 800 }}>{lowStockCount}</span>
             </div>
-            <div style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(153, 27, 27, 0.18)", background: "linear-gradient(180deg, rgba(153, 27, 27, 0.06), rgba(255,255,255,0.95))", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <div style={{ padding: "6px 4px", display: "inline-flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Out of Stock</span>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#991b1b", fontWeight: 800 }}>{outOfStockCount}</span>
             </div>
-            <div style={{ padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(12, 78, 84, 0.18)", background: "linear-gradient(180deg, rgba(12, 78, 84, 0.06), rgba(255,255,255,0.95))", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <div style={{ padding: "6px 4px", display: "inline-flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Total Stock</span>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
             </div>
@@ -238,12 +240,19 @@ export default function CurrentInventoryPage() {
 
             <button
               onClick={handleExportCSV}
+              onMouseEnter={() => setIsExportHovered(true)}
+              onMouseLeave={() => setIsExportHovered(false)}
               style={{
                 ...quickLinkStyle,
                 cursor: "pointer",
-                border: "1px solid rgba(22, 101, 52, 0.25)",
-                background: "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))",
+                border: isExportHovered ? "1px solid rgba(22, 101, 52, 0.25)" : "1px solid transparent",
+                background: isExportHovered 
+                  ? "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))"
+                  : "transparent",
+                boxShadow: isExportHovered ? "0 10px 22px rgba(16, 24, 40, 0.06)" : "none",
                 color: "#15803d",
+                transform: isExportHovered ? "translateY(-1px)" : "none",
+                transition: "all 0.2s ease",
               }}
             >
               📥 Export CSV
@@ -252,12 +261,25 @@ export default function CurrentInventoryPage() {
               <button
                 onClick={handleSyncGoogleSheets}
                 disabled={isSyncing}
+                onMouseEnter={() => setIsSyncHovered(true)}
+                onMouseLeave={() => setIsSyncHovered(false)}
                 style={{
                   ...quickLinkStyle,
                   cursor: isSyncing ? "not-allowed" : "pointer",
-                  border: "1px solid rgba(59, 130, 246, 0.25)",
-                  background: "linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.95))",
+                  border: isSyncing 
+                    ? "1px solid rgba(59, 130, 246, 0.25)" 
+                    : isSyncHovered 
+                      ? "1px solid rgba(59, 130, 246, 0.25)" 
+                      : "1px solid transparent",
+                  background: isSyncing 
+                    ? "rgba(219, 234, 254, 0.95)"
+                    : isSyncHovered 
+                      ? "linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.95))"
+                      : "transparent",
+                  boxShadow: isSyncing || isSyncHovered ? "0 10px 22px rgba(16, 24, 40, 0.06)" : "none",
                   color: "#1d4ed8",
+                  transform: isSyncHovered && !isSyncing ? "translateY(-1px)" : "none",
+                  transition: "all 0.2s ease",
                 }}
               >
                 {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}

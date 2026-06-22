@@ -14,7 +14,7 @@ router.get("/staff", requireAuth, requirePermission("hr:read"), async (req, res)
       skip: (page - 1) * 20,
       take: 20,
       include: {
-        user: { select: { displayName: true, email: true, roles: true } },
+        user: { select: { id: true, displayName: true, email: true, roles: true } },
         reviewedBy: { select: { displayName: true, email: true } },
       },
       orderBy: { department: "asc" },
@@ -30,7 +30,7 @@ router.get("/approvals", requireAuth, requirePermission("hr:read"), async (req, 
   const data = await prisma.staffProfile.findMany({
     where,
     include: {
-      user: { select: { displayName: true, email: true, roles: true } },
+      user: { select: { id: true, displayName: true, email: true, roles: true } },
       reviewedBy: { select: { displayName: true, email: true } },
     },
     orderBy: [{ approvalStatus: "asc" }, { updatedAt: "desc" }],
@@ -93,7 +93,7 @@ router.patch("/approvals/:id", requireAuth, requirePermission("hr:write"), audit
         reviewNote: parsed.data.reviewNote?.trim() || null,
       },
       include: {
-        user: { select: { displayName: true, email: true, roles: true } },
+        user: { select: { id: true, displayName: true, email: true, roles: true } },
         reviewedBy: { select: { displayName: true, email: true } },
       },
     });
