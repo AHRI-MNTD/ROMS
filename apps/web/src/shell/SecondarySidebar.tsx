@@ -1,6 +1,8 @@
 import React from "react";
 import { useLocation, NavLink } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
+import { useAuth } from "../auth/useAuth";
+import { hasSubfunctionAccess } from "../auth/permissions";
 
 export const slugify = (text: string) =>
   text
@@ -9,6 +11,7 @@ export const slugify = (text: string) =>
     .replace(/(^-|-$)/g, "");
 
 export const SecondarySidebar: React.FC = () => {
+  const { user } = useAuth();
   const location = useLocation();
 
   // Find the domain slug from pathname /domains/:slug/...
@@ -58,49 +61,51 @@ export const SecondarySidebar: React.FC = () => {
       </div>
 
       <div style={{ padding: "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {domain.subfunctions.map((sub, idx) => {
-          const subSlug = slugify(sub.name);
-          const path = `/domains/${domain.slug}/${subSlug}`;
+        {domain.subfunctions
+          .filter((sub) => hasSubfunctionAccess(user?.roles, domain.slug, slugify(sub.name), user?.permissions))
+          .map((sub, idx) => {
+            const subSlug = slugify(sub.name);
+            const path = `/domains/${domain.slug}/${subSlug}`;
 
-          return (
-            <NavLink
-              key={subSlug}
-              to={path}
-              style={({ isActive }) => ({
-                display: "flex",
-                flexDirection: "column",
-                padding: "8px 10px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "var(--fs-sm)",
-                color: isActive ? "var(--color-primary)" : "var(--color-text)",
-                background: isActive ? "var(--color-primary-highlight)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
-                textDecoration: "none",
-                transition: "background 0.12s, color 0.12s",
-              })}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    fontSize: "var(--fs-xs)",
-                    fontWeight: 700,
-                    width: 18,
-                    height: 18,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "var(--color-surface-offset)",
-                    borderRadius: "var(--radius-sm)",
-                    opacity: 0.8,
-                  }}
-                >
-                  {idx + 1}
-                </span>
-                <span style={{ flex: 1, lineHeight: 1.3 }}>{sub.name}</span>
-              </div>
-            </NavLink>
-          );
-        })}
+            return (
+              <NavLink
+                key={subSlug}
+                to={path}
+                style={({ isActive }) => ({
+                  display: "flex",
+                  flexDirection: "column",
+                  padding: "8px 10px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "var(--fs-sm)",
+                  color: isActive ? "var(--color-primary)" : "var(--color-text)",
+                  background: isActive ? "var(--color-primary-highlight)" : "transparent",
+                  fontWeight: isActive ? 600 : 400,
+                  textDecoration: "none",
+                  transition: "background 0.12s, color 0.12s",
+                })}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 700,
+                      width: 18,
+                      height: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "var(--color-surface-offset)",
+                      borderRadius: "var(--radius-sm)",
+                      opacity: 0.8,
+                    }}
+                  >
+                    {idx + 1}
+                  </span>
+                  <span style={{ flex: 1, lineHeight: 1.3 }}>{sub.name}</span>
+                </div>
+              </NavLink>
+            );
+          })}
       </div>
     </div>
   );

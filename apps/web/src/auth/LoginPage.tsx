@@ -6,7 +6,7 @@ import { useAuth } from "./useAuth";
 interface LoginResponse {
   accessToken: string;
   refreshToken: string;
-  user: { id: string; email: string; displayName: string; roles: string[] };
+  user: { id: string; email: string; displayName: string; roles: string[]; permissions: string[] };
 }
 
 export default function LoginPage() {

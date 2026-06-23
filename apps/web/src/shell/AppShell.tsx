@@ -1,15 +1,25 @@
 import React from "react";
-import { Outlet, Navigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { Topbar } from "./Topbar";
 import { Sidebar } from "./Sidebar";
 import { SecondarySidebar } from "./SecondarySidebar";
 import { useAuth } from "../auth/useAuth";
+import { hasPathAccess, isApprovedUser } from "../auth/permissions";
 
 export const AppShell: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const location = useLocation();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!hasPathAccess(user?.roles, location.pathname, user?.permissions)) {
+    if (!isApprovedUser(user?.roles, user?.permissions)) {
+      return <Navigate to="/domains/hr/recruitment-onboarding/training-records" replace />;
+    } else {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return (

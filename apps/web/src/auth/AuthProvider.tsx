@@ -11,7 +11,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       apiClient
         .get("/auth/me")
         .then((resp) => {
-          const user = resp.data as { id: string; email: string; displayName: string; roles: string[] };
+          const user = resp.data as { id: string; email: string; displayName: string; roles: string[]; permissions: string[] };
           login(user, accessToken, localStorage.getItem("roms-refresh-token") ?? "");
         })
         .catch(() => {

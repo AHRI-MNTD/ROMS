@@ -1,5 +1,7 @@
 import React from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../../../auth/useAuth";
+import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
   { to: "dashboard", label: "Dashboard" },
@@ -65,6 +67,9 @@ function useActiveMeta(): PageMeta {
 
 export default function HRLayout() {
   const meta = useActiveMeta();
+  const { user } = useAuth();
+
+  const visibleTabs = tabs.filter((tab) => hasTabAccess(user?.roles, "hr", tab.to, user?.permissions));
 
   return (
     <div style={{ padding: "24px 28px", maxWidth: 1400 }}>
@@ -103,7 +108,7 @@ export default function HRLayout() {
 
         {/* Nav tabs */}
         <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }} aria-label="Personnel sections">
-          {tabs.map((tab) => (
+          {visibleTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}

@@ -1,6 +1,8 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
+import { useAuth } from "../auth/useAuth";
+import { hasDomainAccess, isApprovedUser } from "../auth/permissions";
 
 interface NavItem {
   label: string;
@@ -15,6 +17,22 @@ const topNav: NavItem[] = [
 ];
 
 export const Sidebar: React.FC = () => {
+  const { user } = useAuth();
+
+  const visibleTopNav = topNav.filter((item) => {
+    if (item.path === "/") {
+      return isApprovedUser(user?.roles, user?.permissions);
+    }
+    if (item.path === "/architecture" || item.path === "/operations") {
+      return user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) || user?.permissions.includes("admin:all");
+    }
+    return true;
+  });
+
+  const visibleDomains = DOMAIN_CATALOG.filter((domain) =>
+    hasDomainAccess(user?.roles, domain.slug, user?.permissions)
+  );
+
   return (
     <nav
       style={{
@@ -42,7 +60,7 @@ export const Sidebar: React.FC = () => {
         >
           Main
         </div>
-        {topNav.map((item) => (
+        {visibleTopNav.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -84,7 +102,7 @@ export const Sidebar: React.FC = () => {
         >
           Domains
         </div>
-        {DOMAIN_CATALOG.map((domain) => (
+        {visibleDomains.map((domain) => (
           <NavLink
             key={domain.slug}
             to={`/domains/${domain.slug}`}
@@ -132,7 +150,8 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </div>
-        {/* User rights / admin control at bottom */}
+      {/* User rights / admin control at bottom */}
+      {(user?.roles.includes("ADMIN") || user?.permissions?.includes("admin:all")) && (
         <div style={{ marginTop: "auto", padding: "8px", borderTop: "1px solid var(--color-divider)" }}>
           <NavLink
             to="/admin/user-rights"
@@ -179,6 +198,7 @@ export const Sidebar: React.FC = () => {
             </span>
           </NavLink>
         </div>
+      )}
     </nav>
   );
 };

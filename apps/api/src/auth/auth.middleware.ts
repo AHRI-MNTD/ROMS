@@ -10,6 +10,7 @@ declare global {
         id: string;
         email: string;
         roles: Role[];
+        permissions: string[];
       };
     }
   }
@@ -29,6 +30,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
       id: payload.sub,
       email: payload.email,
       roles: payload.roles as Role[],
+      permissions: payload.permissions || [],
     };
     next();
   } catch {
@@ -57,8 +59,44 @@ export function requirePermission(action: DomainAction) {
       res.status(401).json({ code: "UNAUTHORIZED", message: "Not authenticated" });
       return;
     }
-    const allowed = req.user.roles.some((r) => hasPermission(r as Role, action));
-    if (!allowed) {
+    const hasRolePermission = req.user.roles.some((r) => hasPermission(r as Role, action));
+    
+    // Map custom domain-level right names (e.g. "inventory:Check In") to backend read/write permissions
+    const expandedPermissions = (req.user.permissions || []).flatMap((perm) => {
+      if (perm === "admin:all") return ["admin:all"];
+      
+      const parts = perm.split(":");
+      if (parts.length !== 2) return [perm];
+      
+      const [domain, right] = parts;
+      const mapped: string[] = [];
+      
+      // Having any specific right inside a domain grants read access to that domain
+      mapped.push(`${domain}:read`);
+      
+      // Specific rights that involve writing or modifying data
+      const writeRights: Record<string, string[]> = {
+        biospecimen: ["Sample Collection", "Processing", "Storage", "Retrieval", "Disposal"],
+        inventory: ["Check In", "Check Out", "Request/s"],
+        qms: ["Document Control", "Audits", "CAPA", "Training"],
+        "lab-workflow": ["Protocols", "Experiments", "Runs", "Instruments", "Reports"],
+        "data-management": ["Studies", "Metadata", "Data Dictionary", "Exports", "Integrations"],
+        infrastructure: ["Services", "Servers", "Monitoring", "Incidents", "Integrations"],
+        hr: ["Profiles", "Leave", "Onboarding"],
+        finance: ["Grants", "Budgets", "Expenses", "Approvals", "Reports"],
+        participant: ["Participants", "Consent", "Visits", "Engagement", "Follow-up"],
+        regulatory: ["Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting"],
+      };
+      
+      if (writeRights[domain]?.includes(right)) {
+        mapped.push(`${domain}:write`);
+      }
+      
+      return mapped;
+    });
+
+    const hasCustomPermission = expandedPermissions.includes(action) || expandedPermissions.includes("admin:all");
+    if (!hasRolePermission && !hasCustomPermission) {
       res.status(403).json({
         code: "FORBIDDEN",
         message: `Permission '${action}' required`,

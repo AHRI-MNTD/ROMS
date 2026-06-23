@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
+import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
   { to: "dashboard", label: "Dashboard" },
@@ -15,15 +16,8 @@ export default function InventoryLayout() {
   const { user } = useAuth();
   const location = useLocation();
   const activePath = location.pathname.split("/").pop() || "";
-  
-  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
 
-  const visibleTabs = tabs.filter((tab) => {
-    if (!isAdmin) {
-      return ["dashboard", "current-inventory", "check-out", "requests"].includes(tab.to);
-    }
-    return true;
-  });
+  const visibleTabs = tabs.filter((tab) => hasTabAccess(user?.roles, "inventory", tab.to, user?.permissions));
 
   let title = "📦 Lab Inventory & Supply Chain";
   let subtitle = "Manage lab inventory & supply chain records. Showing live data from the ROMS API.";

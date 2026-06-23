@@ -19,6 +19,7 @@ model User {
   hashedPassword String
   displayName    String
   roles          String[]  // Role enum values stored as strings
+  permissions    String[]  @default([]) // Custom granular permissions
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   lastLoginAt    DateTime?

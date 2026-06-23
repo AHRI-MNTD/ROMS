@@ -356,10 +356,10 @@ export default function ApproveEmployeePage() {
   const activeInventory = useMemo(() => {
     if (!selected?.propertyInventory) return [];
     try {
-      const inv = typeof selected.propertyInventory === "string" 
-        ? JSON.parse(selected.propertyInventory) 
+      const inv = typeof selected.propertyInventory === "string"
+        ? JSON.parse(selected.propertyInventory)
         : selected.propertyInventory;
-      
+
       return Object.entries(inv)
         .map(([key, val]: [string, any]) => {
           const typeLabel = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -377,8 +377,8 @@ export default function ApproveEmployeePage() {
   }, [selected]);
 
   const renderRow = (row: ApprovalRow, showActions: boolean, index: number) => (
-    <tr 
-      key={row.id} 
+    <tr
+      key={row.id}
       onClick={() => setSelected(row)}
       style={{ ...rowStyle, cursor: "pointer", transition: "background 0.1s", ...(index === 0 ? { borderTop: "2px solid var(--color-divider)" } : {}) }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
@@ -538,7 +538,7 @@ export default function ApproveEmployeePage() {
           onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}
         >
-          <div style={{ background: "var(--color-surface-2)", borderRadius: 20, border: "1px solid var(--color-border)", width: "100%", maxWidth: 720, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: "var(--color-surface-2)", borderRadius: 20, border: "1px solid var(--color-border)", width: "100%", maxWidth: 820, overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
             {/* Modal Header */}
             <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -555,30 +555,30 @@ export default function ApproveEmployeePage() {
 
             {/* Status Badge */}
             <div style={{ padding: "10px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ 
-                fontSize: "var(--fs-xs)", 
-                fontWeight: 700, 
-                background: selected.approvalStatus === "PENDING" ? "#fef9c3" : selected.approvalStatus === "APPROVED" ? "#dcfce7" : "#fef2f2", 
-                color: selected.approvalStatus === "PENDING" ? "#854d0e" : selected.approvalStatus === "APPROVED" ? "#166534" : "#991b1b", 
-                border: `1px solid ${selected.approvalStatus === "PENDING" ? "#fde047" : selected.approvalStatus === "APPROVED" ? "#86efac" : "#fca5a5"}`, 
-                borderRadius: 999, 
-                padding: "3px 12px" 
+              <span style={{
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                background: selected.approvalStatus === "PENDING" ? "#fef9c3" : selected.approvalStatus === "APPROVED" ? "#dcfce7" : "#fef2f2",
+                color: selected.approvalStatus === "PENDING" ? "#854d0e" : selected.approvalStatus === "APPROVED" ? "#166534" : "#991b1b",
+                border: `1px solid ${selected.approvalStatus === "PENDING" ? "#fde047" : selected.approvalStatus === "APPROVED" ? "#86efac" : "#fca5a5"}`,
+                borderRadius: 999,
+                padding: "3px 12px"
               }}>
                 {selected.approvalStatus === "PENDING" ? "PENDING VERIFICATION" : selected.approvalStatus === "APPROVED" ? "VERIFIED" : "UNVERIFIED"}
               </span>
               {(() => {
                 const emp = formatEmployment(selected.employmentType);
-                const empColor = 
-                  emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } : 
-                  emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                  { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
+                const empColor =
+                  emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
+                    emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
+                      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
                 return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
               })()}
             </div>
 
             {/* Content Details */}
             <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
-              
+
               {/* Section 1: Personal Info */}
               <Section title="Section 1: Personal Details & Contact Information">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -606,17 +606,17 @@ export default function ApproveEmployeePage() {
                   )}
                 </div>
                 <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                  <InfoRow 
-                    label="MNTD Teams" 
-                    value={selected.mntdTeams && selected.mntdTeams.length > 0 
-                      ? selected.mntdTeams.map(t => getTeamLabel(t)).join(", ") 
-                      : "—"} 
+                  <InfoRow
+                    label="MNTD Teams"
+                    value={selected.mntdTeams && selected.mntdTeams.length > 0
+                      ? selected.mntdTeams.map(t => getTeamLabel(t)).join(", ")
+                      : "—"}
                   />
-                  <InfoRow 
-                    label="Projects Involved" 
-                    value={selected.mntdProjectsInvolved && selected.mntdProjectsInvolved.length > 0 
-                      ? selected.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ") 
-                      : "—"} 
+                  <InfoRow
+                    label="Projects Involved"
+                    value={selected.mntdProjectsInvolved && selected.mntdProjectsInvolved.length > 0
+                      ? selected.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ")
+                      : "—"}
                   />
                 </div>
               </Section>
@@ -662,7 +662,7 @@ export default function ApproveEmployeePage() {
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
                     <InfoRow label="Currently Studying?" value={selected.currentlyStudying ? "Yes" : "No"} />
-                    
+
                     {selected.currentlyStudying && (
                       <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6, paddingLeft: 10, borderLeft: "2px solid var(--color-border)" }}>
                         {selected.studyMastersField && (
@@ -746,18 +746,18 @@ export default function ApproveEmployeePage() {
                     />
                   </label>
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDecision(selected.id, "REJECTED")} 
-                      disabled={approveMutation.isPending} 
+                    <button
+                      type="button"
+                      onClick={() => handleDecision(selected.id, "REJECTED")}
+                      disabled={approveMutation.isPending}
                       style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
                     >
                       ✕ Decline Verification
                     </button>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDecision(selected.id, "APPROVED")} 
-                      disabled={approveMutation.isPending} 
+                    <button
+                      type="button"
+                      onClick={() => handleDecision(selected.id, "APPROVED")}
+                      disabled={approveMutation.isPending}
                       style={{ background: "#059669", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
                     >
                       ✓ Verify & Authorize

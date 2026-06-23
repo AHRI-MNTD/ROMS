@@ -391,10 +391,10 @@ export default function ApprovedPage() {
   const activeInventory = useMemo(() => {
     if (!selected?.propertyInventory) return [];
     try {
-      const inv = typeof selected.propertyInventory === "string" 
-        ? JSON.parse(selected.propertyInventory) 
+      const inv = typeof selected.propertyInventory === "string"
+        ? JSON.parse(selected.propertyInventory)
         : selected.propertyInventory;
-      
+
       return Object.entries(inv)
         .map(([key, val]: [string, any]) => {
           const typeLabel = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -490,11 +490,11 @@ export default function ApprovedPage() {
               <tbody>
                 {filtered.map((row, i) => {
                   const empLabel = formatEmployment(row.employmentType);
-                  const empColor = 
-                    empLabel === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } : 
-                    empLabel === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } : 
-                    empLabel === "MSc Student" ? { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" } :
-                    { bg: "transparent", text: "var(--color-text-muted)", border: "transparent" };
+                  const empColor =
+                    empLabel === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
+                      empLabel === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
+                        empLabel === "MSc Student" ? { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" } :
+                          { bg: "transparent", text: "var(--color-text-muted)", border: "transparent" };
                   return (
                     <tr
                       key={row.id}
@@ -533,7 +533,7 @@ export default function ApprovedPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}
         >
-          <div style={{ background: "var(--color-surface-2)", borderRadius: 20, border: "1px solid var(--color-border)", width: "100%", maxWidth: 720, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: "var(--color-surface-2)", borderRadius: 20, border: "1px solid var(--color-border)", width: "100%", maxWidth: 820, overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
             {/* Modal Header */}
             <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -553,10 +553,10 @@ export default function ApprovedPage() {
               <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
               {(() => {
                 const emp = formatEmployment(selected.employmentType);
-                const empColor = 
-                  emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } : 
-                  emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                  { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
+                const empColor =
+                  emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
+                    emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
+                      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
                 return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
               })()}
             </div>
@@ -596,17 +596,17 @@ export default function ApprovedPage() {
                   )}
                 </div>
                 <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                  <InfoRow 
-                    label="MNTD Teams" 
-                    value={selected.mntdTeams && selected.mntdTeams.length > 0 
-                      ? selected.mntdTeams.map(t => getTeamLabel(t)).join(", ") 
-                      : "—"} 
+                  <InfoRow
+                    label="MNTD Teams"
+                    value={selected.mntdTeams && selected.mntdTeams.length > 0
+                      ? selected.mntdTeams.map(t => getTeamLabel(t)).join(", ")
+                      : "—"}
                   />
-                  <InfoRow 
-                    label="Projects Involved" 
-                    value={selected.mntdProjectsInvolved && selected.mntdProjectsInvolved.length > 0 
-                      ? selected.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ") 
-                      : "—"} 
+                  <InfoRow
+                    label="Projects Involved"
+                    value={selected.mntdProjectsInvolved && selected.mntdProjectsInvolved.length > 0
+                      ? selected.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ")
+                      : "—"}
                   />
                 </div>
               </Section>
@@ -652,7 +652,7 @@ export default function ApprovedPage() {
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
                     <InfoRow label="Currently Studying?" value={selected.currentlyStudying ? "Yes" : "No"} />
-                    
+
                     {selected.currentlyStudying && (
                       <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6, paddingLeft: 10, borderLeft: "2px solid var(--color-border)" }}>
                         {selected.studyMastersField && (

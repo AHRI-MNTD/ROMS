@@ -13,6 +13,7 @@ type ControlUser = {
   jobTitle: string;
   role: string;
   startDate: string;
+  permissions: string[];
 };
 
 type PermissionState = Record<string, Set<string>>;
@@ -95,6 +96,27 @@ function clonePermissions(source: PermissionState): PermissionState {
 }
 
 function buildPermissionState(user: ControlUser): PermissionState {
+  if (user.permissions && user.permissions.length > 0) {
+    const state: PermissionState = Object.fromEntries(
+      DOMAIN_CATALOG.map((domain) => [domain.slug, new Set<string>()])
+    ) as PermissionState;
+
+    for (const perm of user.permissions) {
+      if (perm === "admin:all") {
+        for (const domain of DOMAIN_CATALOG) {
+          const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
+          rights.forEach((r) => state[domain.slug].add(r));
+        }
+      } else {
+        const [domainSlug, rightName] = perm.split(":");
+        if (domainSlug && rightName && state[domainSlug]) {
+          state[domainSlug].add(rightName);
+        }
+      }
+    }
+    return state;
+  }
+
   if (user.role === "ADMIN") {
     const seed = ROLE_SEEDS.ADMIN ?? {};
     return Object.fromEntries(
@@ -174,6 +196,7 @@ export default function UserRightsControlPage() {
         jobTitle: profile.jobTitle ?? "—",
         role: primaryRole.toUpperCase().replace(/\s+/g, "_"),
         startDate: profile.startDate ?? profile.createdAt ?? "",
+        permissions: profile.user?.permissions ?? [],
       };
     });
   }, [approvedData]);
@@ -279,9 +302,21 @@ export default function UserRightsControlPage() {
       return;
     }
     try {
+      const selectedPermissions: string[] = [];
+      if (selectedRole === "ADMIN") {
+        selectedPermissions.push("admin:all");
+      }
+      for (const [domainSlug, rights] of Object.entries(draftPermissions)) {
+        rights.forEach((r) => {
+          selectedPermissions.push(`${domainSlug}:${r}`);
+        });
+      }
+
       await apiClient.patch(`/auth/users/${activeUser.userId}/roles`, {
         roles: selectedRole === "STAFF" ? [] : [selectedRole],
+        permissions: selectedPermissions,
       });
+
       setAssignments((current) => ({
         ...current,
         [activeUser.id]: clonePermissions(draftPermissions),

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useAuth } from "../../../auth/useAuth";
@@ -288,11 +288,41 @@ export default function TrainingRecordsPage() {
   const [form, setForm] = useState<FormData>(() => {
     const f = emptyForm();
     if (user?.displayName) f.fullName = user.displayName;
+    if (user?.email) f.personalEmail = user.email;
     return f;
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [apiError, setApiError] = useState<string>("");
+
+  useEffect(() => {
+    if (user) {
+      setForm((f) => {
+        const updates: Partial<FormData> = {};
+        if (!f.fullName && user.displayName) {
+          updates.fullName = user.displayName;
+        }
+        if (!f.personalEmail && user.email) {
+          updates.personalEmail = user.email;
+        }
+        if (Object.keys(updates).length > 0) {
+          return { ...f, ...updates };
+        }
+        return f;
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (status === "success") {
+      const element = document.getElementById("success-notification");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  }, [status]);
 
   const mutation = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
@@ -350,7 +380,7 @@ export default function TrainingRecordsPage() {
     handleChange(key, list);
   };
 
-  const validate = (): boolean => {
+  const validate = (): { isValid: boolean; errorKeys: string[] } => {
     const e: Record<string, string> = {};
     
     // Personal Info
@@ -425,17 +455,37 @@ export default function TrainingRecordsPage() {
     if (!form.totalWorkExpAhri) e.totalWorkExpAhri = "Total work experience at AHRI selection is required.";
 
     setErrors(e);
-    return Object.keys(e).length === 0;
+    return {
+      isValid: Object.keys(e).length === 0,
+      errorKeys: Object.keys(e)
+    };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) { setStatus("error"); setApiError("You must be logged in to register."); return; }
-    if (!validate()) {
-      const firstErr = Object.keys(errors)[0];
+    
+    const { isValid, errorKeys } = validate();
+    if (!isValid) {
+      const firstErr = errorKeys[0];
       if (firstErr) {
         setApiError("Form contains validation errors. Please scroll up and fix them.");
         setStatus("error");
+        
+        setTimeout(() => {
+          const element = document.getElementById(firstErr);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+            const inputElement = element.querySelector("input, select, textarea") || element;
+            if (
+              inputElement instanceof HTMLInputElement ||
+              inputElement instanceof HTMLSelectElement ||
+              inputElement instanceof HTMLTextAreaElement
+            ) {
+              inputElement.focus();
+            }
+          }
+        }, 50);
       }
       return;
     }
@@ -561,7 +611,7 @@ export default function TrainingRecordsPage() {
       
       {/* ── Success notification ── */}
       {status === "success" && (
-        <div style={{
+        <div id="success-notification" style={{
           padding: "18px 22px",
           borderRadius: 14,
           background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
@@ -603,6 +653,7 @@ export default function TrainingRecordsPage() {
               <span>Full Name {required}</span>
               <input 
                 type="text" 
+                id="fullName"
                 value={form.fullName} 
                 onChange={(e) => handleChange("fullName", e.target.value)} 
                 placeholder="Enter First Name, Father's Name and Grand Father's Name" 
@@ -615,6 +666,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>Sex {required}</span>
               <select 
+                id="sex"
                 value={form.sex} 
                 onChange={(e) => handleChange("sex", e.target.value)} 
                 style={{ ...inputStyle(!!errors.sex), cursor: "pointer" }}
@@ -631,6 +683,7 @@ export default function TrainingRecordsPage() {
               <span>Phone Number (Format: 09xxxxxxxx) {required}</span>
               <input 
                 type="tel" 
+                id="phone"
                 value={form.phone} 
                 onChange={(e) => handleChange("phone", e.target.value)} 
                 placeholder="e.g. 0912345678" 
@@ -644,6 +697,7 @@ export default function TrainingRecordsPage() {
               <span>Personal Email Address {required}</span>
               <input 
                 type="email" 
+                id="personalEmail"
                 value={form.personalEmail} 
                 onChange={(e) => handleChange("personalEmail", e.target.value)} 
                 placeholder="e.g. username@gmail.com" 
@@ -657,6 +711,7 @@ export default function TrainingRecordsPage() {
               <span>AHRI Email Address (if any)</span>
               <input 
                 type="email" 
+                id="ahriEmail"
                 value={form.ahriEmail} 
                 onChange={(e) => handleChange("ahriEmail", e.target.value)} 
                 placeholder="e.g. first.last@ahri.gov.et" 
@@ -670,6 +725,7 @@ export default function TrainingRecordsPage() {
               <span>Emergency Contact Name and Phone Number {required}</span>
               <input 
                 type="text" 
+                id="emergencyContact"
                 value={form.emergencyContact} 
                 onChange={(e) => handleChange("emergencyContact", e.target.value)} 
                 placeholder="e.g. Abebe Bekele (Father) - 0911000000" 
@@ -688,6 +744,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>Department {required}</span>
               <select 
+                id="department"
                 value={form.department} 
                 onChange={(e) => handleChange("department", e.target.value)} 
                 style={{ ...inputStyle(!!errors.department), cursor: "pointer" }}
@@ -702,6 +759,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>Function / Job Title {required}</span>
               <select 
+                id="jobTitle"
                 value={form.jobTitle} 
                 onChange={(e) => handleChange("jobTitle", e.target.value)} 
                 style={{ ...inputStyle(!!errors.jobTitle), cursor: "pointer" }}
@@ -716,6 +774,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>Contract / Employment Type {required}</span>
               <select 
+                id="employmentType"
                 value={form.employmentType} 
                 onChange={(e) => handleChange("employmentType", e.target.value)} 
                 style={{ ...inputStyle(!!errors.employmentType), cursor: "pointer" }}
@@ -731,6 +790,7 @@ export default function TrainingRecordsPage() {
               <span>If Contract, enter current contract end date {form.employmentType === "contract" && required}</span>
               <input 
                 type="date" 
+                id="contractEndDate"
                 value={form.contractEndDate} 
                 disabled={form.employmentType !== "contract"}
                 onChange={(e) => handleChange("contractEndDate", e.target.value)} 
@@ -743,6 +803,7 @@ export default function TrainingRecordsPage() {
             <label style={{ ...labelStyle, ...fullWidth, opacity: form.employmentType === "contract" ? 1 : 0.4 }}>
               <span>If Contract, select the MNTD Project you are hired on {form.employmentType === "contract" && required}</span>
               <select 
+                id="mntdProject"
                 value={form.mntdProject} 
                 disabled={form.employmentType !== "contract"}
                 onChange={(e) => handleChange("mntdProject", e.target.value)} 
@@ -759,6 +820,7 @@ export default function TrainingRecordsPage() {
               <span>AHRI Start Date {required}</span>
               <input 
                 type="date" 
+                id="startDate"
                 value={form.startDate} 
                 onChange={(e) => handleChange("startDate", e.target.value)} 
                 style={inputStyle(!!errors.startDate)} 
@@ -773,7 +835,7 @@ export default function TrainingRecordsPage() {
               <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
                 Select your applicable MNTD team(s) {required}
               </span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)" }}>
+              <div id="mntdTeams" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)" }}>
                 {MNTD_TEAMS.map((t) => (
                   <label key={t.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
                     <input 
@@ -794,7 +856,7 @@ export default function TrainingRecordsPage() {
               <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
                 Select all the MNTD projects you are currently involved in {required}
               </span>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 200, overflowY: "auto" }}>
+              <div id="mntdProjectsInvolved" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 200, overflowY: "auto" }}>
                 {MNTD_PROJECTS.map((p) => (
                   <label key={p.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
                     <input 
@@ -827,6 +889,7 @@ export default function TrainingRecordsPage() {
               <span>Degree & Field of Study (Format: B.Sc. in Biology) {required}</span>
               <input 
                 type="text" 
+                id="firstDegree"
                 value={form.firstDegree} 
                 onChange={(e) => handleChange("firstDegree", e.target.value)} 
                 placeholder="e.g. B.Sc. in Biology" 
@@ -839,6 +902,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>First Degree University Name {required}</span>
               <select 
+                id="firstDegreeUniv"
                 value={form.firstDegreeUniv} 
                 onChange={(e) => handleChange("firstDegreeUniv", e.target.value)} 
                 style={{ ...inputStyle(!!errors.firstDegreeUniv), cursor: "pointer" }}
@@ -855,6 +919,7 @@ export default function TrainingRecordsPage() {
                 <span>If other, enter First Degree University Name and Country {required}</span>
                 <input 
                   type="text" 
+                  id="firstDegreeUnivOther"
                   value={form.firstDegreeUnivOther} 
                   onChange={(e) => handleChange("firstDegreeUnivOther", e.target.value)} 
                   placeholder="e.g. Harvard University, USA" 
@@ -869,6 +934,7 @@ export default function TrainingRecordsPage() {
               <span>First Degree Year Completed (Format: YYYY-MM) {required}</span>
               <input 
                 type="month" 
+                id="firstDegreeYear"
                 value={form.firstDegreeYear} 
                 onChange={(e) => handleChange("firstDegreeYear", e.target.value)} 
                 style={inputStyle(!!errors.firstDegreeYear)} 
@@ -912,6 +978,7 @@ export default function TrainingRecordsPage() {
                 <span>If other, enter Second Degree University Name and Country {required}</span>
                 <input 
                   type="text" 
+                  id="secondDegreeUnivOther"
                   value={form.secondDegreeUnivOther} 
                   onChange={(e) => handleChange("secondDegreeUnivOther", e.target.value)} 
                   placeholder="e.g. London School of Hygiene, UK" 
@@ -977,7 +1044,7 @@ export default function TrainingRecordsPage() {
             
             <label style={{ ...labelStyle, ...fullWidth }}>
               <span>Are you currently studying? {required}</span>
-              <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
+              <div id="currentlyStudying" style={{ display: "flex", gap: 20, marginTop: 4 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--color-text)" }}>
                   <input 
                     type="radio" 
@@ -1096,6 +1163,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>Total Work Experience(s) in Years {required}</span>
               <select 
+                id="totalWorkExp"
                 value={form.totalWorkExp} 
                 onChange={(e) => handleChange("totalWorkExp", e.target.value)} 
                 style={{ ...inputStyle(!!errors.totalWorkExp), cursor: "pointer" }}
@@ -1110,6 +1178,7 @@ export default function TrainingRecordsPage() {
             <label style={labelStyle}>
               <span>Total Work Experience(s) in Years at AHRI {required}</span>
               <select 
+                id="totalWorkExpAhri"
                 value={form.totalWorkExpAhri} 
                 onChange={(e) => handleChange("totalWorkExpAhri", e.target.value)} 
                 style={{ ...inputStyle(!!errors.totalWorkExpAhri), cursor: "pointer" }}

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import prisma from "@roms/db";
-import { LoginSchema } from "@roms/shared";
+import { LoginSchema, Role } from "@roms/shared";
 import { signAccessToken, signRefreshToken, verifyToken } from "./jwt";
 import { requireAuth } from "./auth.middleware";
 import { logger } from "../utils/logger";
@@ -37,6 +37,7 @@ router.post("/register", async (req: Request, res: Response) => {
       sub: user.id,
       email: user.email,
       roles: user.roles,
+      permissions: user.permissions || [],
     });
     const refreshToken = signRefreshToken(user.id);
 
@@ -50,6 +51,7 @@ router.post("/register", async (req: Request, res: Response) => {
         email: user.email,
         displayName: user.displayName,
         roles: user.roles,
+        permissions: user.permissions || [],
       },
     });
   } catch (err) {
@@ -91,6 +93,7 @@ router.post("/login", async (req: Request, res: Response) => {
       sub: user.id,
       email: user.email,
       roles: user.roles,
+      permissions: user.permissions || [],
     });
     const refreshToken = signRefreshToken(user.id);
 
@@ -104,6 +107,7 @@ router.post("/login", async (req: Request, res: Response) => {
         email: user.email,
         displayName: user.displayName,
         roles: user.roles,
+        permissions: user.permissions || [],
       },
     });
   } catch (err) {
@@ -132,6 +136,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
       sub: user.id,
       email: user.email,
       roles: user.roles,
+      permissions: user.permissions || [],
     });
 
     res.json({ accessToken });
@@ -145,7 +150,7 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      select: { id: true, email: true, displayName: true, roles: true, createdAt: true, lastLoginAt: true },
+      select: { id: true, email: true, displayName: true, roles: true, permissions: true, createdAt: true, lastLoginAt: true },
     });
     if (!user) {
       res.status(404).json({ code: "NOT_FOUND", message: "User not found" });
@@ -160,22 +165,27 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
 
 // PATCH /auth/users/:id/roles
 router.patch("/users/:id/roles", requireAuth, async (req: Request, res: Response) => {
-  if (!req.user?.roles.includes("ADMIN")) {
+  if (!req.user?.roles.includes(Role.ADMIN)) {
     res.status(403).json({ code: "FORBIDDEN", message: "Only administrators can modify roles" });
     return;
   }
 
-  const { roles } = req.body;
+  const { roles, permissions } = req.body;
   if (!Array.isArray(roles)) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "roles must be an array of strings" });
     return;
   }
 
+  const updateData: any = { roles };
+  if (Array.isArray(permissions)) {
+    updateData.permissions = permissions;
+  }
+
   try {
     const updated = await prisma.user.update({
       where: { id: req.params.id },
-      data: { roles },
-      select: { id: true, email: true, displayName: true, roles: true }
+      data: updateData,
+      select: { id: true, email: true, displayName: true, roles: true, permissions: true }
     });
     res.json(updated);
   } catch (err) {

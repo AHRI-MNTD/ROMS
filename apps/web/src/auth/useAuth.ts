@@ -5,6 +5,7 @@ interface AuthUser {
   email: string;
   displayName: string;
   roles: string[];
+  permissions: string[];
 }
 
 interface AuthState {

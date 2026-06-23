@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDomains } from "../api/catalog";
 import { Link } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
+import { useAuth } from "../auth/useAuth";
+import { hasDomainAccess } from "../auth/permissions";
 
 const KPICard: React.FC<{ label: string; value: string | number; emoji: string; sub?: string }> = ({
   label,
@@ -31,6 +33,7 @@ const KPICard: React.FC<{ label: string; value: string | number; emoji: string; 
 );
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { data: domains } = useQuery({
     queryKey: ["catalog/domains"],
     queryFn: fetchDomains,
@@ -87,12 +90,14 @@ export default function DashboardPage() {
             gap: 12,
           }}
         >
-          {domains.map((d) => (
-            <Link
-              key={d.slug}
-              to={`/domains/${d.slug}`}
-              style={{ textDecoration: "none" }}
-            >
+          {domains
+            .filter((d) => hasDomainAccess(user?.roles, d.slug))
+            .map((d) => (
+              <Link
+                key={d.slug}
+                to={`/domains/${d.slug}`}
+                style={{ textDecoration: "none" }}
+              >
               <div
                 style={{
                   background: "var(--color-surface-2)",

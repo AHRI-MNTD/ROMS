@@ -2,7 +2,7 @@ import { Router } from "express";
 import prisma from "@roms/db";
 import { requireAuth, requirePermission } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
-import { CreateStaffProfileSchema, ReviewStaffProfileSchema } from "@roms/shared";
+import { CreateStaffProfileSchema, ReviewStaffProfileSchema, hasPermission } from "@roms/shared";
 import { logger } from "../utils/logger";
 
 const router = Router();
@@ -14,7 +14,7 @@ router.get("/staff", requireAuth, requirePermission("hr:read"), async (req, res)
       skip: (page - 1) * 20,
       take: 20,
       include: {
-        user: { select: { id: true, displayName: true, email: true, roles: true } },
+        user: { select: { id: true, displayName: true, email: true, roles: true, permissions: true } },
         reviewedBy: { select: { displayName: true, email: true } },
       },
       orderBy: { department: "asc" },
@@ -30,7 +30,7 @@ router.get("/approvals", requireAuth, requirePermission("hr:read"), async (req, 
   const data = await prisma.staffProfile.findMany({
     where,
     include: {
-      user: { select: { id: true, displayName: true, email: true, roles: true } },
+      user: { select: { id: true, displayName: true, email: true, roles: true, permissions: true } },
       reviewedBy: { select: { displayName: true, email: true } },
     },
     orderBy: [{ approvalStatus: "asc" }, { updatedAt: "desc" }],
@@ -44,9 +44,17 @@ router.get("/staff/:id", requireAuth, requirePermission("hr:read"), async (req, 
   res.json(p);
 });
 
-router.post("/staff", requireAuth, requirePermission("hr:write"), auditMutation("StaffProfile", "CREATE"), async (req, res) => {
+router.post("/staff", requireAuth, auditMutation("StaffProfile", "CREATE"), async (req, res) => {
   const parsed = CreateStaffProfileSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() }); return; }
+
+  // Allow if user has hr:write permission, OR if they are creating/updating their own profile
+  const hasHrWrite = req.user!.roles.some((r) => hasPermission(r as any, "hr:write"));
+  const isOwnProfile = req.user!.id === parsed.data.userId;
+  if (!hasHrWrite && !isOwnProfile) {
+    res.status(403).json({ code: "FORBIDDEN", message: "Permission 'hr:write' required" });
+    return;
+  }
   try {
     const p = await prisma.staffProfile.upsert({
       where: { userId: parsed.data.userId },
