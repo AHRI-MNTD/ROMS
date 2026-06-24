@@ -465,121 +465,139 @@ export default function ApproveEmployeePage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={panelStyle("rgba(186, 197, 34, 0.18)")}>
-          <div style={{ ...headerStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Pending Personnel File Verifications</span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setListView((v) => v === "approved" ? null : "approved")}
-                style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #86efac", background: listView === "approved" ? "#059669" : "#f0fdf4", color: listView === "approved" ? "#fff" : "#059669", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
-              >
-                Verified List ({approved.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setListView((v) => v === "rejected" ? null : "rejected")}
-                style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fca5a5", background: listView === "rejected" ? "#dc2626" : "#fef2f2", color: listView === "rejected" ? "#fff" : "#dc2626", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
-              >
-                Unverified List ({rejected.length})
-              </button>
+      {!selected ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={panelStyle("rgba(186, 197, 34, 0.18)")}>
+            <div style={{ ...headerStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Pending Personnel File Verifications</span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setListView((v) => v === "approved" ? null : "approved")}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #86efac", background: listView === "approved" ? "#059669" : "#f0fdf4", color: listView === "approved" ? "#fff" : "#059669", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
+                >
+                  Verified List ({approved.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setListView((v) => v === "rejected" ? null : "rejected")}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fca5a5", background: listView === "rejected" ? "#dc2626" : "#fef2f2", color: listView === "rejected" ? "#fff" : "#dc2626", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
+                >
+                  Unverified List ({rejected.length})
+                </button>
+              </div>
+            </div>
+            <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the personnel profile, then verify credentials and authorize task access. Click row to see full profile details.</div>
+            <div>
+              {pending.length > 0 ? (
+                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  {listThead(true)}
+                  <tbody>{pending.map((row, i) => renderRow(row, true, i))}</tbody>
+                </table>
+              ) : (
+                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No pending personnel file verifications.</div>
+              )}
             </div>
           </div>
-          <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the personnel profile, then verify credentials and authorize task access. Click row to see full profile details.</div>
-          <div>
-            {pending.length > 0 ? (
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                {listThead(true)}
-                <tbody>{pending.map((row, i) => renderRow(row, true, i))}</tbody>
-              </table>
-            ) : (
-              <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No pending personnel file verifications.</div>
-            )}
-          </div>
+
+          {listView === "approved" && (
+            <div style={panelStyle("rgba(34, 197, 94, 0.18)")}>
+              <div style={headerStyle}>Verified List</div>
+              <div>
+                {approved.length > 0 ? (
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                    {listThead(false)}
+                    <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
+                  </table>
+                ) : (
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No verified personnel yet.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {listView === "rejected" && (
+            <div style={panelStyle("rgba(239, 68, 68, 0.18)")}>
+              <div style={headerStyle}>Unverified List</div>
+              <div>
+                {rejected.length > 0 ? (
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                    {listThead(false)}
+                    <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
+                  </table>
+                ) : (
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No unverified personnel yet.</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-
-        {listView === "approved" && (
-          <div style={panelStyle("rgba(34, 197, 94, 0.18)")}>
-            <div style={headerStyle}>Verified List</div>
-            <div>
-              {approved.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                  {listThead(false)}
-                  <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
-                </table>
-              ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No verified personnel yet.</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {listView === "rejected" && (
-          <div style={panelStyle("rgba(239, 68, 68, 0.18)")}>
-            <div style={headerStyle}>Unverified List</div>
-            <div>
-              {rejected.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-                  {listThead(false)}
-                  <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
-                </table>
-              ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", padding: "10px 14px" }}>No unverified personnel yet.</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Employee Detail Modal */}
-      {selected && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}
-        >
-          <div style={{ background: "var(--color-surface-2)", borderRadius: 20, border: "1px solid var(--color-border)", width: "100%", maxWidth: 820, overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
-            {/* Modal Header */}
-            <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      ) : (
+        <div style={{ ...panelStyle("rgba(186, 197, 34, 0.18)"), padding: "20px 24px" }}>
+          {/* Header Row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-divider)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 50, height: 50, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
                   {(selected.user?.displayName ?? "?")[0].toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: "var(--fs-lg)", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.2 }}>{selected.user?.displayName ?? "Unknown"}</div>
-                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{selected.user?.email ?? "No email on record"}</div>
+                  <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.2 }}>
+                    {selected.user?.displayName ?? "Unknown"}
+                  </div>
+                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                    {selected.user?.email ?? "No email on record"}
+                  </div>
                 </div>
               </div>
-              <button type="button" onClick={() => setSelected(null)} style={{ background: "transparent", border: "none", fontSize: 22, color: "var(--color-text-muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  background: selected.approvalStatus === "PENDING" ? "#fef9c3" : selected.approvalStatus === "APPROVED" ? "#dcfce7" : "#fef2f2",
+                  color: selected.approvalStatus === "PENDING" ? "#854d0e" : selected.approvalStatus === "APPROVED" ? "#166534" : "#991b1b",
+                  border: `1px solid ${selected.approvalStatus === "PENDING" ? "#fde047" : selected.approvalStatus === "APPROVED" ? "#86efac" : "#fca5a5"}`,
+                  borderRadius: 999,
+                  padding: "3px 12px"
+                }}>
+                  {selected.approvalStatus === "PENDING" ? "PENDING VERIFICATION" : selected.approvalStatus === "APPROVED" ? "VERIFIED" : "UNVERIFIED"}
+                </span>
+                {(() => {
+                  const emp = formatEmployment(selected.employmentType);
+                  const empColor =
+                    emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
+                      emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
+                        { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
+                  return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
+                })()}
+              </div>
             </div>
 
-            {/* Status Badge */}
-            <div style={{ padding: "10px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                background: selected.approvalStatus === "PENDING" ? "#fef9c3" : selected.approvalStatus === "APPROVED" ? "#dcfce7" : "#fef2f2",
-                color: selected.approvalStatus === "PENDING" ? "#854d0e" : selected.approvalStatus === "APPROVED" ? "#166534" : "#991b1b",
-                border: `1px solid ${selected.approvalStatus === "PENDING" ? "#fde047" : selected.approvalStatus === "APPROVED" ? "#86efac" : "#fca5a5"}`,
-                borderRadius: 999,
-                padding: "3px 12px"
-              }}>
-                {selected.approvalStatus === "PENDING" ? "PENDING VERIFICATION" : selected.approvalStatus === "APPROVED" ? "VERIFIED" : "UNVERIFIED"}
-              </span>
-              {(() => {
-                const emp = formatEmployment(selected.employmentType);
-                const empColor =
-                  emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
-                    emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
-                return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
-              })()}
+            <div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                Back to List
+              </button>
             </div>
+          </div>
 
-            {/* Content Details */}
-            <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
-
-              {/* Section 1: Personal Info */}
+          {/* Details Grid layout: 2 Columns side-by-side */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 40, marginBottom: 20 }}>
+            {/* Left Column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               <Section title="Section 1: Personal Details & Contact Information">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
@@ -591,7 +609,6 @@ export default function ApproveEmployeePage() {
                 </div>
               </Section>
 
-              {/* Section 2: Employment Info */}
               <Section title="Section 2: Employment & Position details">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Department" value={selected.department} />
@@ -605,7 +622,7 @@ export default function ApproveEmployeePage() {
                     </>
                   )}
                 </div>
-                <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                <div style={{ marginTop: 8, display: "grid", gap: 10 }}>
                   <InfoRow
                     label="MNTD Teams"
                     value={selected.mntdTeams && selected.mntdTeams.length > 0
@@ -620,10 +637,12 @@ export default function ApproveEmployeePage() {
                   />
                 </div>
               </Section>
+            </div>
 
-              {/* Section 3: Educational Background */}
+            {/* Right Column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               <Section title="Section 3: Qualifications & Academic Background">
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
                   {/* First Degree */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
@@ -686,7 +705,6 @@ export default function ApproveEmployeePage() {
                 </div>
               </Section>
 
-              {/* Section 4: Work Experience */}
               <Section title="Section 4: Work Experience">
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <InfoRow label="Total Experience" value={getWorkExpLabel(selected.totalWorkExp)} />
@@ -694,7 +712,6 @@ export default function ApproveEmployeePage() {
                 </div>
               </Section>
 
-              {/* Section 5: Property Inventory */}
               <Section title="Section 5: Personal Equipment Log">
                 {activeInventory.length > 0 ? (
                   <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
@@ -720,7 +737,6 @@ export default function ApproveEmployeePage() {
                 )}
               </Section>
 
-              {/* Review History */}
               {selected.reviewedBy && (
                 <Section title="Verification History">
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -731,50 +747,47 @@ export default function ApproveEmployeePage() {
                 </Section>
               )}
             </div>
+          </div>
 
-            {/* Review Action Controls / Buttons inside Modal */}
-            <div style={{ padding: "16px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12, background: "rgba(0,0,0,0.02)" }}>
-              {selected.approvalStatus === "PENDING" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 700 }}>
-                    <span>Verification Remarks / Notes (Optional)</span>
-                    <input
-                      value={notes[selected.id] ?? ""}
-                      onChange={(e) => setNotes((cur) => ({ ...cur, [selected.id]: e.target.value }))}
-                      placeholder="Enter verification notes..."
-                      style={{ width: "100%", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
-                    />
-                  </label>
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleDecision(selected.id, "REJECTED")}
-                      disabled={approveMutation.isPending}
-                      style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
-                    >
-                      ✕ Decline Verification
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDecision(selected.id, "APPROVED")}
-                      disabled={approveMutation.isPending}
-                      style={{ background: "#059669", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
-                    >
-                      ✓ Verify & Authorize
-                    </button>
-                    <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
-                    Close Details
+          {/* Action Buttons */}
+          <div style={{ padding: "16px 22px", marginTop: "50px", borderTop: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12, background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
+            {selected.approvalStatus === "PENDING" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 700 }}>
+                  <span>Verification Remarks / Notes (Optional)</span>
+                  <input
+                    value={notes[selected.id] ?? ""}
+                    onChange={(e) => setNotes((cur) => ({ ...cur, [selected.id]: e.target.value }))}
+                    placeholder="Enter verification notes..."
+                    style={{ width: "20%", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
+                  />
+                </label>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleDecision(selected.id, "REJECTED")}
+                    disabled={approveMutation.isPending}
+                    style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
+                  >
+                    ✕ Decline Verification
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDecision(selected.id, "APPROVED")}
+                    disabled={approveMutation.isPending}
+                    style={{ background: "#059669", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
+                  >
+                    ✓ Verify & Authorize
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 20px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
+                  Close Details
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -795,7 +808,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 8, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 6, alignItems: "start" }}>
       <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{label}</span>
       <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500 }}>{value || "—"}</span>
     </div>

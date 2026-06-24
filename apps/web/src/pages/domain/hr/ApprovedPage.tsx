@@ -420,315 +420,335 @@ export default function ApprovedPage() {
         </div>
       )}
 
-      <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", overflow: "hidden" }}>
-        {/* Header */}
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Personnel Registry & Files</span>
-            <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "#059669", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 10px" }}>
-              {filtered.length} {filtered.length === approved.length ? "total" : `of ${approved.length}`}
-            </span>
-          </div>
-
-          {/* Controls */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Search */}
-            <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--color-text-muted)", pointerEvents: "none" }}>🔍</span>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name, dept, role…"
-                style={{ paddingLeft: 28, paddingRight: 8, height: 30, borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", width: 200 }}
-              />
+      {!selected ? (
+        <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", overflow: "hidden" }}>
+          {/* Header */}
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Personnel Registry & Files</span>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "#059669", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 10px" }}>
+                {filtered.length} {filtered.length === approved.length ? "total" : `of ${approved.length}`}
+              </span>
             </div>
 
-            {/* Filter */}
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              style={{ height: 30, borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", padding: "0 8px", cursor: "pointer" }}
-            >
-              <option value="">All Employment Types</option>
-              <option value="Permanent">Permanent</option>
-              <option value="Contract">Contract</option>
-              <option value="MSc Student">MSc Student</option>
-            </select>
+            {/* Controls */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {/* Search */}
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--color-text-muted)", pointerEvents: "none" }}>🔍</span>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search name, dept, role…"
+                  style={{ paddingLeft: 28, paddingRight: 8, height: 30, borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", width: 200 }}
+                />
+              </div>
 
-            {(search || filterType) && (
-              <button
-                type="button"
-                onClick={() => { setSearch(""); setFilterType(""); }}
-                style={{ height: 30, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", cursor: "pointer" }}
+              {/* Filter */}
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                style={{ height: 30, borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", padding: "0 8px", cursor: "pointer" }}
               >
-                ✕ Clear
-              </button>
-            )}
+                <option value="">All Employment Types</option>
+                <option value="Permanent">Permanent</option>
+                <option value="Contract">Contract</option>
+                <option value="MSc Student">MSc Student</option>
+              </select>
+
+              {(search || filterType) && (
+                <button
+                  type="button"
+                  onClick={() => { setSearch(""); setFilterType(""); }}
+                  style={{ height: 30, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", cursor: "pointer" }}
+                >
+                  ✕ Clear
+                </button>
+              )}
+            </div>
           </div>
+
+          {filtered.length === 0 ? (
+            <div style={{ padding: "24px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
+              {approved.length === 0 ? "No personnel records yet." : "No results match your search or filter."}
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...thStyle("name"), width: "3%", cursor: "default" }}>#</th>
+                    <th style={{ ...thStyle("name"), width: "18%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
+                    <th style={{ ...thStyle("department"), width: "17%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
+                    <th style={{ ...thStyle("jobTitle"), width: "17%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
+                    <th style={{ ...thStyle("startDate"), width: "11%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
+                    <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Contract Type {sortIcon("employmentType")}</th>
+                    <th style={{ ...thStyle("reviewedAt"), width: "11%", cursor: "default" }}>Contract End</th>
+                    <th style={{ ...thStyle("reviewedAt"), width: "12%" }} onClick={() => toggleSort("reviewedAt")}>Verified On {sortIcon("reviewedAt")}</th>
+                    <th style={{ ...thStyle("name"), width: "8%", cursor: "default" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row, i) => {
+                    const empLabel = formatEmployment(row.employmentType);
+                    const empColor =
+                      empLabel === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
+                        empLabel === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
+                          empLabel === "MSc Student" ? { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" } :
+                            { bg: "transparent", text: "var(--color-text-muted)", border: "transparent" };
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={() => setSelected(row)}
+                        style={{ cursor: "pointer", transition: "background 0.15s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "3%" }}>{i + 1}</td>
+                        <td style={{ ...cellStyle, fontWeight: 700, width: "18%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
+                        <td style={{ ...cellStyle, width: "17%" }} title={row.department}>{row.department}</td>
+                        <td style={{ ...cellStyle, width: "17%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
+                        <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.startDate)}</td>
+                        <td style={{ ...cellStyle, width: "11%" }}>
+                          <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "2px 8px" }}>
+                            {empLabel}
+                          </span>
+                        </td>
+                        <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.contractEndDate)}</td>
+                        <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.reviewedAt)}</td>
+                        <td style={{ ...cellStyle, width: "8%", textAlign: "center" }}>
+                          <span style={{ fontSize: "var(--fs-xs)", color: "#6366f1", fontWeight: 700, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6, padding: "2px 8px" }}>View</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-
-        {filtered.length === 0 ? (
-          <div style={{ padding: "24px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", textAlign: "center" }}>
-            {approved.length === 0 ? "No personnel records yet." : "No results match your search or filter."}
-          </div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-              <thead>
-                <tr>
-                  <th style={{ ...thStyle("name"), width: "3%", cursor: "default" }}>#</th>
-                  <th style={{ ...thStyle("name"), width: "18%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
-                  <th style={{ ...thStyle("department"), width: "17%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
-                  <th style={{ ...thStyle("jobTitle"), width: "17%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
-                  <th style={{ ...thStyle("startDate"), width: "11%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
-                  <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Contract Type {sortIcon("employmentType")}</th>
-                  <th style={{ ...thStyle("reviewedAt"), width: "11%", cursor: "default" }}>Contract End</th>
-                  <th style={{ ...thStyle("reviewedAt"), width: "12%" }} onClick={() => toggleSort("reviewedAt")}>Verified On {sortIcon("reviewedAt")}</th>
-                  <th style={{ ...thStyle("name"), width: "8%", cursor: "default" }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row, i) => {
-                  const empLabel = formatEmployment(row.employmentType);
-                  const empColor =
-                    empLabel === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
-                      empLabel === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                        empLabel === "MSc Student" ? { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" } :
-                          { bg: "transparent", text: "var(--color-text-muted)", border: "transparent" };
-                  return (
-                    <tr
-                      key={row.id}
-                      onClick={() => setSelected(row)}
-                      style={{ cursor: "pointer", transition: "background 0.15s" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "3%" }}>{i + 1}</td>
-                      <td style={{ ...cellStyle, fontWeight: 700, width: "18%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
-                      <td style={{ ...cellStyle, width: "17%" }} title={row.department}>{row.department}</td>
-                      <td style={{ ...cellStyle, width: "17%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
-                      <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.startDate)}</td>
-                      <td style={{ ...cellStyle, width: "11%" }}>
-                        <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "2px 8px" }}>
-                          {empLabel}
-                        </span>
-                      </td>
-                      <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.contractEndDate)}</td>
-                      <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.reviewedAt)}</td>
-                      <td style={{ ...cellStyle, width: "8%", textAlign: "center" }}>
-                        <span style={{ fontSize: "var(--fs-xs)", color: "#6366f1", fontWeight: 700, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6, padding: "2px 8px" }}>View</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Employee Detail Modal */}
-      {selected && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}
-        >
-          <div style={{ background: "var(--color-surface-2)", borderRadius: 20, border: "1px solid var(--color-border)", width: "100%", maxWidth: 820, overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.25)" }}>
-            {/* Modal Header */}
-            <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      ) : (
+        <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", padding: "20px 24px" }}>
+          {/* Header Row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-divider)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 50, height: 50, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
                   {(selected.user?.displayName ?? "?")[0].toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: "var(--fs-lg)", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.2 }}>{selected.user?.displayName ?? "Unknown"}</div>
-                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{selected.user?.email ?? "No email on record"}</div>
-                </div>
-              </div>
-              <button type="button" onClick={() => setSelected(null)} style={{ background: "transparent", border: "none", fontSize: 22, color: "var(--color-text-muted)", cursor: "pointer", lineHeight: 1 }}>✕</button>
-            </div>
-
-            {/* Status Badge */}
-            <div style={{ padding: "10px 22px", borderBottom: "1px solid var(--color-divider)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
-              {(() => {
-                const emp = formatEmployment(selected.employmentType);
-                const empColor =
-                  emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
-                    emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
-                return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
-              })()}
-            </div>
-
-            {/* Printable content */}
-            <div ref={printRef} style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Hidden print header */}
-              <div style={{ display: "none" }} className="print-header">
-                <h1 style={{ margin: 0 }}>Personnel File — {selected.user?.displayName ?? "Unknown"}</h1>
-                <p className="subtitle">{selected.user?.email ?? ""} · VERIFIED</p>
-              </div>
-
-              {/* Section 1: Personal Info */}
-              <Section title="Section 1: Personal Details & Contact Information">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
-                  <InfoRow label="Sex" value={selected.sex ? selected.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
-                  <InfoRow label="Phone Number" value={selected.phone} />
-                  <InfoRow label="Personal Email" value={selected.personalEmail} />
-                  <InfoRow label="AHRI Email" value={selected.ahriEmail} />
-                  <InfoRow label="Emergency Contact" value={selected.emergencyContact} />
-                </div>
-              </Section>
-
-              {/* Section 2: Employment Info */}
-              <Section title="Section 2: Employment & Position details">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <InfoRow label="Department" value={selected.department} />
-                  <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
-                  <InfoRow label="Employment Type" value={formatEmployment(selected.employmentType)} />
-                  <InfoRow label="AHRI Start Date" value={formatDate(selected.startDate)} />
-                  {selected.employmentType === "contract" && (
-                    <>
-                      <InfoRow label="Contract End Date" value={formatDate(selected.contractEndDate)} />
-                      <InfoRow label="Hired Project" value={getHiredProjectLabel(selected.mntdProject)} />
-                    </>
-                  )}
-                </div>
-                <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                  <InfoRow
-                    label="MNTD Teams"
-                    value={selected.mntdTeams && selected.mntdTeams.length > 0
-                      ? selected.mntdTeams.map(t => getTeamLabel(t)).join(", ")
-                      : "—"}
-                  />
-                  <InfoRow
-                    label="Projects Involved"
-                    value={selected.mntdProjectsInvolved && selected.mntdProjectsInvolved.length > 0
-                      ? selected.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ")
-                      : "—"}
-                  />
-                </div>
-              </Section>
-
-              {/* Section 3: Educational Background */}
-              <Section title="Section 3: Qualifications & Academic Background">
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {/* First Degree */}
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      <InfoRow label="Degree & Field" value={selected.firstDegree} />
-                      <InfoRow label="University" value={selected.firstDegreeUniv === "other" ? selected.firstDegreeUnivOther : getUniversityLabel(selected.firstDegreeUniv)} />
-                      <InfoRow label="Completed Year" value={selected.firstDegreeYear} />
-                    </div>
+                  <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.2 }}>
+                    {selected.user?.displayName ?? "Unknown"}
                   </div>
-
-                  {/* Second Degree */}
-                  {selected.secondDegree && (
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <InfoRow label="Degree & Field" value={selected.secondDegree} />
-                        <InfoRow label="University" value={selected.secondDegreeUniv === "other" ? selected.secondDegreeUnivOther : getUniversityLabel(selected.secondDegreeUniv)} />
-                        <InfoRow label="Completed Year" value={selected.secondDegreeYear} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Third Degree */}
-                  {selected.thirdDegree && (
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <InfoRow label="PhD & Field" value={selected.thirdDegree} />
-                        <InfoRow label="University & Country" value={selected.thirdDegreeUnivCountry} />
-                        <InfoRow label="Completed Year" value={selected.thirdDegreeYear} />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Currently Studying */}
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
-                    <InfoRow label="Currently Studying?" value={selected.currentlyStudying ? "Yes" : "No"} />
-
-                    {selected.currentlyStudying && (
-                      <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6, paddingLeft: 10, borderLeft: "2px solid var(--color-border)" }}>
-                        {selected.studyMastersField && (
-                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
-                            <strong>Masters:</strong> {selected.studyMastersField} at {selected.studyMastersUniv} (Expected: {selected.studyMastersYear})
-                          </div>
-                        )}
-                        {selected.studyPhdField && (
-                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
-                            <strong>PhD:</strong> {selected.studyPhdField} at {selected.studyPhdUniv} (Expected: {selected.studyPhdYear})
-                          </div>
-                        )}
-                        {selected.studyCertField && (
-                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
-                            <strong>Certifications:</strong> {selected.studyCertField} at {selected.studyCertUniv} (Expected: {selected.studyCertYear})
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                    {selected.user?.email ?? "No email on record"}
                   </div>
                 </div>
-              </Section>
+              </div>
 
-              {/* Section 4: Work Experience */}
-              <Section title="Section 4: Work Experience">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <InfoRow label="Total Experience" value={getWorkExpLabel(selected.totalWorkExp)} />
-                  <InfoRow label="Experience at AHRI" value={getWorkExpLabel(selected.totalWorkExpAhri)} />
-                </div>
-              </Section>
-
-              {/* Section 5: Property Inventory */}
-              <Section title="Section 5: Personal Equipment Log">
-                {activeInventory.length > 0 ? (
-                  <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
-                    <thead>
-                      <tr style={{ background: "rgba(0,0,0,0.03)" }}>
-                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
-                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
-                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeInventory.map((item) => (
-                        <tr key={item.id}>
-                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
-                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
-                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic" }}>No property inventory items registered.</div>
-                )}
-              </Section>
-
-              {/* Approval Info */}
-              <Section title="Verification & Authorization History">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <InfoRow label="Verified On" value={formatDate(selected.reviewedAt)} />
-                  <InfoRow label="Verified By" value={selected.reviewedBy?.displayName ?? selected.reviewedBy?.email ?? "System"} />
-                  {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Remarks" value={selected.reviewNote} /></div>}
-                </div>
-              </Section>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
+                {(() => {
+                  const emp = formatEmployment(selected.employmentType);
+                  const empColor =
+                    emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
+                      emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
+                        { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
+                  return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
+                })()}
+              </div>
             </div>
 
-            {/* Action Buttons */}
-            <div style={{ padding: "14px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <ActionBtn onClick={handleShare} color="#6366f1" icon="🔗" label="Share" />
-              <ActionBtn onClick={handleDownloadPdf} color="#0f766e" icon="⬇" label="Download PDF" />
-              <ActionBtn onClick={handlePrint} color="#1d4ed8" icon="🖨" label="Print" />
-              <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
-                Close
+            <div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                Back to Registry
               </button>
             </div>
+          </div>
+
+          {/* Printable wrapper */}
+          <div ref={printRef}>
+            {/* Hidden print header */}
+            <div style={{ display: "none" }} className="print-header">
+              <h1 style={{ margin: 0 }}>Personnel File — {selected.user?.displayName ?? "Unknown"}</h1>
+              <p className="subtitle">{selected.user?.email ?? ""} · VERIFIED</p>
+            </div>
+
+            {/* Details Grid layout: 2 Columns side-by-side */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 24, marginBottom: 20 }}>
+              {/* Left Column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                <Section title="Section 1: Personal Details & Contact Information">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
+                    <InfoRow label="Sex" value={selected.sex ? selected.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
+                    <InfoRow label="Phone Number" value={selected.phone} />
+                    <InfoRow label="Personal Email" value={selected.personalEmail} />
+                    <InfoRow label="AHRI Email" value={selected.ahriEmail} />
+                    <InfoRow label="Emergency Contact" value={selected.emergencyContact} />
+                  </div>
+                </Section>
+
+                <Section title="Section 2: Employment & Position details">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <InfoRow label="Department" value={selected.department} />
+                    <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
+                    <InfoRow label="Employment Type" value={formatEmployment(selected.employmentType)} />
+                    <InfoRow label="AHRI Start Date" value={formatDate(selected.startDate)} />
+                    {selected.employmentType === "contract" && (
+                      <>
+                        <InfoRow label="Contract End Date" value={formatDate(selected.contractEndDate)} />
+                        <InfoRow label="Hired Project" value={getHiredProjectLabel(selected.mntdProject)} />
+                      </>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                    <InfoRow
+                      label="MNTD Teams"
+                      value={selected.mntdTeams && selected.mntdTeams.length > 0
+                        ? selected.mntdTeams.map(t => getTeamLabel(t)).join(", ")
+                        : "—"}
+                    />
+                    <InfoRow
+                      label="Projects Involved"
+                      value={selected.mntdProjectsInvolved && selected.mntdProjectsInvolved.length > 0
+                        ? selected.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ")
+                        : "—"}
+                    />
+                  </div>
+                </Section>
+              </div>
+
+              {/* Right Column */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                <Section title="Section 3: Qualifications & Academic Background">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* First Degree */}
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <InfoRow label="Degree & Field" value={selected.firstDegree} />
+                        <InfoRow label="University" value={selected.firstDegreeUniv === "other" ? selected.firstDegreeUnivOther : getUniversityLabel(selected.firstDegreeUniv)} />
+                        <InfoRow label="Completed Year" value={selected.firstDegreeYear} />
+                      </div>
+                    </div>
+
+                    {/* Second Degree */}
+                    {selected.secondDegree && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <InfoRow label="Degree & Field" value={selected.secondDegree} />
+                          <InfoRow label="University" value={selected.secondDegreeUniv === "other" ? selected.secondDegreeUnivOther : getUniversityLabel(selected.secondDegreeUniv)} />
+                          <InfoRow label="Completed Year" value={selected.secondDegreeYear} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Third Degree */}
+                    {selected.thirdDegree && (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <InfoRow label="PhD & Field" value={selected.thirdDegree} />
+                          <InfoRow label="University & Country" value={selected.thirdDegreeUnivCountry} />
+                          <InfoRow label="Completed Year" value={selected.thirdDegreeYear} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Currently Studying */}
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
+                      <InfoRow label="Currently Studying?" value={selected.currentlyStudying ? "Yes" : "No"} />
+
+                      {selected.currentlyStudying && (
+                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6, paddingLeft: 10, borderLeft: "2px solid var(--color-border)" }}>
+                          {selected.studyMastersField && (
+                            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
+                              <strong>Masters:</strong> {selected.studyMastersField} at {selected.studyMastersUniv} (Expected: {selected.studyMastersYear})
+                            </div>
+                          )}
+                          {selected.studyPhdField && (
+                            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
+                              <strong>PhD:</strong> {selected.studyPhdField} at {selected.studyPhdUniv} (Expected: {selected.studyPhdYear})
+                            </div>
+                          )}
+                          {selected.studyCertField && (
+                            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
+                              <strong>Certifications:</strong> {selected.studyCertField} at {selected.studyCertUniv} (Expected: {selected.studyCertYear})
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Section>
+
+                <Section title="Section 4: Work Experience">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <InfoRow label="Total Experience" value={getWorkExpLabel(selected.totalWorkExp)} />
+                    <InfoRow label="Experience at AHRI" value={getWorkExpLabel(selected.totalWorkExpAhri)} />
+                  </div>
+                </Section>
+
+                <Section title="Section 5: Personal Equipment Log">
+                  {activeInventory.length > 0 ? (
+                    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
+                      <thead>
+                        <tr style={{ background: "rgba(0,0,0,0.03)" }}>
+                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
+                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
+                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeInventory.map((item) => (
+                          <tr key={item.id}>
+                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic" }}>No property inventory items registered.</div>
+                  )}
+                </Section>
+
+                <Section title="Verification & Authorization History">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <InfoRow label="Verified On" value={formatDate(selected.reviewedAt)} />
+                    <InfoRow label="Verified By" value={selected.reviewedBy?.displayName ?? selected.reviewedBy?.email ?? "System"} />
+                    {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Remarks" value={selected.reviewNote} /></div>}
+                  </div>
+                </Section>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ padding: "14px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
+            <ActionBtn onClick={handleShare} color="#6366f1" icon="🔗" label="Share" />
+            <ActionBtn onClick={handleDownloadPdf} color="#0f766e" icon="⬇" label="Download PDF" />
+            <ActionBtn onClick={handlePrint} color="#1d4ed8" icon="🖨" label="Print" />
+            <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
+              Close
+            </button>
           </div>
         </div>
       )}
@@ -749,7 +769,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 8, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 6, alignItems: "start" }}>
       <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{label}</span>
       <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500 }}>{value || "—"}</span>
     </div>

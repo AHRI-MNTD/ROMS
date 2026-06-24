@@ -351,10 +351,9 @@ export default function UserRightsControlPage() {
     maxWidth: 160,
   });
   const editorCardStyle: React.CSSProperties = {
-    padding: 12,
-    borderRadius: 18,
-    boxShadow: "0 10px 24px rgba(16, 24, 40, 0.06)",
-    height: "100%",
+    padding: "10px 12px",
+    borderRadius: 14,
+    boxShadow: "0 4px 12px rgba(16, 24, 40, 0.04)",
   };
 
   const columnHeaderStyle: React.CSSProperties = {
@@ -405,278 +404,255 @@ export default function UserRightsControlPage() {
       )}
 
       {!isLoading && !isError && (
-      <div style={{ ...surfaceStyle, overflow: "hidden" }}>
-        <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>User matrix</div>
-            <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)", background: "rgba(1,105,111,0.08)", border: "1px solid rgba(1,105,111,0.14)", borderRadius: 999, padding: "2px 10px", letterSpacing: "0.04em" }}>
-              {filteredRows.length === matrixRows.length ? `${matrixRows.length} users` : `${filteredRows.length} / ${matrixRows.length} users`}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <span style={{ position: "absolute", left: 10, fontSize: 13, color: "var(--color-text-faint)", pointerEvents: "none" }}>🔍</span>
-              <input
-                id="user-matrix-search"
-                type="text"
-                placeholder="Search users…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  paddingLeft: 30, paddingRight: 10, paddingTop: 6, paddingBottom: 6,
-                  fontSize: "var(--fs-xs)", borderRadius: 10,
-                  border: "1px solid rgba(1,105,111,0.18)",
-                  background: "rgba(255,255,255,0.85)",
-                  color: "var(--color-text)",
-                  outline: "none", width: 180,
-                  transition: "border-color 0.15s",
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.5)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.18)"; }}
-              />
-            </div>
-            <select
-              id="user-matrix-role-filter"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              style={{
-                padding: "6px 28px 6px 10px",
-                fontSize: "var(--fs-xs)", borderRadius: 10,
-                border: "1px solid rgba(1,105,111,0.18)",
-                background: "rgba(255,255,255,0.85)",
-                color: roleFilter ? "var(--color-text)" : "var(--color-text-muted)",
-                outline: "none", cursor: "pointer",
-                appearance: "none",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 8px center",
-              }}
-            >
-              <option value="">All roles</option>
-              {allRoles.map((role) => (
-                <option key={role} value={role}>{role.replace(/_/g, " ")}</option>
-              ))}
-            </select>
-            {(searchQuery || roleFilter) && (
-              <button
-                onClick={() => { setSearchQuery(""); setRoleFilter(""); }}
-                style={{
-                  padding: "5px 12px", fontSize: "var(--fs-xs)", fontWeight: 700,
-                  borderRadius: 10, border: "1px solid rgba(220,38,38,0.22)",
-                  background: "rgba(220,38,38,0.06)", color: "#b91c1c",
-                  cursor: "pointer",
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ ...columnHeaderStyle, width: "4%" }}>No_</th>
-                <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left" }}>Users</th>
-                {DOMAIN_CATALOG.map((domain) => (
-                  <th key={domain.slug} style={{ ...columnHeaderStyle, width: "8.3%" }}>
-                    <div style={{ display: "grid", justifyItems: "center", gap: 4 }}>
-                      <span style={{ fontSize: 16, lineHeight: 1 }}>{domain.emoji}</span>
-                      <span>{domain.name}</span>
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={DOMAIN_CATALOG.length + 2}
-                    style={{ padding: "28px 12px", textAlign: "center", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}
-                  >
-                    No users match your search or filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((row, index) => (
-                <tr
-                  key={row.user.id}
-                  onClick={() => openEditor(row.user)}
-                  style={{ cursor: "pointer", borderBottom: "1px solid rgba(1, 105, 111, 0.08)", transition: "background 0.12s" }}
-                  onMouseEnter={(event) => {
-                    (event.currentTarget as HTMLTableRowElement).style.background = "rgba(1, 105, 111, 0.03)";
-                  }}
-                  onMouseLeave={(event) => {
-                    (event.currentTarget as HTMLTableRowElement).style.background = "transparent";
+        activeUser === null ? (
+          <div style={{ ...surfaceStyle, overflow: "hidden" }}>
+            <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>User matrix</div>
+                <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)", background: "rgba(1,105,111,0.08)", border: "1px solid rgba(1,105,111,0.14)", borderRadius: 999, padding: "2px 10px", letterSpacing: "0.04em" }}>
+                  {filteredRows.length === matrixRows.length ? `${matrixRows.length} users` : `${filteredRows.length} / ${matrixRows.length} users`}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 10, fontSize: 13, color: "var(--color-text-faint)", pointerEvents: "none" }}>🔍</span>
+                  <input
+                    id="user-matrix-search"
+                    type="text"
+                    placeholder="Search users…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      paddingLeft: 30, paddingRight: 10, paddingTop: 6, paddingBottom: 6,
+                      fontSize: "var(--fs-xs)", borderRadius: 10,
+                      border: "1px solid rgba(1,105,111,0.18)",
+                      background: "rgba(255,255,255,0.85)",
+                      color: "var(--color-text)",
+                      outline: "none", width: 180,
+                      transition: "border-color 0.15s",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.5)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.18)"; }}
+                  />
+                </div>
+                <select
+                  id="user-matrix-role-filter"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  style={{
+                    padding: "6px 28px 6px 10px",
+                    fontSize: "var(--fs-xs)", borderRadius: 10,
+                    border: "1px solid rgba(1,105,111,0.18)",
+                    background: "rgba(255,255,255,0.85)",
+                    color: roleFilter ? "var(--color-text)" : "var(--color-text-muted)",
+                    outline: "none", cursor: "pointer",
+                    appearance: "none",
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 8px center",
                   }}
                 >
-                  <td style={{ padding: "10px 12px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", verticalAlign: "middle" }}>{index + 1}</td>
-                  <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
-                    <div style={{ fontWeight: 700, color: "var(--color-text)", lineHeight: 1.25 }}>{row.user.displayName}</div>
-                  </td>
-                  {DOMAIN_CATALOG.map((domain) => {
-                    const count = row.selection[domain.slug]?.size ?? 0;
-                    const active = count > 0;
-                    return (
-                      <td key={domain.slug} style={{ padding: "10px 6px", verticalAlign: "middle", textAlign: "center" }}>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 999, background: active ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.10)", color: active ? "#047857" : "#991b1b", fontWeight: 800, fontSize: "10px", minWidth: 42, justifyContent: "center" }}>
-                          <span aria-hidden="true">{active ? "✓" : "✕"}</span>
-                          <span>{count}</span>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      )}
-      {activeUser && activeSelection && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: sidebarWidth,
-            background: "rgba(15, 23, 42, 0.44)",
-            backdropFilter: "blur(4px)",
-            zIndex: 60,
-          }}
-          onClick={closeEditor}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="user-rights-editor-title"
-            onClick={(event) => event.stopPropagation()}
-            style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,248,244,0.98))", boxShadow: "-24px 0 64px rgba(15, 23, 42, 0.25)", overflow: "hidden", display: "flex", flexDirection: "column" }}
-          >
-            <div style={{ padding: "20px 20px 20px", borderBottom: "1px solid var(--color-divider)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 15, flexWrap: "wrap", marginTop: 19 }}>
-                <div>
-                  <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--color-text)", marginBottom: 6 }}>
-                    {activeUser.displayName}
-                  </div>
-                  <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6, marginBottom: 12 }}>
-                    {activeUser.jobTitle} · {activeUser.department} · {activeUser.email}
-                  </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>Assigned Role:</span>
-                    <select
-                      value={selectedRole}
-                      onChange={(e) => {
-                        const newRole = e.target.value;
-                        setSelectedRole(newRole);
-                        
-                        const seed = ROLE_SEEDS[newRole] ?? {};
-                        const newPerms = Object.fromEntries(
-                          DOMAIN_CATALOG.map((domain) => {
-                            if (newRole === "STAFF") {
-                              if (domain.slug === "hr") {
-                                return ["hr", new Set(["Training Records"])];
-                              }
-                              return [domain.slug, new Set()];
-                            }
-                            const rights = seed[domain.slug] ?? [];
-                            const allowedRights = (DOMAIN_RIGHTS[domain.slug] ?? []).filter((right) => rights.includes(right));
-                            return [domain.slug, new Set(allowedRights)];
-                          })
-                        ) as PermissionState;
-                        setDraftPermissions(newPerms);
-                      }}
-                      style={{
-                        padding: "6px 28px 6px 10px",
-                        fontSize: "var(--fs-xs)", borderRadius: 10,
-                        border: "1px solid rgba(1,105,111,0.18)",
-                        background: "rgba(255,255,255,0.85)",
-                        color: "var(--color-text)",
-                        outline: "none", cursor: "pointer",
-                        appearance: "none",
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                        backgroundRepeat: "no-repeat",
-                        backgroundPosition: "right 8px center",
-                      }}
-                    >
-                      <option value="STAFF">Staff (Restricted Onboarding)</option>
-                      <option value="LAB_SCIENTIST">Lab Scientist</option>
-                      <option value="DATA_MANAGER">Data Manager</option>
-                      <option value="RESEARCH_ADMIN">Research Admin</option>
-                      <option value="PRINCIPAL_INVESTIGATOR">Principal Investigator</option>
-                      <option value="QA_OFFICER">QA Officer</option>
-                      <option value="COMMUNITY_ENGAGEMENT">Community Engagement</option>
-                      <option value="ADMIN">Admin</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
-                  <Badge label={activeUser.role.replace(/_/g, " ")} color="primary" />
-                  <Badge label={`${listSelectedRights(activeSelection).length} selected rights`} color="success" />
-                  <Button variant="secondary" onClick={closeEditor}>
-                    Back
-                  </Button>
-                  <Button variant="primary" onClick={saveDraft} disabled={listSelectedRights(activeSelection).length === 0}>
-                    Save
-                  </Button>
-                </div>
+                  <option value="">All roles</option>
+                  {allRoles.map((role) => (
+                    <option key={role} value={role}>{role.replace(/_/g, " ")}</option>
+                  ))}
+                </select>
+                {(searchQuery || roleFilter) && (
+                  <button
+                    onClick={() => { setSearchQuery(""); setRoleFilter(""); }}
+                    style={{
+                      padding: "5px 12px", fontSize: "var(--fs-xs)", fontWeight: 700,
+                      borderRadius: 10, border: "1px solid rgba(220,38,38,0.22)",
+                      background: "rgba(220,38,38,0.06)", color: "#b91c1c",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
 
-            <div style={{ flex: 1, padding: 16, overflow: "hidden" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-                  gap: 10,
-                  height: "100%",
-                }}
-              >
-                {DOMAIN_CATALOG.map((domain) => {
-                  const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
-                  const enabled = activeSelection[domain.slug] ?? new Set<string>();
-                  return (
-                    <Card
-                      key={domain.slug}
-                      title={`${domain.emoji} ${domain.name}`}
-                      subtitle={`${enabled.size}/${rights.length} selected`}
-                      style={editorCardStyle}
-                    >
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {rights.map((right) => {
-                          const checked = enabled.has(right);
+            <div>
+              <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...columnHeaderStyle, width: "4%" }}>No_</th>
+                    <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left" }}>Users</th>
+                    {DOMAIN_CATALOG.map((domain) => (
+                      <th key={domain.slug} style={{ ...columnHeaderStyle, width: "8.3%" }}>
+                        <div style={{ display: "grid", justifyItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 16, lineHeight: 1 }}>{domain.emoji}</span>
+                          <span>{domain.name}</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={DOMAIN_CATALOG.length + 2}
+                        style={{ padding: "28px 12px", textAlign: "center", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}
+                      >
+                        No users match your search or filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map((row, index) => (
+                      <tr
+                        key={row.user.id}
+                        onClick={() => openEditor(row.user)}
+                        style={{ height: "46px", cursor: "pointer", borderBottom: "1px solid rgba(1, 105, 111, 0.08)", transition: "background 0.12s" }}
+                        onMouseEnter={(event) => {
+                          (event.currentTarget as HTMLTableRowElement).style.background = "rgba(1, 105, 111, 0.03)";
+                        }}
+                        onMouseLeave={(event) => {
+                          (event.currentTarget as HTMLTableRowElement).style.background = "transparent";
+                        }}
+                      >
+                        <td style={{ padding: "10px 12px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", verticalAlign: "middle" }}>{index + 1}</td>
+                        <td style={{ padding: "10px 12px", verticalAlign: "middle", overflow: "hidden" }}>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: "normal",
+                              color: "var(--color-text)",
+                              lineHeight: 1.25,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis"
+                            }}
+                            title={row.user.displayName}
+                          >
+                            {row.user.displayName}
+                          </div>
+                        </td>
+                        {DOMAIN_CATALOG.map((domain) => {
+                          const count = row.selection[domain.slug]?.size ?? 0;
+                          const active = count > 0;
                           return (
-                            <label key={right} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 8px", borderRadius: 12, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 34 }}>
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggleRight(domain.slug, right)}
-                                style={{ width: 16, height: 16, accentColor: "var(--color-primary)", flexShrink: 0 }}
-                              />
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
+                            <td key={domain.slug} style={{ padding: "10px 6px", verticalAlign: "middle", textAlign: "center" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 999, background: active ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.10)", color: active ? "#047857" : "#991b1b", fontWeight: 800, fontSize: "10px", minWidth: 42, justifyContent: "center" }}>
+                                <span aria-hidden="true">{active ? "✓" : "✕"}</span>
+                                <span>{count}</span>
                               </div>
-                            </label>
+                            </td>
                           );
                         })}
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginTop: 12, paddingTop: 14, borderTop: "1px solid var(--color-divider)" }}>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-                  Review the selected rights before saving. The confirmation step lists every checked privilege.
-                </div>
-              </div>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+        ) : (
+          <div style={{ ...surfaceStyle, padding: "16px 20px", }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)" }}>
+              <div>
+                <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--color-text)", lineHeight: 1.2 }}>
+                  {activeUser.displayName}
+                </div>
+                <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: 2 }}>
+                  {activeUser.jobTitle} · {activeUser.department} · {activeUser.email}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-muted)" }}>Assigned Role:</span>
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      setSelectedRole(newRole);
+
+                      const seed = ROLE_SEEDS[newRole] ?? {};
+                      const newPerms = Object.fromEntries(
+                        DOMAIN_CATALOG.map((domain) => {
+                          if (newRole === "STAFF") {
+                            if (domain.slug === "hr") {
+                              return ["hr", new Set(["Training Records"])];
+                            }
+                            return [domain.slug, new Set()];
+                          }
+                          const rights = seed[domain.slug] ?? [];
+                          const allowedRights = (DOMAIN_RIGHTS[domain.slug] ?? []).filter((right) => rights.includes(right));
+                          return [domain.slug, new Set(allowedRights)];
+                        })
+                      ) as PermissionState;
+                      setDraftPermissions(newPerms);
+                    }}
+                    style={{
+                      padding: "5px 24px 5px 10px",
+                      fontSize: "12px", borderRadius: 8,
+                      border: "1px solid rgba(1,105,111,0.18)",
+                      background: "rgba(255,255,255,0.85)",
+                      color: "var(--color-text)",
+                      outline: "none", cursor: "pointer",
+                      appearance: "none",
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: "no-repeat",
+                      backgroundPosition: "right 8px center",
+                    }}
+                  >
+                    <option value="STAFF">Staff (Restricted Onboarding)</option>
+                    <option value="LAB_SCIENTIST">Lab Scientist</option>
+                    <option value="DATA_MANAGER">Data Manager</option>
+                    <option value="RESEARCH_ADMIN">Research Admin</option>
+                    <option value="PRINCIPAL_INVESTIGATOR">Principal Investigator</option>
+                    <option value="QA_OFFICER">QA Officer</option>
+                    <option value="COMMUNITY_ENGAGEMENT">Community Engagement</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+                <Badge label={activeUser.role.replace(/_/g, " ")} color="primary" />
+                <Badge label={`${listSelectedRights(activeSelection!).length} selected rights`} color="success" />
+                <Button variant="secondary" onClick={closeEditor} style={{ padding: "6px 12px", height: "auto" }}>
+                  Back
+                </Button>
+                <Button variant="primary" onClick={saveDraft} disabled={listSelectedRights(activeSelection!).length === 0} style={{ padding: "6px 16px", height: "auto" }}>
+                  Save
+                </Button>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8 }}>
+              {DOMAIN_CATALOG.map((domain) => {
+                const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
+                const enabled = activeSelection![domain.slug] ?? new Set<string>();
+                return (
+                  <Card
+                    key={domain.slug}
+                    title={`${domain.emoji} ${domain.name}`}
+                    subtitle={`${enabled.size}/${rights.length} selected`}
+                    style={editorCardStyle}
+                  >
+                    <div style={{ display: "grid", gap: 5 }}>
+                      {rights.map((right) => {
+                        const checked = enabled.has(right);
+                        return (
+                          <label key={right} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 10, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 28 }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleRight(domain.slug, right)}
+                              style={{ width: 14, height: 14, accentColor: "var(--color-primary)", flexShrink: 0 }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )
       )}
 
       {reviewOpen && activeUser && draftPermissions && (
