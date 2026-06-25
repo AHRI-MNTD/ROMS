@@ -1,6 +1,9 @@
 import React, { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { apiClient } from "../../../api/client";
+import logoAhri from "../../../assets/logo_ahri.png";
 
 const POSITIONS = [
   { name: "division_head", label: "Division Head" },
@@ -276,16 +279,34 @@ export default function ApprovedPage() {
     },
   });
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const idParam = searchParams.get("id");
+
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"" | "Contract" | "Permanent" | "MSc Student">("");
   const [sortKey, setSortKey] = useState<SortKey>("reviewedAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [selected, setSelected] = useState<ApprovalRow | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+  const [printingPersonnel, setPrintingPersonnel] = useState<ApprovalRow | null>(null);
+  const [printStatus, setPrintStatus] = useState<"idle" | "printing">("idle");
+  const [pdfStatus, setPdfStatus] = useState<"idle" | "generating">("idle");
 
   const approved = useMemo(() => {
     return (data?.data ?? []).filter((r) => r.approvalStatus === "APPROVED");
   }, [data]);
+
+  const selected = useMemo(() => {
+    if (!idParam || approved.length === 0) return null;
+    return approved.find((r) => r.id === idParam) || null;
+  }, [idParam, approved]);
+
+  const setSelected = (row: ApprovalRow | null) => {
+    if (row) {
+      setSearchParams({ id: row.id });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   const filtered = useMemo(() => {
     let rows = [...approved];
@@ -329,39 +350,30 @@ export default function ApprovedPage() {
 
   const handlePrint = () => {
     if (!selected) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<html><head><title>Personnel File — ${selected.user?.displayName ?? "Unknown"}</title>
-    <style>
-      body { font-family: Arial, sans-serif; padding: 40px; color: #111; line-height: 1.5; }
-      h1 { font-size: 22px; margin: 0 0 4px; }
-      .subtitle { color: #555; font-size: 14px; margin-bottom: 24px; }
-      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-      td, th { padding: 8px 12px; border: 1px solid #ddd; font-size: 13px; text-align: left; }
-      th { background: #f1f5f9; font-weight: 700; }
-      td.label { font-weight: 700; width: 35%; background: #f8fafc; }
-      .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 8px; border-bottom: 2px solid #334155; padding-bottom: 4px; color: #1e293b; text-transform: uppercase; letter-spacing: 0.03em; }
-      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      @media print { body { padding: 10px; } }
-    </style></head><body>${printRef.current?.innerHTML ?? ""}</body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); w.close(); }, 400);
-  };
-
-  const handleShare = async () => {
-    if (!selected) return;
-    const text = `Personnel: ${selected.user?.displayName ?? "Unknown"}\nDepartment: ${selected.department}\nJob Title: ${getPositionLabel(selected.jobTitle)}\nEmployment: ${formatEmployment(selected.employmentType)}\nStart Date: ${formatDate(selected.startDate)}`;
-    if (navigator.share) {
-      await navigator.share({ title: "Personnel File", text });
-    } else {
-      await navigator.clipboard.writeText(text);
-      alert("Profile info copied to clipboard!");
-    }
+    const originalTitle = document.title;
+    document.title = `Personnel_Profile_Report_${(selected.user?.displayName ?? "Record").replace(/\s+/g, "_")}`;
+    setPrintingPersonnel(selected);
+    setPrintStatus("printing");
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+      setPrintingPersonnel(null);
+      setPrintStatus("idle");
+    }, 400);
   };
 
   const handleDownloadPdf = () => {
-    handlePrint();
+    if (!selected) return;
+    const originalTitle = document.title;
+    document.title = `Personnel_PDF_Report_${(selected.user?.displayName ?? "Record").replace(/\s+/g, "_")}`;
+    setPrintingPersonnel(selected);
+    setPdfStatus("generating");
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+      setPrintingPersonnel(null);
+      setPdfStatus("idle");
+    }, 400);
   };
 
   const thStyle = (key: SortKey): React.CSSProperties => ({
@@ -588,9 +600,9 @@ export default function ApprovedPage() {
             </div>
 
             {/* Details Grid layout: 2 Columns side-by-side */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 24, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 40, marginBottom: 20 }}>
               {/* Left Column */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
                 <Section title="Section 1: Personal Details & Contact Information">
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
@@ -633,7 +645,7 @@ export default function ApprovedPage() {
               </div>
 
               {/* Right Column */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
                 <Section title="Section 3: Qualifications & Academic Background">
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {/* First Degree */}
@@ -743,22 +755,387 @@ export default function ApprovedPage() {
 
           {/* Action Buttons */}
           <div style={{ padding: "14px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
-            <ActionBtn onClick={handleShare} color="#6366f1" icon="🔗" label="Share" />
-            <ActionBtn onClick={handleDownloadPdf} color="#0f766e" icon="⬇" label="Download PDF" />
-            <ActionBtn onClick={handlePrint} color="#1d4ed8" icon="🖨" label="Print" />
-            <button type="button" onClick={() => setSelected(null)} style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid var(--color-divider)", background: "var(--color-surface)", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer" }}>
-              Close
-            </button>
+            <ActionBtn
+              onClick={handleDownloadPdf}
+              color={pdfStatus === "generating" ? "#0d9488" : "#0f766e"}
+              icon={pdfStatus === "generating" ? "⏳" : "⬇"}
+              label={pdfStatus === "generating" ? "Generating..." : "Download PDF"}
+              disabled={pdfStatus === "generating"}
+            />
+            <ActionBtn
+              onClick={handlePrint}
+              color={printStatus === "printing" ? "#2563eb" : "#1d4ed8"}
+              icon={printStatus === "printing" ? "⏳" : "🖨"}
+              label={printStatus === "printing" ? "Printing..." : "Print"}
+              disabled={printStatus === "printing"}
+            />
           </div>
         </div>
       )}
+
+      {/* PRINT-ONLY PORTAL AREA (Identical to QMSPage approach) */}
+      {printingPersonnel && createPortal(
+        <div id="hr-personnel-print-area">
+          {/* Institutional Letterhead */}
+          <div className="letterhead">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <img src={logoAhri} style={{ height: "45px" }} alt="AHRI Logo" />
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span className="letterhead-logo">AHRI</span>
+                <span style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 700, textTransform: "uppercase" }}>Armauer Hansen Research Institute</span>
+              </div>
+            </div>
+            <div className="letterhead-dept">
+              Department of Human Resources
+            </div>
+          </div>
+
+          <div className="doc-title-container">
+            <h1 className="doc-title">Personnel Profile Report</h1>
+            <p className="doc-subtitle">Confidential Personnel Record Summary</p>
+          </div>
+
+          {/* Document Metadata */}
+          <div className="metadata-summary">
+            <div className="metadata-item">
+              <span className="metadata-label">Personnel Name</span>
+              <span className="metadata-value">{printingPersonnel.user?.displayName ?? "Unknown"}</span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Department</span>
+              <span className="metadata-value">{printingPersonnel.department}</span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Verification Status</span>
+              <span className="metadata-value" style={{ color: "#166534" }}>✓ VERIFIED</span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Report Date</span>
+              <span className="metadata-value">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+            </div>
+          </div>
+
+          {/* Details Vertical Layout */}
+          <div className="details-vertical">
+            <Section title="Section 1: Personal Details & Contact Information">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <InfoRow label="Full Name" value={printingPersonnel.user?.displayName ?? "—"} />
+                <InfoRow label="Sex" value={printingPersonnel.sex ? printingPersonnel.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
+                <InfoRow label="Phone Number" value={printingPersonnel.phone} />
+                <InfoRow label="Personal Email" value={printingPersonnel.personalEmail} />
+                <InfoRow label="AHRI Email" value={printingPersonnel.ahriEmail} />
+                <InfoRow label="Emergency Contact" value={printingPersonnel.emergencyContact} />
+              </div>
+            </Section>
+
+            <Section title="Section 2: Employment & Position details">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <InfoRow label="Department" value={printingPersonnel.department} />
+                <InfoRow label="Current Position" value={getPositionLabel(printingPersonnel.jobTitle)} />
+                <InfoRow label="Employment Type" value={formatEmployment(printingPersonnel.employmentType)} />
+                <InfoRow label="AHRI Start Date" value={formatDate(printingPersonnel.startDate)} />
+                {printingPersonnel.employmentType === "contract" && (
+                  <>
+                    <InfoRow label="Contract End Date" value={formatDate(printingPersonnel.contractEndDate)} />
+                    <InfoRow label="Hired Project" value={getHiredProjectLabel(printingPersonnel.mntdProject)} />
+                  </>
+                )}
+              </div>
+              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                <InfoRow
+                  label="MNTD Teams"
+                  value={printingPersonnel.mntdTeams && printingPersonnel.mntdTeams.length > 0
+                    ? printingPersonnel.mntdTeams.map(t => getTeamLabel(t)).join(", ")
+                    : "—"}
+                />
+                <InfoRow
+                  label="Projects Involved"
+                  value={printingPersonnel.mntdProjectsInvolved && printingPersonnel.mntdProjectsInvolved.length > 0
+                    ? printingPersonnel.mntdProjectsInvolved.map(p => getProjectLabel(p)).join(", ")
+                    : "—"}
+                />
+              </div>
+            </Section>
+
+            <Section title="Section 3: Qualifications & Academic Background">
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {/* First Degree */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <InfoRow label="Degree & Field" value={printingPersonnel.firstDegree} />
+                    <InfoRow label="University" value={printingPersonnel.firstDegreeUniv === "other" ? printingPersonnel.firstDegreeUnivOther : getUniversityLabel(printingPersonnel.firstDegreeUniv)} />
+                    <InfoRow label="Completed Year" value={printingPersonnel.firstDegreeYear} />
+                  </div>
+                </div>
+
+                {/* Second Degree */}
+                {printingPersonnel.secondDegree && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <InfoRow label="Degree & Field" value={printingPersonnel.secondDegree} />
+                      <InfoRow label="University" value={printingPersonnel.secondDegreeUniv === "other" ? printingPersonnel.secondDegreeUnivOther : getUniversityLabel(printingPersonnel.secondDegreeUniv)} />
+                      <InfoRow label="Completed Year" value={printingPersonnel.secondDegreeYear} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Third Degree */}
+                {printingPersonnel.thirdDegree && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <InfoRow label="PhD & Field" value={printingPersonnel.thirdDegree} />
+                      <InfoRow label="University & Country" value={printingPersonnel.thirdDegreeUnivCountry} />
+                      <InfoRow label="Completed Year" value={printingPersonnel.thirdDegreeYear} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Currently Studying */}
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
+                  <InfoRow label="Currently Studying?" value={printingPersonnel.currentlyStudying ? "Yes" : "No"} />
+
+                  {printingPersonnel.currentlyStudying && (
+                    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6, paddingLeft: 10, borderLeft: "2px solid var(--color-border)" }}>
+                      {printingPersonnel.studyMastersField && (
+                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
+                          <strong>Masters:</strong> {printingPersonnel.studyMastersField} at {printingPersonnel.studyMastersUniv} (Expected: {printingPersonnel.studyMastersYear})
+                        </div>
+                      )}
+                      {printingPersonnel.studyPhdField && (
+                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
+                          <strong>PhD:</strong> {printingPersonnel.studyPhdField} at {printingPersonnel.studyPhdUniv} (Expected: {printingPersonnel.studyPhdYear})
+                        </div>
+                      )}
+                      {printingPersonnel.studyCertField && (
+                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>
+                          <strong>Certifications:</strong> {printingPersonnel.studyCertField} at {printingPersonnel.studyCertUniv} (Expected: {printingPersonnel.studyCertYear})
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Section>
+
+            <Section title="Section 4: Work Experience">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <InfoRow label="Total Experience" value={getWorkExpLabel(printingPersonnel.totalWorkExp)} />
+                <InfoRow label="Experience at AHRI" value={getWorkExpLabel(printingPersonnel.totalWorkExpAhri)} />
+              </div>
+            </Section>
+
+            {/* Property Inventory Table */}
+            <Section title="Section 5: Personal Equipment Log">
+              {(() => {
+                let invItems: any[] = [];
+                if (printingPersonnel.propertyInventory) {
+                  try {
+                    invItems = typeof printingPersonnel.propertyInventory === "string"
+                      ? JSON.parse(printingPersonnel.propertyInventory)
+                      : printingPersonnel.propertyInventory;
+                  } catch (e) {}
+                }
+                return invItems.length > 0 ? (
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(0,0,0,0.03)" }}>
+                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
+                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
+                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invItems.map((item: any) => (
+                        <tr key={item.id}>
+                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
+                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
+                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic" }}>No property inventory items registered.</div>
+                );
+              })()}
+            </Section>
+
+            <Section title="Verification & Authorization History">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <InfoRow label="Verified On" value={formatDate(printingPersonnel.reviewedAt)} />
+                <InfoRow label="Verified By" value={printingPersonnel.reviewedBy?.displayName ?? printingPersonnel.reviewedBy?.email ?? "System"} />
+                {printingPersonnel.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Remarks" value={printingPersonnel.reviewNote} /></div>}
+              </div>
+            </Section>
+          </div>
+
+          {/* Formal Signatures */}
+          <div className="signature-section">
+            <div className="signature-box">
+              <strong>Employee Signature</strong><br/>
+              Date: ________________________
+            </div>
+            <div className="signature-box">
+              <strong>Authorized HR Representative</strong><br/>
+              Date: ________________________
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* PRINT MEDIA STYLES */}
+      <style>{`
+        @media print {
+          #root { display: none !important; }
+          body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
+          #hr-personnel-print-area {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            color: #0f172a !important;
+          }
+          
+          #hr-personnel-print-area .letterhead {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            border-bottom: 2px solid #0f172a !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 24px !important;
+          }
+          #hr-personnel-print-area .letterhead-logo {
+            font-size: 20px !important;
+            font-weight: 800 !important;
+            color: #1e3a8a !important;
+            text-transform: uppercase !important;
+          }
+          #hr-personnel-print-area .letterhead-dept {
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            text-align: right !important;
+            color: #475569 !important;
+            text-transform: uppercase !important;
+          }
+          #hr-personnel-print-area .doc-title-container {
+            text-align: center !important;
+            margin-bottom: 24px !important;
+          }
+          #hr-personnel-print-area .doc-title {
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            margin: 0 !important;
+          }
+          #hr-personnel-print-area .doc-subtitle {
+            font-size: 12px !important;
+            color: #475569 !important;
+            margin: 4px 0 0 !important;
+          }
+          #hr-personnel-print-area .metadata-summary {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 16px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            margin-bottom: 30px !important;
+          }
+          #hr-personnel-print-area .metadata-item {
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          #hr-personnel-print-area .metadata-label {
+            font-size: 9px !important;
+            font-weight: 700 !important;
+            color: #64748b !important;
+            text-transform: uppercase !important;
+          }
+          #hr-personnel-print-area .metadata-value {
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #0f172a !important;
+          }
+          #hr-personnel-print-area .details-vertical {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 24px !important;
+          }
+          #hr-personnel-print-area .section-container {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            margin-bottom: 24px !important;
+          }
+          #hr-personnel-print-area .section-title {
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            color: #1e3a8a !important;
+            text-transform: uppercase !important;
+            border-bottom: 1.5px solid #1e3a8a !important;
+            padding-bottom: 4px !important;
+            margin-bottom: 12px !important;
+          }
+          #hr-personnel-print-area table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 8px !important;
+          }
+          #hr-personnel-print-area th {
+            background: #f1f5f9 !important;
+            font-weight: 700 !important;
+            font-size: 10px !important;
+            color: #475569 !important;
+            text-transform: uppercase !important;
+            padding: 6px 10px !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          #hr-personnel-print-area td {
+            padding: 6px 10px !important;
+            border: 1px solid #e2e8f0 !important;
+            font-size: 11px !important;
+            color: #0f172a !important;
+          }
+          #hr-personnel-print-area .signature-section {
+            display: flex !important;
+            justify-content: space-between !important;
+            margin-top: 60px !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          #hr-personnel-print-area .signature-box {
+            width: 42% !important;
+            border-top: 1px solid #94a3b8 !important;
+            padding-top: 8px !important;
+            text-align: center !important;
+            font-size: 11px !important;
+            color: #475569 !important;
+          }
+          @page {
+            size: portrait;
+            margin: 0.6in 0.8in 0.8in 0.8in;
+          }
+        }
+
+        #hr-personnel-print-area { display: none; }
+      `}</style>
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="section-container">
       <div className="section-title" style={{ fontSize: "var(--fs-xs)", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
         {title}
       </div>
@@ -776,12 +1153,27 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function ActionBtn({ onClick, color, icon, label }: { onClick: () => void; color: string; icon: string; label: string }) {
+function ActionBtn({ onClick, color, icon, label, disabled }: { onClick: () => void; color: string; icon: string; label: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: color, color: "#fff", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+      disabled={disabled}
+      style={{
+        padding: "8px 16px",
+        borderRadius: 10,
+        border: "none",
+        background: color,
+        color: "#fff",
+        fontSize: "var(--fs-xs)",
+        fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        opacity: disabled ? 0.7 : 1,
+        transition: "all 0.2s ease"
+      }}
     >
       <span>{icon}</span> {label}
     </button>
