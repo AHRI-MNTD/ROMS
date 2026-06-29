@@ -50,6 +50,7 @@ async function start() {
   });
 }
 
+// Trigger hot reload for env updates
 start().catch((err) => {
   console.error("Fatal startup error:", err);
   process.exit(1);

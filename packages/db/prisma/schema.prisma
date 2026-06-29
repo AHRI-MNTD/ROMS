@@ -14,15 +14,17 @@ datasource db {
 // ─── Core / Cross-cutting ──────────────────────────────────────────────────────
 
 model User {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  hashedPassword String
-  displayName    String
-  roles          String[]  // Role enum values stored as strings
-  permissions    String[]  @default([]) // Custom granular permissions
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  lastLoginAt    DateTime?
+  id               String    @id @default(cuid())
+  email            String    @unique
+  hashedPassword   String?
+  displayName      String
+  emailVerified    Boolean   @default(false)
+  verificationCode String?
+  roles            String[]  // Role enum values stored as strings
+  permissions      String[]  @default([]) // Custom granular permissions
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastLoginAt      DateTime?
 
   sessions        Session[]
   auditLogs       AuditLog[]

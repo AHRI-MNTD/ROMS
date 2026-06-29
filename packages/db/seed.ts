@@ -547,6 +547,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Alice Mwangi",
         roles: ["LAB_SCIENTIST"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -557,6 +558,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Brian Okonkwo",
         roles: ["DATA_MANAGER"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -567,6 +569,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Carol Nzinga",
         roles: ["RESEARCH_ADMIN"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -577,6 +580,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Dr. David Asante",
         roles: ["PRINCIPAL_INVESTIGATOR"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -587,6 +591,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Eve Diallo",
         roles: ["QA_OFFICER"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -597,6 +602,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Frank Mensah",
         roles: ["COMMUNITY_ENGAGEMENT"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -607,6 +613,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Grace Abubakar",
         roles: ["ADMIN"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -617,6 +624,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Henry Osei",
         roles: ["HR_APPLICANT"],
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
@@ -627,6 +635,7 @@ async function main() {
         hashedPassword: password,
         displayName: "Irene Njoroge",
         roles: ["HR_APPLICANT"],
+        emailVerified: true,
       },
     }),
   ]);

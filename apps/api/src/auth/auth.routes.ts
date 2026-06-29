@@ -5,8 +5,12 @@ import { LoginSchema, Role } from "@roms/shared";
 import { signAccessToken, signRefreshToken, verifyToken } from "./jwt";
 import { requireAuth } from "./auth.middleware";
 import { logger } from "../utils/logger";
+import { OAuth2Client } from "google-auth-library";
+import { env } from "../env";
+import { sendVerificationEmail } from "./email";
 
 const router = Router();
+const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
 // POST /auth/register
 router.post("/register", async (req: Request, res: Response) => {
@@ -24,39 +28,96 @@ router.post("/register", async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     const user = await prisma.user.create({
       data: {
         email,
         hashedPassword,
         displayName,
+        emailVerified: false,
+        verificationCode,
         roles: [],
       },
     });
 
-    const accessToken = signAccessToken({
-      sub: user.id,
-      email: user.email,
-      roles: user.roles,
-      permissions: user.permissions || [],
-    });
-    const refreshToken = signRefreshToken(user.id);
+    logger.info(`
+==================================================
+📬 [MOCK EMAIL] Verification Code for ${user.email}:
+👉 Code: ${verificationCode}
+==================================================
+    `);
 
-    logger.info({ userId: user.id, email: user.email }, "User registered");
+    try {
+      await sendVerificationEmail(user.email, verificationCode);
+    } catch (emailErr) {
+      logger.error(emailErr, "Failed to send email during registration");
+    }
+
 
     res.status(201).json({
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        roles: user.roles,
-        permissions: user.permissions || [],
-      },
+      status: "VERIFICATION_REQUIRED",
+      email: user.email,
+      message: "Registration successful. Please verify your email to log in."
     });
   } catch (err) {
     logger.error(err, "Register error");
     res.status(500).json({ code: "INTERNAL_ERROR", message: "Registration failed" });
+  }
+});
+
+// POST /auth/verify-email
+router.post("/verify-email", async (req: Request, res: Response) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Email and code are required" });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      res.status(404).json({ code: "NOT_FOUND", message: "User not found" });
+      return;
+    }
+
+    if (user.verificationCode !== code) {
+      res.status(400).json({ code: "INVALID_CODE", message: "Invalid verification code" });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationCode: null,
+      },
+    });
+
+    const accessToken = signAccessToken({
+      sub: updatedUser.id,
+      email: updatedUser.email,
+      roles: updatedUser.roles,
+      permissions: updatedUser.permissions || [],
+    });
+    const refreshToken = signRefreshToken(updatedUser.id);
+
+    logger.info({ userId: updatedUser.id, email: updatedUser.email }, "User email verified and logged in");
+
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        displayName: updatedUser.displayName,
+        roles: updatedUser.roles,
+        permissions: updatedUser.permissions || [],
+      },
+    });
+  } catch (err) {
+    logger.error(err, "Verify email error");
+    res.status(500).json({ code: "INTERNAL_ERROR", message: "Verification failed" });
   }
 });
 
@@ -77,9 +138,46 @@ router.post("/login", async (req: Request, res: Response) => {
       return;
     }
 
+    if (!user.hashedPassword) {
+      res.status(401).json({ code: "INVALID_CREDENTIALS", message: "This email is registered via Google. Please sign in with Google." });
+      return;
+    }
+
     const valid = await bcrypt.compare(password, user.hashedPassword);
     if (!valid) {
       res.status(401).json({ code: "INVALID_CREDENTIALS", message: "Invalid email or password" });
+      return;
+    }
+
+    if (!user.emailVerified) {
+      let code = user.verificationCode;
+      if (!code) {
+        code = Math.floor(100000 + Math.random() * 900000).toString();
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { verificationCode: code }
+        });
+      }
+
+      logger.info(`
+==================================================
+📬 [MOCK EMAIL] Verification Code for ${user.email}:
+👉 Code: ${code}
+==================================================
+      `);
+
+      try {
+        await sendVerificationEmail(user.email, code);
+      } catch (emailErr) {
+        logger.error(emailErr, "Failed to send email during login");
+      }
+
+
+      res.status(401).json({
+        code: "EMAIL_UNVERIFIED",
+        message: "Email is not verified. Please verify your email first.",
+        email: user.email
+      });
       return;
     }
 
@@ -113,6 +211,91 @@ router.post("/login", async (req: Request, res: Response) => {
   } catch (err) {
     logger.error(err, "Login error");
     res.status(500).json({ code: "INTERNAL_ERROR", message: "Login failed" });
+  }
+});
+
+// POST /auth/google
+router.post("/google", async (req: Request, res: Response) => {
+  const { credential } = req.body;
+  if (!credential) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Credential token is required" });
+    return;
+  }
+
+  try {
+    let email: string;
+    let displayName: string;
+
+    // Check for dev mock token
+    if (process.env.NODE_ENV === "development" && credential.startsWith("mock-google-token-")) {
+      email = credential.replace("mock-google-token-", "") + "@gmail.com";
+      displayName = "Mock Google User";
+    } else {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        res.status(400).json({ code: "INVALID_TOKEN", message: "Invalid Google credential token" });
+        return;
+      }
+      email = payload.email;
+      displayName = payload.name || payload.email.split("@")[0];
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Register new user with Google login
+      user = await prisma.user.create({
+        data: {
+          email,
+          displayName,
+          emailVerified: true,
+          roles: [],
+          permissions: [],
+        },
+      });
+      logger.info({ userId: user.id, email: user.email }, "User registered via Google");
+    } else {
+      // If user existed but wasn't verified, mark them verified now since Google has verified their email
+      if (!user.emailVerified) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { emailVerified: true, verificationCode: null }
+        });
+      }
+      logger.info({ userId: user.id, email: user.email }, "User logged in via Google");
+    }
+
+    // Update lastLoginAt
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    const accessToken = signAccessToken({
+      sub: user.id,
+      email: user.email,
+      roles: user.roles,
+      permissions: user.permissions || [],
+    });
+    const refreshToken = signRefreshToken(user.id);
+
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        roles: user.roles,
+        permissions: user.permissions || [],
+      },
+    });
+  } catch (err) {
+    logger.error(err, "Google auth error");
+    res.status(401).json({ code: "INVALID_TOKEN", message: "Google authentication failed" });
   }
 });
 
