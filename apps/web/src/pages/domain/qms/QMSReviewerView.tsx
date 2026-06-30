@@ -20,6 +20,7 @@ interface QMSReviewerViewProps {
   onSopUpdate: (updatedSops: SOPItem[]) => void;
   onPrintRequest: (sop: SOPItem) => void;
   onShareRequest: (sop: SOPItem) => void;
+  onSopApproved?: (sop: SOPItem) => void;
 }
 
 const ViewIcon = () => (
@@ -788,10 +789,13 @@ const formatGridToString = (gridData: any[], type: string) => {
   }
 };
 
-export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest }: QMSReviewerViewProps) {
+export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest, onSopApproved }: QMSReviewerViewProps) {
   // Local state
   const [searchText, setSearchText] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
+  const [filterSopType, setFilterSopType] = useState<string>("All");
+  const [filterStatus, setFilterStatus] = useState<string>("All");
+  const [filterMethodFamily, setFilterMethodFamily] = useState<string>("All");
   const [selectedSopForReview, setSelectedSopForReview] = useState<SOPItem | null>(null);
 
   // Reviewer specific inputs
@@ -844,11 +848,28 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
         sop.code.toLowerCase().includes(searchText.toLowerCase()) ||
         sop.author.toLowerCase().includes(searchText.toLowerCase());
 
-      const matchesCategory = filterCategory === "All" || sop.sopSection === filterCategory;
+      const matchesCategory = filterCategory === "All" || sop.sopSection === filterCategory || sop.details?.assayCategory === filterCategory;
+      const matchesSopType = filterSopType === "All" || (sop.sopType || sop.sopSection) === filterSopType;
+      const matchesMethodFamily = filterMethodFamily === "All" || sop.details?.methodFamily === filterMethodFamily;
 
-      return isReviewable && matchesSearch && matchesCategory;
+      let matchesStatus = isReviewable;
+      if (filterStatus !== "All") {
+        if (filterStatus === "APPROVED") {
+          matchesStatus = sop.status.toUpperCase() === "APPROVED" || sop.status.toUpperCase() === "ACTIVE" || sop.status.toUpperCase() === "ACTIVE / APPROVED";
+        } else {
+          matchesStatus = sop.status.toUpperCase() === filterStatus.toUpperCase();
+        }
+      }
+
+      return matchesStatus && matchesSearch && matchesCategory && matchesSopType && matchesMethodFamily;
     });
-  }, [sops, searchText, filterCategory]);
+  }, [sops, searchText, filterCategory, filterSopType, filterStatus, filterMethodFamily]);
+
+  // Dynamic Method Families list
+  const methodFamilyOptions = useMemo(() => {
+    const fams = sops.map(s => s.details?.methodFamily).filter(Boolean);
+    return Array.from(new Set(fams)).sort();
+  }, [sops]);
 
   // Categories list for filter
   const categoryOptions = useMemo(() => {
@@ -1026,6 +1047,9 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
     if (isFullyApproved) {
       setSelectedSopForReview(null);
       alert(`SOP ${updatedSop.code} has received all required digital signatures and is now officially APPROVED!`);
+      if (onSopApproved) {
+        onSopApproved(updatedSop);
+      }
     } else {
       setSelectedSopForReview(updatedSop);
       alert(`Sign-off recorded for ${role}. Awaiting other digital signatures.`);
@@ -1122,30 +1146,70 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
       {/* ── SEARCH & FILTER PANEL ── */}
       <div style={filterPanelStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Category:</span>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            style={selectStyle}
-          >
-            <option value="All">All Categories</option>
-            {categoryOptions.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
+        <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
+        <select
+          value={filterSopType}
+          onChange={(e) => setFilterSopType(e.target.value)}
+          style={{ ...compactSelectStyle, borderColor: filterSopType !== "All" ? "#0d9488" : "var(--color-border)", background: filterSopType !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+        >
+          <option value="All">All Types</option>
+          <option value="Procedure SOP">Procedure SOP</option>
+          <option value="Equipment SOP">Equipment SOP</option>
+          <option value="Analysis SOP">Analysis SOP</option>
+        </select>
 
-        <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: "var(--color-text-faint)" }}>🔍</span>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          style={{ ...compactSelectStyle, borderColor: filterStatus !== "All" ? "#0d9488" : "var(--color-border)", background: filterStatus !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+        >
+          <option value="All">All Statuses</option>
+          <option value="UNDER REVIEW">Under Review</option>
+          <option value="PANEL REVIEW">Panel Review</option>
+          <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
+          <option value="RETURNED">Returned</option>
+          <option value="APPROVED">Approved / Active</option>
+        </select>
+
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          style={{ ...compactSelectStyle, borderColor: filterCategory !== "All" ? "#0d9488" : "var(--color-border)", background: filterCategory !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+        >
+          <option value="All">All Assay Categories</option>
+          {categoryOptions.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterMethodFamily}
+          onChange={(e) => setFilterMethodFamily(e.target.value)}
+          style={{ ...compactSelectStyle, borderColor: filterMethodFamily !== "All" ? "#0d9488" : "var(--color-border)", background: filterMethodFamily !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+        >
+          <option value="All">All Method Families</option>
+          {methodFamilyOptions.map(fam => (
+            <option key={fam} value={fam}>{fam}</option>
+          ))}
+        </select>
+
+        <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
+          <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
           <input
             type="text"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search review queue by SOP code, title, or author..."
-            style={inputStyle}
+            placeholder="Search review queue..."
+            style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
           />
         </div>
+        {(filterSopType !== "All" || filterStatus !== "All" || filterCategory !== "All" || filterMethodFamily !== "All" || searchText) && (
+          <button
+            onClick={() => { setFilterSopType("All"); setFilterStatus("All"); setFilterCategory("All"); setFilterMethodFamily("All"); setSearchText(""); }}
+            style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
+            title="Clear all filters"
+          >✕ Clear</button>
+        )}
       </div>
 
       {/* ── REVIEW QUEUE TABLE ── */}
@@ -1187,7 +1251,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
                 return (
                   <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{sop.code}</td>
+                    <td style={{ ...tdStyle, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
                     <td style={tdStyle}>{sop.title}</td>
                     <td style={tdStyle}>{sop.author}</td>
                     <td style={tdStyle}>v{sop.version}</td>
@@ -1834,12 +1898,13 @@ const iconWrapperStyle: React.CSSProperties = {
 
 const filterPanelStyle: React.CSSProperties = {
   display: "flex",
-  gap: "12px",
+  gap: "8px",
   alignItems: "center",
   background: "var(--color-surface)",
-  padding: "12px",
+  padding: "8px 12px",
   borderRadius: "var(--radius)",
   border: "1px solid var(--color-border)",
+  borderTop: "2.5px solid #0d9488",
   flexWrap: "wrap"
 };
 
@@ -1852,6 +1917,18 @@ const selectStyle: React.CSSProperties = {
   fontSize: "var(--fs-sm)",
   outline: "none",
   cursor: "pointer"
+};
+
+const compactSelectStyle: React.CSSProperties = {
+  padding: "5px 22px 5px 8px",
+  border: "1px solid var(--color-border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--color-surface-2)",
+  color: "var(--color-text)",
+  fontSize: "11.5px",
+  outline: "none",
+  cursor: "pointer",
+  transition: "border-color 0.15s ease, background 0.15s ease"
 };
 
 const inputStyle: React.CSSProperties = {

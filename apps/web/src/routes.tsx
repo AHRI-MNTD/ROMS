@@ -19,6 +19,7 @@ const MasterDataPage = lazy(() => import("./pages/domain/inventory/MasterDataPag
 const QMSLayout = lazy(() => import("./pages/domain/qms/QMSLayout"));
 const QMSPage = lazy(() => import("./pages/domain/qms/QMSPage"));
 const CreateSOPPage = lazy(() => import("./pages/domain/qms/CreateSOPPage"));
+const SOPGuidelinesPage = lazy(() => import("./pages/domain/qms/SOPGuidelinesPage"));
 const LabWorkflowPage = lazy(() => import("./pages/domain/LabWorkflowPage"));
 const DataManagementPage = lazy(() => import("./pages/domain/DataManagementPage"));
 const InfrastructurePage = lazy(() => import("./pages/domain/InfrastructurePage"));
@@ -93,6 +94,7 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <QMSPage /> },
               { path: "create-sop", element: <CreateSOPPage /> },
+              { path: "guidelines", element: <SOPGuidelinesPage /> },
             ],
           },
           { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
