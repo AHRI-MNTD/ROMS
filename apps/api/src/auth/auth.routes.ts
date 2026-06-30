@@ -240,6 +240,10 @@ router.post("/google", async (req: Request, res: Response) => {
         res.status(400).json({ code: "INVALID_TOKEN", message: "Invalid Google credential token" });
         return;
       }
+      if (!payload.email_verified) {
+        res.status(400).json({ code: "UNVERIFIED_EMAIL", message: "Your Google account's email address is not verified by Google" });
+        return;
+      }
       email = payload.email;
       displayName = payload.name || payload.email.split("@")[0];
     }
