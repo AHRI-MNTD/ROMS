@@ -133,6 +133,7 @@ export default function QMSPage() {
 
   // Modals & Popups
   const [selectedSopDetails, setSelectedSopDetails] = useState<SOPItem | null>(null);
+  const [selectedSopForReading, setSelectedSopForReading] = useState<SOPItem | null>(null);
   const [shareSop, setShareSop] = useState<SOPItem | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [printingSop, setPrintingSop] = useState<SOPItem | null>(null);
@@ -140,6 +141,8 @@ export default function QMSPage() {
   // Author & QO specific filters
   const [authorSopTypeFilter, setAuthorSopTypeFilter] = useState<string>("All");
   const [authorStatusFilter, setAuthorStatusFilter] = useState<string>("All");
+  const [authorAssayCategoryFilter, setAuthorAssayCategoryFilter] = useState<string>("All");
+  const [authorMethodFamilyFilter, setAuthorMethodFamilyFilter] = useState<string>("All");
   const [qoSearchText, setQoSearchText] = useState<string>("");
   const [qoSopTypeFilter, setQoSopTypeFilter] = useState<string>("All");
   const [qoStatusFilter, setQoStatusFilter] = useState<string>("All");
@@ -328,9 +331,13 @@ export default function QMSPage() {
 
       const matchesStatus = authorStatusFilter === "All" || sop.status.toUpperCase() === authorStatusFilter.toUpperCase();
 
-      return matchesSearch && matchesType && matchesStatus;
+      const matchesAssayCategory = authorAssayCategoryFilter === "All" || sop.details?.assayCategory === authorAssayCategoryFilter || sop.sopSection === authorAssayCategoryFilter;
+
+      const matchesMethodFamily = authorMethodFamilyFilter === "All" || sop.details?.methodFamily === authorMethodFamilyFilter;
+
+      return matchesSearch && matchesType && matchesStatus && matchesAssayCategory && matchesMethodFamily;
     });
-  }, [allSops, searchText, authorSopTypeFilter, authorStatusFilter]);
+  }, [allSops, searchText, authorSopTypeFilter, authorStatusFilter, authorAssayCategoryFilter, authorMethodFamilyFilter]);
 
   // Filtered lists for QO perspective
   const requestedSopsQO = useMemo(() => {
@@ -542,55 +549,77 @@ export default function QMSPage() {
             <QMSViewerView
               sops={allSops}
               onPrintRequest={(sop) => handlePrintPDF(sop)}
+              selectedSopForReading={selectedSopForReading}
+              setSelectedSopForReading={setSelectedSopForReading}
             />
           )}
 
           {/* TAB 2: AUTHOR PERSPECTIVE */}
           {activeTab === "author" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Search and Filters for Author */}
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", background: "var(--color-surface)", padding: "12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>SOP Type:</span>
-                  <select
-                    value={authorSopTypeFilter}
-                    onChange={(e) => setAuthorSopTypeFilter(e.target.value)}
-                    style={{ padding: "6px 20px 6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "pointer" }}
-                  >
-                    <option value="All">All Types</option>
-                    <option value="Procedure SOP">Procedure SOP</option>
-                    <option value="Equipment SOP">Equipment SOP</option>
-                    <option value="Analysis SOP">Analysis SOP</option>
-                  </select>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Status:</span>
-                  <select
-                    value={authorStatusFilter}
-                    onChange={(e) => setAuthorStatusFilter(e.target.value)}
-                    style={{ padding: "6px 20px 6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "pointer" }}
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="REQUESTED">Requested</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="UNDER REVIEW">Under Review</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="RETURNED">Returned</option>
-                    <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-                  </select>
-                </div>
-
-                <div style={{ position: "relative", flex: 1, minWidth: "150px" }}>
-                  <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: "var(--color-text-faint)" }}>🔍</span>
+              {/* Search and Filters for Author — compact scientific strip */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
+                <select
+                  value={authorSopTypeFilter}
+                  onChange={(e) => setAuthorSopTypeFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: authorSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Types</option>
+                  <option value="Procedure SOP">Procedure SOP</option>
+                  <option value="Equipment SOP">Equipment SOP</option>
+                  <option value="Analysis SOP">Analysis SOP</option>
+                </select>
+                <select
+                  value={authorStatusFilter}
+                  onChange={(e) => setAuthorStatusFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: authorStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="REQUESTED">Requested</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="UNDER REVIEW">Under Review</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="RETURNED">Returned</option>
+                  <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
+                </select>
+                <select
+                  value={authorAssayCategoryFilter}
+                  onChange={(e) => setAuthorAssayCategoryFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: authorAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Assay Categories</option>
+                  {ASSAY_CATEGORY_OPTIONS.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <select
+                  value={authorMethodFamilyFilter}
+                  onChange={(e) => setAuthorMethodFamilyFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: authorMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Method Families</option>
+                  {METHOD_FAMILY_OPTIONS.map(fam => (
+                    <option key={fam} value={fam}>{fam}</option>
+                  ))}
+                </select>
+                <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
+                  <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
                   <input
                     type="text"
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Search my requested and draft SOPs..."
-                    style={{ width: "100%", padding: "6px 12px 6px 28px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
+                    placeholder="Search SOPs..."
+                    style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
+                {(authorSopTypeFilter !== "All" || authorStatusFilter !== "All" || authorAssayCategoryFilter !== "All" || authorMethodFamilyFilter !== "All" || searchText) && (
+                  <button
+                    onClick={() => { setAuthorSopTypeFilter("All"); setAuthorStatusFilter("All"); setAuthorAssayCategoryFilter("All"); setAuthorMethodFamilyFilter("All"); setSearchText(""); }}
+                    style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
+                    title="Clear all filters"
+                  >✕ Clear</button>
+                )}
               </div>
 
               {/* Author's SOP list */}
@@ -612,7 +641,7 @@ export default function QMSPage() {
 
                         return (
                           <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)" }}>{sop.code}</td>
+                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)", fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
                             <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
                             <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
                             <td style={{ padding: "12px 16px", fontSize: "10px" }}>
@@ -663,76 +692,68 @@ export default function QMSPage() {
           {activeTab === "qo" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-              {/* Search & Filters for QO */}
-              <div style={{ display: "flex", gap: "12px", alignItems: "center", background: "var(--color-surface)", padding: "12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>SOP Type:</span>
-                  <select
-                    value={qoSopTypeFilter}
-                    onChange={(e) => setQoSopTypeFilter(e.target.value)}
-                    style={{ padding: "6px 20px 6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "pointer" }}
-                  >
-                    <option value="All">All Types</option>
-                    <option value="Procedure SOP">Procedure SOP</option>
-                    <option value="Equipment SOP">Equipment SOP</option>
-                    <option value="Analysis SOP">Analysis SOP</option>
-                  </select>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Status:</span>
-                  <select
-                    value={qoStatusFilter}
-                    onChange={(e) => setQoStatusFilter(e.target.value)}
-                    style={{ padding: "6px 20px 6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "pointer" }}
-                  >
-                    <option value="All">All Statuses (Excl. Requested)</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="UNDER REVIEW">Under Review</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="RETURNED">Returned</option>
-                    <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-                  </select>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Assay Category:</span>
-                  <select
-                    value={qoAssayCategoryFilter}
-                    onChange={(e) => setQoAssayCategoryFilter(e.target.value)}
-                    style={{ padding: "6px 20px 6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "pointer" }}
-                  >
-                    <option value="All">All Categories</option>
-                    {ASSAY_CATEGORY_OPTIONS.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Method Family:</span>
-                  <select
-                    value={qoMethodFamilyFilter}
-                    onChange={(e) => setQoMethodFamilyFilter(e.target.value)}
-                    style={{ padding: "6px 20px 6px 10px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "pointer" }}
-                  >
-                    <option value="All">All Families</option>
-                    {METHOD_FAMILY_OPTIONS.map(fam => (
-                      <option key={fam} value={fam}>{fam}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ position: "relative", flex: 1, minWidth: "150px" }}>
-                  <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: "var(--color-text-faint)" }}>🔍</span>
+              {/* Search & Filters for QO — compact scientific strip */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
+                <select
+                  value={qoSopTypeFilter}
+                  onChange={(e) => setQoSopTypeFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: qoSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Types</option>
+                  <option value="Procedure SOP">Procedure SOP</option>
+                  <option value="Equipment SOP">Equipment SOP</option>
+                  <option value="Analysis SOP">Analysis SOP</option>
+                </select>
+                <select
+                  value={qoStatusFilter}
+                  onChange={(e) => setQoStatusFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: qoStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Statuses (Excl. Requested)</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="UNDER REVIEW">Under Review</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="RETURNED">Returned</option>
+                  <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
+                </select>
+                <select
+                  value={qoAssayCategoryFilter}
+                  onChange={(e) => setQoAssayCategoryFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: qoAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Assay Categories</option>
+                  {ASSAY_CATEGORY_OPTIONS.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <select
+                  value={qoMethodFamilyFilter}
+                  onChange={(e) => setQoMethodFamilyFilter(e.target.value)}
+                  style={{ ...compactSelectStyle, borderColor: qoMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                >
+                  <option value="All">All Method Families</option>
+                  {METHOD_FAMILY_OPTIONS.map(fam => (
+                    <option key={fam} value={fam}>{fam}</option>
+                  ))}
+                </select>
+                <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
+                  <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
                   <input
                     type="text"
                     value={qoSearchText}
                     onChange={(e) => setQoSearchText(e.target.value)}
-                    placeholder="Search QO queues by title, code, or author..."
-                    style={{ width: "100%", padding: "6px 12px 6px 28px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
+                    placeholder="Search SOPs..."
+                    style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
                   />
                 </div>
+                {(qoSopTypeFilter !== "All" || qoStatusFilter !== "All" || qoAssayCategoryFilter !== "All" || qoMethodFamilyFilter !== "All" || qoSearchText) && (
+                  <button
+                    onClick={() => { setQoSopTypeFilter("All"); setQoStatusFilter("All"); setQoAssayCategoryFilter("All"); setQoMethodFamilyFilter("All"); setQoSearchText(""); }}
+                    style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
+                    title="Clear all filters"
+                  >✕ Clear</button>
+                )}
               </div>
 
               {/* Requested SOPs queue */}
@@ -799,7 +820,7 @@ export default function QMSPage() {
                       {existingSopsQO.length > 0 ? (
                         existingSopsQO.map((sop) => (
                           <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
-                            <td style={{ padding: "10px 14px", fontWeight: 600 }}>{sop.code}</td>
+                            <td style={{ padding: "10px 14px", fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
                             <td style={{ padding: "10px 14px" }}>{sop.title}</td>
                             <td style={{ padding: "10px 14px" }}>{sop.author}</td>
                             <td style={{ padding: "10px 14px" }}>
@@ -838,6 +859,11 @@ export default function QMSPage() {
               }}
               onPrintRequest={handlePrintPDF}
               onShareRequest={handleShare}
+              onSopApproved={(sop) => {
+                setActiveTab("sops");
+                setSelectedSopForReading(sop);
+                handlePrintPDF(sop);
+              }}
             />
           )}
 
@@ -1810,19 +1836,19 @@ export default function QMSPage() {
               </div>
 
               <div style={{ margin: "40px 0" }}>
-                <h2 style={{ fontSize: "20pt", fontWeight: "800", margin: "0", color: "#091530ff", fontFamily: '"Times New Roman", Times, serif', padding: "8px 0", textTransform: "uppercase", lineHeight: "1.4" }}>
+                <h2 style={{ fontSize: "16pt", fontWeight: "800", margin: "0", color: "#091530ff", fontFamily: '"Times New Roman", Times, serif', padding: "8px 0", textTransform: "uppercase", lineHeight: "1.4" }}>
                   {printingSop.title}
                 </h2>
               </div>
             </div>
 
             {/* Metadata Table Page 1 */}
-            <table style={{ width: "calc(100% - 2px)", borderCollapse: "collapse", border: "1.5px solid #000000", marginTop: "50px", fontFamily: '"Times New Roman", Times, serif' }}>
+            <table style={{ width: "calc(100% - 2px)", borderCollapse: "collapse", border: "1.5px solid #000000", marginTop: "20px", fontFamily: '"Times New Roman", Times, serif' }}>
               <tbody>
                 {[
-                  ["Prepared by", `${printingSop.details?.signoff?.preparedByName || printingSop.author || "N/A"} ${printingSop.details?.signoff?.preparedDate ? `on ${printingSop.details.signoff.preparedDate}` : ""}`],
-                  ["Reviewed by", `${printingSop.details?.signoff?.reviewedByName || "N/A"} ${printingSop.details?.signoff?.reviewedDate ? `on ${printingSop.details.signoff.reviewedDate}` : ""}`],
-                  ["Approved by", `${printingSop.details?.signoff?.approvedByName || "N/A"} ${printingSop.details?.signoff?.approvedDate ? `on ${printingSop.details.signoff.approvedDate}` : ""}`],
+                  ["Prepared by", printingSop.details?.signoff?.preparedByName || printingSop.author || "N/A"],
+                  ["Reviewed by", printingSop.details?.signoff?.reviewedByName || "N/A"],
+                  ["Approved by", printingSop.details?.signoff?.approvedByName || "N/A"],
                   ["Effective Date", printingSop.details?.effectiveDate || printingSop.lastUpdated || "N/A"],
                   ["Version No", printingSop.version],
                   ["Document No", printingSop.code],
@@ -2616,4 +2642,16 @@ const btnBaseStyle: React.CSSProperties = {
   borderRadius: "var(--radius-sm)",
   cursor: "pointer",
   transition: "transform 0.1s ease"
+};
+
+const compactSelectStyle: React.CSSProperties = {
+  padding: "5px 22px 5px 8px",
+  border: "1px solid var(--color-border)",
+  borderRadius: "var(--radius-sm)",
+  background: "var(--color-surface-2)",
+  color: "var(--color-text)",
+  fontSize: "11.5px",
+  outline: "none",
+  cursor: "pointer",
+  transition: "border-color 0.15s ease, background 0.15s ease"
 };

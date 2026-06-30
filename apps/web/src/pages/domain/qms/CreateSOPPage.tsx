@@ -732,7 +732,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Bold"
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M4 2h4.5a3.5 3.5 0 0 1 2.5 6 3.5 3.5 0 0 1-2.5 6H4V2zm2 2.5v3.5h2a1.75 1.75 0 0 0 0-3.5H6zm0 5.5v3h2.5a1.75 1.75 0 0 0 0-3.5H6z"/>
+              <path d="M4 2h4.5a3.5 3.5 0 0 1 2.5 6 3.5 3.5 0 0 1-2.5 6H4V2zm2 2.5v3.5h2a1.75 1.75 0 0 0 0-3.5H6zm0 5.5v3h2.5a1.75 1.75 0 0 0 0-3.5H6z" />
             </svg>
           </button>
           <button
@@ -743,7 +743,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Italic"
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M6 2h6v2.5H9.4l-2.8 7H9v2.5H3V11.5h2.6l2.8-7H6V2z"/>
+              <path d="M6 2h6v2.5H9.4l-2.8 7H9v2.5H3V11.5h2.6l2.8-7H6V2z" />
             </svg>
           </button>
 
@@ -942,12 +942,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Bullet List"
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <circle cx="3" cy="4" r="1.5"/>
-              <rect x="7" y="3" width="8" height="2" rx="0.5"/>
-              <circle cx="3" cy="8" r="1.5"/>
-              <rect x="7" y="7" width="8" height="2" rx="0.5"/>
-              <circle cx="3" cy="12" r="1.5"/>
-              <rect x="7" y="11" width="8" height="2" rx="0.5"/>
+              <circle cx="3" cy="4" r="1.5" />
+              <rect x="7" y="3" width="8" height="2" rx="0.5" />
+              <circle cx="3" cy="8" r="1.5" />
+              <rect x="7" y="7" width="8" height="2" rx="0.5" />
+              <circle cx="3" cy="12" r="1.5" />
+              <rect x="7" y="11" width="8" height="2" rx="0.5" />
             </svg>
           </button>
           <button
@@ -959,9 +959,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           >
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2.5 2v3h.5V2.5h1v2h.5v-2.5h-.5V2zM2.8 7.5h1.4c0-.3-.1-.5-.3-.7a.7.7 0 0 0-.5-.2.4.4 0 0 0-.4.2c-.1.1-.1.2-.1.3h-.5a.8.8 0 0 1 .2-.6c.2-.2.4-.3.7-.3.3 0 .6.1.7.3.2.2.3.4.3.7 0 .3-.1.5-.3.7L3.4 9.5h1.3V10H2.5v-.5l.8-1h-.5zm.2 4.2h1.3v.5H3V13h1.3v.5H3v.5h1.5c.3 0 .5-.1.6-.3.2-.2.2-.4.2-.6 0-.2-.1-.4-.2-.5l-.3-.1v-.1c.2 0 .3-.2.4-.3.1-.2.1-.4.1-.5 0-.3-.1-.5-.3-.7a.7.7 0 0 0-.6-.3H2.8v.5z" />
-              <rect x="7" y="3" width="8" height="2" rx="0.5"/>
-              <rect x="7" y="7" width="8" height="2" rx="0.5"/>
-              <rect x="7" y="11" width="8" height="2" rx="0.5"/>
+              <rect x="7" y="3" width="8" height="2" rx="0.5" />
+              <rect x="7" y="7" width="8" height="2" rx="0.5" />
+              <rect x="7" y="11" width="8" height="2" rx="0.5" />
             </svg>
           </button>
 
@@ -1010,7 +1010,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   >
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 2h3.5v3.5H2V2z"/>
+                        <path d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 2h3.5v3.5H2V2z" />
                       </svg>
                       Table
                     </span>
@@ -1505,7 +1505,7 @@ export default function CreateSOPPage() {
   const editCode = searchParams.get("edit");
 
   const formRef = useRef<HTMLFormElement>(null);
-  
+
   // Dynamic navigation section
   const [activeSection, setActiveSection] = useState("ID");
   const [sopType, setSopType] = useState<"Procedure SOP" | "Equipment SOP" | "Analysis SOP">("Procedure SOP");
@@ -1560,7 +1560,7 @@ export default function CreateSOPPage() {
 
   // Analysis SOP Specific Sections
   const [principleMethodologicalBasis, setPrincipleMethodologicalBasis] = useState("");
-  
+
   // Samples / Specimens Covered
   const [sampleMatrices, setSampleMatrices] = useState<string[]>([]);
   const [sampleMatricesOther, setSampleMatricesOther] = useState("");
@@ -1810,7 +1810,7 @@ export default function CreateSOPPage() {
       { id: "ABBREV", label: "Abbreviations & Definitions" },
       { id: "ROLES", label: "Tasks, Responsibilities & Accountabilities" }
     ];
-    
+
     if (sopType === "Equipment SOP") {
       return [
         ...commonStart,
@@ -1901,7 +1901,7 @@ export default function CreateSOPPage() {
         proposedAuthorizer,
         assayCategory,
         methodFamily,
-        
+
         // Revision History
         revisionHistory,
 
@@ -1931,7 +1931,7 @@ export default function CreateSOPPage() {
 
         // Analysis specifics
         principleMethodologicalBasis,
-        
+
         // Samples
         sampleMatrices,
         sampleMatricesOther,
@@ -1990,7 +1990,7 @@ export default function CreateSOPPage() {
         acceptableTransportModes,
         acceptableTransportModesOther,
         storageTransportNarrative,
-        
+
         // Dynamic Filename
         filenameSuggestion
       }
@@ -2135,7 +2135,7 @@ export default function CreateSOPPage() {
 
       {/* FORM WORKSPACE CONTAINER */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        
+
         {/* HEADER BLOCK */}
         <div
           style={{
@@ -2330,7 +2330,7 @@ export default function CreateSOPPage() {
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, marginBottom: 20, color: "var(--color-text)" }}>
               SOP Identification & Metadata
             </h3>
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "flex", gap: 20 }}>
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -2344,7 +2344,7 @@ export default function CreateSOPPage() {
                     style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
                   />
                 </div>
-                
+
                 <div style={{ width: "200px", display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author *</label>
                   <input
@@ -2578,7 +2578,7 @@ export default function CreateSOPPage() {
             <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
               Purpose, Scope & Background
             </h3>
-            
+
             <RichTextEditor
               label="Purpose (verbatim) *"
               required
@@ -2801,7 +2801,7 @@ export default function CreateSOPPage() {
                 <h3 style={{ fontSize: "16px", fontWeight: 700, borderBottom: "1px solid var(--color-divider)", paddingBottom: 10, color: "var(--color-text)", margin: 0 }}>
                   Startup procedure (calibration and controls) and maintenance
                 </h3>
-                
+
                 <RichTextEditor
                   label="Calibration (frequency, automatic calibration, error code actions, records)"
                   value={calibration}
