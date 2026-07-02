@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  
+
   // Verification states
   const [showVerification, setShowVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
@@ -36,7 +36,7 @@ export default function LoginPage() {
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "your-google-client-id-here.apps.googleusercontent.com",
           callback: handleGoogleCredentialResponse,
         });
-        
+
         const btnContainer = document.getElementById("google-signin-btn");
         if (btnContainer) {
           google.accounts.id.renderButton(btnContainer, {
@@ -358,7 +358,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="jane.doe@roms.dev"
+                  placeholder="example@gmail.com"
                   style={{
                     width: "100%",
                     padding: "8px 10px",

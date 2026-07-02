@@ -149,24 +149,21 @@ export const Sidebar: React.FC = () => {
             </span>
           </NavLink>
         ))}
-      </div>
-      {/* User rights / admin control at bottom */}
-      {(user?.roles.includes("ADMIN") || user?.permissions?.includes("admin:all")) && (
-        <div style={{ marginTop: "auto", padding: "8px", borderTop: "1px solid var(--color-divider)" }}>
+        {(user?.roles.includes("ADMIN") || user?.permissions?.includes("admin:all")) && (
           <NavLink
             to="/admin/user-rights"
             style={({ isActive }) => ({
               display: "flex",
               alignItems: "center",
               gap: 8,
-              padding: "8px 10px",
+              padding: "6px 10px",
               borderRadius: "var(--radius-sm)",
               fontSize: "var(--fs-sm)",
               color: isActive ? "var(--color-primary)" : "var(--color-text)",
               background: isActive ? "var(--color-primary-highlight)" : "transparent",
               fontWeight: isActive ? 600 : 400,
               textDecoration: "none",
-              marginBottom: 2,
+              marginBottom: 1,
               transition: "background 0.12s",
             })}
           >
@@ -197,8 +194,8 @@ export const Sidebar: React.FC = () => {
               User Right Control
             </span>
           </NavLink>
-        </div>
-      )}
+        )}
+      </div>
     </nav>
   );
 };

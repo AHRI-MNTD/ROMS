@@ -1,6 +1,8 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
+import logoAhri from "../../../assets/logo_ahri.png";
 
 interface AnalyticsSummary {
   totalItems: number;
@@ -117,7 +119,7 @@ function SvgTrendChart({
   const maxValue = Math.max(...values, 1);
 
   return (
-    <div style={{ padding: 16, borderRadius: 18, border: `1px solid ${accent}22`, background: "#fff" }}>
+    <div style={{ padding: 16, borderRadius: 16, border: "1px solid var(--color-divider)", background: "var(--color-surface)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: accent, fontWeight: 800 }}>{label}</div>
@@ -188,7 +190,7 @@ function SvgBarChart({
   const maxValue = Math.max(...items.map((item) => Number(item[valueKey as keyof AnalyticsBarItem] ?? 0)), 1);
 
   return (
-    <div style={{ padding: 16, borderRadius: 18, border: `1px solid ${accent}22`, background: "#fff" }}>
+    <div style={{ padding: 16, borderRadius: 16, border: "1px solid var(--color-divider)", background: "var(--color-surface)" }}>
       <div style={{ marginBottom: 10 }}>
         <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: accent, fontWeight: 800 }}>{title}</div>
         <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", marginTop: 4 }}>{subtitle}</div>
@@ -218,6 +220,7 @@ function SvgBarChart({
 }
 
 export default function AnalyticsPage() {
+  const [isPrinting, setIsPrinting] = React.useState(false);
   const { data, isLoading, error } = useQuery({
     queryKey: ["inventory-analytics"],
     queryFn: async () => {
@@ -232,12 +235,6 @@ export default function AnalyticsPage() {
   const criticalItems = data?.criticalItems ?? [];
   const monthlyTrends = data?.monthlyTrends ?? [];
   const usageRecords = data?.usageRecords ?? [];
-
-  const [usageSortBy, setUsageSortBy] = React.useState<"item" | "project" | "user">("item");
-  const [datePreset, setDatePreset] = React.useState<"week" | "month" | "custom">("month");
-  const [customStartDate, setCustomStartDate] = React.useState("");
-  const [customEndDate, setCustomEndDate] = React.useState("");
-  const [usageSearch, setUsageSearch] = React.useState("");
 
   const healthShare = React.useMemo(() => {
     const total = summary ? summary.healthyItems + summary.lowStockItems + summary.outOfStockItems : 0;
@@ -267,138 +264,49 @@ export default function AnalyticsPage() {
     ].join(" ");
   }, [summary]);
 
-  const filteredUsageRecords = React.useMemo(() => {
-    const now = new Date();
-    const start = new Date(now);
-    const end = new Date(now);
-
-    if (datePreset === "week") {
-      start.setDate(now.getDate() - 7);
-    } else if (datePreset === "month") {
-      start.setMonth(now.getMonth() - 1);
-    } else {
-      if (customStartDate) {
-        const customStart = new Date(customStartDate);
-        start.setTime(customStart.getTime());
-      } else {
-        start.setTime(0);
-      }
-      if (customEndDate) {
-        const customEnd = new Date(customEndDate);
-        end.setTime(customEnd.getTime());
-        end.setHours(23, 59, 59, 999);
-      }
-    }
-
-    const q = usageSearch.trim().toLowerCase();
-
-    return usageRecords.filter((row) => {
-      const when = new Date(row.occurredAt);
-      if (Number.isNaN(when.getTime())) return false;
-      if (when < start || when > end) return false;
-      if (!q) return true;
-      return (
-        row.itemName.toLowerCase().includes(q) ||
-        row.itemCode.toLowerCase().includes(q) ||
-        row.projectFor.toLowerCase().includes(q) ||
-        row.requestedBy.toLowerCase().includes(q)
-      );
-    });
-  }, [usageRecords, datePreset, customStartDate, customEndDate, usageSearch]);
-
-  const usageRows = React.useMemo(() => {
-    return [...filteredUsageRecords].sort((a, b) => {
-      if (usageSortBy === "item") {
-        const byItem = a.itemName.localeCompare(b.itemName);
-        if (byItem !== 0) return byItem;
-        const byProject = a.projectFor.localeCompare(b.projectFor);
-        if (byProject !== 0) return byProject;
-        return new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
-      }
-
-      if (usageSortBy === "project") {
-        const byProject = a.projectFor.localeCompare(b.projectFor);
-        if (byProject !== 0) return byProject;
-        const byItem = a.itemName.localeCompare(b.itemName);
-        if (byItem !== 0) return byItem;
-        return new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
-      }
-
-      const byUser = a.requestedBy.localeCompare(b.requestedBy);
-      if (byUser !== 0) return byUser;
-      const byItem = a.itemName.localeCompare(b.itemName);
-      if (byItem !== 0) return byItem;
-      return new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
-    });
-  }, [filteredUsageRecords, usageSortBy]);
-
   const topProjects = React.useMemo(() => {
     const grouped = new Map<string, number>();
-    for (const row of filteredUsageRecords) {
-      grouped.set(row.projectFor, (grouped.get(row.projectFor) ?? 0) + Number(row.quantity ?? 0));
+    for (const row of usageRecords) {
+      if (row.projectFor) {
+        grouped.set(row.projectFor, (grouped.get(row.projectFor) ?? 0) + Number(row.quantity ?? 0));
+      }
     }
-    return [...grouped.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-  }, [filteredUsageRecords]);
+    return [...grouped.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [usageRecords]);
 
   const topUsers = React.useMemo(() => {
     const grouped = new Map<string, number>();
-    for (const row of filteredUsageRecords) {
-      grouped.set(row.requestedBy, (grouped.get(row.requestedBy) ?? 0) + Number(row.quantity ?? 0));
+    for (const row of usageRecords) {
+      if (row.requestedBy) {
+        grouped.set(row.requestedBy, (grouped.get(row.requestedBy) ?? 0) + Number(row.quantity ?? 0));
+      }
     }
-    return [...grouped.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-  }, [filteredUsageRecords]);
-
-  const cardStyle = (tone: string): React.CSSProperties => ({
-    border: `1px solid ${tone}22`,
-    background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.96))`,
-  });
+    return [...grouped.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [usageRecords]);
 
   const printReport = () => {
-    window.print();
-  };
-
-  const exportUsageCsv = () => {
-    if (usageRows.length === 0) {
-      return;
-    }
-    const rows = ["sort_by,item,project,user,quantity,date,status"];
-    for (const row of usageRows) {
-      rows.push(
-        [
-          usageSortBy,
-          row.itemName,
-          row.projectFor,
-          row.requestedBy,
-          String(row.quantity ?? 0),
-          new Date(row.occurredAt).toISOString(),
-          row.status,
-        ]
-          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
-          .join(",")
-      );
-    }
-    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `usage-analytics-${usageSortBy}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 150);
   };
 
   const pageChromeStyle: React.CSSProperties = {
-    padding: 22,
-    borderRadius: 26,
-    border: "1px solid rgba(1, 105, 111, 0.16)",
-    background: "linear-gradient(135deg, rgba(240, 253, 250, 0.96), rgba(255, 250, 244, 0.96))",
-    boxShadow: "0 18px 36px rgba(16, 24, 40, 0.06)",
+    padding: 20,
+    borderRadius: 20,
+    border: "1px solid rgba(1, 105, 111, 0.12)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
+    boxShadow: "0 18px 45px rgba(16, 24, 40, 0.08)",
+    backdropFilter: "blur(10px)",
   };
 
   const sectionStyle: React.CSSProperties = {
-    borderRadius: 22,
-    border: "1px solid var(--color-border)",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,248,244,0.95))",
-    boxShadow: "0 18px 34px rgba(16, 24, 40, 0.05)",
+    borderRadius: 20,
+    border: "1px solid rgba(1, 105, 111, 0.12)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
+    boxShadow: "0 18px 45px rgba(16, 24, 40, 0.08)",
+    backdropFilter: "blur(10px)",
     overflow: "hidden",
   };
 
@@ -411,16 +319,159 @@ export default function AnalyticsPage() {
     letterSpacing: "0.02em",
   };
 
+  const cardStyle = (tone: string): React.CSSProperties => ({
+    padding: "16px 12px",
+    borderRadius: 16,
+    border: `1px solid ${tone}22`,
+    background: `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
+    boxShadow: "0 10px 20px rgba(16, 24, 40, 0.03)",
+    backdropFilter: "blur(8px)",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  });
+
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <style>{`
         @media print {
-          body { background: #fff !important; }
-          .no-print { display: none !important; }
-          .report-page { padding: 0 !important; }
-          .report-card { box-shadow: none !important; break-inside: avoid; }
-          .report-section { box-shadow: none !important; break-inside: avoid; }
+          #root { display: none !important; }
+          body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
+          #inventory-print-area {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+            color: #0f172a !important;
+          }
+          
+          #inventory-print-area .letterhead {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            border-bottom: 2px solid #01696f !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 24px !important;
+          }
+          #inventory-print-area .letterhead-logo {
+            font-size: 20px !important;
+            font-weight: 800 !important;
+            color: #01696f !important;
+            text-transform: uppercase !important;
+          }
+          #inventory-print-area .letterhead-dept {
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            text-align: right !important;
+            color: #0f766e !important;
+            text-transform: uppercase !important;
+          }
+          #inventory-print-area .doc-title-container {
+            text-align: center !important;
+            margin-bottom: 24px !important;
+          }
+          #inventory-print-area .doc-title {
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            margin: 0 !important;
+            color: #01696f !important;
+          }
+          #inventory-print-area .doc-subtitle {
+            font-size: 12px !important;
+            color: #475569 !important;
+            margin: 4px 0 0 !important;
+          }
+          #inventory-print-area .metadata-summary {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 16px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            margin-bottom: 30px !important;
+          }
+          #inventory-print-area .metadata-item {
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          #inventory-print-area .metadata-label {
+            font-size: 9px !important;
+            font-weight: 700 !important;
+            color: #64748b !important;
+            text-transform: uppercase !important;
+          }
+          #inventory-print-area .metadata-value {
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #0f172a !important;
+          }
+          #inventory-print-area .details-vertical {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 24px !important;
+          }
+          #inventory-print-area .section-container {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            margin-bottom: 24px !important;
+          }
+          #inventory-print-area .section-title {
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            color: #01696f !important;
+            text-transform: uppercase !important;
+            border-bottom: 1.5px solid #01696f !important;
+            padding-bottom: 4px !important;
+            margin-bottom: 12px !important;
+          }
+          #inventory-print-area table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 8px !important;
+          }
+          #inventory-print-area th {
+            background: #f1f5f9 !important;
+            font-weight: 700 !important;
+            font-size: 10px !important;
+            color: #475569 !important;
+            text-transform: uppercase !important;
+            padding: 6px 10px !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          #inventory-print-area td {
+            padding: 6px 10px !important;
+            border: 1px solid #e2e8f0 !important;
+            font-size: 11px !important;
+            color: #0f172a !important;
+          }
+          #inventory-print-area .signature-section {
+            display: flex !important;
+            justify-content: space-between !important;
+            margin-top: 60px !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          #inventory-print-area .signature-box {
+            width: 42% !important;
+            border-top: 1px solid #94a3b8 !important;
+            padding-top: 8px !important;
+            text-align: center !important;
+            font-size: 11px !important;
+            color: #475569 !important;
+          }
+          @page {
+            size: portrait;
+            margin: 0.6in 0.8in 0.8in 0.8in;
+          }
         }
+        #inventory-print-area { display: none; }
       `}</style>
 
       <div className="report-card" style={pageChromeStyle}>
@@ -474,122 +525,94 @@ export default function AnalyticsPage() {
       {!isLoading && !error && summary && (
         <div className="report-page" style={{ display: "grid", gap: 18 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-            <div className="report-card" style={{ ...cardStyle("#01696f"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0f766e", marginBottom: 8, fontWeight: 800 }}>Tracked Items</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalItems)}</div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Distinct inventory records currently in view.</div>
+            <div className="report-card" style={cardStyle("#01696f")}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }} aria-hidden="true">📦</span>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{formatNumber(summary.totalItems)}</div>
+              </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Tracked Items</div>
             </div>
 
-            <div className="report-card" style={{ ...cardStyle("#0f766e"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0f766e", marginBottom: 8, fontWeight: 800 }}>Units On Hand</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalQuantity)}</div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Total current stock across all items.</div>
+            <div className="report-card" style={cardStyle("#0f766e")}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }} aria-hidden="true">🧪</span>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{formatNumber(summary.totalQuantity)}</div>
+              </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Units On Hand</div>
             </div>
 
-            <div className="report-card" style={{ ...cardStyle("#0d6f89"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#0d6f89", marginBottom: 8, fontWeight: 800 }}>Check-In Volume</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalCheckIn)}</div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Cumulative inbound movement recorded.</div>
+            <div className="report-card" style={cardStyle("#0d6f89")}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }} aria-hidden="true">⬆️</span>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{formatNumber(summary.totalCheckIn)}</div>
+              </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Check-In Volume</div>
             </div>
 
-            <div className="report-card" style={{ ...cardStyle("#b45309"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#b45309", marginBottom: 8, fontWeight: 800 }}>Check-Out Volume</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.totalCheckOut)}</div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Cumulative outbound demand and consumption.</div>
+            <div className="report-card" style={cardStyle("#b45309")}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }} aria-hidden="true">⬇️</span>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{formatNumber(summary.totalCheckOut)}</div>
+              </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>Check-Out Volume</div>
             </div>
 
-            <div className="report-card" style={{ ...cardStyle("#92400e"), borderRadius: 20, padding: 18, boxShadow: "0 16px 30px rgba(16, 24, 40, 0.06)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", textTransform: "uppercase", letterSpacing: "0.08em", color: "#92400e", marginBottom: 8, fontWeight: 800 }}>At-Risk Items</div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)" }}>{formatNumber(summary.atRiskItems)}</div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 6 }}>Items that need replenishment attention.</div>
+            <div className="report-card" style={cardStyle("#92400e")}>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 18 }} aria-hidden="true">⚠️</span>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--color-text)", fontWeight: 800 }}>{formatNumber(summary.atRiskItems)}</div>
+              </div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", letterSpacing: "0.04em", textTransform: "uppercase", textAlign: "center" }}>At-Risk Items</div>
             </div>
           </div>
 
-          <div style={sectionStyle}>
-            <div style={sectionHeaderStyle}>Usage Analytics Explorer</div>
-            <div style={{ padding: 14, display: "grid", gap: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                  Sort By
-                  <select value={usageSortBy} onChange={(e) => setUsageSortBy(e.target.value as "item" | "project" | "user")} style={{ marginTop: 4, width: "100%", border: "1px solid var(--color-border)", borderRadius: 8, padding: "6px 8px", background: "var(--color-surface)" }}>
-                    <option value="item">Item</option>
-                    <option value="project">Project</option>
-                    <option value="user">User / Staff</option>
-                  </select>
-                </label>
-                <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                  Date Range
-                  <select value={datePreset} onChange={(e) => setDatePreset(e.target.value as "week" | "month" | "custom")} style={{ marginTop: 4, width: "100%", border: "1px solid var(--color-border)", borderRadius: 8, padding: "6px 8px", background: "var(--color-surface)" }}>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </label>
-              </div>
-
-              {datePreset === "custom" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    Start
-                    <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} style={{ marginTop: 4, width: "100%", border: "1px solid var(--color-border)", borderRadius: 8, padding: "6px 8px", background: "var(--color-surface)" }} />
-                  </label>
-                  <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    End
-                    <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} style={{ marginTop: 4, width: "100%", border: "1px solid var(--color-border)", borderRadius: 8, padding: "6px 8px", background: "var(--color-surface)" }} />
-                  </label>
-                </div>
-              )}
-
-              <input value={usageSearch} onChange={(e) => setUsageSearch(e.target.value)} placeholder="Search item, project, user" style={{ border: "1px solid var(--color-border)", borderRadius: 8, padding: "7px 10px", background: "var(--color-surface)" }} />
-
-              <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Showing {formatNumber(Math.min(10, usageRows.length))} of {formatNumber(usageRows.length)} records · search keeps the drilldown manageable</div>
-                <button type="button" onClick={exportUsageCsv} style={{ border: "1px solid var(--color-border)", background: "var(--color-accent-soft)", color: "var(--color-text)", borderRadius: 999, padding: "7px 10px", fontSize: "var(--fs-xs)", fontWeight: 800, cursor: "pointer" }}>Export CSV</button>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 10, background: "var(--color-surface)" }}>
-                  <div style={{ fontSize: "var(--fs-xs)", color: "#0f766e", fontWeight: 800, textTransform: "uppercase" }}>Top Projects</div>
-                  <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                    {topProjects.length === 0 ? <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No data</div> : topProjects.map(([name, qty]) => <div key={name} style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>{name} · {formatNumber(qty)}</div>)}
-                  </div>
-                </div>
-                <div style={{ border: "1px solid var(--color-border)", borderRadius: 12, padding: 10, background: "var(--color-surface)" }}>
-                  <div style={{ fontSize: "var(--fs-xs)", color: "#92400e", fontWeight: 800, textTransform: "uppercase" }}>Top Users</div>
-                  <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
-                    {topUsers.length === 0 ? <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No data</div> : topUsers.map(([name, qty]) => <div key={name} style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>{name} · {formatNumber(qty)}</div>)}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ maxHeight: 280, overflowY: "auto", border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface)" }}>
-                {usageRows.length === 0 ? (
-                  <div style={{ padding: 12, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No usage records for selected filters.</div>
+          <div className="report-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            <div style={sectionStyle}>
+              <div style={sectionHeaderStyle}>Top Projects by Consumption</div>
+              <div style={{ padding: 16, display: "grid", gap: 12 }}>
+                {topProjects.length === 0 ? (
+                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No data available.</div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>{usageSortBy === "item" ? "Item" : usageSortBy === "project" ? "Project" : "User / Staff"}</th>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>{usageSortBy === "item" ? "Project" : usageSortBy === "project" ? "Item" : "Item"}</th>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>{usageSortBy === "user" ? "Project" : "User / Staff"}</th>
-                        <th style={{ padding: "8px 10px", textAlign: "right", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date</th>
-                        <th style={{ padding: "8px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usageRows.slice(0, 10).map((row) => (
-                        <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                          <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 700 }}>{usageSortBy === "item" ? row.itemName : usageSortBy === "project" ? row.projectFor : row.requestedBy}</td>
-                          <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>{usageSortBy === "item" ? row.projectFor || "-" : row.itemName}</td>
-                          <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text)" }}>{usageSortBy === "user" ? row.projectFor || "-" : row.requestedBy}</td>
-                          <td style={{ padding: "8px 10px", textAlign: "right", fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 800 }}>{formatNumber(Number(row.quantity ?? 0))}</td>
-                          <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(row.occurredAt).toLocaleDateString()}</td>
-                          <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: row.status.toLowerCase() === "rejected" ? "#991b1b" : row.status.toLowerCase() === "pending" ? "#92400e" : "#166534", fontWeight: 800 }}>{row.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  topProjects.map(([name, qty]) => {
+                    const maxQty = Math.max(...topProjects.map(([_, q]) => q), 1);
+                    const fillPercent = Math.max(6, Math.round((qty / maxQty) * 100));
+                    return (
+                      <div key={name} style={{ display: "grid", gap: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-xs)", fontWeight: 600 }}>
+                          <span>{name}</span>
+                          <span style={{ color: "var(--color-text-muted)" }}>{formatNumber(qty)} units</span>
+                        </div>
+                        <div style={{ height: 8, background: "rgba(15, 23, 42, 0.06)", borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${fillPercent}%`, height: "100%", background: "#0f766e", borderRadius: 999 }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div style={sectionStyle}>
+              <div style={sectionHeaderStyle}>Top Staff Members by Consumption</div>
+              <div style={{ padding: 16, display: "grid", gap: 12 }}>
+                {topUsers.length === 0 ? (
+                  <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No data available.</div>
+                ) : (
+                  topUsers.map(([name, qty]) => {
+                    const maxQty = Math.max(...topUsers.map(([_, q]) => q), 1);
+                    const fillPercent = Math.max(6, Math.round((qty / maxQty) * 100));
+                    return (
+                      <div key={name} style={{ display: "grid", gap: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-xs)", fontWeight: 600 }}>
+                          <span>{name}</span>
+                          <span style={{ color: "var(--color-text-muted)" }}>{formatNumber(qty)} units</span>
+                        </div>
+                        <div style={{ height: 8, background: "rgba(15, 23, 42, 0.06)", borderRadius: 999, overflow: "hidden" }}>
+                          <div style={{ width: `${fillPercent}%`, height: "100%", background: "#b45309", borderRadius: 999 }} />
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -598,41 +621,43 @@ export default function AnalyticsPage() {
           <div className="report-section" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(0, 0.85fr)", gap: 12, alignItems: "start" }}>
             <div style={sectionStyle}>
               <div style={sectionHeaderStyle}>Risk Register</div>
-              <div style={{ padding: 16 }}>
-                {criticalItems.length === 0 ? (
-                  <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>No low-stock or out-of-stock items were found.</div>
-                ) : (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    {criticalItems.map((item) => {
-                      const quantity = Number(item.quantity ?? 0);
-                      const minThreshold = Number(item.minThreshold ?? 0);
-                      const status = quantity <= 0 ? "Out of stock" : quantity <= minThreshold ? "Low stock" : "Healthy";
-                      const tone = quantity <= 0 ? "#991b1b" : "#92400e";
-                      const fill = minThreshold > 0 ? Math.max(6, Math.min(100, percentage(quantity, minThreshold))) : quantity > 0 ? 100 : 0;
+              {criticalItems.length === 0 ? (
+                <div style={{ padding: 16, fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>No low-stock or out-of-stock items were found.</div>
+              ) : (
+                <div style={{ maxHeight: 310, overflowY: "auto" }}>
+                  {criticalItems.map((item, idx) => {
+                     const quantity = Number(item.quantity ?? 0);
+                     const minThreshold = Number(item.minThreshold ?? 0);
+                     const status = quantity <= 0 ? "Out of stock" : "Low stock";
+                     const tone = quantity <= 0 ? "#ef4444" : "#f59e0b";
+                     const bg = quantity <= 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(245, 158, 11, 0.08)";
 
-                      return (
-                        <div key={item.id ?? item.sku ?? item.name} style={{ padding: 14, borderRadius: 16, border: `1px solid ${tone}22`, background: quantity <= 0 ? "#fef2f2" : "#fffbeb" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 10, flexWrap: "wrap" }}>
-                            <div>
-                              <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 800 }}>{item.name ?? item.sku ?? "Unknown item"}</div>
-                              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 4 }}>{item.sourceCode ?? item.sku ?? "No code"} · {item.category ?? "Unclassified"}</div>
-                            </div>
-                            <div style={{ fontSize: "var(--fs-xs)", color: tone, fontWeight: 800, padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.75)" }}>{status}</div>
-                          </div>
-                          <div style={{ height: 10, background: "rgba(15, 23, 42, 0.08)", borderRadius: 999, overflow: "hidden", marginBottom: 8 }}>
-                            <div style={{ width: `${fill}%`, height: "100%", background: quantity <= 0 ? "#dc2626" : "#f59e0b", borderRadius: 999 }} />
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                            <span>Current: {formatNumber(quantity)}</span>
-                            <span>Minimum: {formatNumber(minThreshold)}</span>
-                            <span>Check-outs: {formatNumber(Number(item.checkOutTotal ?? 0))}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                     return (
+                       <div key={item.id ?? item.sku ?? item.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: idx < criticalItems.length - 1 ? "1px solid var(--color-divider)" : "none", gap: 16 }}>
+                         <div style={{ flex: 1, minWidth: 0 }}>
+                           <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={item.name ?? item.sku}>
+                             {item.name ?? item.sku}
+                           </div>
+                           <div style={{ fontSize: "var(--fs-xxs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                             {item.sourceCode ?? item.sku ?? "No code"} · {item.category ?? "Unclassified"}
+                           </div>
+                         </div>
+                         <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+                           <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 800, color: tone, textTransform: "uppercase", padding: "2px 6px", borderRadius: 999, background: bg }}>
+                             {status}
+                           </span>
+                           <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 600 }}>
+                             Current: {formatNumber(quantity)} / Min: {formatNumber(minThreshold)}
+                           </span>
+                           <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                             {formatNumber(Number(item.checkOutTotal ?? 0))} outs
+                           </span>
+                         </div>
+                       </div>
+                     );
+                  })}
+                </div>
+              )}
             </div>
 
             <div style={sectionStyle}>
@@ -797,42 +822,309 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="report-section" style={sectionStyle}>
-            <div style={sectionHeaderStyle}>Top Risks To Escalate</div>
-            <div style={{ padding: 16, display: "grid", gap: 10 }}>
-              {criticalItems.slice(0, 5).map((item) => {
-                const quantity = Number(item.quantity ?? 0);
-                const minThreshold = Number(item.minThreshold ?? 0);
-                const riskLevel = quantity <= 0 ? "Immediate" : quantity <= Math.max(1, Math.floor(minThreshold / 2)) ? "High" : "Medium";
-                return (
-                  <div key={item.id ?? item.sku ?? item.name} style={{ padding: 12, borderRadius: 14, border: "1px solid var(--color-border)", background: "var(--color-surface)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <div>
-                        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 800, color: "var(--color-text)" }}>{item.name ?? item.sku ?? "Unknown item"}</div>
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 4 }}>{item.sourceCode ?? item.sku ?? "No code"} · Threshold {formatNumber(minThreshold)}</div>
-                      </div>
-                      <div style={{ fontSize: "var(--fs-xs)", color: riskLevel === "Immediate" ? "#991b1b" : riskLevel === "High" ? "#b45309" : "#92400e", fontWeight: 800 }}>{riskLevel} risk</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <div className="report-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            <div style={sectionStyle}>
+              <div style={sectionHeaderStyle}>Top Risks To Escalate</div>
+              <div style={{ maxHeight: 260, overflowY: "auto" }}>
+                {criticalItems.length === 0 ? (
+                  <div style={{ padding: 16, fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>No escalation risks found.</div>
+                ) : (
+                  criticalItems.slice(0, 5).map((item, idx) => {
+                    const quantity = Number(item.quantity ?? 0);
+                    const minThreshold = Number(item.minThreshold ?? 0);
+                    const riskLevel = quantity <= 0 ? "Immediate" : quantity <= Math.max(1, Math.floor(minThreshold / 2)) ? "High" : "Medium";
+                    const tone = riskLevel === "Immediate" ? "#ef4444" : riskLevel === "High" ? "#f59e0b" : "#3b82f6";
+                    const bg = riskLevel === "Immediate" ? "rgba(239, 68, 68, 0.08)" : riskLevel === "High" ? "rgba(245, 158, 11, 0.08)" : "rgba(59, 130, 246, 0.08)";
 
-          <div style={sectionStyle}>
-            <div style={sectionHeaderStyle}>Monthly Snapshot</div>
-            <div style={{ padding: 16, display: "grid", gap: 10 }}>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)" }}>
-                <span>Healthy share: {formatPercent(healthShare.healthy)}</span>
-                <span>Low-stock share: {formatPercent(healthShare.lowStock)}</span>
-                <span>Out-of-stock share: {formatPercent(healthShare.outOfStock)}</span>
+                    return (
+                      <div
+                        key={item.id ?? item.sku ?? item.name}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "10px 16px",
+                          borderBottom: idx < Math.min(5, criticalItems.length) - 1 ? "1px solid var(--color-divider)" : "none",
+                          gap: 16
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={item.name ?? item.sku}>
+                            {item.name ?? item.sku}
+                          </div>
+                          <div style={{ fontSize: "var(--fs-xxs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                            {item.sourceCode ?? item.sku ?? "No code"} · Threshold {formatNumber(minThreshold)}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 800, color: tone, textTransform: "uppercase", padding: "2px 6px", borderRadius: 999, background: bg, flexShrink: 0 }}>
+                          {riskLevel} Risk
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-              <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", lineHeight: 1.7 }}>
-                The charts on this page are generated from the full inventory dataset and movement ledger every time the page loads. If stock changes, the summary, risk register, and trend lines change with it.
+            </div>
+
+            <div style={sectionStyle}>
+              <div style={sectionHeaderStyle}>Monthly Snapshot</div>
+              <div style={{ padding: 16, display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", color: "var(--color-text-muted)", fontSize: "var(--fs-xs)" }}>
+                  <span>Healthy share: {formatPercent(healthShare.healthy)}</span>
+                  <span>Low-stock share: {formatPercent(healthShare.lowStock)}</span>
+                  <span>Out-of-stock share: {formatPercent(healthShare.outOfStock)}</span>
+                </div>
+                <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", lineHeight: 1.7 }}>
+                  The charts on this page are generated from the full inventory dataset and movement ledger every time the page loads. If stock changes, the summary, risk register, and trend lines change with it.
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {isPrinting && summary && createPortal(
+        <div id="inventory-print-area">
+          {/* Institutional Letterhead */}
+          <div className="letterhead">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <img src={logoAhri} style={{ height: "45px" }} alt="AHRI Logo" />
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span className="letterhead-logo">AHRI</span>
+                <span style={{ fontSize: "10px", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Armauer Hansen Research Institute</span>
+              </div>
+            </div>
+            <div className="letterhead-dept">
+              Department of Lab Operations & Supply Chain
+            </div>
+          </div>
+
+          <div className="doc-title-container">
+            <h1 className="doc-title">Executive Inventory & Supply Chain Analytics Report</h1>
+            <p className="doc-subtitle">Live Operational Summary & Risk Assessment</p>
+          </div>
+
+          {/* Document Metadata Summary Table */}
+          <div className="metadata-summary">
+            <div className="metadata-item">
+              <span className="metadata-label">Report Type</span>
+              <span className="metadata-value">Inventory Analytics</span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Generated By</span>
+              <span className="metadata-value">ROMS Inventory Portal</span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Security Class</span>
+              <span className="metadata-value">Confidential / Internal</span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Report Date</span>
+              <span className="metadata-value">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+            </div>
+          </div>
+
+          {/* Details Sections */}
+          <div className="details-vertical">
+            
+            {/* Section 1: Executive Brief */}
+            <div className="section-container">
+              <div className="section-title">Section 1: Leadership Executive Summary</div>
+              <p style={{ fontSize: "12px", lineHeight: 1.6, margin: "6px 0", color: "#334155" }}>
+                {executiveSummary}
+              </p>
+            </div>
+
+            {/* Section 2: Key Operational Metrics */}
+            <div className="section-container">
+              <div className="section-title">Section 2: Key Performance Indicators</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tracked Items</th>
+                    <th>Units On Hand</th>
+                    <th>Check-In Volume</th>
+                    <th>Check-Out Volume</th>
+                    <th>At-Risk Items</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ textAlign: "center", fontWeight: "bold" }}>{formatNumber(summary.totalItems)}</td>
+                    <td style={{ textAlign: "center", fontWeight: "bold" }}>{formatNumber(summary.totalQuantity)}</td>
+                    <td style={{ textAlign: "center" }}>{formatNumber(summary.totalCheckIn)}</td>
+                    <td style={{ textAlign: "center" }}>{formatNumber(summary.totalCheckOut)}</td>
+                    <td style={{ textAlign: "center", color: "#dc2626", fontWeight: "bold" }}>{formatNumber(summary.atRiskItems)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Section 3: Critical At-Risk Items Register */}
+            <div className="section-container">
+              <div className="section-title">Section 3: At-Risk Stock Items (Low Stock & Out of Stock)</div>
+              {criticalItems.length === 0 ? (
+                <p style={{ fontSize: "11px", fontStyle: "italic", color: "#64748b" }}>No stock items are currently at risk.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "40%" }}>Item Name</th>
+                      <th>SKU / Code</th>
+                      <th>Category</th>
+                      <th>Status</th>
+                      <th>Current Quantity</th>
+                      <th>Min Threshold</th>
+                      <th>Check-Outs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {criticalItems.map((item) => {
+                      const qty = Number(item.quantity ?? 0);
+                      const min = Number(item.minThreshold ?? 0);
+                      const status = qty <= 0 ? "Out of Stock" : "Low Stock";
+                      const color = qty <= 0 ? "#dc2626" : "#d97706";
+                      return (
+                        <tr key={item.id ?? item.sku ?? item.name}>
+                          <td style={{ fontWeight: 600 }}>{item.name ?? item.sku}</td>
+                          <td>{item.sourceCode ?? item.sku ?? "—"}</td>
+                          <td>{item.category ?? "Unclassified"}</td>
+                          <td style={{ color, fontWeight: "bold" }}>{status}</td>
+                          <td style={{ textAlign: "right" }}>{formatNumber(qty)}</td>
+                          <td style={{ textAlign: "right" }}>{formatNumber(min)}</td>
+                          <td style={{ textAlign: "right" }}>{formatNumber(Number(item.checkOutTotal ?? 0))}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Section 4: Demand Distribution & Top Consumption */}
+            <div className="section-container" style={{ breakInside: "avoid" }}>
+              <div className="section-title">Section 4: Top Projects & Staff Consumption</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                <div>
+                  <h4 style={{ margin: "4px 0 8px 0", fontSize: "11px", color: "#475569" }}>Top Projects by Unit Consumption</h4>
+                  {topProjects.length === 0 ? (
+                    <p style={{ fontSize: "11px", fontStyle: "italic" }}>No data</p>
+                  ) : (
+                    <table style={{ margin: 0 }}>
+                      <thead>
+                        <tr>
+                          <th>Project</th>
+                          <th style={{ width: "100px" }}>Units Used</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topProjects.map(([name, qty]) => (
+                          <tr key={name}>
+                            <td style={{ fontWeight: 600 }}>{name}</td>
+                            <td style={{ textAlign: "right" }}>{formatNumber(qty)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <div>
+                  <h4 style={{ margin: "4px 0 8px 0", fontSize: "11px", color: "#475569" }}>Top Staff Members by Unit Consumption</h4>
+                  {topUsers.length === 0 ? (
+                    <p style={{ fontSize: "11px", fontStyle: "italic" }}>No data</p>
+                  ) : (
+                    <table style={{ margin: 0 }}>
+                      <thead>
+                        <tr>
+                          <th>Staff Member</th>
+                          <th style={{ width: "100px" }}>Units Used</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topUsers.map(([name, qty]) => (
+                          <tr key={name}>
+                            <td style={{ fontWeight: 600 }}>{name}</td>
+                            <td style={{ textAlign: "right" }}>{formatNumber(qty)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Section 5: Category Mix & Breakdown */}
+            <div className="section-container" style={{ breakInside: "avoid" }}>
+              <div className="section-title">Section 5: Category Mix & Stock Levels</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th style={{ width: "120px" }}>Item Count</th>
+                    <th style={{ width: "120px" }}>Units On Hand</th>
+                    <th style={{ width: "120px" }}>Check-Outs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categoryBreakdown.map((row) => (
+                    <tr key={row.category}>
+                      <td style={{ fontWeight: 600 }}>{row.category || "Unclassified"}</td>
+                      <td style={{ textAlign: "right" }}>{formatNumber(row.count)}</td>
+                      <td style={{ textAlign: "right" }}>{formatNumber(row.quantity)}</td>
+                      <td style={{ textAlign: "right" }}>{formatNumber(row.checkOut)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Section 6: Historical Trends (Last 6 Months) */}
+            <div className="section-container" style={{ breakInside: "avoid" }}>
+              <div className="section-title">Section 6: Monthly Movement & Risk Trends</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th style={{ width: "120px" }}>Check-In Qty</th>
+                    <th style={{ width: "120px" }}>Check-Out Qty</th>
+                    <th style={{ width: "120px" }}>At-Risk Items Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyTrends.map((point) => (
+                    <tr key={point.key}>
+                      <td style={{ fontWeight: 600 }}>{point.label}</td>
+                      <td style={{ textAlign: "right" }}>{formatNumber(point.checkIn)}</td>
+                      <td style={{ textAlign: "right" }}>{formatNumber(point.checkOut)}</td>
+                      <td style={{ textAlign: "right", color: point.stockRisk > 0 ? "#dc2626" : "inherit" }}>
+                        {formatNumber(point.stockRisk)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+          {/* Formal Signatures Section */}
+          <div className="signature-section">
+            <div className="signature-box">
+              <strong>Prepared By: Lab Inventory Lead</strong>
+              <div style={{ marginTop: "40px", borderTop: "1px dashed #cbd5e1", paddingTop: "4px" }}>
+                Signature / Date
+              </div>
+            </div>
+            <div className="signature-box">
+              <strong>Approved By: Director of Lab Operations</strong>
+              <div style={{ marginTop: "40px", borderTop: "1px dashed #cbd5e1", paddingTop: "4px" }}>
+                Signature / Date
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

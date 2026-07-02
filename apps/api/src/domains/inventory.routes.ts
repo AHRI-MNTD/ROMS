@@ -733,13 +733,20 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
     return res.status(400).json({ error: "items array is required and must not be empty." });
   }
 
+  // Sort items by stockItemId to avoid database deadlock in concurrent transactions
+  const sortedItems = [...items].sort((a, b) => {
+    const idA = String(a.stockItemId || "");
+    const idB = String(b.stockItemId || "");
+    return idA.localeCompare(idB);
+  });
+
   try {
     const results = await prisma.$transaction(async (tx) => {
       const movementTx = tx as typeof tx & InventoryMovementPrisma;
       const updatedItems = [];
       const createdMovements = [];
 
-      for (const cartItem of items) {
+      for (const cartItem of sortedItems) {
         const { stockItemId, quantity, projectFor, requestedBy: staffName, remark } = cartItem;
         if (!stockItemId || !quantity || quantity <= 0) {
           throw new Error(`INVALID_ITEM_PARAMS:${stockItemId}`);

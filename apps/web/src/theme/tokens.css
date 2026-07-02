@@ -13,6 +13,7 @@
   --font-body: 'Inter', system-ui, sans-serif;
   --font-display: 'Instrument Serif', Georgia, serif;
 
+  --fs-xxs:  9.5px;
   --fs-xs:   11px;
   --fs-sm:   12px;
   --fs-base: 13.5px;
