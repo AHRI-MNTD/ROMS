@@ -1,5 +1,5 @@
 import React from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
 import { apiClient } from "../../../api/client";
@@ -33,71 +33,26 @@ export default function CurrentInventoryPage() {
     }
   };
 
-  const { data, isLoading, error, isFetching } = useInventoryData({ page, pageSize });
-  const { data: allInventoryData } = useInventoryData({ all: true });
-
-
-
   const normalizedSearch = searchTerm.trim().toLowerCase();
-
-  // Use allInventoryData for filtering when filters are active to search across all data
-  const isFilteringActive = stockFilter !== "all" || normalizedSearch.length > 0;
-  const sourceRows = isFilteringActive ? (allInventoryData?.data ?? []) : (data?.data ?? []);
-
-  const filteredRows = sourceRows.filter((row) => {
-    const quantity = Number(row.quantity ?? 0);
-    const minThreshold = Number(row.minThreshold ?? 0);
-    const isOut = quantity <= 0;
-    const isLow = quantity > 0 && quantity <= minThreshold;
-    const isHealthy = quantity > minThreshold;
-    const rowCategory = row.category ?? "General";
-
-    // Search Filter
-    const matchesSearch =
-      !normalizedSearch ||
-      String(row.sourceCode ?? "").toLowerCase().includes(normalizedSearch) ||
-      String(row.sku ?? "").toLowerCase().includes(normalizedSearch) ||
-      String(row.name ?? "").toLowerCase().includes(normalizedSearch) ||
-      String(rowCategory).toLowerCase().includes(normalizedSearch) ||
-      String(row.unit ?? "").toLowerCase().includes(normalizedSearch);
-
-    if (!matchesSearch) {
-      return false;
-    }
-
-    // Stock Filter
-    if (stockFilter === "out") {
-      return isOut;
-    }
-    if (stockFilter === "low") {
-      return isLow;
-    }
-    if (stockFilter === "healthy") {
-      return isHealthy;
-    }
-    return true;
+  const { data, isLoading, error, isFetching } = useInventoryData({ page, pageSize, search: normalizedSearch, stockFilter });
+  const exportInventoryQuery = useInventoryData({ all: true, search: normalizedSearch, stockFilter, enabled: false });
+  const { data: analyticsData } = useQuery({
+    queryKey: ["inventory-analytics"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/analytics");
+      return resp.data as {
+        summary: { lowStockItems: number; outOfStockItems: number; totalQuantity: number };
+      };
+    },
   });
 
-  const inventoryRows = allInventoryData?.data ?? [];
-  const lowStockCount = inventoryRows.filter((row) => {
-    const quantity = Number(row.quantity ?? 0);
-    const minThreshold = Number(row.minThreshold ?? 0);
-    return quantity > 0 && quantity <= minThreshold;
-  }).length;
+  const filteredRows = data?.data ?? [];
+  const lowStockCount = analyticsData?.summary.lowStockItems ?? 0;
+  const outOfStockCount = analyticsData?.summary.outOfStockItems ?? 0;
+  const totalStock = analyticsData?.summary.totalQuantity ?? 0;
 
-  const outOfStockCount = inventoryRows.filter((row) => Number(row.quantity ?? 0) <= 0).length;
-  const totalStock = inventoryRows.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
-
-  // When active filtering is used, paginate on the client. Otherwise, use backend pagination count.
-  const displayTotal = isFilteringActive ? filteredRows.length : (data?.total ?? 0);
+  const displayTotal = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(displayTotal / pageSize));
-
-  // Sliced rows for UI display
-  const paginatedRows = React.useMemo(() => {
-    if (!isFilteringActive) return filteredRows; // already page-sliced by the backend hook
-    const start = (page - 1) * pageSize;
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, isFilteringActive, page, pageSize]);
 
   React.useEffect(() => {
     if (page > totalPages) {
@@ -109,30 +64,9 @@ export default function CurrentInventoryPage() {
     setPage(1);
   }, [pageSize, searchTerm, stockFilter]);
 
-  const handleExportCSV = () => {
-    // We export all matches of the current filter criteria across the entire database
-    const exportRows = allInventoryData?.data ? allInventoryData.data.filter((row) => {
-      const quantity = Number(row.quantity ?? 0);
-      const minThreshold = Number(row.minThreshold ?? 0);
-      const isOut = quantity <= 0;
-      const isLow = quantity > 0 && quantity <= minThreshold;
-      const isHealthy = quantity > minThreshold;
-      const rowCategory = row.category ?? "General";
-
-      const matchesSearch =
-        !normalizedSearch ||
-        String(row.sourceCode ?? "").toLowerCase().includes(normalizedSearch) ||
-        String(row.sku ?? "").toLowerCase().includes(normalizedSearch) ||
-        String(row.name ?? "").toLowerCase().includes(normalizedSearch) ||
-        String(rowCategory).toLowerCase().includes(normalizedSearch) ||
-        String(row.unit ?? "").toLowerCase().includes(normalizedSearch);
-
-      if (!matchesSearch) return false;
-      if (stockFilter === "out") return isOut;
-      if (stockFilter === "low") return isLow;
-      if (stockFilter === "healthy") return isHealthy;
-      return true;
-    }) : [];
+  const handleExportCSV = async () => {
+    const exportResult = await exportInventoryQuery.refetch();
+    const exportRows = exportResult.data?.data ?? [];
 
     if (exportRows.length === 0) {
       alert("No data matched current filters for export.");
@@ -306,7 +240,6 @@ export default function CurrentInventoryPage() {
 
       {isLoading && <div>Loading…</div>}
       {!isLoading && isFetching && <div>Refreshing…</div>}
-
       {error && (
         <div>
           API unavailable — start the API server with <code>pnpm dev</code>
@@ -350,7 +283,7 @@ export default function CurrentInventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedRows.map((row, index) => {
+                  {filteredRows.map((row, index) => {
                     const quantity = Number(row.quantity ?? 0);
                     const minThreshold = Number(row.minThreshold ?? 0);
                     const checkOutTotal = Number(row.checkOutTotal ?? 0);
@@ -414,7 +347,7 @@ export default function CurrentInventoryPage() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Page {page} of {totalPages}
             </div>
             <div style={{ display: "flex", gap: 8 }}>

@@ -2,6 +2,7 @@ import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
+import { InventoryItemSelect } from "./InventoryItemSelect";
 
 type CheckInMode = "existing" | "new";
 
@@ -40,6 +41,47 @@ export default function CheckInPage() {
   const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  interface CartItem {
+    id: string;
+    mode: CheckInMode;
+    stockItemId?: string;
+    sku?: string;
+    barcode?: string;
+    name?: string;
+    unit?: string;
+    unitDescription?: string;
+    category?: string;
+    quantity: number;
+    projectFor: string;
+    dateReceived: string;
+    expiryDate?: string;
+    remark?: string;
+    itemLabel: string;
+  }
+  const [cart, setCart] = React.useState<CartItem[]>([]);
+
+  const bulkCheckInMutation = useMutation({
+    mutationFn: async (items: Omit<CartItem, "id" | "itemLabel">[]) => {
+      const resp = await apiClient.post("/domains/inventory/bulk-checkin", { items });
+      return resp.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-checkin-movements"] });
+      setFeedback({
+        type: "success",
+        message: `Successfully checked in batch of ${cart.length} item(s).`,
+      });
+      setCart([]);
+    },
+    onError: (err: any) => {
+      setFeedback({
+        type: "error",
+        message: err?.response?.data?.error || err.message || "Bulk check-in failed.",
+      });
+    },
+  });
 
   const { data: checkInMovementsData } = useQuery({
     queryKey: ["inventory-checkin-movements"],
@@ -447,100 +489,23 @@ export default function CheckInPage() {
 
         {mode === "existing" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", position: "relative" }}>
-              Select Item
-              <div style={{ position: "relative", width: "100%" }}>
-                <input
-                  ref={itemInputRef}
-                  value={selectedItemQuery}
-                  onChange={(e) => {
-                    setSelectedItemQuery(e.target.value);
-                    setSelectedItemId("");
-                    setItemMenuOpen(true);
-                    setItemActiveIndex(0);
-                  }}
-                  onFocus={() => setItemMenuOpen(true)}
-                  onBlur={() => {
-                    window.setTimeout(() => setItemMenuOpen(false), 120);
-                  }}
-                  onKeyDown={handleItemKeyDown}
-                  placeholder="Type SKU or item name"
-                  style={{
-                    ...inputStyle,
-                    paddingRight: "28px",
-                  }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    right: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    pointerEvents: "none",
-                    color: "var(--color-text-muted)",
-                    fontSize: "8px",
-                  }}
-                >
-                  ▼
-                </div>
-              </div>
-
-              {itemMenuOpen && filteredItemSuggestions.length > 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    minWidth: "100%",
-                    width: "max-content",
-                    maxWidth: "500px",
-                    zIndex: 20,
-                    marginTop: 6,
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--color-surface-2)",
-                    boxShadow: "0 12px 28px rgba(16, 24, 40, 0.12)",
-                    maxHeight: 240,
-                    overflowY: "auto",
-                  }}
-                >
-                  {filteredItemSuggestions.map((item, index) => {
-                    const isActive = index === itemActiveIndex;
-                    const quantity = Number(item.quantity ?? 0);
-                    return (
-                      <button
-                        key={item.id ?? `${item.sku}-${item.name}`}
-                        type="button"
-                        onMouseEnter={() => setItemActiveIndex(index)}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          chooseInventoryItem(item);
-                        }}
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          border: "none",
-                          borderBottom: "1px solid var(--color-divider)",
-                          background: isActive ? "var(--color-accent-soft)" : "transparent",
-                          padding: "8px 12px",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          fontSize: "var(--fs-xs)",
-                          color: "var(--color-text)",
-                        }}
-                      >
-                        <span style={{ fontWeight: 600 }}>{item.sku} - {item.name}</span>
-                        <span style={{ color: "var(--color-text-muted)", marginLeft: 6 }}>
-                          (Available: {quantity} {item.unit ?? "units"})
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </label>
+            <InventoryItemSelect
+              label="Select Item"
+              items={inventoryItems}
+              value={selectedItemQuery}
+              onValueChange={(value) => {
+                setSelectedItemQuery(value);
+                setSelectedItemId("");
+              }}
+              onSelectItem={(item) => {
+                setSelectedItemId(item.id ?? "");
+                setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
+              }}
+              placeholder="Type item name or Id"
+              inputStyle={inputStyle}
+              renderItemMeta={(item) => `Available: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
+              variant="minimal"
+            />
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Quantity
@@ -664,8 +629,16 @@ export default function CheckInPage() {
               <div style={{ fontSize: "var(--fs-md)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? selectedItemQuantity : "—"}</div>
             </div>
             <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Selected Item</div>
-              <div style={{ fontSize: "var(--fs-md)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? selectedItemLabel : "—"}</div>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Projected Balance</div>
+              <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : checkInQty <= 0 ? "#b91c1c" : "var(--color-text)", fontWeight: 700 }}>
+                {selectedItem ? selectedItemQuantity + Math.max(0, checkInQty) : "—"}
+              </div>
+            </div>
+            <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Validation</div>
+              <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : checkInQty <= 0 ? "#b91c1c" : "#166534", fontWeight: 700 }}>
+                {!selectedItem ? "Select item" : checkInQty <= 0 ? "Enter quantity" : "Valid"}
+              </div>
             </div>
           </div>
         )}
@@ -676,27 +649,278 @@ export default function CheckInPage() {
             {!isLoading && error && "Inventory list unavailable. You can still try creating a new item."}
             {!isLoading && !error && `Loaded ${(data?.data ?? []).length} items`}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setFeedback(null);
-              checkInMutation.mutate();
-            }}
-            disabled={checkInMutation.isPending}
-            style={{
-              border: "1px solid var(--color-border)",
-              background: "var(--color-accent-soft)",
-              color: "var(--color-text)",
-              borderRadius: "var(--radius-sm)",
-              padding: "8px 12px",
-              fontSize: "var(--fs-xs)",
-              fontWeight: 700,
-              cursor: checkInMutation.isPending ? "not-allowed" : "pointer",
-            }}
-          >
-            {checkInMutation.isPending ? "Submitting..." : mode === "existing" ? "Submit" : "Create Item + Submit"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                if (mode === "existing") {
+                  if (!selectedItem?.id) {
+                    setFeedback({ type: "error", message: "Select an item to add to batch." });
+                    return;
+                  }
+                  if (!Number.isFinite(checkInQty) || checkInQty <= 0) {
+                    setFeedback({ type: "error", message: "Check-in quantity must be greater than zero." });
+                    return;
+                  }
+
+                  const newItem: CartItem = {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    mode: "existing",
+                    stockItemId: selectedItem.id,
+                    quantity: checkInQty,
+                    projectFor: projectFor.trim() || projects[0],
+                    dateReceived,
+                    expiryDate: expiryDate || undefined,
+                    remark: note.trim() || undefined,
+                    itemLabel: `${selectedItem.sku ?? ""} ${selectedItem.name ?? ""}`.trim(),
+                  };
+                  setCart((prev) => [...prev, newItem]);
+                  setFeedback({
+                    type: "success",
+                    message: `Added ${checkInQty} units of ${selectedItem.name} to batch.`,
+                  });
+                  setCheckInQty(1);
+                  setNote("");
+                  setSelectedItemId("");
+                  setSelectedItemQuery("");
+                } else {
+                  if (!newSku.trim() || !newName.trim()) {
+                    setFeedback({ type: "error", message: "SKU and Item Description are required for new items." });
+                    return;
+                  }
+                  if (!Number.isFinite(newOpeningQty) || newOpeningQty <= 0) {
+                    setFeedback({ type: "error", message: "Quantity must be greater than zero." });
+                    return;
+                  }
+
+                  const sku = newSku.trim();
+                  const nameLower = newName.trim().toLowerCase();
+                  const category = newCategory.trim() || (nameLower.includes("tube") || nameLower.includes("plate") || nameLower.includes("dish")
+                    ? "Consumables"
+                    : nameLower.includes("meter") || nameLower.includes("thermo")
+                      ? "Equipment"
+                      : "General");
+                  const barcode = newBarcode.trim() || sku;
+                  const unitDescription = newUnitDescription.trim() || `${newUnit.trim() || "units"} per pack`;
+
+                  const newItem: CartItem = {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    mode: "new",
+                    sku,
+                    barcode,
+                    name: newName.trim(),
+                    quantity: newOpeningQty,
+                    unit: newUnit.trim() || "units",
+                    unitDescription,
+                    category,
+                    projectFor: projectFor.trim() || projects[0],
+                    dateReceived,
+                    expiryDate: newExpiryDate || undefined,
+                    remark: note.trim() || undefined,
+                    itemLabel: `${sku} ${newName.trim()}`.trim(),
+                  };
+                  setCart((prev) => [...prev, newItem]);
+                  setFeedback({
+                    type: "success",
+                    message: `Added new item ${sku} to batch.`,
+                  });
+                  const submittedNum = sku.match(/(\d+)$/);
+                  const nextSku = submittedNum
+                    ? sku.replace(/(\d+)$/, String(Number(submittedNum[1]) + 1))
+                    : computeNextSku;
+                  setNewSku(nextSku);
+                  setNewBarcode("");
+                  setNewName("");
+                  setNewUnit("units");
+                  setNewOpeningQty(1);
+                  setNewUnitDescription("");
+                  setNewCategory("");
+                  setNote("");
+                  setNewExpiryDate("");
+                }
+              }}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 12px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              ➕ Add to Cart
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                checkInMutation.mutate();
+              }}
+              disabled={checkInMutation.isPending}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-accent-soft)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 12px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: checkInMutation.isPending ? "not-allowed" : "pointer",
+              }}
+            >
+              {checkInMutation.isPending ? "Submitting..." : mode === "existing" ? "Submit" : "Create Item + Submit"}
+            </button>
+          </div>
         </div>
+
+        {cart.length > 0 && (
+          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 12, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Check-In Cart ({cart.length} items)</div>
+            <button
+              type="button"
+              onClick={() => setCart([])}
+              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+            >
+              Clear Cart
+            </button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Type</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date Received</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Expiry Date</th>
+                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
+                  <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 140 }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                      <span style={{
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        background: item.mode === "new" ? "#dcfce7" : "#eff6ff",
+                        color: item.mode === "new" ? "#15803d" : "#1d4ed8",
+                        border: item.mode === "new" ? "1px solid #bbf7d0" : "1px solid #bfdbfe",
+                      }}>
+                        {item.mode === "new" ? "NEW" : "EXISTING"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.projectFor}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.dateReceived}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.expiryDate || "—"}</td>
+                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark || "—"}</td>
+                    <td style={{ padding: "8px", textAlign: "center" }}>
+                      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode(item.mode);
+                            if (item.mode === "existing") {
+                              setSelectedItemId(item.stockItemId || "");
+                              setSelectedItemQuery(item.itemLabel);
+                              setCheckInQty(item.quantity);
+                              setNote(item.remark || "");
+                              setExpiryDate(item.expiryDate || "");
+                            } else {
+                              setNewSku(item.sku || "");
+                              setNewBarcode(item.barcode || "");
+                              setNewName(item.name || "");
+                              setNewUnit(item.unit || "units");
+                              setNewOpeningQty(item.quantity);
+                              setNewUnitDescription(item.unitDescription || "");
+                              setNewCategory(item.category || "");
+                              setNote(item.remark || "");
+                              setNewExpiryDate(item.expiryDate || "");
+                            }
+                            setProjectFor(item.projectFor);
+                            setDateReceived(item.dateReceived);
+                            setCart((prev) => prev.filter((i) => i.id !== item.id));
+                          }}
+                          style={{ background: "none", border: "none", color: "var(--color-text)", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCart((prev) => prev.filter((i) => i.id !== item.id))}
+                          style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                        >
+                          🗑️ Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                const payload = cart.map((i) => {
+                  if (i.mode === "existing") {
+                    return {
+                      mode: "existing" as const,
+                      stockItemId: i.stockItemId,
+                      quantity: i.quantity,
+                      projectFor: i.projectFor,
+                      dateReceived: i.dateReceived,
+                      expiryDate: i.expiryDate,
+                      remark: i.remark,
+                    };
+                  } else {
+                    return {
+                      mode: "new" as const,
+                      sku: i.sku,
+                      barcode: i.barcode,
+                      name: i.name,
+                      quantity: i.quantity,
+                      unit: i.unit,
+                      unitDescription: i.unitDescription,
+                      category: i.category,
+                      projectFor: i.projectFor,
+                      dateReceived: i.dateReceived,
+                      expiryDate: i.expiryDate,
+                      remark: i.remark,
+                    };
+                  }
+                });
+                bulkCheckInMutation.mutate(payload);
+              }}
+              disabled={bulkCheckInMutation.isPending}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-accent-soft)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 16px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: bulkCheckInMutation.isPending ? "not-allowed" : "pointer",
+              }}
+            >
+              {bulkCheckInMutation.isPending ? "Submitting..." : "Submit"}
+            </button>
+          </div>
+        </div>
+      )}
       </div>
 
       <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>

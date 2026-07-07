@@ -29,21 +29,30 @@ interface UseInventoryDataOptions {
   page?: number;
   pageSize?: number;
   all?: boolean;
+  search?: string;
+  stockFilter?: "all" | "low" | "out" | "healthy";
+  enabled?: boolean;
 }
 
 export function useInventoryData(options?: UseInventoryDataOptions) {
   const page = options?.page ?? 1;
   const pageSize = options?.pageSize ?? 20;
   const all = options?.all ?? false;
+  const search = options?.search?.trim() ?? "";
+  const stockFilter = options?.stockFilter ?? "all";
+  const enabled = options?.enabled ?? true;
 
   return useQuery({
-    queryKey: ["inventory-list", page, pageSize, all],
+    queryKey: ["inventory-list", page, pageSize, all, search, stockFilter],
+    enabled,
     queryFn: async () => {
       const resp = await apiClient.get("/domains/inventory", {
         params: {
           all: all ? "true" : undefined,
           page,
           pageSize,
+          search: search || undefined,
+          stockFilter: stockFilter !== "all" ? stockFilter : undefined,
         },
       });
       return resp.data as InventoryListResult;

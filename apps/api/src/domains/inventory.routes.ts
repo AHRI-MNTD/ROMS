@@ -1,12 +1,13 @@
 // inventory.routes.ts
 import { Router, Request, Response } from "express";
-import prisma from "@roms/db";
+import prisma, { Prisma } from "@roms/db";
 import { randomUUID } from "node:crypto";
 import { requireAuth, requirePermission, requireRole } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
 import { CreateStockItemSchema, Role } from "@roms/shared";
 import { logger } from "../utils/logger";
 import { GoogleSheetsSyncService } from "../services/googleSheets.service";
+import { getInventoryDecisionDelta, getSettledRequestQuantity } from "./inventory.settlement";
 
 type InventoryMasterDataRecord = {
   category: string;
@@ -127,17 +128,67 @@ router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Re
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 20;
   const all = String(req.query.all ?? "").toLowerCase() === "true";
+  const search = String(req.query.search ?? "").trim();
+  const stockFilter = String(req.query.stockFilter ?? "all").toLowerCase();
+  const filterClauses: Prisma.Sql[] = [];
+
+  if (search.length > 0) {
+    const pattern = `%${search}%`;
+    filterClauses.push(Prisma.sql`(
+      "sourceCode" ILIKE ${pattern}
+      OR sku ILIKE ${pattern}
+      OR name ILIKE ${pattern}
+      OR category ILIKE ${pattern}
+      OR unit ILIKE ${pattern}
+    )`);
+  }
+
+  if (stockFilter === "low") {
+    filterClauses.push(Prisma.sql`quantity > 0 AND quantity <= "minThreshold"`);
+  } else if (stockFilter === "out") {
+    filterClauses.push(Prisma.sql`quantity <= 0`);
+  } else if (stockFilter === "healthy") {
+    filterClauses.push(Prisma.sql`quantity > "minThreshold"`);
+  }
+
+  const whereClause =
+    filterClauses.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(filterClauses, " AND ")}`
+      : Prisma.empty;
+
+  const selectClause = Prisma.sql`
+    SELECT
+      id,
+      sku,
+      "sourceCode",
+      name,
+      category,
+      "lotNumber",
+      quantity,
+      "minThreshold",
+      "checkInTotal",
+      "checkOutTotal",
+      "balancePercent",
+      unit,
+      "expiryDate",
+      "createdAt"
+    FROM "StockItem"
+  `;
+
+  const paginationClause = all ? Prisma.empty : Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
 
   if (all) {
-    const data = await prisma.stockItem.findMany({ orderBy: { name: "asc" } });
+    const data = await prisma.$queryRaw<unknown[]>(Prisma.sql`${selectClause} ${whereClause} ORDER BY name ASC`);
     res.json({ data, total: data.length, page: 1, pageSize: data.length });
     return;
   }
 
-  const [data, total] = await Promise.all([
-    prisma.stockItem.findMany({ skip: (page - 1) * pageSize, take: pageSize, orderBy: { name: "asc" } }),
-    prisma.stockItem.count(),
+  const [data, totalRows] = await Promise.all([
+    prisma.$queryRaw<unknown[]>(Prisma.sql`${selectClause} ${whereClause} ORDER BY name ASC ${paginationClause}`),
+    prisma.$queryRaw<Array<{ total: bigint | number }>>(Prisma.sql`SELECT COUNT(*)::bigint AS total FROM "StockItem" ${whereClause}`),
   ]);
+
+  const total = Number(totalRows[0]?.total ?? 0);
   res.json({ data, total, page, pageSize });
 });
 
@@ -374,12 +425,14 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
 
   try {
     const created = await prisma.$transaction(async (tx) => {
+      const movementTx = tx as typeof tx & InventoryMovementPrisma;
       const createdRows = await Promise.all(
         items.map(async (rawItem: any) => {
           const movementId = toStringOrUndefined(rawItem?.movementId);
           const stockItemId = toStringOrUndefined(rawItem?.id);
           const status = toInventoryMovementStatus(rawItem?.status) ?? "PENDING";
-          const quantity = status === "REJECTED" ? 0 : Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.acceptedQuantity) ?? toNumberOrUndefined(rawItem?.quantity) ?? 0));
+          const acceptedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.acceptedQuantity) ?? toNumberOrUndefined(rawItem?.quantity) ?? 0));
+          const quantity = getSettledRequestQuantity(status, acceptedQuantity);
           const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
 
           if (!movementId && !stockItemId) {
@@ -393,8 +446,47 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
                 ? `Partial approval: accepted ${quantity} of ${requestedQuantity}`
                 : `Approved by project manager${requestedQuantity > 0 ? ` (${requestedQuantity} requested)` : ""}`;
 
+            const existingMovement = movementId
+              ? await tx.inventoryMovement.findUnique({
+                  where: { id: movementId },
+                  select: { id: true, quantity: true, status: true, stockItemId: true, requestBatchId: true },
+                })
+              : null;
+
+            const delta = getInventoryDecisionDelta(existingMovement?.status ?? null, Number(existingMovement?.quantity ?? 0), status, quantity);
+            const resolvedStockItemId = existingMovement?.stockItemId ?? stockItemId;
+
+            if (!resolvedStockItemId) {
+              throw new Error("INVALID_ITEM_ID");
+            }
+
+            const stockItem = await tx.stockItem.findUnique({ where: { id: resolvedStockItemId } });
+            if (!stockItem) {
+              throw new Error("ITEM_NOT_FOUND");
+            }
+
+            if (delta !== 0) {
+              const currentQuantity = Number(stockItem.quantity ?? 0);
+              const nextQuantity = currentQuantity - delta;
+              if (nextQuantity < 0) {
+                throw new Error(`INSUFFICIENT_STOCK:${stockItem.name}`);
+              }
+
+              const nextCheckOutTotal = Math.max(0, Number(stockItem.checkOutTotal ?? 0) + delta);
+              const nextCheckInTotal = Number(stockItem.checkInTotal ?? 0);
+
+              await tx.stockItem.update({
+                where: { id: stockItem.id },
+                data: {
+                  quantity: nextQuantity,
+                  checkOutTotal: nextCheckOutTotal,
+                  balancePercent: nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0,
+                },
+              });
+            }
+
           if (movementId) {
-            const movement = await tx.inventoryMovement.update({
+              const movement = await movementTx.inventoryMovement.update({
               where: { id: movementId },
               data: {
                 quantity,
@@ -418,7 +510,7 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
             return movement;
           }
 
-          return tx.inventoryMovement.create({
+          return movementTx.inventoryMovement.create({
             data: {
               requestBatchId: randomUUID(),
               stockItemId: stockItemId!,
@@ -693,7 +785,7 @@ router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), audi
         },
       });
       return { createdItem, movement };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     // Non-blocking Google Sheets sync in background
     GoogleSheetsSyncService.syncStockItem({
@@ -795,7 +887,7 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
         createdMovements.push({ ...movement, stockItem: updated });
       }
       return { updatedItems, createdMovements };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     // Sync to Google Sheets asynchronously in background
     results.createdMovements.forEach((mov) => {
@@ -835,6 +927,207 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
       return res.status(404).json({ error: "One or more items in the batch could not be found." });
     }
     res.status(500).json({ error: "Bulk checkout transaction failed." });
+  }
+});
+
+router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  if (items.length === 0) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
+    return;
+  }
+
+  try {
+    const results = await prisma.$transaction(async (tx) => {
+      const movementTx = tx as typeof tx & InventoryMovementPrisma;
+      const batchId = randomUUID();
+      const updatedItems = [];
+      const createdMovements = [];
+
+      for (const cartItem of items) {
+        const mode = cartItem.mode;
+        if (mode !== "existing" && mode !== "new") {
+          throw new Error("INVALID_MODE");
+        }
+
+        const projectFor = toStringOrUndefined(cartItem.projectFor) ?? "ROMS Inventory";
+        const foundProject = await tx.inventoryMasterData.findFirst({ where: { project: projectFor } });
+        if (!foundProject) {
+          throw new Error("INVALID_PROJECT");
+        }
+
+        const dateReceived = toDateOrUndefined(cartItem.dateReceived) ?? new Date();
+        const remark = toStringOrUndefined(cartItem.remark) ?? toStringOrUndefined(cartItem.note) ?? (mode === "existing" ? "Stock increased" : "Opening stock");
+
+        if (mode === "existing") {
+          const stockItemId = toStringOrUndefined(cartItem.stockItemId);
+          if (!stockItemId) {
+            throw new Error("MISSING_STOCK_ITEM_ID");
+          }
+          const quantity = Math.max(0, Math.floor(Number(cartItem.quantity) || 0));
+          if (quantity <= 0) {
+            throw new Error("INVALID_QUANTITY");
+          }
+
+          const existing = await tx.stockItem.findUnique({ where: { id: stockItemId } });
+          if (!existing) {
+            throw new Error(`ITEM_NOT_FOUND:${stockItemId}`);
+          }
+
+          const previousQuantity = Number(existing.quantity ?? 0);
+          const nextQuantity = previousQuantity + quantity;
+          const nextCheckInTotal = Number(existing.checkInTotal ?? 0) + quantity;
+          const nextBalancePercent = nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0;
+
+          const updated = await tx.stockItem.update({
+            where: { id: stockItemId },
+            data: {
+              quantity: nextQuantity,
+              checkInTotal: nextCheckInTotal,
+              balancePercent: nextBalancePercent,
+            },
+          });
+
+          const expiryDate = toDateOrUndefined(cartItem.expiryDate);
+          if (expiryDate) {
+            await tx.stockItem.update({
+              where: { id: stockItemId },
+              data: { expiryDate },
+            });
+          }
+
+          const movement = await movementTx.inventoryMovement.create({
+            data: {
+              requestBatchId: batchId,
+              stockItemId,
+              movementType: "CHECK_IN",
+              quantity,
+              requestedBy: req.user?.email ?? null,
+              destination: projectFor,
+              recipient: null,
+              projectFor,
+              status: "APPROVED",
+              remark,
+              occurredAt: dateReceived,
+            },
+          });
+
+          updatedItems.push(updated);
+          createdMovements.push({ ...movement, stockItem: updated });
+        } else {
+          const sku = toStringOrUndefined(cartItem.sku);
+          const name = toStringOrUndefined(cartItem.name) ?? toStringOrUndefined(cartItem.itemDescription);
+          if (!sku || !name) {
+            throw new Error("MISSING_NEW_ITEM_FIELDS");
+          }
+          const quantity = Math.max(0, Math.floor(Number(cartItem.quantity) || 0));
+          if (quantity <= 0) {
+            throw new Error("INVALID_QUANTITY");
+          }
+
+          const existingItem = await tx.stockItem.findUnique({ where: { sku } });
+          if (existingItem) {
+            throw new Error(`SKU_ALREADY_EXISTS:${sku}`);
+          }
+
+          const barcode = toStringOrUndefined(cartItem.barcode) ?? sku;
+          const category = toStringOrUndefined(cartItem.category) ?? "General";
+          const unit = toStringOrUndefined(cartItem.unit) ?? "units";
+          const unitDescription = toStringOrUndefined(cartItem.unitDescription) ?? `${unit} per pack`;
+          const expiryDate = toDateOrUndefined(cartItem.expiryDate);
+
+          const createdItem = await tx.stockItem.create({
+            data: {
+              sku,
+              barcode,
+              name,
+              category,
+              unit,
+              quantity,
+              minThreshold: 5,
+              checkInTotal: quantity,
+              checkOutTotal: 0,
+              balancePercent: 100,
+              expiryDate: expiryDate ?? null,
+            } as never,
+          });
+
+          const movement = await movementTx.inventoryMovement.create({
+            data: {
+              requestBatchId: batchId,
+              stockItemId: createdItem.id,
+              movementType: "CHECK_IN",
+              quantity,
+              requestedBy: req.user?.email ?? null,
+              destination: projectFor,
+              recipient: null,
+              projectFor,
+              status: "APPROVED",
+              remark,
+              occurredAt: dateReceived,
+            },
+          });
+
+          updatedItems.push(createdItem);
+          createdMovements.push({ ...movement, stockItem: createdItem });
+        }
+      }
+
+      return { updatedItems, createdMovements };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    results.createdMovements.forEach((mov) => {
+      GoogleSheetsSyncService.syncStockItem({
+        sku: mov.stockItem.sku,
+        name: mov.stockItem.name,
+        category: mov.stockItem.category,
+        unit: mov.stockItem.unit,
+        quantity: mov.stockItem.quantity,
+        minThreshold: mov.stockItem.minThreshold,
+        checkInTotal: mov.stockItem.checkInTotal,
+        checkOutTotal: mov.stockItem.checkOutTotal,
+      });
+
+      GoogleSheetsSyncService.syncMovement({
+        id: mov.id,
+        stockItemSku: mov.stockItem.sku,
+        stockItemName: mov.stockItem.name,
+        movementType: "CHECK_IN",
+        quantity: mov.quantity,
+        requestedBy: mov.requestedBy,
+        projectFor: mov.projectFor,
+        status: mov.status,
+        remark: mov.remark,
+        occurredAt: mov.occurredAt,
+      });
+    });
+
+    res.json({ success: true, updatedItems: results.updatedItems });
+  } catch (error: any) {
+    logger.error(error);
+    const message = error.message || "";
+    if (message === "INVALID_MODE") {
+      return res.status(400).json({ error: "Invalid check-in mode. Must be 'existing' or 'new'." });
+    }
+    if (message === "INVALID_PROJECT") {
+      return res.status(400).json({ error: "Project For must exist in inventory master data." });
+    }
+    if (message === "MISSING_STOCK_ITEM_ID") {
+      return res.status(400).json({ error: "Stock Item ID is required for existing items." });
+    }
+    if (message === "INVALID_QUANTITY") {
+      return res.status(400).json({ error: "Check-in quantity must be greater than zero." });
+    }
+    if (message === "MISSING_NEW_ITEM_FIELDS") {
+      return res.status(400).json({ error: "SKU and Item Description are required for new items." });
+    }
+    if (message.startsWith("ITEM_NOT_FOUND:")) {
+      return res.status(404).json({ error: "One or more items in the batch could not be found." });
+    }
+    if (message.startsWith("SKU_ALREADY_EXISTS:")) {
+      return res.status(400).json({ error: `SKU '${message.split(":")[1]}' already exists.` });
+    }
+    res.status(500).json({ error: "Bulk check-in transaction failed." });
   }
 });
 
@@ -927,7 +1220,7 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
             destination: String(req.body.destination ?? req.body.projectFor ?? "ROMS Inventory"),
             recipient: String(req.body.recipient ?? "").trim() || null,
             projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
-            status: String(req.body.status ?? (difference > 0 ? "APPROVED" : "APPROVED")) as "APPROVED" | "PENDING" | "REJECTED",
+            status: "APPROVED",
             remark: String(req.body.remark ?? req.body.note ?? (difference > 0 ? "Stock increased" : "Stock decreased")),
             occurredAt: toDateOrUndefined(req.body.dateReceived ?? req.body.dateFiled) ?? new Date(),
           },
@@ -935,7 +1228,7 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
       }
 
       return { updated, createdMovement };
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     if (!result) {
       res.status(404).json({ code: "NOT_FOUND" });

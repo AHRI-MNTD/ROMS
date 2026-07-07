@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
+import { InventoryItemSelect } from "./InventoryItemSelect";
 
 interface RequestLogEntry {
   id: string;
@@ -53,6 +54,7 @@ export default function RequestsPage() {
   });
 
   const [selectedItemId, setSelectedItemId] = React.useState("");
+  const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [requestQty, setRequestQty] = React.useState(1);
   const [note, setNote] = React.useState("");
 
@@ -91,6 +93,24 @@ export default function RequestsPage() {
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
   const currentQty = Number(selectedItem?.quantity ?? 0);
   const projectedBalance = Math.max(0, currentQty - Math.max(0, requestQty));
+
+  React.useEffect(() => {
+    if (!selectedItemQuery.trim()) {
+      setSelectedItemId("");
+      return;
+    }
+
+    const exact = (data?.data ?? []).find((item) => {
+      const sku = String(item.sku ?? "").trim().toLowerCase();
+      const name = String(item.name ?? "").trim().toLowerCase();
+      const query = selectedItemQuery.trim().toLowerCase();
+      return query === sku || query === name || query === `${sku} - ${name}`;
+    });
+
+    if (exact) {
+      setSelectedItemId(exact.id ?? "");
+    }
+  }, [data?.data, selectedItemQuery]);
 
   // no status badges here anymore; requests are submitted for review
 
@@ -372,6 +392,8 @@ export default function RequestsPage() {
       setCartItems([]);
       setRequestQty(1);
       setNote("");
+      setSelectedItemId("");
+      setSelectedItemQuery("");
     },
     onError: (err) => {
       const message = err instanceof Error ? err.message : "Bulk request failed.";
@@ -401,17 +423,23 @@ export default function RequestsPage() {
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Select Item
-            <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} style={inputStyle}>
-              <option value="">Choose item</option>
-              {(data?.data ?? []).map((item) => (
-                <option key={item.id ?? `${item.sku}-${item.name}`} value={item.id ?? ""}>
-                  {item.sku} - {item.name} (Current: {item.quantity ?? 0})
-                </option>
-              ))}
-            </select>
-          </label>
+          <InventoryItemSelect
+            label="Select Item"
+            items={data?.data ?? []}
+            value={selectedItemQuery}
+            onValueChange={(value) => {
+              setSelectedItemQuery(value);
+              setSelectedItemId("");
+            }}
+            onSelectItem={(item) => {
+              setSelectedItemId(item.id ?? "");
+              setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
+            }}
+            placeholder="Type item name or Id"
+            inputStyle={inputStyle}
+            renderItemMeta={(item) => `Current: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
+            variant="minimal"
+          />
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
             Quantity
@@ -534,6 +562,7 @@ export default function RequestsPage() {
                 setFeedback({ type: 'success', message: `Added ${requestQty} units of ${selectedItem.name} to cart.` });
 
                 setSelectedItemId("");
+                setSelectedItemQuery("");
                 setRequestQty(1);
                 setNote("");
               }}
@@ -550,11 +579,60 @@ export default function RequestsPage() {
             >
               ➕ Add to Cart
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFeedback(null);
+                if (!selectedItem) {
+                  setFeedback({ type: 'error', message: 'Select an item to request.' });
+                  return;
+                }
+                if (!Number.isFinite(requestQty) || requestQty <= 0) {
+                  setFeedback({ type: 'error', message: 'Request quantity must be greater than zero.' });
+                  return;
+                }
+                if (!project.trim()) {
+                  setFeedback({ type: 'error', message: 'Project is required.' });
+                  return;
+                }
+                if (!requestedBy.trim()) {
+                  setFeedback({ type: 'error', message: 'Requested by is required.' });
+                  return;
+                }
+
+                const newItem: CartItem = {
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  stockItemId: selectedItem.id!,
+                  itemLabel: `${selectedItem.sku ?? ""} - ${selectedItem.name ?? ""}`.trim(),
+                  quantity: requestQty,
+                  project: project.trim(),
+                  requestedBy: requestedBy.trim(),
+                  requestedFor: requestedFor.trim(),
+                  team: team.trim(),
+                  remark: note.trim() || "Request item",
+                };
+
+                bulkRequestMutation.mutate([newItem]);
+              }}
+              disabled={bulkRequestMutation.isPending}
+              style={{
+                border: "1px solid var(--color-border)",
+                background: "var(--color-accent-soft)",
+                color: "var(--color-text)",
+                borderRadius: "var(--radius-sm)",
+                padding: "8px 12px",
+                fontSize: "var(--fs-xs)",
+                fontWeight: 700,
+                cursor: bulkRequestMutation.isPending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {bulkRequestMutation.isPending ? "Submitting..." : "Submit"}
+            </button>
           </div>
         </div>
 
         {cartItems.length > 0 && (
-          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "grid", gap: 12, marginTop: 12 }}>
+          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 12, marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Request Cart ({cartItems.length} items)</div>
               <button
@@ -595,6 +673,7 @@ export default function RequestsPage() {
                             type="button"
                             onClick={() => {
                               setSelectedItemId(item.stockItemId);
+                              setSelectedItemQuery(item.itemLabel);
                               setRequestQty(item.quantity);
                               setProject(item.project);
                               setRequestedBy(item.requestedBy);

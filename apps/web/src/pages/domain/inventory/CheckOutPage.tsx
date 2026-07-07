@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
+import { InventoryItemSelect } from "./InventoryItemSelect";
 
 interface LabelOverrides {
   mainTitle?: string;
@@ -21,12 +22,12 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
   const [selectedItemId, setSelectedItemId] = React.useState("");
+  const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkOutQty, setCheckOutQty] = React.useState(1);
   const [projectFor, setProjectFor] = React.useState("ROMS Inventory");
   const [dateRequested, setDateRequested] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [requestedBy, setRequestedBy] = React.useState("");
   const [note, setNote] = React.useState("");
-  const [checkOutStatus, setCheckOutStatus] = React.useState<"APPROVED" | "PENDING" | "REJECTED">("APPROVED");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -142,6 +143,24 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
   const currentQty = Number(selectedItem?.quantity ?? 0);
   const projectedBalance = Math.max(0, currentQty - Math.max(0, checkOutQty));
 
+  React.useEffect(() => {
+    if (!selectedItemQuery.trim()) {
+      setSelectedItemId("");
+      return;
+    }
+
+    const exact = (data?.data ?? []).find((item) => {
+      const sku = String(item.sku ?? "").trim().toLowerCase();
+      const name = String(item.name ?? "").trim().toLowerCase();
+      const query = selectedItemQuery.trim().toLowerCase();
+      return query === sku || query === name || query === `${sku} - ${name}`;
+    });
+
+    if (exact) {
+      setSelectedItemId(exact.id ?? "");
+    }
+  }, [data?.data, selectedItemQuery]);
+
   const inventoryReferenceRows = React.useMemo(() => {
     return (data?.data ?? []).map((item, index) => {
       const quantity = Number(item.quantity ?? 0);
@@ -226,7 +245,6 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         destination: projectFor.trim(),
         recipient: requestedBy.trim(),
         projectFor: projectFor.trim(),
-        status: checkOutStatus,
         remark: note.trim() || undefined,
       });
 
@@ -251,7 +269,6 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
       setDateRequested(new Date().toISOString().slice(0, 10));
       setRequestedBy(staffMembers[0] || "");
       setNote("");
-      setCheckOutStatus("APPROVED");
     },
     onError: (err) => {
       const message = err instanceof Error ? err.message : "Check-out failed.";
@@ -261,7 +278,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+      <div style={{ padding: 19, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>{labelOverrides?.mainTitle || "Check Out"}</div>
 
         {feedback && (
@@ -281,17 +298,23 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Select Item
-            <select value={selectedItemId} onChange={(e) => setSelectedItemId(e.target.value)} style={inputStyle}>
-              <option value="">Choose item</option>
-              {(data?.data ?? []).map((item) => (
-                <option key={item.id ?? `${item.sku}-${item.name}`} value={item.id ?? ""}>
-                  {item.sku} - {item.name} (Current: {item.quantity ?? 0})
-                </option>
-              ))}
-            </select>
-          </label>
+          <InventoryItemSelect
+            label="Select Item"
+            items={data?.data ?? []}
+            value={selectedItemQuery}
+            onValueChange={(value) => {
+              setSelectedItemQuery(value);
+              setSelectedItemId("");
+            }}
+            onSelectItem={(item) => {
+              setSelectedItemId(item.id ?? "");
+              setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
+            }}
+            placeholder="Type item name or Id"
+            inputStyle={inputStyle}
+            renderItemMeta={(item) => `Current: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
+            variant="minimal"
+          />
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
             {labelOverrides?.quantity || "Quantity"}
@@ -331,15 +354,6 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
             ) : (
               <input value={requestedBy} onChange={(e) => setRequestedBy(e.target.value)} style={inputStyle} />
             )}
-          </label>
-
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Status
-            <select value={checkOutStatus} onChange={(e) => setCheckOutStatus(e.target.value as "APPROVED" | "PENDING" | "REJECTED")} style={inputStyle}>
-              <option value="APPROVED">APPROVED</option>
-              <option value="PENDING">PENDING</option>
-              <option value="REJECTED">REJECTED</option>
-            </select>
           </label>
 
           <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -410,6 +424,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 setFeedback({ type: "success", message: `Added ${checkOutQty} units of ${selectedItem.name} to batch.` });
 
                 setSelectedItemId("");
+                setSelectedItemQuery("");
                 setCheckOutQty(1);
                 setNote("");
               }}
@@ -444,16 +459,15 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 cursor: checkOutMutation.isPending ? "not-allowed" : "pointer",
               }}
             >
-              {checkOutMutation.isPending ? "Submitting..." : "Submit Direct"}
+              {checkOutMutation.isPending ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
-      </div>
 
-      {cart.length > 0 && (
-        <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "grid", gap: 12 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Checkout Cart ({cart.length} items)</div>
+        {cart.length > 0 && (
+          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 12, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Checkout Cart ({cart.length} items)</div>
             <button
               type="button"
               onClick={() => setCart([])}
@@ -489,6 +503,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                             type="button"
                             onClick={() => {
                               setSelectedItemId(item.stockItemId);
+                              setSelectedItemQuery(item.itemLabel);
                               setCheckOutQty(item.quantity);
                               setProjectFor(item.projectFor);
                               setRequestedBy(item.requestedBy);
@@ -544,6 +559,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           </div>
         </div>
       )}
+      </div>
 
       <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>

@@ -210,6 +210,7 @@ enum InventoryMovementStatus {
 model StockItem {
   id           String    @id @default(cuid())
   sku          String    @unique
+  barcode      String?
   sourceCode   String?
   name         String
   category     String?
