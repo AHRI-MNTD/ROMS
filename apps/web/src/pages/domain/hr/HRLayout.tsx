@@ -72,16 +72,21 @@ export default function HRLayout() {
   const visibleTabs = tabs.filter((tab) => hasTabAccess(user?.roles, "hr", tab.to, user?.permissions));
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1400 }}>
+    <div style={{ padding: "0 28px 24px 28px", maxWidth: 1400 }}>
       <div
         style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          background: "var(--color-bg)",
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
           gap: 16,
           flexWrap: "wrap",
+          paddingTop: "24px",
+          paddingBottom: "14px",
           marginBottom: 18,
-          paddingBottom: 14,
           borderBottom: "1px solid var(--color-divider)",
         }}
       >
