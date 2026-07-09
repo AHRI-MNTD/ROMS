@@ -80,7 +80,9 @@ router.post("/staff", requireAuth, auditMutation("StaffProfile", "CREATE"), asyn
 });
 
 router.patch("/staff/:id", requireAuth, requirePermission("hr:write"), auditMutation("StaffProfile", "UPDATE"), async (req, res) => {
-  const p = await prisma.staffProfile.update({ where: { id: req.params.id }, data: req.body as Record<string, unknown> });
+  // Strip fields that must only be set through the dedicated approval endpoint
+  const { approvalStatus: _a, reviewedById: _b, reviewedAt: _c, reviewNote: _d, userId: _u, ...safeData } = req.body as Record<string, unknown>;
+  const p = await prisma.staffProfile.update({ where: { id: req.params.id }, data: safeData });
   res.json(p);
 });
 

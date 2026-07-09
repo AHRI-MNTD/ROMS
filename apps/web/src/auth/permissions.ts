@@ -295,7 +295,11 @@ export function hasPathAccess(roles: string[] | undefined, pathname: string, per
 
   // 2. Admin user rights
   if (cleanPath === "/admin/user-rights") {
-    return roles?.includes("ADMIN") || (permissions?.includes("admin:all") ?? false);
+    return (
+      roles?.includes("ADMIN") ||
+      roles?.includes("RESEARCH_ADMIN") ||
+      (permissions?.includes("admin:all") ?? false)
+    );
   }
 
   // 3. Architecture & Operations

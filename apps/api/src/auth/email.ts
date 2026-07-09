@@ -5,9 +5,9 @@ import { logger } from "../utils/logger";
 export async function sendVerificationEmail(email: string, code: string) {
   const host = env.SMTP_HOST || "smtp.gmail.com";
   const port = env.SMTP_PORT || 587;
-  const user = env.SMTP_USER || "yabetsd29@gmail.com";
-  const pass = env.SMTP_PASS || "rwyk zuya gzea scqo";
-  const from = env.SMTP_FROM || `"ROMS System" < yabetsd29@gmail.com >`;
+  const user = env.SMTP_USER || "";
+  const pass = env.SMTP_PASS || "";
+  const from = env.SMTP_FROM || `"ROMS System" <noreply@roms.local>`;
 
   if (!user || !pass || pass.includes("your-gmail-app-password")) {
     logger.warn(

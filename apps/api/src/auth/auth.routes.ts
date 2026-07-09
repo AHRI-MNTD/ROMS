@@ -352,7 +352,8 @@ router.get("/me", requireAuth, async (req: Request, res: Response) => {
 
 // PATCH /auth/users/:id/roles
 router.patch("/users/:id/roles", requireAuth, async (req: Request, res: Response) => {
-  if (!req.user?.roles.includes(Role.ADMIN)) {
+  const allowed = req.user?.roles.includes(Role.ADMIN) || req.user?.roles.includes(Role.RESEARCH_ADMIN);
+  if (!allowed) {
     res.status(403).json({ code: "FORBIDDEN", message: "Only administrators can modify roles" });
     return;
   }

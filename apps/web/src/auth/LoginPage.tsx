@@ -122,7 +122,7 @@ export default function LoginPage() {
       });
       const { accessToken, refreshToken, user } = resp.data;
       login(user, accessToken, refreshToken);
-      navigate("/");
+      navigate("/domains/hr/recruitment-onboarding/training-records");
     } catch (err: any) {
       setError(err.response?.data?.message || "Verification failed. Please check your code.");
     } finally {
