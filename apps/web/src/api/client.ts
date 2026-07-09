@@ -48,3 +48,13 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export function getErrorMessage(error: unknown, defaultMessage = "An unexpected error occurred."): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    if (data && typeof data === "object") {
+      return (data as any).message || (data as any).error || defaultMessage;
+    }
+  }
+  return error instanceof Error ? error.message : defaultMessage;
+}

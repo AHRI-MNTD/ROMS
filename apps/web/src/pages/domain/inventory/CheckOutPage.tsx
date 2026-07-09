@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
+import { apiClient, getErrorMessage } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
@@ -57,7 +57,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
       setCart([]);
     },
     onError: (err) => {
-      setFeedback({ type: "error", message: err instanceof Error ? err.message : "Bulk check-out failed." });
+      setFeedback({ type: "error", message: getErrorMessage(err, "Bulk check-out failed.") });
     },
   });
 
@@ -239,13 +239,14 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         throw new Error("Requested by is required.");
       }
 
-      const nextQuantity = currentQty - checkOutQty;
-      await apiClient.patch(`/domains/inventory/${selectedItem.id}`, {
-        quantity: nextQuantity,
-        destination: projectFor.trim(),
-        recipient: requestedBy.trim(),
-        projectFor: projectFor.trim(),
-        remark: note.trim() || undefined,
+      await apiClient.post("/domains/inventory/bulk-checkout", {
+        items: [{
+          stockItemId: selectedItem.id,
+          quantity: checkOutQty,
+          projectFor: projectFor.trim(),
+          requestedBy: requestedBy.trim(),
+          remark: note.trim() || undefined,
+        }],
       });
 
       return {
@@ -271,8 +272,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
       setNote("");
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Check-out failed.";
-      setFeedback({ type: "error", message });
+      setFeedback({ type: "error", message: getErrorMessage(err, "Check-out failed.") });
     },
   });
 
@@ -485,7 +485,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Recipient</th>
                   <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
-                  <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 100 }}>Action</th>
+                  <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 140 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -545,8 +545,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
               disabled={bulkCheckoutMutation.isPending}
               style={{
                 border: "1px solid var(--color-border)",
-                background: "var(--color-accent-soft)",
-                color: "var(--color-text)",
+                background: "var(--color-primary)",
+                color: "#fff",
                 borderRadius: "var(--radius-sm)",
                 padding: "8px 16px",
                 fontSize: "var(--fs-xs)",

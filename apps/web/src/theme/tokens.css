@@ -48,6 +48,8 @@
   --color-primary-hover:   #0c4e54;
   --color-primary-highlight: #d0dedd;
   --color-primary-soft:    #e8f2f1;
+  --color-accent:          #01696f;
+  --color-accent-soft:     rgba(1, 105, 111, 0.08);
 
   /* C4 HTML naming (alias to same palette) */
   --bg:        var(--color-bg);
@@ -97,6 +99,8 @@
   --color-primary-hover:   #3a8590;
   --color-primary-highlight: #253535;
   --color-primary-soft:    #1e2e2e;
+  --color-accent:          #4f98a3;
+  --color-accent-soft:     rgba(79, 152, 163, 0.12);
 
   /* C4 HTML naming (aliases) */
   --bg:        var(--color-bg);

@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
+import { apiClient, getErrorMessage } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 
@@ -40,6 +40,8 @@ export default function CheckInPage() {
   const [newCategory, setNewCategory] = React.useState("");
   const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
 
+  const [newMinThreshold, setNewMinThreshold] = React.useState<number>(5);
+
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
 
   interface CartItem {
@@ -53,6 +55,7 @@ export default function CheckInPage() {
     unitDescription?: string;
     category?: string;
     quantity: number;
+    minThreshold?: number;
     projectFor: string;
     dateReceived: string;
     expiryDate?: string;
@@ -78,7 +81,7 @@ export default function CheckInPage() {
     onError: (err: any) => {
       setFeedback({
         type: "error",
-        message: err?.response?.data?.error || err.message || "Bulk check-in failed.",
+        message: getErrorMessage(err, "Bulk check-in failed."),
       });
     },
   });
@@ -360,13 +363,16 @@ export default function CheckInPage() {
           throw new Error("Check-in quantity must be greater than zero.");
         }
 
-        const nextQuantity = Number(selectedItem.quantity ?? 0) + checkInQty;
-        await apiClient.patch(`/domains/inventory/${selectedItem.id}`, {
-          quantity: nextQuantity,
-          projectFor: projectFor.trim() || projects[0],
-          dateReceived: dateReceived || undefined,
-          expiryDate: expiryDate || undefined,
-          remark: note.trim() || undefined,
+        await apiClient.post("/domains/inventory/bulk-checkin", {
+          items: [{
+            mode: "existing",
+            stockItemId: selectedItem.id,
+            quantity: checkInQty,
+            projectFor: projectFor.trim() || projects[0],
+            dateReceived: dateReceived || undefined,
+            expiryDate: expiryDate || undefined,
+            remark: note.trim() || undefined,
+          }],
         });
 
         return {
@@ -392,20 +398,23 @@ export default function CheckInPage() {
       const barcode = newBarcode.trim() || newSku.trim();
       const unitDescription = newUnitDescription.trim() || `${newUnit.trim() || "units"} per pack`;
 
-      await apiClient.post("/domains/inventory", {
-        sku: newSku.trim(),
-        codeNo: newSku.trim(),
-        barcode,
-        name: newName.trim(),
-        itemDescription: newName.trim(),
-        unit: newUnit.trim() || "units",
-        unitDescription,
-        quantity: Math.max(0, Math.floor(newOpeningQty)),
-        category,
-        projectFor: projectFor.trim() || projects[0],
-        dateReceived: dateReceived || undefined,
-        expiryDate: newExpiryDate || undefined,
-        remark: note.trim() || undefined,
+      await apiClient.post("/domains/inventory/bulk-checkin", {
+        items: [{
+          mode: "new",
+          sku: newSku.trim(),
+          barcode,
+          name: newName.trim(),
+          itemDescription: newName.trim(),
+          unit: newUnit.trim() || "units",
+          unitDescription,
+          quantity: Math.max(1, Math.floor(newOpeningQty)),
+          minThreshold: newMinThreshold,
+          category,
+          projectFor: projectFor.trim() || projects[0],
+          dateReceived: dateReceived || undefined,
+          expiryDate: newExpiryDate || undefined,
+          remark: note.trim() || undefined,
+        }],
       });
 
       return {
@@ -449,8 +458,7 @@ export default function CheckInPage() {
       }
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Check-in failed.";
-      setFeedback({ type: "error", message });
+      setFeedback({ type: "error", message: getErrorMessage(err, "Check-in failed.") });
     },
   });
 
@@ -616,6 +624,11 @@ export default function CheckInPage() {
             </label>
 
             <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+              Min Threshold
+              <input type="number" min={0} value={newMinThreshold} onChange={(e) => setNewMinThreshold(Math.max(0, Math.floor(Number(e.target.value) || 0)))} style={inputStyle} />
+            </label>
+
+            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
               Remark
               <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
             </label>
@@ -711,6 +724,7 @@ export default function CheckInPage() {
                     barcode,
                     name: newName.trim(),
                     quantity: newOpeningQty,
+                    minThreshold: newMinThreshold,
                     unit: newUnit.trim() || "units",
                     unitDescription,
                     category,
@@ -846,6 +860,7 @@ export default function CheckInPage() {
                               setNewCategory(item.category || "");
                               setNote(item.remark || "");
                               setNewExpiryDate(item.expiryDate || "");
+                              setNewMinThreshold(item.minThreshold || 5);
                             }
                             setProjectFor(item.projectFor);
                             setDateReceived(item.dateReceived);
@@ -892,6 +907,7 @@ export default function CheckInPage() {
                       barcode: i.barcode,
                       name: i.name,
                       quantity: i.quantity,
+                      minThreshold: i.minThreshold,
                       unit: i.unit,
                       unitDescription: i.unitDescription,
                       category: i.category,
@@ -907,8 +923,8 @@ export default function CheckInPage() {
               disabled={bulkCheckInMutation.isPending}
               style={{
                 border: "1px solid var(--color-border)",
-                background: "var(--color-accent-soft)",
-                color: "var(--color-text)",
+                background: "var(--color-primary)",
+                color: "#fff",
                 borderRadius: "var(--radius-sm)",
                 padding: "8px 16px",
                 fontSize: "var(--fs-xs)",

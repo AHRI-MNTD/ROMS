@@ -229,6 +229,8 @@ model StockItem {
 
   @@index([expiryDate])
   @@index([sourceCode])
+  @@index([name])
+  @@index([sku])
 }
 
 model InventoryMovement {

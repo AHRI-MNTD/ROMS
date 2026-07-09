@@ -158,6 +158,45 @@ export const CreateStockItemSchema = z.object({
 
 export type CreateStockItemInput = z.infer<typeof CreateStockItemSchema>;
 
+export const BulkCheckoutItemSchema = z.object({
+  stockItemId: z.string().min(1),
+  quantity: z.number().int().positive(),
+  projectFor: z.string().optional().nullable(),
+  requestedBy: z.string().optional().nullable(),
+  remark: z.string().optional().nullable(),
+});
+
+export const BulkCheckoutSchema = z.object({
+  items: z.array(BulkCheckoutItemSchema).nonempty(),
+});
+
+export type BulkCheckoutInput = z.infer<typeof BulkCheckoutSchema>;
+
+export const BulkCheckInItemSchema = z.object({
+  mode: z.enum(["existing", "new"]),
+  stockItemId: z.string().optional().nullable(),
+  sku: z.string().min(2).max(64).optional().nullable(),
+  barcode: z.string().max(64).optional().nullable(),
+  name: z.string().min(2).max(255).optional().nullable(),
+  itemDescription: z.string().min(2).max(255).optional().nullable(),
+  category: z.string().optional().nullable(),
+  unit: z.string().optional().nullable(),
+  unitDescription: z.string().optional().nullable(),
+  quantity: z.number().int().positive(),
+  minThreshold: z.number().int().nonnegative().optional().nullable(),
+  projectFor: z.string().optional().nullable(),
+  dateReceived: z.coerce.date().optional().nullable(),
+  expiryDate: z.coerce.date().optional().nullable(),
+  remark: z.string().optional().nullable(),
+  note: z.string().optional().nullable(),
+});
+
+export const BulkCheckInSchema = z.object({
+  items: z.array(BulkCheckInItemSchema).nonempty(),
+});
+
+export type BulkCheckInInput = z.infer<typeof BulkCheckInSchema>;
+
 // ─── HR ───────────────────────────────────────────────────────────────────────
 
 export const CreateStaffProfileSchema = z.object({

@@ -4,7 +4,7 @@ import prisma, { Prisma } from "@roms/db";
 import { randomUUID } from "node:crypto";
 import { requireAuth, requirePermission, requireRole } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
-import { CreateStockItemSchema, Role } from "@roms/shared";
+import { CreateStockItemSchema, BulkCheckoutSchema, BulkCheckInSchema, Role } from "@roms/shared";
 import { logger } from "../utils/logger";
 import { GoogleSheetsSyncService } from "../services/googleSheets.service";
 import { getInventoryDecisionDelta, getSettledRequestQuantity } from "./inventory.settlement";
@@ -296,7 +296,11 @@ router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESE
 
 router.get("/requests", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
   const movements = await prisma.inventoryMovement.findMany({
-    where: { movementType: "CHECK_OUT" },
+    where: {
+      movementType: "CHECK_OUT",
+      requestBatchId: { not: null },
+      status: "PENDING",
+    },
     include: {
       stockItem: {
         select: { id: true, sku: true, name: true, unit: true, category: true },
@@ -317,24 +321,29 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
 
 router.get("/movements", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const type = req.query.type as string;
-  const limit = parseInt(req.query.limit as string) || 100;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 50;
 
   const where: any = {};
   if (type === "CHECK_IN" || type === "CHECK_OUT") {
     where.movementType = type;
   }
 
-  const data = await prisma.inventoryMovement.findMany({
-    where,
-    take: limit,
-    include: {
-      stockItem: {
-        select: { id: true, sku: true, name: true, unit: true, category: true },
+  const [data, total] = await Promise.all([
+    prisma.inventoryMovement.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        stockItem: {
+          select: { id: true, sku: true, name: true, unit: true, category: true },
+        },
       },
-    },
-    orderBy: { occurredAt: "desc" },
-  });
-  res.json({ data, total: data.length });
+      orderBy: { occurredAt: "desc" },
+    }),
+    prisma.inventoryMovement.count({ where }),
+  ]);
+  res.json({ data, total });
 });
 
 router.post("/requests", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
@@ -558,7 +567,7 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
 });
 
 router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
-  const [stockItems, movements] = await Promise.all([
+  const [stockItems, movements, expiringSoonItems] = await Promise.all([
     prisma.stockItem.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -571,6 +580,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
         minThreshold: true,
         checkInTotal: true,
         checkOutTotal: true,
+        expiryDate: true,
       },
     }),
     prisma.inventoryMovement.findMany({
@@ -587,6 +597,16 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
         remark: true,
       },
       orderBy: { occurredAt: "asc" },
+    }),
+    prisma.stockItem.findMany({
+      where: {
+        expiryDate: {
+          not: null,
+          lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        },
+      },
+      orderBy: { expiryDate: "asc" },
+      take: 10,
     }),
   ]);
 
@@ -712,6 +732,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
     categoryBreakdown,
     topDemandItems,
     criticalItems,
+    expiringSoonItems,
     monthlyTrends: months,
     usageRecords,
   });
@@ -820,10 +841,11 @@ router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), audi
 });
 
 router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
-  const { items } = req.body;
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: "items array is required and must not be empty." });
+  const parsed = BulkCheckoutSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
   }
+  const { items } = parsed.data;
 
   // Sort items by stockItemId to avoid database deadlock in concurrent transactions
   const sortedItems = [...items].sort((a, b) => {
@@ -931,11 +953,12 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
 });
 
 router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
-  const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  if (items.length === 0) {
-    res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
+  const parsed = BulkCheckInSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
     return;
   }
+  const { items } = parsed.data;
 
   try {
     const results = await prisma.$transaction(async (tx) => {
@@ -1035,6 +1058,7 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
           const unit = toStringOrUndefined(cartItem.unit) ?? "units";
           const unitDescription = toStringOrUndefined(cartItem.unitDescription) ?? `${unit} per pack`;
           const expiryDate = toDateOrUndefined(cartItem.expiryDate);
+          const minThreshold = typeof cartItem.minThreshold === "number" ? cartItem.minThreshold : 5;
 
           const createdItem = await tx.stockItem.create({
             data: {
@@ -1044,7 +1068,7 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
               category,
               unit,
               quantity,
-              minThreshold: 5,
+              minThreshold,
               checkInTotal: quantity,
               checkOutTotal: 0,
               balancePercent: 100,
@@ -1132,30 +1156,40 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
 });
 
 router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "UPDATE"), async (req, res) => {
-  // Enforce role-based access for administrative updates (Check-In or detail edits)
+  // Enforce role-based access for administrative updates
   const isAdmin = req.user?.roles.some(r => r === Role.ADMIN || r === Role.RESEARCH_ADMIN) ?? false;
   if (!isAdmin) {
-    const existing = await prisma.stockItem.findUnique({ where: { id: req.params.id } });
-    if (!existing) {
-      res.status(404).json({ code: "NOT_FOUND" });
+    // Non-admins may NOT change quantity via PATCH at all.
+    // All stock reductions must route through /bulk-checkout or /requests.
+    // All stock additions must route through /bulk-checkin.
+    if (req.body.quantity !== undefined) {
+      res.status(403).json({
+        code: "FORBIDDEN",
+        message: "Quantity changes must be submitted through the Check-Out or Request workflow. Direct quantity edits are restricted to administrators.",
+      });
       return;
     }
-    const bodyQty = req.body.quantity !== undefined ? Number(req.body.quantity) : undefined;
-    const hasMetadataChanges = 
+
+    // Non-admins may NOT modify structural / administrative metadata.
+    const hasMetadataChanges =
       req.body.sku !== undefined ||
       req.body.name !== undefined ||
       req.body.category !== undefined ||
       req.body.unit !== undefined ||
       req.body.minThreshold !== undefined ||
-      req.body.lotNumber !== undefined;
-      
-    const isIncreasingQty = bodyQty !== undefined && bodyQty > Number(existing.quantity ?? 0);
+      req.body.lotNumber !== undefined ||
+      req.body.barcode !== undefined ||
+      req.body.sourceCode !== undefined;
 
-    if (hasMetadataChanges || isIncreasingQty) {
-      res.status(403).json({ code: "FORBIDDEN", message: "Insufficient permissions for administrative modifications." });
+    if (hasMetadataChanges) {
+      res.status(403).json({
+        code: "FORBIDDEN",
+        message: "Insufficient permissions for administrative modifications.",
+      });
       return;
     }
   }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       const movementTx = tx as typeof tx & InventoryMovementPrisma;

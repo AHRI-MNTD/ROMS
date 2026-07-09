@@ -2,7 +2,7 @@ import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
-import { apiClient } from "../../../api/client";
+import { apiClient, getErrorMessage } from "../../../api/client";
 
 type StockFilter = "all" | "low" | "out" | "healthy";
 
@@ -20,14 +20,87 @@ export default function CurrentInventoryPage() {
   const [isExportHovered, setIsExportHovered] = React.useState(false);
   const [isSyncHovered, setIsSyncHovered] = React.useState(false);
 
+  const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const [editingItem, setEditingItem] = React.useState<any | null>(null);
+  const [editForm, setEditForm] = React.useState({
+    sku: "",
+    name: "",
+    category: "",
+    unit: "",
+    quantity: 0,
+    minThreshold: 5,
+    lotNumber: "",
+    expiryDate: "",
+  });
+
+  const handleStartEdit = (item: any) => {
+    setFeedback(null);
+    setEditingItem(item);
+    setEditForm({
+      sku: item.sku ?? "",
+      name: item.name ?? "",
+      category: item.category ?? "",
+      unit: item.unit ?? "",
+      quantity: Number(item.quantity ?? 0),
+      minThreshold: Number(item.minThreshold ?? 5),
+      lotNumber: item.lotNumber ?? "",
+      expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString().slice(0, 10) : "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    try {
+      await apiClient.patch(`/domains/inventory/${editingItem.id}`, {
+        sku: editForm.sku.trim() || undefined,
+        name: editForm.name.trim() || undefined,
+        category: editForm.category.trim() || undefined,
+        unit: editForm.unit.trim() || undefined,
+        quantity: editForm.quantity,
+        minThreshold: editForm.minThreshold,
+        lotNumber: editForm.lotNumber.trim() || null,
+        expiryDate: editForm.expiryDate || null,
+      });
+      setFeedback({ type: "success", message: `Successfully updated item ${editForm.sku}.` });
+      setEditingItem(null);
+      await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-analytics"] });
+    } catch (err: any) {
+      setFeedback({ type: "error", message: getErrorMessage(err, "Failed to update item.") });
+    }
+  };
+
+  const handleDeleteItem = async (item: any) => {
+    if (!window.confirm("Are you sure you want to delete this stock item? All movement logs for this item will be lost.")) {
+      return;
+    }
+    setFeedback(null);
+    try {
+      await apiClient.delete(`/domains/inventory/${item.id}`);
+      setFeedback({ type: "success", message: `Successfully deleted item ${item.name || item.sku}.` });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-analytics"] });
+    } catch (err: any) {
+      setFeedback({ type: "error", message: getErrorMessage(err, "Failed to delete item.") });
+    }
+  };
+
   const handleSyncGoogleSheets = async () => {
+    setFeedback(null);
     setIsSyncing(true);
     try {
       const resp = await apiClient.post<{ message?: string }>("/domains/inventory/google-sheets/sync", {});
-      alert(resp.data.message || "Successfully synchronized inventory with Google Sheets!");
+      setFeedback({
+        type: "success",
+        message: resp.data.message || "Successfully synchronized inventory with Google Sheets!",
+      });
       await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
     } catch (err: any) {
-      alert(err.message || "Failed to synchronize with Google Sheets.");
+      setFeedback({
+        type: "error",
+        message: getErrorMessage(err, "Failed to synchronize with Google Sheets."),
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -69,7 +142,7 @@ export default function CurrentInventoryPage() {
     const exportRows = exportResult.data?.data ?? [];
 
     if (exportRows.length === 0) {
-      alert("No data matched current filters for export.");
+      setFeedback({ type: "error", message: "No data matched current filters for export." });
       return;
     }
 
@@ -153,6 +226,29 @@ export default function CurrentInventoryPage() {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      {feedback && (
+        <div
+          style={{
+            padding: 10,
+            borderRadius: "var(--radius-sm)",
+            fontSize: "var(--fs-xs)",
+            background: feedback.type === "success" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
+            color: feedback.type === "success" ? "#047857" : "#b91c1c",
+            border: `1px solid ${feedback.type === "success" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>{feedback.message}</span>
+          <button
+            onClick={() => setFeedback(null)}
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontWeight: 700 }}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div style={{ ...panelStyle, padding: 14 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -253,14 +349,15 @@ export default function CurrentInventoryPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "25%" }} />
-                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "23%" }} />
+                  <col style={{ width: "10%" }} />
                   <col style={{ width: "6%" }} />
                   <col style={{ width: "10%" }} />
                   <col style={{ width: "10%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "7%" }} />
+                  <col style={{ width: "8%" }} />
+                  {isAdmin && <col style={{ width: "8%" }} />}
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -277,6 +374,7 @@ export default function CurrentInventoryPage() {
                           <th style={thStyle} title="Balance">Balance</th>
                           <th style={thStyle} title="% Balance">% Balance</th>
                           <th style={thStyle} title="Status">Status</th>
+                          {isAdmin && <th style={{ ...thStyle, textAlign: "center" }} title="Actions">Actions</th>}
                         </>
                       );
                     })()}
@@ -289,7 +387,7 @@ export default function CurrentInventoryPage() {
                     const checkOutTotal = Number(row.checkOutTotal ?? 0);
                     const checkInTotal = Number(row.checkInTotal ?? quantity + checkOutTotal);
                     const balance = quantity;
-                    const percentBalance = Number(row.balancePercent ?? (minThreshold > 0 ? (balance / minThreshold) * 100 : 0));
+                    const percentBalance = Number(row.balancePercent ?? (checkInTotal > 0 ? (balance / checkInTotal) * 100 : 0));
                     const isOutOfStock = quantity <= 0;
                     const isLowStock = quantity > 0 && quantity <= minThreshold;
                     const category = row.category ?? "General";
@@ -338,6 +436,42 @@ export default function CurrentInventoryPage() {
                             {statusLabel}
                           </span>
                         </td>
+                        {isAdmin && (
+                          <td style={{ padding: "8px", textAlign: "center" }}>
+                            <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEdit(row)}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "var(--color-primary)",
+                                  cursor: "pointer",
+                                  fontSize: "var(--fs-xs)",
+                                  textDecoration: "underline",
+                                  padding: 0
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteItem(row)}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "#dc2626",
+                                  cursor: "pointer",
+                                  fontSize: "var(--fs-xs)",
+                                  textDecoration: "underline",
+                                  padding: 0
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -391,6 +525,156 @@ export default function CurrentInventoryPage() {
       {!isLoading && !error && (!data || displayTotal === 0) && (
         <div style={{ padding: 18, border: "1px solid var(--color-divider)", borderRadius: 12, background: "var(--color-surface-2)", color: "var(--color-text-muted)" }}>
           No inventory records found.
+        </div>
+      )}
+      {editingItem && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0, 0, 0, 0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+        }}>
+          <div style={{
+            background: "var(--color-surface-2)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius)",
+            width: "90%",
+            maxWidth: 500,
+            padding: 24,
+            display: "grid",
+            gap: 16,
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Edit Stock Item</div>
+              <button
+                onClick={() => setEditingItem(null)}
+                style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", fontSize: "var(--fs-md)", fontWeight: 700 }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                SKU / Code
+                <input
+                  value={editForm.sku}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, sku: e.target.value }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                Quantity
+                <input
+                  type="number"
+                  min={0}
+                  value={editForm.quantity}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, quantity: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4, gridColumn: "span 2" }}>
+                Name / Description
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                Category
+                <input
+                  value={editForm.category}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                Unit
+                <input
+                  value={editForm.unit}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, unit: e.target.value }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                Min Threshold
+                <input
+                  type="number"
+                  min={0}
+                  value={editForm.minThreshold}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, minThreshold: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                Lot Number
+                <input
+                  value={editForm.lotNumber}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, lotNumber: e.target.value }))}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 4, gridColumn: "span 2" }}>
+                Expiry Date
+                <input
+                  type="date"
+                  value={editForm.expiryDate}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-surface-2)",
+                  color: "var(--color-text)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "8px 16px",
+                  fontSize: "var(--fs-xs)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-primary)",
+                  color: "#fff",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "8px 16px",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

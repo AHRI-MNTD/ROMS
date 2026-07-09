@@ -52,6 +52,7 @@ interface AnalyticsResponse {
   categoryBreakdown: AnalyticsCategory[];
   topDemandItems: AnalyticsItem[];
   criticalItems: AnalyticsItem[];
+  expiringSoonItems?: (AnalyticsItem & { expiryDate?: string })[];
   monthlyTrends: AnalyticsMovementPoint[];
   usageRecords?: UsageRecord[];
 }
@@ -233,6 +234,7 @@ export default function AnalyticsPage() {
   const categoryBreakdown = data?.categoryBreakdown ?? [];
   const topDemandItems = data?.topDemandItems ?? [];
   const criticalItems = data?.criticalItems ?? [];
+  const expiringSoonItems = data?.expiringSoonItems ?? [];
   const monthlyTrends = data?.monthlyTrends ?? [];
   const usageRecords = data?.usageRecords ?? [];
 
@@ -822,7 +824,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="report-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+          <div className="report-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
             <div style={sectionStyle}>
               <div style={sectionHeaderStyle}>Top Risks To Escalate</div>
               <div style={{ maxHeight: 260, overflowY: "auto" }}>
@@ -858,6 +860,44 @@ export default function AnalyticsPage() {
                         </div>
                         <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 800, color: tone, textTransform: "uppercase", padding: "2px 6px", borderRadius: 999, background: bg, flexShrink: 0 }}>
                           {riskLevel} Risk
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div style={sectionStyle}>
+              <div style={sectionHeaderStyle}>Expiring Reagents (30 Days)</div>
+              <div style={{ maxHeight: 260, overflowY: "auto" }}>
+                {expiringSoonItems.length === 0 ? (
+                  <div style={{ padding: 16, fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>No expiring reagents found.</div>
+                ) : (
+                  expiringSoonItems.slice(0, 5).map((item, idx) => {
+                    const expDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                    return (
+                      <div
+                        key={item.id ?? item.sku ?? item.name}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "10px 16px",
+                          borderBottom: idx < Math.min(5, expiringSoonItems.length) - 1 ? "1px solid var(--color-divider)" : "none",
+                          gap: 16
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }} title={item.name ?? item.sku}>
+                            {item.name ?? item.sku}
+                          </div>
+                          <div style={{ fontSize: "var(--fs-xxs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                            SKU: {item.sku} · Qty: {item.quantity}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 800, color: "#ea580c", textTransform: "uppercase", padding: "2px 6px", borderRadius: 999, background: "rgba(234, 88, 12, 0.08)", flexShrink: 0 }}>
+                          {expDate}
                         </span>
                       </div>
                     );
@@ -993,6 +1033,40 @@ export default function AnalyticsPage() {
                           <td style={{ textAlign: "right" }}>{formatNumber(qty)}</td>
                           <td style={{ textAlign: "right" }}>{formatNumber(min)}</td>
                           <td style={{ textAlign: "right" }}>{formatNumber(Number(item.checkOutTotal ?? 0))}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Section 3.5: Expiring Soon Reagents (Within 30 Days) */}
+            <div className="section-container">
+              <div className="section-title">Section 3.5: Expiring Soon Reagents (Within 30 Days)</div>
+              {!expiringSoonItems || expiringSoonItems.length === 0 ? (
+                <p style={{ fontSize: "11px", fontStyle: "italic", color: "#64748b" }}>No reagents are currently expiring within 30 days.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "40%" }}>Item Name</th>
+                      <th>SKU / Code</th>
+                      <th>Category</th>
+                      <th>Expiry Date</th>
+                      <th>Current Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expiringSoonItems.map((item) => {
+                      const expDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "—";
+                      return (
+                        <tr key={item.id ?? item.sku ?? item.name}>
+                          <td style={{ fontWeight: 600 }}>{item.name ?? item.sku}</td>
+                          <td>{item.sourceCode ?? item.sku ?? "—"}</td>
+                          <td>{item.category ?? "Unclassified"}</td>
+                          <td style={{ color: "#ea580c", fontWeight: "bold" }}>{expDate}</td>
+                          <td style={{ textAlign: "right" }}>{formatNumber(Number(item.quantity ?? 0))}</td>
                         </tr>
                       );
                     })}

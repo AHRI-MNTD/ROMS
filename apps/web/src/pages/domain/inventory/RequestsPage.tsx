@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
+import { apiClient, getErrorMessage } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
@@ -365,8 +365,7 @@ export default function RequestsPage() {
       setActiveLog(null);
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Saving decisions failed.";
-      setFeedback({ type: "error", message });
+      setFeedback({ type: "error", message: getErrorMessage(err, "Saving decisions failed.") });
     },
   });
 
@@ -396,8 +395,7 @@ export default function RequestsPage() {
       setSelectedItemQuery("");
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Bulk request failed.";
-      setFeedback({ type: "error", message });
+      setFeedback({ type: "error", message: getErrorMessage(err, "Bulk request failed.") });
     },
   });
 

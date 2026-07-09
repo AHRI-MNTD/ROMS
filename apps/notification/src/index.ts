@@ -82,7 +82,7 @@ worker.on("failed", (job, err) => {
 // ─── Escalation loop — checks overdue CAPAs every 60s ────────────────────────
 
 async function runEscalationCheck() {
-  logger.debug('Running escalation check: querying overdue CAPAs', { statusFilter: ['OPEN', 'IN_PROGRESS'], dueDateBefore: new Date().toISOString() });
+  logger.debug({ statusFilter: ["OPEN", "IN_PROGRESS"], dueDateBefore: new Date().toISOString() }, "Running escalation check: querying overdue CAPAs");
   try {
     const overdueCAPAs = await prisma.cAPA.findMany({
       where: {
@@ -91,7 +91,7 @@ async function runEscalationCheck() {
       },
       include: { owner: true },
     });
-    logger.debug('Fetched overdue CAPAs', { count: overdueCAPAs.length, ids: overdueCAPAs.map((c:any)=>c.id) });
+    logger.debug({ count: overdueCAPAs.length, ids: overdueCAPAs.map((c: any) => c.id) }, "Fetched overdue CAPAs");
 
     for (const capa of overdueCAPAs) {
       await notificationQueue.add("escalation", {

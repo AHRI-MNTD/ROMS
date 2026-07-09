@@ -260,45 +260,90 @@ export default function InventoryDashboardPage() {
               </div>
             </div>
 
-            {/* Column 2: Critical / Low Stock Alert Panel */}
-            <div style={{ borderRadius: 18, border: "1px solid rgba(239, 68, 68, 0.18)", background: "linear-gradient(180deg, rgba(254, 242, 242, 0.3), rgba(255, 255, 255, 0.98))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div style={{ padding: "14px 16px", fontSize: "var(--fs-md)", fontWeight: 800, color: "#b91c1c", borderBottom: "1px solid rgba(239, 68, 68, 0.1)", display: "flex", justifyContent: "between", alignItems: "center" }}>
-                <span>⚠️ Stock Alert Register</span>
-                <span style={{ fontSize: "var(--fs-xs)", background: "#fee2e2", color: "#b91c1c", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>
-                  Needs Reorder
-                </span>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  {criticalItems.slice(0, 8).map((item: any, index: number) => {
-                    const qty = Number(item.quantity ?? 0);
-                    const isOut = qty <= 0;
+            {/* Column 2: Critical / Low Stock Alert Panel & Expiring Soon Panel */}
+            <div style={{ display: "grid", gap: 16 }}>
+              {/* Critical / Low Stock Alert Panel */}
+              <div style={{ borderRadius: 18, border: "1px solid rgba(239, 68, 68, 0.18)", background: "linear-gradient(180deg, rgba(254, 242, 242, 0.3), rgba(255, 255, 255, 0.98))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "14px 16px", fontSize: "var(--fs-md)", fontWeight: 800, color: "#b91c1c", borderBottom: "1px solid rgba(239, 68, 68, 0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>⚠️ Stock Alert Register</span>
+                  <span style={{ fontSize: "var(--fs-xs)", background: "#fee2e2", color: "#b91c1c", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>
+                    Needs Reorder
+                  </span>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {criticalItems.slice(0, 5).map((item: any, index: number) => {
+                      const qty = Number(item.quantity ?? 0);
+                      const isOut = qty <= 0;
 
-                    return (
-                      <tr key={item.id ?? index} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                        <td style={{ padding: "12px 16px" }}>
-                          <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name}</div>
-                          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-                            SKU: {item.sku}
-                          </div>
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                          <div style={{ fontSize: "var(--fs-sm)", color: isOut ? "#dc2626" : "#d97706" }}>
-                            {isOut ? "OUT OF STOCK" : `${qty} left`}
-                          </div>
+                      return (
+                        <tr key={item.id ?? index} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                          <td style={{ padding: "10px 16px" }}>
+                            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name}</div>
+                            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                              SKU: {item.sku}
+                            </div>
+                          </td>
+                          <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                            <div style={{ fontSize: "var(--fs-sm)", color: isOut ? "#dc2626" : "#d97706" }}>
+                              {isOut ? "OUT OF STOCK" : `${qty} left`}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {criticalItems.length === 0 && (
+                      <tr>
+                        <td colSpan={2} style={{ padding: "30px 16px", textAlign: "center", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 700 }}>
+                          ✅ All inventory levels are healthy!
                         </td>
                       </tr>
-                    );
-                  })}
-                  {criticalItems.length === 0 && (
-                    <tr>
-                      <td colSpan={2} style={{ padding: "40px 16px", textAlign: "center", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 700 }}>
-                        ✅ All inventory levels are healthy and above minimal thresholds!
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Expiring Soon Alert Panel */}
+              <div style={{ borderRadius: 18, border: "1px solid rgba(249, 115, 22, 0.18)", background: "linear-gradient(180deg, rgba(255, 247, 237, 0.3), rgba(255, 255, 255, 0.98))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "14px 16px", fontSize: "var(--fs-md)", fontWeight: 800, color: "#c2410c", borderBottom: "1px solid rgba(249, 115, 22, 0.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>⏳ Expiring Soon Register</span>
+                  <span style={{ fontSize: "var(--fs-xs)", background: "#ffedd5", color: "#c2410c", padding: "2px 8px", borderRadius: 999, fontWeight: 700 }}>
+                    Within 30 Days
+                  </span>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {(analyticsData?.expiringSoonItems ?? []).slice(0, 5).map((item: any, index: number) => {
+                      const expDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                      return (
+                        <tr key={item.id ?? index} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                          <td style={{ padding: "10px 16px" }}>
+                            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{item.name}</div>
+                            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                              SKU: {item.sku}
+                            </div>
+                          </td>
+                          <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                            <div style={{ fontSize: "var(--fs-sm)", color: "#ea580c", fontWeight: 600 }}>
+                              {expDate}
+                            </div>
+                            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
+                              Qty: {item.quantity}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {(!analyticsData?.expiringSoonItems || analyticsData.expiringSoonItems.length === 0) && (
+                      <tr>
+                        <td colSpan={2} style={{ padding: "30px 16px", textAlign: "center", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 700 }}>
+                          ✅ No reagents expiring within 30 days.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </>

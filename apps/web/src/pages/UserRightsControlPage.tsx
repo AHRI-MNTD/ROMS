@@ -19,71 +19,71 @@ type ControlUser = {
 type PermissionState = Record<string, Set<string>>;
 
 const DOMAIN_RIGHTS: Record<string, string[]> = {
-  biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Analytics", "Master Data"],
-  qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
-  "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
-  "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
-  infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
-  hr: ["Dashboard", "Staff Directory", "Profiles", "Training Records", "Leave", "Onboarding", "Analytics"],
-  finance: ["Dashboard", "Grants", "Budgets", "Expenses", "Approvals", "Reports", "Analytics"],
-  participant: ["Dashboard", "Participants", "Consent", "Visits", "Engagement", "Follow-up", "Analytics"],
-  regulatory: ["Dashboard", "Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting", "Analytics"],
+  biospecimen: ["Dashboard", "Sample Collection & Intake", "Processing & Preparation", "Cryopreservation & Cold-Chain", "Retrieval & Dispensing", "Disposal & Long-term Planning", "Analytics"],
+  inventory: ["Dashboard", "Stock Management", "Equipment & Instruments", "Procurement & Vendors", "Waste Management", "Budget & Cost Allocation", "Analytics"],
+  qms: ["Dashboard", "SOP Authoring & Control", "Training & Acknowledgment", "Audits & CAPA", "Incident & Deviation Reporting", "QMS & Accreditation", "Analytics"],
+  "lab-workflow": ["Dashboard", "Protocol Design & Tracking", "Instrument Scheduling", "Result Capture & QC", "Batch & Run Management", "Assay Validation", "Analytics"],
+  "data-management": ["Dashboard", "Data Capture & EDC", "Data Validation & Cleaning", "Standards & Compliance", "Statistical Analysis", "Data Sharing & Archiving", "Analytics"],
+  infrastructure: ["Dashboard", "Platform Administration", "Data Security", "HPC & Bioinformatics", "Monitoring & Biosafety Systems", "Disaster Recovery & Continuity", "Analytics"],
+  hr: ["Dashboard", "Recruitment & Onboarding", "Training & Competency", "Scheduling & Capacity", "Performance Management", "Health & Safety Records", "Analytics"],
+  finance: ["Dashboard", "Pre-Award Management", "Post-Award Monitoring", "Funder Reporting", "Sub-Awards & Contracts", "Compliance & Close-Out", "Analytics"],
+  participant: ["Dashboard", "Recruitment & Screening", "Informed Consent", "Scheduling & Retention", "Community Advisory Boards", "Privacy & Vulnerable Groups", "Analytics"],
+  regulatory: ["Dashboard", "Ethics Submissions", "Regulatory Affairs", "GCP & Compliance", "Adverse Event Reporting", "Inspection Readiness & TMF", "Analytics"],
 };
 
 const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   LAB_SCIENTIST: {
-    biospecimen: ["Dashboard", "Sample Collection", "Processing"],
-    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out"],
-    "lab-workflow": ["Dashboard", "Protocols", "Experiments"],
+    biospecimen: ["Dashboard", "Sample Collection & Intake", "Processing & Preparation"],
+    inventory: ["Dashboard", "Stock Management"],
+    "lab-workflow": ["Dashboard", "Protocol Design & Tracking", "Result Capture & QC"],
     "data-management": ["Dashboard"],
-    qms: ["SOP Library"],
+    qms: ["SOP Authoring & Control"],
   },
   DATA_MANAGER: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory"],
+    inventory: ["Dashboard", "Stock Management"],
     qms: ["Dashboard"],
-    participant: ["Dashboard", "Participants"],
+    participant: ["Dashboard", "Recruitment & Screening"],
     regulatory: ["Dashboard"],
-    "data-management": ["Dashboard", "Studies", "Metadata", "Exports"],
+    "data-management": ["Dashboard", "Data Capture & EDC", "Data Validation & Cleaning", "Statistical Analysis"],
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory", "Analytics", "Master Data"],
-    qms: ["Dashboard", "SOP Library", "Audits"],
-    hr: ["Dashboard", "Staff Directory", "Profiles"],
-    finance: ["Dashboard", "Grants", "Budgets"],
+    inventory: ["Dashboard", "Stock Management", "Analytics", "Equipment & Instruments"],
+    qms: ["Dashboard", "SOP Authoring & Control", "Audits & CAPA"],
+    hr: ["Dashboard", "Recruitment & Onboarding", "Training & Competency"],
+    finance: ["Dashboard", "Pre-Award Management", "Post-Award Monitoring"],
     participant: ["Dashboard"],
-    regulatory: ["Dashboard", "Compliance Register"],
-    "data-management": ["Dashboard", "Studies"],
+    regulatory: ["Dashboard", "GCP & Compliance"],
+    "data-management": ["Dashboard", "Data Capture & EDC"],
     infrastructure: ["Dashboard"],
   },
   PRINCIPAL_INVESTIGATOR: {
-    biospecimen: ["Dashboard", "Retrieval"],
+    biospecimen: ["Dashboard", "Retrieval & Dispensing"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "Audits"],
-    "lab-workflow": ["Dashboard", "Runs"],
-    "data-management": ["Dashboard", "Studies", "Analytics"],
+    qms: ["Dashboard", "Audits & CAPA"],
+    "lab-workflow": ["Dashboard", "Batch & Run Management"],
+    "data-management": ["Dashboard", "Data Capture & EDC", "Analytics"],
     hr: ["Dashboard"],
-    finance: ["Dashboard", "Grants"],
-    participant: ["Dashboard", "Participants"],
-    regulatory: ["Dashboard", "Approvals"],
+    finance: ["Dashboard", "Pre-Award Management"],
+    participant: ["Dashboard", "Recruitment & Screening"],
+    regulatory: ["Dashboard", "Regulatory Affairs"],
     infrastructure: ["Dashboard"],
   },
   QA_OFFICER: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "SOP Library", "Audits", "CAPA"],
+    qms: ["Dashboard", "SOP Authoring & Control", "Audits & CAPA", "Incident & Deviation Reporting"],
     "lab-workflow": ["Dashboard"],
     "data-management": ["Dashboard"],
     hr: ["Dashboard"],
     finance: ["Dashboard"],
     participant: ["Dashboard"],
-    regulatory: ["Dashboard", "Compliance Register", "Reporting"],
+    regulatory: ["Dashboard", "GCP & Compliance", "Inspection Readiness & TMF"],
     infrastructure: ["Dashboard"],
   },
   COMMUNITY_ENGAGEMENT: {
-    participant: ["Dashboard", "Participants", "Engagement"],
+    participant: ["Dashboard", "Recruitment & Screening", "Community Advisory Boards"],
     "data-management": ["Dashboard"],
     regulatory: ["Dashboard"],
     hr: ["Dashboard"],
@@ -127,12 +127,12 @@ function buildPermissionState(user: ControlUser): PermissionState {
     ) as PermissionState;
   }
 
-  // New/Staff approved users start with exactly and only Training Records under hr
+  // New/Staff approved users start with exactly and only Training & Competency under hr
   if (user.role === "STAFF" || !ROLE_SEEDS[user.role]) {
     return Object.fromEntries(
       DOMAIN_CATALOG.map((domain) => {
         if (domain.slug === "hr") {
-          return ["hr", new Set(["Training Records"])];
+          return ["hr", new Set(["Training & Competency"])];
         }
         return [domain.slug, new Set()];
       })
