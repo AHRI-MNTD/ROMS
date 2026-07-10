@@ -48,7 +48,7 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
   const donutSegments = useMemo(() => {
     const { total, approved, submitted, drafts, returned } = metrics;
     if (total === 0) return [];
-    
+
     const data = [
       { label: "Approved", value: approved, color: "#10b981" },
       { label: "Under Review", value: submitted, color: "#3b82f6" },
@@ -78,13 +78,13 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
 
   return (
     <div style={{ padding: "16px 0", display: "flex", flexDirection: "column", gap: 24 }}>
-      
+
       {/* ── OVERALL SOP OVERVIEW ── */}
       <div>
         <h2 style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text)", margin: "0 0 14px 0", letterSpacing: "-0.01em" }}>
           Overall SOP Overview
         </h2>
-        
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
           {/* Card: Total */}
           <div
@@ -170,12 +170,12 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
 
       {/* ── VISUAL REPORTS ROW ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.2fr", gap: 16 }}>
-        
+
         {/* 1. SOPs by Status */}
         <div style={reportCardStyle}>
           <h3 style={reportHeaderStyle}>SOPs by Status</h3>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, height: "100%" }}>
-            
+
             {/* Donut graphic */}
             <div style={{ position: "relative", width: 130, height: 130, flexShrink: 0 }}>
               <svg width="100%" height="100%" viewBox="0 0 120 120">
@@ -236,7 +236,7 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
               categoriesData.map((cat, i) => {
                 const maxCount = Math.max(...categoriesData.map(c => c.count)) || 1;
                 const percentage = (cat.count / maxCount) * 100;
-                
+
                 // Color array
                 const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
                 const color = colors[i % colors.length];
@@ -265,7 +265,7 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
         {/* 3. Monthly Trend */}
         <div style={reportCardStyle}>
           <h3 style={reportHeaderStyle}>Monthly Trend</h3>
-          
+
           {/* Legend */}
           <div style={{ display: "flex", gap: 12, marginBottom: 8, fontSize: "11px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -289,7 +289,7 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
               <line x1="0" y1="20" x2="200" y2="20" stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3,3" />
               <line x1="0" y1="50" x2="200" y2="50" stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3,3" />
               <line x1="0" y1="80" x2="200" y2="80" stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3,3" />
-              
+
               {/* Trend Lines (Mock values for Jan-Jun) */}
               {/* Submitted: Jan (10) -> Feb (14) -> Mar (11) -> Apr (15) -> May (13) -> Jun (18) */}
               <path
@@ -315,7 +315,7 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
                 strokeWidth="1.5"
                 strokeLinecap="round"
               />
-              
+
               {/* Dots on paths */}
               {[
                 { x: 10, ys: 70, ya: 82, yr: 94 },
@@ -332,7 +332,7 @@ export default function QMSDashboardView({ sops, onTabChange }: QMSDashboardView
                 </g>
               ))}
             </svg>
-            
+
             {/* Axis labels */}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", color: "var(--color-text-muted)", marginTop: 6, fontWeight: 600 }}>
               <span>Jan</span>

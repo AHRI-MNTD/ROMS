@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
 import logoAhri from "../../../assets/logo_ahri.png";
 import QMSDashboardView from "./QMSDashboardView";
@@ -111,9 +111,11 @@ const suggestNextCode = (type: string, sops: SOPItem[]): string => {
 
 export default function QMSPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Navigation tabs: "sops" (Viewer Library), "author" (Author dashboard), "qo" (QO dashboard), "review-sop" (Reviewers)
   const [activeTab, setActiveTab] = useState<"sops" | "author" | "qo" | "review-sop">("sops");
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   // Filtering states
   const [searchText, setSearchText] = useState<string>("");
@@ -130,12 +132,21 @@ export default function QMSPage() {
   const [isSopsLoading, setIsSopsLoading] = useState<boolean>(false);
   const [sopsError, setSopsError] = useState<string | null>(null);
   const [localSops, setLocalSops] = useState<SOPItem[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const triggerSuccess = (msg: string) => {
+    setSuccessMessage(msg);
+    setTimeout(() => {
+      setSuccessMessage(prev => prev === msg ? null : prev);
+    }, 5000);
+  };
 
   // Modals & Popups
   const [selectedSopDetails, setSelectedSopDetails] = useState<SOPItem | null>(null);
   const [selectedSopForReading, setSelectedSopForReading] = useState<SOPItem | null>(null);
   const [shareSop, setShareSop] = useState<SOPItem | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [shareEmailTo, setShareEmailTo] = useState("");
   const [printingSop, setPrintingSop] = useState<SOPItem | null>(null);
 
   // Author & QO specific filters
@@ -204,6 +215,14 @@ export default function QMSPage() {
     loadSopsList();
   }, []);
 
+  useEffect(() => {
+    if (location.state && (location.state as any).successMessage) {
+      triggerSuccess((location.state as any).successMessage);
+      // Clear location state after displaying
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
+
   const allSops = useMemo(() => {
     const localCodes = new Set(localSops.map(s => s.code));
     const filteredBackend = sops.filter(s => !localCodes.has(s.code));
@@ -215,8 +234,8 @@ export default function QMSPage() {
     if (selectedSopForQOApprove) {
       const nextCode = suggestNextCode(selectedSopForQOApprove.sopType || selectedSopForQOApprove.sopSection || "Procedure SOP", allSops);
       setQoAssignedCode(nextCode);
-      setQoVerifier(selectedSopForQOApprove.details?.proposedVerifier || "Melaku G. - QA Officer");
-      setQoAuthorizer(selectedSopForQOApprove.details?.proposedAuthorizer || "Dr. Abraham A. - Laboratory Manager");
+      setQoVerifier(selectedSopForQOApprove.details?.proposedVerifier || " ");
+      setQoAuthorizer(selectedSopForQOApprove.details?.proposedAuthorizer || " ");
       setQoSite(selectedSopForQOApprove.details?.owningSite || "AHRI – Addis Ababa");
       setQoLabUnit(selectedSopForQOApprove.sopSubSection || "MNTD Molecular Lab");
     }
@@ -261,10 +280,10 @@ export default function QMSPage() {
       setRequestAuthorName("");
       setRequestVerifier("");
       setRequestAuthorizer("");
-      alert("SOP request submitted successfully to QO!");
+      triggerSuccess("SOP request submitted successfully to QO!");
     } catch (e) {
       console.error(e);
-      alert("Failed to request SOP.");
+      triggerSuccess("Failed to request SOP.");
     }
   };
 
@@ -312,10 +331,10 @@ export default function QMSPage() {
       localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
       setLocalSops(updatedList);
       setSelectedSopForQOApprove(null);
-      alert(`SOP Code ${qoAssignedCode} assigned successfully! Template generated and sent to Author.`);
+      triggerSuccess(`SOP Code ${qoAssignedCode} assigned successfully! Template generated and sent to Author.`);
     } catch (e) {
       console.error(e);
-      alert("Failed to save approved SOP header.");
+      triggerSuccess("Failed to save approved SOP header.");
     }
   };
 
@@ -399,7 +418,7 @@ export default function QMSPage() {
         const filtered = localSops.filter((s: any) => s.code !== code);
         localStorage.setItem("roms_local_sops", JSON.stringify(filtered));
         setLocalSops(filtered);
-        alert(`SOP ${code} deleted.`);
+        triggerSuccess(`SOP ${code} deleted.`);
       } catch (e) {
         console.error(e);
       }
@@ -409,6 +428,17 @@ export default function QMSPage() {
   const handleShare = (sop: SOPItem) => {
     setShareSop(sop);
     setIsCopied(false);
+    setShareEmailTo("");
+  };
+
+  const handleSendEmail = (sop: SOPItem) => {
+    const link = `${window.location.origin}/domains/qms?view=${sop.code}`;
+    const subject = encodeURIComponent(`SOP ${sop.code}: ${sop.title}`);
+    const body = encodeURIComponent(
+      `Hello,\n\nPlease find the SOP details below:\n\nTitle: ${sop.title}\nCode: ${sop.code}\nStatus: ${sop.status}\n\nAccess the SOP here:\n${link}\n\nBest regards`
+    );
+    const to = encodeURIComponent(shareEmailTo.trim());
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
   };
 
   const handleCopyLink = (code: string) => {
@@ -438,7 +468,7 @@ export default function QMSPage() {
       localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
       setLocalSops(updatedList);
       setSelectedSopDetails(prev => prev ? { ...prev, status: "UNDER REVIEW" } : null);
-      alert(`SOP ${sop.code} has been successfully submitted for review.`);
+      triggerSuccess(`SOP ${sop.code} has been successfully submitted for review.`);
     } catch (e) {
       console.error(e);
     }
@@ -448,41 +478,330 @@ export default function QMSPage() {
     ? new Date(printingSop.details?.effectiveDate || printingSop.lastUpdated || Date.now()).getFullYear()
     : new Date().getFullYear();
 
+  let dynamicTitle = "SOP & Quality Management";
+  let dynamicSubtitle = "Digital approval pipelines, verifications, and workflows";
+
+  if (activeTab === "sops") {
+    dynamicTitle = "SOP Library & Reference";
+    dynamicSubtitle = "Browse, read, and search standard operating procedures";
+  } else if (activeTab === "author") {
+    dynamicTitle = "SOP Drafting & Authoring";
+    dynamicSubtitle = "Draft, revise, and submit procedures for review";
+  } else if (activeTab === "qo") {
+    dynamicTitle = "Quality Officer Controls";
+    dynamicSubtitle = "Assign codes, and approve drafting requests";
+  } else if (activeTab === "review-sop") {
+    dynamicTitle = "Document Approval & Sign-off";
+    dynamicSubtitle = "Review queues, verification, and manager authorization";
+  }
+
+  const renderSopDetailsInline = () => {
+    if (!selectedSopDetails) return null;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: "100%", margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
+              SOP Details: {selectedSopDetails.code}
+            </h3>
+            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{selectedSopDetails.title}</span>
+          </div>
+          <button
+            onClick={() => setSelectedSopDetails(null)}
+            style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "6px 12px", cursor: "pointer", fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 600 }}
+          >
+            ← Back to List
+          </button>
+        </div>
+
+        {/* Scroll Body */}
+        <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Reviewer Comments */}
+          {activeTab !== "qo" && selectedSopDetails.details?.comments && selectedSopDetails.details.comments.length > 0 && (
+            <div style={{ background: "#fffaf0", border: "1px solid #feebc8", borderRadius: "var(--radius)", padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h4 style={{ margin: 0, color: "#dd6b20", fontSize: "14px", fontWeight: 700 }}>⚠️ Reviewer Comments & Revision Feedback</h4>
+                {selectedSopDetails.status.toUpperCase() === "RETURNED" && (
+                  <button onClick={() => { setSelectedSopDetails(null); handleEdit(selectedSopDetails.code); }}
+                    style={{ background: "#dd6b20", color: "#ffffff", border: "none", padding: "6px 12px", borderRadius: "var(--radius-sm)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                    ✏️ Edit SOP Now
+                  </button>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {selectedSopDetails.details.comments.map((comment: any) => (
+                  <div key={comment.id} style={{ background: "#ffffff", padding: 10, borderRadius: 6, border: "1px solid #fbd38d", fontSize: "var(--fs-sm)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: 4 }}>
+                      <strong>{comment.author} ({comment.section})</strong>
+                      <span>{comment.timestamp}</span>
+                    </div>
+                    <div style={{ color: "var(--color-text)", fontWeight: 500 }}>{comment.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cover Info / Metadata Header */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, background: "var(--color-surface-2)", padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", fontSize: "12.5px" }}>
+            <div><strong>SOP Code:</strong> {selectedSopDetails.code}</div>
+            <div><strong>Title:</strong> {selectedSopDetails.title}</div>
+            <div><strong>Version:</strong> {selectedSopDetails.version}</div>
+            <div><strong>Status:</strong> <span style={{ padding: "2px 6px", borderRadius: 4, fontWeight: 700, fontSize: "11px", ...getStatusColors(selectedSopDetails.status) }}>{selectedSopDetails.status}</span></div>
+            <div><strong>Author:</strong> {selectedSopDetails.author}</div>
+            <div><strong>SOP Type:</strong> {selectedSopDetails.sopType || selectedSopDetails.sopSection}</div>
+            <div><strong>Owning Site:</strong> {selectedSopDetails.details?.owningSite || "AHRI – Addis Ababa"}</div>
+            <div><strong>Owning Lab Unit:</strong> {selectedSopDetails.details?.owningLabUnit || selectedSopDetails.sopSubSection || "MNTD Molecular Lab"}</div>
+            <div><strong>Proposed Verifier:</strong> {selectedSopDetails.details?.proposedVerifier || "QA Officer"}</div>
+            <div><strong>Proposed Authorizer:</strong> {selectedSopDetails.details?.proposedAuthorizer || "Laboratory Manager"}</div>
+            <div><strong>Effective Date:</strong> {selectedSopDetails.details?.effectiveDate || "N/A"}</div>
+            <div><strong>Next Review Date:</strong> {selectedSopDetails.details?.nextReviewDate || "N/A"}</div>
+            <div><strong>Assay Category:</strong> {selectedSopDetails.details?.assayCategory || "N/A"}</div>
+            <div><strong>Method Family:</strong> {selectedSopDetails.details?.methodFamily || "N/A"}</div>
+          </div>
+
+          {/* Revision & Amendment History */}
+          {(selectedSopDetails.details?.annualReviews || selectedSopDetails.details?.versionHistory || selectedSopDetails.details?.amendmentLog) && (
+            <div style={{ border: "1.5px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface-2)", display: "flex", flexDirection: "column", gap: 20 }}>
+              <h4 style={{ margin: "0 0 4px 0", color: "var(--color-primary)", fontSize: "13.5px", fontWeight: 700 }}>📜 Revision & Amendment History</h4>
+
+              {/* Table A */}
+              {selectedSopDetails.details?.annualReviews && selectedSopDetails.details.annualReviews.length > 0 && (
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>A. Annual Review of Document</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                      <thead>
+                        <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Revision No.</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Review Date</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Reviewed By (Name)</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Reviewed By (Sig.)</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approved By (Name)</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approved By (Sig.)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSopDetails.details.annualReviews.map((rev: any, idx: number) => (
+                          <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                            <td style={{ padding: "6px 8px" }}>{rev.revNo}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.reviewDate}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.reviewedByName}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.reviewedBySignature}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.approvedByName}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.approvedBySignature}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Table B */}
+              {selectedSopDetails.details?.versionHistory && selectedSopDetails.details.versionHistory.length > 0 && (
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>B. Version History</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                      <thead>
+                        <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Rev. No.</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Page No.</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Description</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend. Date</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Effective Date</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend Name</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend Sig.</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approval Name</th>
+                          <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approval Sig.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSopDetails.details.versionHistory.map((rev: any, idx: number) => (
+                          <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                            <td style={{ padding: "6px 8px" }}>{rev.revNo}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.pageNo}</td>
+                            <td style={{ padding: "6px 8px", whiteSpace: "pre-wrap" }}>{rev.description}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.amendmentDate}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.effectiveDate}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.amendName}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.amendSignature}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.approvalName}</td>
+                            <td style={{ padding: "6px 8px" }}>{rev.approvalSignature}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Table C */}
+              {selectedSopDetails.details?.amendmentLog && selectedSopDetails.details.amendmentLog.length > 0 && (
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>C. Amendment</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                    <thead>
+                      <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
+                        <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>S.N</th>
+                        <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Version No.</th>
+                        <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Effective Date</th>
+                        <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Changes/Comments</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSopDetails.details.amendmentLog.map((rev: any, idx: number) => (
+                        <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                          <td style={{ padding: "6px 8px", fontWeight: 600 }}>{idx + 1}</td>
+                          <td style={{ padding: "6px 8px" }}>{rev.versionNo}</td>
+                          <td style={{ padding: "6px 8px" }}>{rev.effectiveDate}</td>
+                          <td style={{ padding: "6px 8px", whiteSpace: "pre-wrap" }}>{rev.changesComments}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Content Sections */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {(selectedSopDetails.sopSection === "Procedure SOP" || selectedSopDetails.sopType === "Procedure SOP") ? (
+              <>
+                {selectedSopDetails.details?.purpose && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>1. Purpose, Scope & Background</h4>
+                    <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.purpose) }} style={{ fontSize: "var(--fs-sm)" }} />
+                  </div>
+                )}
+                {selectedSopDetails.details?.definitions && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>2. Definitions & Abbreviations</h4>
+                    <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.definitions) }} style={{ fontSize: "var(--fs-sm)" }} />
+                  </div>
+                )}
+                {selectedSopDetails.details?.responsibilities && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>3. Responsibility & Accountability</h4>
+                    <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.responsibilities) }} style={{ fontSize: "var(--fs-sm)" }} />
+                  </div>
+                )}
+                {selectedSopDetails.details?.principle && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>4. Principle of the Method</h4>
+                    <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.principle) }} style={{ fontSize: "var(--fs-sm)" }} />
+                  </div>
+                )}
+                {(selectedSopDetails.details?.sample || selectedSopDetails.details?.sampleMatricesCovered?.length || selectedSopDetails.details?.inputMaterialTypes?.length || selectedSopDetails.details?.volumeRequired || selectedSopDetails.details?.acceptanceCriteria || selectedSopDetails.details?.rejectionCriteria) && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>5. Samples / Specimens Covered</h4>
+                    {selectedSopDetails.details?.sample && <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.sample) }} style={{ fontSize: "var(--fs-sm)", marginBottom: 8 }} />}
+                    {selectedSopDetails.details?.sampleMatricesCovered && selectedSopDetails.details.sampleMatricesCovered.length > 0 && <div style={{ fontSize: "var(--fs-sm)", marginBottom: 4 }}><strong>Sample Matrices:</strong> {selectedSopDetails.details.sampleMatricesCovered.join(", ")}</div>}
+                    {selectedSopDetails.details?.inputMaterialTypes && selectedSopDetails.details.inputMaterialTypes.length > 0 && <div style={{ fontSize: "var(--fs-sm)", marginBottom: 4 }}><strong>Input Materials:</strong> {selectedSopDetails.details.inputMaterialTypes.join(", ")}</div>}
+                    {selectedSopDetails.details?.volumeRequired && <div style={{ fontSize: "var(--fs-sm)", marginBottom: 4 }}><strong>Volume Required:</strong> {selectedSopDetails.details.volumeRequired}</div>}
+                    {selectedSopDetails.details?.acceptanceCriteria && <div style={{ fontSize: "var(--fs-sm)", marginBottom: 4 }}><strong>Acceptance Criteria:</strong> {selectedSopDetails.details.acceptanceCriteria}</div>}
+                    {selectedSopDetails.details?.rejectionCriteria && <div style={{ fontSize: "var(--fs-sm)" }}><strong>Rejection Criteria:</strong> {selectedSopDetails.details.rejectionCriteria}</div>}
+                  </div>
+                )}
+                {selectedSopDetails.details?.stepwise && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>6. Stepwise Procedure</h4>
+                    <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.stepwise) }} style={{ fontSize: "var(--fs-sm)" }} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {selectedSopDetails.details?.purpose && (
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                    <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>1. Purpose</h4>
+                    <div dangerouslySetInnerHTML={{ __html: formatRichText(selectedSopDetails.details.purpose) }} style={{ fontSize: "var(--fs-sm)" }} />
+                  </div>
+                )}
+                {selectedSopDetails.details && Object.keys(selectedSopDetails.details).map((key) => {
+                  const val = (selectedSopDetails.details as any)[key];
+                  if (typeof val !== "string" || !val || [
+                    "purpose", "definitions", "responsibilities", "principle", "sample", "stepwise",
+                    "reagentsNarrative", "reagentsOnePerLine", "comments", "revisionHistory",
+                    "annualReviews", "versionHistory", "amendmentLog",
+                    "proposedVerifier", "proposedAuthorizer", "owningSite", "owningLabUnit",
+                    "effectiveDate", "nextReviewDate", "assayCategory", "methodFamily",
+                    "electronicSignatures", "collaborationLog", "filenameSuggestion"
+                  ].includes(key)) return null;
+                  const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
+                  return (
+                    <div key={key} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
+                      <h4 style={{ margin: "0 0 8px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 4 }}>{label}</h4>
+                      <div dangerouslySetInnerHTML={{ __html: formatRichText(val) }} style={{ fontSize: "var(--fs-sm)" }} />
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+          {activeTab === "author" && selectedSopDetails.status.toUpperCase() === "DRAFT" && (
+            <button onClick={() => handleSubmitForReview(selectedSopDetails)}
+              style={{ background: "#7b1fa2", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}>
+              Submit for Review
+            </button>
+          )}
+          {activeTab === "author" && selectedSopDetails.status.toUpperCase() === "RETURNED" && (
+            <button onClick={() => { setSelectedSopDetails(null); handleEdit(selectedSopDetails.code); }}
+              style={{ background: "#dd6b20", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}>
+              Edit SOP
+            </button>
+          )}
+          <button onClick={() => setSelectedSopDetails(null)}
+            style={{ background: "var(--color-primary)", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}>
+            Close View
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden", fontFamily: "var(--font-body)", background: "var(--color-bg)" }}>
       {/* ── CONTENT PANE ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "clip" }}>
 
-        {/* Active Title Block */}
+        {/* Active Title Block — Inventory-style header */}
         <div
           style={{
-            padding: "14px 24px",
-            borderBottom: "1px solid var(--color-border)",
+            padding: "18px 24px 14px",
+            borderBottom: "1px solid var(--color-divider)",
             background: "var(--color-surface)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
             gap: 16,
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "1.2rem", background: "var(--color-primary-soft)", color: "var(--color-primary)", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius)" }}>
-                📄
-              </span>
-              <div>
-                <h1 style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text)", margin: 0, letterSpacing: "-0.01em" }}>
-                  SOP & Quality Management
-                </h1>
-                <p style={{ fontSize: "11px", color: "var(--color-text-muted)", margin: "1px 0 0 0" }}>
-                  Digital approval pipelines, verifications, and workflows
-                </p>
-              </div>
-            </div>
+          {/* Left side: Title + Subtitle only */}
+          <div style={{ width: 360, flexShrink: 0 }}>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", margin: 0, marginBottom: 4 }}>
+              {dynamicTitle}
+            </h1>
+            <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: 0 }}>
+              {dynamicSubtitle}
+            </p>
+          </div>
 
-            {/* Role Tab selection */}
-            <div style={{ display: "flex", gap: 8, fontSize: "12.5px", fontWeight: 600, marginLeft: 12 }}>
+          {/* Right side: Nav Tabs + Action button */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {/* Role Tab selection — pill style */}
+            <nav style={{ display: "flex", flexWrap: "wrap", gap: 8 }} aria-label="SOP sections">
               {[
                 { id: "sops", label: "SOPs" },
                 { id: "author", label: "Author" },
@@ -490,6 +809,7 @@ export default function QMSPage() {
                 { id: "review-sop", label: "Authorizer" }
               ].map(tab => {
                 const isActive = activeTab === tab.id;
+                const isHovered = hoveredTab === tab.id;
                 return (
                   <div
                     key={tab.id}
@@ -497,45 +817,60 @@ export default function QMSPage() {
                       setActiveTab(tab.id as any);
                       setCurrentPage(1);
                     }}
+                    onMouseEnter={() => setHoveredTab(tab.id)}
+                    onMouseLeave={() => setHoveredTab(null)}
                     style={{
-                      padding: "6px 12px",
-                      cursor: "pointer",
+                      border: "1px solid",
+                      borderColor: isActive ? "var(--color-primary)" : "var(--color-border)",
+                      background: isActive 
+                        ? "var(--color-primary-highlight)" 
+                        : (isHovered ? "var(--color-surface-offset)" : "var(--color-surface-2)"),
                       color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
-                      borderRadius: "var(--radius-sm)",
-                      background: isActive ? "var(--color-primary-soft)" : "transparent",
+                      borderRadius: "999px",
+                      padding: "8px 14px",
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 700,
+                      letterSpacing: "0.02em",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      display: "inline-flex",
+                      alignItems: "center",
                       transition: "all 0.15s ease",
-                      fontWeight: isActive ? 700 : 550,
                     }}
                   >
                     {tab.label}
                   </div>
                 );
               })}
-            </div>
+            </nav>
           </div>
-
-          {activeTab === "author" && (
-            <button
-              onClick={() => setIsRequestModalOpen(true)}
-              style={{
-                background: "var(--color-primary)",
-                color: "#ffffff",
-                border: "none",
-                padding: "6px 14px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "var(--shadow-sm)"
-              }}
-            >
-              <span>+ Request New SOP</span>
-            </button>
-          )}
         </div>
 
         {/* Inner Scroll Pane */}
-        <div style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
+        <div style={{ flex: 1, padding: "12px 16px", overflowY: "auto" }}>
+
+          {successMessage && (
+            <div style={{
+              padding: "10px 14px",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--fs-sm)",
+              color: "#166534",
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <span style={{ fontWeight: 600 }}>{successMessage}</span>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#166534", fontWeight: "bold" }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* sops Error handler */}
           {sopsError && (
@@ -556,1270 +891,498 @@ export default function QMSPage() {
 
           {/* TAB 2: AUTHOR PERSPECTIVE */}
           {activeTab === "author" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Search and Filters for Author — compact scientific strip */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
-                <select
-                  value={authorSopTypeFilter}
-                  onChange={(e) => setAuthorSopTypeFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: authorSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Types</option>
-                  <option value="Procedure SOP">Procedure SOP</option>
-                  <option value="Equipment SOP">Equipment SOP</option>
-                  <option value="Analysis SOP">Analysis SOP</option>
-                </select>
-                <select
-                  value={authorStatusFilter}
-                  onChange={(e) => setAuthorStatusFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: authorStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="REQUESTED">Requested</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="UNDER REVIEW">Under Review</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="RETURNED">Returned</option>
-                  <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-                </select>
-                <select
-                  value={authorAssayCategoryFilter}
-                  onChange={(e) => setAuthorAssayCategoryFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: authorAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Assay Categories</option>
-                  {ASSAY_CATEGORY_OPTIONS.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-                <select
-                  value={authorMethodFamilyFilter}
-                  onChange={(e) => setAuthorMethodFamilyFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: authorMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Method Families</option>
-                  {METHOD_FAMILY_OPTIONS.map(fam => (
-                    <option key={fam} value={fam}>{fam}</option>
-                  ))}
-                </select>
-                <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
-                  <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
-                  <input
-                    type="text"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="Search SOPs..."
-                    style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
-                  />
+            shareSop ? (
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>🔗 Share SOP</h3>
+                  <button onClick={() => setShareSop(null)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}>Back to List</button>
                 </div>
-                {(authorSopTypeFilter !== "All" || authorStatusFilter !== "All" || authorAssayCategoryFilter !== "All" || authorMethodFamilyFilter !== "All" || searchText) && (
+                <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+                  {/* SOP info chip */}
+                  <div style={{ background: "var(--color-primary-soft)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontSize: "var(--fs-xs)", color: "var(--color-primary)", fontWeight: 600 }}>
+                    📄 {shareSop.code} — {shareSop.title}
+                  </div>
+                  {/* Copy Link */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 600 }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>🔗 Copy Link</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="text" readOnly value={`${window.location.origin}/domains/qms?view=${shareSop.code}`} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }} />
+                      <button onClick={() => handleCopyLink(shareSop.code)} style={{ background: isCopied ? "#10b981" : "var(--color-primary)", color: "#ffffff", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: "pointer", minWidth: 100, transition: "background 0.2s" }}>
+                        {isCopied ? "Copied! ✓" : "Copy Link"}
+                      </button>
+                    </div>
+                  </div>
+                  {/* Share via Email */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 600, borderTop: "1px solid var(--color-divider)", paddingTop: 18 }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>✉️ Share via Email</label>
+                    <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: 0 }}>Enter the recipient's email address. Your default mail client will open with the SOP link and details pre-filled.</p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="email" placeholder="recipient@example.com" value={shareEmailTo} onChange={(e) => setShareEmailTo(e.target.value)} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }} />
+                      <button onClick={() => handleSendEmail(shareSop)} disabled={!shareEmailTo.trim()} style={{ background: shareEmailTo.trim() ? "#0ea5e9" : "var(--color-surface-offset)", color: shareEmailTo.trim() ? "#ffffff" : "var(--color-text-muted)", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: shareEmailTo.trim() ? "pointer" : "not-allowed", minWidth: 120, transition: "background 0.2s" }}>✉️ Send Email</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : isRequestModalOpen ? (
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                {/* Header */}
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
+                    Request New SOP Drafting
+                  </h3>
                   <button
-                    onClick={() => { setAuthorSopTypeFilter("All"); setAuthorStatusFilter("All"); setAuthorAssayCategoryFilter("All"); setAuthorMethodFamilyFilter("All"); setSearchText(""); }}
-                    style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
-                    title="Clear all filters"
-                  >✕ Clear</button>
-                )}
-              </div>
+                    onClick={() => setIsRequestModalOpen(false)}
+                    style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}
+                  >
+                    Back to List
+                  </button>
+                </div>
 
-              {/* Author's SOP list */}
-              <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 140 }}>SOP Code</th>
-                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>Title</th>
-                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>SOP Type</th>
-                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>Status</th>
-                      <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "center", width: 180 }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedAuthorSops.length > 0 ? (
-                      paginatedAuthorSops.map((sop) => {
-                        const statusColor = getStatusColors(sop.status);
+                {/* Scroll Body */}
+                <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed SOP Title *</label>
+                    <input
+                      type="text"
+                      placeholder=" "
+                      value={requestTitle}
+                      onChange={(e) => setRequestTitle(e.target.value)}
+                      style={{ ...inputStyle, padding: "10px 12px" }}
+                    />
+                  </div>
 
-                        return (
-                          <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)", fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
-                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
-                            <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
-                            <td style={{ padding: "12px 16px", fontSize: "10px" }}>
-                              <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, background: statusColor.bg, color: statusColor.text, textTransform: "uppercase" }}>
-                                {sop.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: "12px 16px", display: "flex", gap: 12, justifyContent: "center" }}>
-                              <button onClick={() => handleViewDetails(sop)} title="View" style={{ background: "none", border: "none", cursor: "pointer" }}><ViewIcon /></button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author Name / Initials *</label>
+                    <input
+                      type="text"
+                      placeholder=" "
+                      value={requestAuthorName}
+                      onChange={(e) => setRequestAuthorName(e.target.value)}
+                      style={{ ...inputStyle, padding: "10px 12px" }}
+                    />
+                  </div>
 
-                              {sop.status.toUpperCase() === "DRAFT" && (
-                                <button onClick={() => handleEdit(sop.code)} title="Edit Draft" style={{ background: "none", border: "none", cursor: "pointer" }}><EditIcon /></button>
-                              )}
-                              {sop.status.toUpperCase() === "RETURNED" && (
-                                <button onClick={() => handleEdit(sop.code)} title="Correct & Edit" style={{ background: "none", border: "none", cursor: "pointer" }}><EditIcon /></button>
-                              )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Type *</label>
+                    <select
+                      value={requestType}
+                      onChange={(e) => setRequestType(e.target.value as any)}
+                      style={{ ...selectStyle, padding: "10px 12px" }}
+                    >
+                      <option value="Procedure SOP">Procedure SOP</option>
+                      <option value="Equipment SOP">Equipment SOP</option>
+                      <option value="Analysis SOP">Analysis SOP</option>
+                    </select>
+                  </div>
+                </div>
 
-                              <button onClick={() => handlePrintPDF(sop)} title="Print" style={{ background: "none", border: "none", cursor: "pointer" }}>📄</button>
-                              <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
-                              <button onClick={() => handleDelete(sop.code)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer" }}>🗑️</button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={5} style={{ padding: "24px", color: "var(--color-text-faint)", textAlign: "center", fontSize: "var(--fs-sm)" }}>No SOPs requested or authored by you.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px" }}>
-                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                  Page {currentPage} of {authorTotalPages}
-                </span>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === 1 ? 0.5 : 1 }}>&lt;</button>
-                  <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === authorTotalPages} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === authorTotalPages ? 0.5 : 1 }}>&gt;</button>
+                {/* Footer */}
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                  <button onClick={() => setIsRequestModalOpen(false)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)", padding: "8px 16px" }}>Cancel</button>
+                  <button onClick={handleRequestSOP} style={{ ...btnBaseStyle, background: "var(--color-primary)", color: "#ffffff", padding: "8px 16px" }}>Request SOP</button>
                 </div>
               </div>
-            </div>
+            ) : selectedSopDetails ? (
+              renderSopDetailsInline()
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {/* Request New SOP — above filter strip */}
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => setIsRequestModalOpen(true)}
+                    style={{
+                      background: "var(--color-primary)",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: "999px",
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 700,
+                      letterSpacing: "0.02em",
+                      cursor: "pointer",
+                      boxShadow: "var(--shadow-sm)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    + Request New SOP
+                  </button>
+                </div>
+
+                {/* Search and Filters for Author — compact scientific strip */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
+                  <select
+                    value={authorSopTypeFilter}
+                    onChange={(e) => setAuthorSopTypeFilter(e.target.value)}
+                    style={{ ...compactSelectStyle, borderColor: authorSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                  >
+                    <option value="All">All Types</option>
+                    <option value="Procedure SOP">Procedure SOP</option>
+                    <option value="Equipment SOP">Equipment SOP</option>
+                    <option value="Analysis SOP">Analysis SOP</option>
+                  </select>
+                  <select
+                    value={authorStatusFilter}
+                    onChange={(e) => setAuthorStatusFilter(e.target.value)}
+                    style={{ ...compactSelectStyle, borderColor: authorStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="REQUESTED">Requested</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="UNDER REVIEW">Under Review</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="RETURNED">Returned</option>
+                    <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
+                  </select>
+                  <select
+                    value={authorAssayCategoryFilter}
+                    onChange={(e) => setAuthorAssayCategoryFilter(e.target.value)}
+                    style={{ ...compactSelectStyle, borderColor: authorAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                  >
+                    <option value="All">All Assay Categories</option>
+                    {ASSAY_CATEGORY_OPTIONS.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={authorMethodFamilyFilter}
+                    onChange={(e) => setAuthorMethodFamilyFilter(e.target.value)}
+                    style={{ ...compactSelectStyle, borderColor: authorMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+                  >
+                    <option value="All">All Method Families</option>
+                    {METHOD_FAMILY_OPTIONS.map(fam => (
+                      <option key={fam} value={fam}>{fam}</option>
+                    ))}
+                  </select>
+                  <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
+                    <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
+                    <input
+                      type="text"
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      placeholder="Search SOPs..."
+                      style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  {(authorSopTypeFilter !== "All" || authorStatusFilter !== "All" || authorAssayCategoryFilter !== "All" || authorMethodFamilyFilter !== "All" || searchText) && (
+                    <button
+                      onClick={() => { setAuthorSopTypeFilter("All"); setAuthorStatusFilter("All"); setAuthorAssayCategoryFilter("All"); setAuthorMethodFamilyFilter("All"); setSearchText(""); }}
+                      style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
+                      title="Clear all filters"
+                    >✕ Clear</button>
+                  )}
+                </div>
+
+                {/* Author's SOP list */}
+                <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
+                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 140 }}>SOP Code</th>
+                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>Title</th>
+                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>SOP Type</th>
+                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>Status</th>
+                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "center", width: 180 }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedAuthorSops.length > 0 ? (
+                        paginatedAuthorSops.map((sop) => {
+                          const statusColor = getStatusColors(sop.status);
+
+                          return (
+                            <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                              <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)", fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
+                              <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
+                              <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
+                              <td style={{ padding: "12px 16px", fontSize: "10px" }}>
+                                <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, background: statusColor.bg, color: statusColor.text, textTransform: "uppercase" }}>
+                                  {sop.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: "12px 16px", display: "flex", gap: 12, justifyContent: "center" }}>
+                                <button onClick={() => handleViewDetails(sop)} title="View" style={{ background: "none", border: "none", cursor: "pointer" }}><ViewIcon /></button>
+
+                                {(() => {
+                                  const isEditable = sop.status.toUpperCase() === "DRAFT" || sop.status.toUpperCase() === "RETURNED";
+                                  return (
+                                    <button
+                                      disabled={!isEditable}
+                                      onClick={() => isEditable && handleEdit(sop.code)}
+                                      title={isEditable ? "Edit SOP" : "Only Draft or Returned SOPs can be edited"}
+                                      style={{
+                                        background: "none",
+                                        border: "none",
+                                        cursor: isEditable ? "pointer" : "not-allowed",
+                                        opacity: isEditable ? 1 : 0.35,
+                                      }}
+                                    >
+                                      <EditIcon />
+                                    </button>
+                                  );
+                                })()}
+
+                                <button onClick={() => handlePrintPDF(sop)} title="Print" style={{ background: "none", border: "none", cursor: "pointer" }}>🖨️</button>
+                                <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
+                                <button onClick={() => handleDelete(sop.code)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer" }}>🗑️</button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} style={{ padding: "24px", color: "var(--color-text-faint)", textAlign: "center", fontSize: "var(--fs-sm)" }}>No SOPs requested or authored by you.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px" }}>
+                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                    Page {currentPage} of {authorTotalPages}
+                  </span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === 1 ? 0.5 : 1 }}>&lt;</button>
+                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === authorTotalPages} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === authorTotalPages ? 0.5 : 1 }}>&gt;</button>
+                  </div>
+                </div>
+              </div>
+            )
           )}
 
           {/* TAB 3: QUALITY OFFICER (QO) PERSPECTIVE */}
           {activeTab === "qo" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-              {/* Search & Filters for QO — compact scientific strip */}
-              <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
-                <select
-                  value={qoSopTypeFilter}
-                  onChange={(e) => setQoSopTypeFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: qoSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Types</option>
-                  <option value="Procedure SOP">Procedure SOP</option>
-                  <option value="Equipment SOP">Equipment SOP</option>
-                  <option value="Analysis SOP">Analysis SOP</option>
-                </select>
-                <select
-                  value={qoStatusFilter}
-                  onChange={(e) => setQoStatusFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: qoStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Statuses (Excl. Requested)</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="UNDER REVIEW">Under Review</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="RETURNED">Returned</option>
-                  <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-                </select>
-                <select
-                  value={qoAssayCategoryFilter}
-                  onChange={(e) => setQoAssayCategoryFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: qoAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Assay Categories</option>
-                  {ASSAY_CATEGORY_OPTIONS.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-                <select
-                  value={qoMethodFamilyFilter}
-                  onChange={(e) => setQoMethodFamilyFilter(e.target.value)}
-                  style={{ ...compactSelectStyle, borderColor: qoMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                >
-                  <option value="All">All Method Families</option>
-                  {METHOD_FAMILY_OPTIONS.map(fam => (
-                    <option key={fam} value={fam}>{fam}</option>
-                  ))}
-                </select>
-                <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
-                  <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
-                  <input
-                    type="text"
-                    value={qoSearchText}
-                    onChange={(e) => setQoSearchText(e.target.value)}
-                    placeholder="Search SOPs..."
-                    style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
-                  />
+            shareSop ? (
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>🔗 Share SOP</h3>
+                  <button onClick={() => setShareSop(null)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}>Back to List</button>
                 </div>
-                {(qoSopTypeFilter !== "All" || qoStatusFilter !== "All" || qoAssayCategoryFilter !== "All" || qoMethodFamilyFilter !== "All" || qoSearchText) && (
-                  <button
-                    onClick={() => { setQoSopTypeFilter("All"); setQoStatusFilter("All"); setQoAssayCategoryFilter("All"); setQoMethodFamilyFilter("All"); setQoSearchText(""); }}
-                    style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
-                    title="Clear all filters"
-                  >✕ Clear</button>
-                )}
+                <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{ background: "var(--color-primary-soft)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontSize: "var(--fs-xs)", color: "var(--color-primary)", fontWeight: 600 }}>
+                    📄 {shareSop.code} — {shareSop.title}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 600 }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>🔗 Copy Link</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="text" readOnly value={`${window.location.origin}/domains/qms?view=${shareSop.code}`} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }} />
+                      <button onClick={() => handleCopyLink(shareSop.code)} style={{ background: isCopied ? "#10b981" : "var(--color-primary)", color: "#ffffff", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: "pointer", minWidth: 100, transition: "background 0.2s" }}>
+                        {isCopied ? "Copied! ✓" : "Copy Link"}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 600, borderTop: "1px solid var(--color-divider)", paddingTop: 18 }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>✉️ Share via Email</label>
+                    <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: 0 }}>Enter the recipient's email address. Your default mail client will open with the SOP link and details pre-filled.</p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="email" placeholder="recipient@example.com" value={shareEmailTo} onChange={(e) => setShareEmailTo(e.target.value)} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }} />
+                      <button onClick={() => handleSendEmail(shareSop)} disabled={!shareEmailTo.trim()} style={{ background: shareEmailTo.trim() ? "#0ea5e9" : "var(--color-surface-offset)", color: shareEmailTo.trim() ? "#ffffff" : "var(--color-text-muted)", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: shareEmailTo.trim() ? "pointer" : "not-allowed", minWidth: 120, transition: "background 0.2s" }}>✉️ Send Email</button>
+                    </div>
+                  </div>
+                </div>
               </div>
+            ) : selectedSopForQOApprove ? (
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>Code Assign & Approve Request</h3>
+                  <button onClick={() => setSelectedSopForQOApprove(null)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}>
+                    Back to List
+                  </button>
+                </div>
+                <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--color-surface-2)", padding: 16, borderRadius: 8, fontSize: "12px", border: "1px solid var(--color-border)", maxWidth: "600px" }}>
+                    <div><strong>Proposed Title:</strong> {selectedSopForQOApprove.title}</div>
+                    <div><strong>SOP Type:</strong> {selectedSopForQOApprove.sopType}</div>
+                    <div><strong>Author:</strong> {selectedSopForQOApprove.author}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Assign SOP Code *</label>
+                    <input type="text" placeholder=" " value={qoAssignedCode} onChange={(e) => setQoAssignedCode(e.target.value)} style={{ ...inputStyle, padding: "10px 12px" }} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Verifier User Name *</label>
+                    <input type="text" placeholder="Enter verifier name" value={qoVerifier} onChange={(e) => setQoVerifier(e.target.value)} style={{ ...inputStyle, padding: "10px 12px" }} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Authorizer Name (LM) *</label>
+                    <input type="text" placeholder="Enter authorizer name" value={qoAuthorizer} onChange={(e) => setQoAuthorizer(e.target.value)} style={{ ...inputStyle, padding: "10px 12px" }} />
+                  </div>
+                </div>
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                  <button onClick={() => setSelectedSopForQOApprove(null)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)", padding: "8px 16px" }}>Cancel</button>
+                  <button onClick={handleQOApprove} style={{ ...btnBaseStyle, background: "var(--color-primary)", color: "#ffffff", padding: "8px 16px" }}>Approve & Send Draft</button>
+                </div>
+              </div>
+            ) : selectedSopDetails ? (
+              renderSopDetailsInline()
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {/* Search & Filters for QO */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
+                  <select value={qoSopTypeFilter} onChange={(e) => setQoSopTypeFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
+                    <option value="All">All Types</option>
+                    <option value="Procedure SOP">Procedure SOP</option>
+                    <option value="Equipment SOP">Equipment SOP</option>
+                    <option value="Analysis SOP">Analysis SOP</option>
+                  </select>
+                  <select value={qoStatusFilter} onChange={(e) => setQoStatusFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
+                    <option value="All">All Statuses (Excl. Requested)</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="UNDER REVIEW">Under Review</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="RETURNED">Returned</option>
+                    <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
+                  </select>
+                  <select value={qoAssayCategoryFilter} onChange={(e) => setQoAssayCategoryFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
+                    <option value="All">All Assay Categories</option>
+                    {ASSAY_CATEGORY_OPTIONS.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                  </select>
+                  <select value={qoMethodFamilyFilter} onChange={(e) => setQoMethodFamilyFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
+                    <option value="All">All Method Families</option>
+                    {METHOD_FAMILY_OPTIONS.map(fam => (<option key={fam} value={fam}>{fam}</option>))}
+                  </select>
+                  <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
+                    <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
+                    <input type="text" value={qoSearchText} onChange={(e) => setQoSearchText(e.target.value)} placeholder="Search SOPs..." style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }} />
+                  </div>
+                  {(qoSopTypeFilter !== "All" || qoStatusFilter !== "All" || qoAssayCategoryFilter !== "All" || qoMethodFamilyFilter !== "All" || qoSearchText) && (
+                    <button onClick={() => { setQoSopTypeFilter("All"); setQoStatusFilter("All"); setQoAssayCategoryFilter("All"); setQoMethodFamilyFilter("All"); setQoSearchText(""); }} style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }} title="Clear all filters">✕ Clear</button>
+                  )}
+                </div>
 
-              {/* Requested SOPs queue */}
-              <div>
-                <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0", color: "var(--color-primary)" }}>
-                  🔔 Pending SOP Requests ({requestedSopsQO.length})
-                </h3>
-                <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
-                        <th style={{ padding: "10px 14px", textAlign: "left" }}>Proposed Title</th>
-                        <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Type</th>
-                        <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Requested By</th>
-                        <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Proposed LM</th>
-                        <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {requestedSopsQO.length > 0 ? (
-                        requestedSopsQO.map((sop) => (
+                {/* Pending SOP Requests */}
+                <div>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0", color: "var(--color-primary)" }}>🔔 Pending SOP Requests ({requestedSopsQO.length})</h3>
+                  <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
+                          <th style={{ padding: "10px 14px", textAlign: "left" }}>Proposed Title</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Type</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Requested By</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Proposed LM</th>
+                          <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {requestedSopsQO.length > 0 ? requestedSopsQO.map((sop) => (
                           <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
                             <td style={{ padding: "10px 14px", fontWeight: 600 }}>{sop.title}</td>
                             <td style={{ padding: "10px 14px" }}>{sop.sopType || "Procedure SOP"}</td>
                             <td style={{ padding: "10px 14px" }}>{sop.author}</td>
                             <td style={{ padding: "10px 14px" }}>{sop.details?.proposedAuthorizer}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                              <button
-                                onClick={() => setSelectedSopForQOApprove(sop)}
-                                style={{ background: "var(--color-primary)", color: "#ffffff", border: "none", padding: "4px 10px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: "11px" }}
-                              >
-                                Approve & Code
-                              </button>
+                              <button onClick={() => setSelectedSopForQOApprove(sop)} style={{ background: "var(--color-primary)", color: "#ffffff", border: "none", padding: "4px 10px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: "11px" }}>Approve & Code</button>
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No pending requests matching criteria.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )) : (
+                          <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No pending requests matching criteria.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
 
-              {/* General coded SOP list for QO */}
-              <div>
-                <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0" }}>
-                  📋 Active SOP Document Controls ({existingSopsQO.length})
-                </h3>
-                <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
-                        <th style={{ padding: "10px 14px", textAlign: "left" }}>Code</th>
-                        <th style={{ padding: "10px 14px", textAlign: "left" }}>Title</th>
-                        <th style={{ padding: "10px 14px", textAlign: "left" }}>Author</th>
-                        <th style={{ padding: "10px 14px", textAlign: "left" }}>Status</th>
-                        <th style={{ padding: "10px 14px", textAlign: "center" }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {existingSopsQO.length > 0 ? (
-                        existingSopsQO.map((sop) => (
+                {/* Active SOPs */}
+                <div>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0" }}>📋 Active SOP Document Controls ({existingSopsQO.length})</h3>
+                  <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
+                          <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Code</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left" }}>Title</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", width: 150 }}>SOP Type</th>
+                          <th style={{ padding: "10px 14px", textAlign: "left", width: 150 }}>Status</th>
+                          <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {existingSopsQO.length > 0 ? existingSopsQO.map((sop) => (
                           <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
                             <td style={{ padding: "10px 14px", fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
                             <td style={{ padding: "10px 14px" }}>{sop.title}</td>
-                            <td style={{ padding: "10px 14px" }}>{sop.author}</td>
+                            <td style={{ padding: "10px 14px" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
                             <td style={{ padding: "10px 14px" }}>
-                              <span style={{ fontSize: "10px", padding: "2.5px 6px", borderRadius: 4, background: getStatusColors(sop.status).bg, color: getStatusColors(sop.status).text, fontWeight: "bold", textTransform: "uppercase" }}>
-                                {sop.status}
-                              </span>
+                              <span style={{ fontSize: "10px", padding: "2.5px 6px", borderRadius: 4, background: getStatusColors(sop.status).bg, color: getStatusColors(sop.status).text, fontWeight: "bold", textTransform: "uppercase" }}>{sop.status}</span>
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>
                               <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                                 <button onClick={() => handleViewDetails(sop)} style={{ background: "none", border: "none", cursor: "pointer" }}><ViewIcon /></button>
+                                <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
                                 <button onClick={() => handlePrintPDF(sop)} style={{ background: "none", border: "none", cursor: "pointer" }}>🖨️</button>
                                 <button onClick={() => handleDelete(sop.code)} style={{ background: "none", border: "none", cursor: "pointer" }}>🗑️</button>
                               </div>
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No coded SOPs matching criteria.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )) : (
+                          <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No coded SOPs matching criteria.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-
-            </div>
+            )
           )}
 
           {/* TAB 4: REVIEWERS & AUTHORIZERS */}
           {activeTab === "review-sop" && (
-            <QMSReviewerView
-              sops={allSops}
-              onSopUpdate={(updatedList) => {
-                setLocalSops(updatedList);
-              }}
-              onPrintRequest={handlePrintPDF}
-              onShareRequest={handleShare}
-              onSopApproved={(sop) => {
-                setActiveTab("sops");
-                setSelectedSopForReading(sop);
-                handlePrintPDF(sop);
-              }}
-            />
+            shareSop ? (
+              <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>🔗 Share SOP</h3>
+                  <button onClick={() => setShareSop(null)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}>Back to List</button>
+                </div>
+                <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+                  <div style={{ background: "var(--color-primary-soft)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontSize: "var(--fs-xs)", color: "var(--color-primary)", fontWeight: 600 }}>
+                    📄 {shareSop.code} — {shareSop.title}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 600 }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>🔗 Copy Link</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="text" readOnly value={`${window.location.origin}/domains/qms?view=${shareSop.code}`} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }} />
+                      <button onClick={() => handleCopyLink(shareSop.code)} style={{ background: isCopied ? "#10b981" : "var(--color-primary)", color: "#ffffff", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: "pointer", minWidth: 100, transition: "background 0.2s" }}>
+                        {isCopied ? "Copied! ✓" : "Copy Link"}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 600, borderTop: "1px solid var(--color-divider)", paddingTop: 18 }}>
+                    <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>✉️ Share via Email</label>
+                    <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", margin: 0 }}>Enter the recipient's email address. Your default mail client will open with the SOP link and details pre-filled.</p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="email" placeholder="recipient@example.com" value={shareEmailTo} onChange={(e) => setShareEmailTo(e.target.value)} style={{ flex: 1, padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }} />
+                      <button onClick={() => handleSendEmail(shareSop)} disabled={!shareEmailTo.trim()} style={{ background: shareEmailTo.trim() ? "#0ea5e9" : "var(--color-surface-offset)", color: shareEmailTo.trim() ? "#ffffff" : "var(--color-text-muted)", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: shareEmailTo.trim() ? "pointer" : "not-allowed", minWidth: 120, transition: "background 0.2s" }}>✉️ Send Email</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <QMSReviewerView
+                sops={allSops}
+                onSopUpdate={(updatedList) => {
+                  setLocalSops(updatedList);
+                }}
+                onPrintRequest={handlePrintPDF}
+                onShareRequest={handleShare}
+                onSopApproved={(sop) => {
+                  setActiveTab("sops");
+                  setSelectedSopForReading(sop);
+                  handlePrintPDF(sop);
+                }}
+                showSuccessMessage={triggerSuccess}
+              />
+            )
           )}
 
         </div>
       </div>
 
-      {/* REQUEST SOP MODAL (AUTHOR) */}
-      {isRequestModalOpen && (
-        <div style={modalOverlayStyle}>
-          <div style={smallModalContainerStyle}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: 700 }}>Request New SOP Drafting</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed SOP Title *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. qPCR operation manual"
-                  value={requestTitle}
-                  onChange={(e) => setRequestTitle(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Author Name / Initials *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Melaku G. (MG)"
-                  value={requestAuthorName}
-                  onChange={(e) => setRequestAuthorName(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Type *</label>
-                <select
-                  value={requestType}
-                  onChange={(e) => setRequestType(e.target.value as any)}
-                  style={selectStyle}
-                >
-                  <option value="Procedure SOP">Procedure SOP</option>
-                  <option value="Equipment SOP">Equipment SOP</option>
-                  <option value="Analysis SOP">Analysis SOP</option>
-                </select>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                <button onClick={() => setIsRequestModalOpen(false)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", background: "none" }}>Cancel</button>
-                <button onClick={handleRequestSOP} style={{ ...btnBaseStyle, background: "var(--color-primary)", color: "#ffffff" }}>Request SOP</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* APPROVE REQUEST & CODE MODAL (QO) */}
-      {selectedSopForQOApprove && (
-        <div style={modalOverlayStyle}>
-          <div style={smallModalContainerStyle}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: 700 }}>Code Assign & Approve Request</h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2, background: "var(--color-surface)", padding: 10, borderRadius: 6, fontSize: "11.5px" }}>
-                <div><strong>Requested Title:</strong> {selectedSopForQOApprove.title}</div>
-                <div><strong>SOP Type:</strong> {selectedSopForQOApprove.sopType}</div>
-                <div><strong>Author:</strong> {selectedSopForQOApprove.author}</div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Assign SOP Code (Suggested next index) *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. P15"
-                  value={qoAssignedCode}
-                  onChange={(e) => setQoAssignedCode(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Verifier User Name *</label>
-                <select
-                  value={qoVerifier}
-                  onChange={(e) => setQoVerifier(e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="Melaku G. - QA Officer">Melaku G. - QA Officer</option>
-                  <option value="Elizabeth T. - Senior Analyst">Elizabeth T. - Senior Analyst</option>
-                  <option value="Tadesse D. - Laboratory Supervisor">Tadesse D. - Laboratory Supervisor</option>
-                  <option value="Fikre S. - Safety Officer">Fikre S. - Safety Officer</option>
-                  <option value="Saba W. - Quality Coordinator">Saba W. - Quality Coordinator</option>
-                </select>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Authorizer Name (LM) *</label>
-                <select
-                  value={qoAuthorizer}
-                  onChange={(e) => setQoAuthorizer(e.target.value)}
-                  style={selectStyle}
-                >
-                  <option value="Dr. Abraham A. - Laboratory Manager">Dr. Abraham A. - Laboratory Manager</option>
-                  <option value="Wondwossen A. - Quality Manager">Wondwossen A. - Quality Manager</option>
-                  <option value="Aster Y. - Lab Director">Aster Y. - Lab Director</option>
-                </select>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
-                <button onClick={() => setSelectedSopForQOApprove(null)} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", background: "none" }}>Cancel</button>
-                <button onClick={handleQOApprove} style={{ ...btnBaseStyle, background: "var(--color-primary)", color: "#ffffff" }}>Approve & Send Draft</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW DETAILS MODAL */}
-      {selectedSopDetails && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            top: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(4px)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              background: "var(--color-surface)",
-              borderRadius: "var(--radius-lg)",
-              border: "1px solid var(--color-border)",
-              boxShadow: "var(--shadow-md)",
-              width: 800,
-              maxWidth: "95%",
-              height: "85vh",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{ background: "var(--color-surface-2)", padding: "16px 24px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
-                  📄 SOP Details: {selectedSopDetails.code}
-                </h3>
-                <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{selectedSopDetails.title}</span>
-              </div>
-              <button
-                onClick={() => setSelectedSopDetails(null)}
-                style={{ background: "none", border: "none", fontSize: "24px", color: "var(--color-text-muted)", cursor: "pointer", lineHeight: 0.5 }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Modal Scroll Content */}
-            <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Reviewer Comments & Feedback (Only shown if comments exist and tab is not Quality Officer) */}
-              {activeTab !== "qo" && selectedSopDetails.details?.comments && selectedSopDetails.details.comments.length > 0 && (
-                <div style={{ background: "#fffaf0", border: "1px solid #feebc8", borderRadius: "var(--radius)", padding: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <h4 style={{ margin: 0, color: "#dd6b20", fontSize: "14px", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                      ⚠️ Reviewer Comments & Revision Feedback
-                    </h4>
-                    {selectedSopDetails.status.toUpperCase() === "RETURNED" && (
-                      <button
-                        onClick={() => {
-                          setSelectedSopDetails(null);
-                          handleEdit(selectedSopDetails.code);
-                        }}
-                        style={{
-                          background: "#dd6b20",
-                          color: "#ffffff",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: "var(--radius-sm)",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4
-                        }}
-                      >
-                        ✏️ Edit SOP Now
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {selectedSopDetails.details.comments.map((comment: any) => (
-                      <div key={comment.id} style={{ background: "#ffffff", padding: 10, borderRadius: 6, border: "1px solid #fbd38d", fontSize: "var(--fs-sm)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: 4 }}>
-                          <strong>{comment.author} ({comment.section})</strong>
-                          <span>{comment.timestamp}</span>
-                        </div>
-                        <div style={{ color: "var(--color-text)", fontWeight: 500 }}>{comment.text}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Cover Info */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, background: "var(--color-surface-2)", padding: 16, borderRadius: "var(--radius)", border: "1px solid var(--color-border)" }}>
-                <div><strong>Code:</strong> {selectedSopDetails.code}</div>
-                <div><strong>Title:</strong> {selectedSopDetails.title}</div>
-                <div><strong>Version:</strong> {selectedSopDetails.version}</div>
-                <div><strong>Status:</strong> {selectedSopDetails.status}</div>
-                <div><strong>Author:</strong> {selectedSopDetails.author}</div>
-                <div><strong>SOP Type:</strong> {selectedSopDetails.sopType || selectedSopDetails.sopSection}</div>
-                {selectedSopDetails.details?.owningSite && <div><strong>Owning Site:</strong> {selectedSopDetails.details.owningSite}</div>}
-                {selectedSopDetails.details?.effectiveDate && <div><strong>Effective Date:</strong> {selectedSopDetails.details.effectiveDate}</div>}
-                <div><strong>Assay Category:</strong> {selectedSopDetails.details?.assayCategory || selectedSopDetails.sopSection || "N/A"}</div>
-                <div><strong>Method Family:</strong> {selectedSopDetails.details?.methodFamily || "N/A"}</div>
-              </div>
-
-              {/* Revision & Amendment History */}
-              {selectedSopDetails.details?.revisionHistory && Array.isArray(selectedSopDetails.details.revisionHistory) && selectedSopDetails.details.revisionHistory.length > 0 && (
-                <div style={{ border: "1.5px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface-2)" }}>
-                  <h4 style={{ margin: "0 0 12px 0", color: "var(--color-primary)", fontSize: "13.5px", fontWeight: 700 }}>
-                    📜 Revision & Amendment History
-                  </h4>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
-                    <thead>
-                      <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
-                        <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", width: "15%", fontWeight: 700 }}>Rev No</th>
-                        <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", width: "20%", fontWeight: 700 }}>Rev Date</th>
-                        <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Summary of Changes</th>
-                        <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Rationale for Change</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedSopDetails.details.revisionHistory.map((rev: any, idx: number) => (
-                        <tr key={idx} style={{ background: "var(--color-surface)" }}>
-                          <td style={{ padding: "8px", border: "1px solid var(--color-border)", fontWeight: 600 }}>{rev.revNumber}</td>
-                          <td style={{ padding: "8px", border: "1px solid var(--color-border)" }}>{rev.revDate}</td>
-                          <td style={{ padding: "8px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeSummary}</td>
-                          <td style={{ padding: "8px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeRationale}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Electronic Sign-off Status blocks */}
-              <div style={{ border: "1.5px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface-2)" }}>
-                <h4 style={{ margin: "0 0 12px 0", color: "var(--color-primary)", fontSize: "13.5px", fontWeight: 700 }}>
-                  🖋️ Digital Verifications & Sign-off Log
-                </h4>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-                  {/* Author */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--color-surface)", padding: 10, borderRadius: 6, border: "1px solid var(--color-border)" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)" }}>AUTHOR</span>
-                    <strong style={{ fontSize: "12px" }}>{selectedSopDetails.author}</strong>
-                    <span style={{ fontSize: "10.5px", color: "#16a34a", fontWeight: "bold" }}>🟢 Initiated</span>
-                  </div>
-
-                  {/* Verifier User */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--color-surface)", padding: 10, borderRadius: 6, border: "1px solid var(--color-border)" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)" }}>VERIFIER (USER)</span>
-                    <strong style={{ fontSize: "12px" }}>{selectedSopDetails.details?.proposedVerifier || "Verifier User"}</strong>
-                    {selectedSopDetails.details?.electronicSignatures?.verifierUser?.signedAt ? (
-                      <span style={{ fontSize: "10.5px", color: "#16a34a", fontWeight: "bold" }}>🟢 Verified ({selectedSopDetails.details.electronicSignatures.verifierUser.signedAt})</span>
-                    ) : (
-                      <span style={{ fontSize: "10.5px", color: "#d97706", fontWeight: "bold" }}>🔴 Awaiting sign-off</span>
-                    )}
-                  </div>
-
-                  {/* Authorizer LM */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "var(--color-surface)", padding: 10, borderRadius: 6, border: "1px solid var(--color-border)" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)" }}>AUTHORIZER (LINE MANAGER)</span>
-                    <strong style={{ fontSize: "12px" }}>{selectedSopDetails.details?.proposedAuthorizer || "LM Manager"}</strong>
-                    {selectedSopDetails.details?.electronicSignatures?.authorizerLm?.signedAt ? (
-                      <span style={{ fontSize: "10.5px", color: "#16a34a", fontWeight: "bold" }}>🟢 Authorized ({selectedSopDetails.details.electronicSignatures.authorizerLm.signedAt})</span>
-                    ) : (
-                      <span style={{ fontSize: "10.5px", color: "#d97706", fontWeight: "bold" }}>🔴 Awaiting sign-off</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Framework Sections rendering */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {[
-                  {
-                    label: "Purpose, Scope & Background",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const purp = det.purpose || det.objectivesScope || "";
-                      const sc = det.scope || "";
-                      const bg = det.background || "";
-                      if (!purp && !sc && !bg) return null;
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {purp && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Purpose (verbatim):</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(purp) }} />
-                            </div>
-                          )}
-                          {sc && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Scope:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(sc) }} />
-                            </div>
-                          )}
-                          {bg && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Background / Introduction:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(bg) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  { label: "Abbreviations & Definitions", text: selectedSopDetails.details?.abbreviationsDefinitions },
-                  {
-                    label: "Tasks, Responsibilities & Accountabilities",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const narrative = det.responsibilityAccountability || "";
-                      const grid = det.tasksGrid || [];
-                      const hasGrid = Array.isArray(grid) && grid.some((r: any) => r.task || r.authorized || r.responsible);
-                      if (!narrative && !hasGrid) return null;
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Responsibility & accountability (narrative):</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                          {hasGrid && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 6, color: "var(--color-text-muted)" }}>Tasks & Roles Matrix:</strong>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
-                                <thead>
-                                  <tr style={{ background: "var(--color-surface-2)" }}>
-                                    <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Task</th>
-                                    <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Authorized</th>
-                                    <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Responsible</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {grid.map((row: any, ridx: number) => {
-                                    const auth = Array.isArray(row.authorized) ? row.authorized.join(", ") : (row.authorized || "");
-                                    const resp = Array.isArray(row.responsible) ? row.responsible.join(", ") : (row.responsible || "");
-                                    return (
-                                      <tr key={ridx} style={{ background: "var(--color-surface)" }}>
-                                        <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.task}</td>
-                                        <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{auth}</td>
-                                        <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{resp}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  // Equipment specific
-                  { label: "Equipment Description", text: selectedSopDetails.details?.equipmentDescription },
-                  {
-                    label: "Environmental & Safety Controls",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const ppe = Array.isArray(det.ppeRequired) ? det.ppeRequired : [];
-                      const ppeOther = det.ppeRequiredOther || "";
-                      const bsl = det.bslRequired || "";
-                      const hazards = Array.isArray(det.hazardsRelevant) ? det.hazardsRelevant : [];
-                      const hazardsOther = det.hazardsRelevantOther || "";
-                      const waste = det.wasteHandling || "";
-                      const addSafety = det.additionalSafety || det.safetyEnvironment || "";
-
-                      const hasAny = ppe.length > 0 || bsl || hazards.length > 0 || waste || addSafety;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {bsl && (
-                            <div>
-                              <strong>Biosafety Level (BSL) Required:</strong>
-                              <span style={{ marginLeft: 8, padding: "2px 8px", background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: 12, fontWeight: "bold", fontSize: "11px" }}>{bsl}</span>
-                            </div>
-                          )}
-                          {ppe.length > 0 && (
-                            <div>
-                              <strong>PPE Required:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {ppe.map((p: string) => (
-                                  <span key={p} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {p === "Other (specify)" && ppeOther ? `Other: ${ppeOther}` : p}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hazards.length > 0 && (
-                            <div>
-                              <strong>Hazards Relevant to this Procedure:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {hazards.map((h: string) => (
-                                  <span key={h} style={{ padding: "3px 8px", background: "#fee2e2", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {h === "Other (specify)" && hazardsOther ? `Other: ${hazardsOther}` : h}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {waste && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Waste Handling Instructions:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(waste) }} />
-                            </div>
-                          )}
-                          {addSafety && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Additional Safety / Environmental Controls:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(addSafety) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  { label: "Calibration protocol", text: selectedSopDetails.details?.calibration },
-                  { label: "Controls schedule", text: selectedSopDetails.details?.controls },
-                  { label: "Maintenance instructions", text: selectedSopDetails.details?.maintenance },
-                  { label: "Operation steps", text: selectedSopDetails.details?.operation },
-                  { label: "Troubleshooting & Problem Solving", text: selectedSopDetails.details?.problemSolving },
-
-                  // Analysis specific
-                  { label: "Scientific Principle", text: selectedSopDetails.details?.principleMethodologicalBasis || selectedSopDetails.details?.principle },
-                  {
-                    label: "Samples / Specimens Covered",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const matrices = Array.isArray(det.sampleMatrices) ? det.sampleMatrices : [];
-                      const matricesOther = det.sampleMatricesOther || "";
-                      const inputs = Array.isArray(det.inputMaterialTypes) ? det.inputMaterialTypes : [];
-                      const inputsOther = det.inputMaterialTypesOther || "";
-                      const volume = det.sampleVolume || "";
-                      const acceptance = det.sampleAcceptance || "";
-                      const rejection = det.sampleRejection || "";
-
-                      const hasAny = matrices.length > 0 || inputs.length > 0 || volume || acceptance || rejection || det.sample;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {det.sample && !acceptance && !rejection && (
-                            <div dangerouslySetInnerHTML={{ __html: formatRichText(det.sample) }} />
-                          )}
-                          {matrices.length > 0 && (
-                            <div>
-                              <strong>Sample Matrices Covered:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {matrices.map((m: string) => (
-                                  <span key={m} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {m === "Other" && matricesOther ? `Other: ${matricesOther}` : m}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {inputs.length > 0 && (
-                            <div>
-                              <strong>Input Material Type(s):</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {inputs.map((i: string) => (
-                                  <span key={i} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {i === "Other" && inputsOther ? `Other: ${inputsOther}` : i}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {volume && (
-                            <div>
-                              <strong>Volume/Amount Required per Sample:</strong>
-                              <span style={{ marginLeft: 8, fontWeight: 500 }}>{volume}</span>
-                            </div>
-                          )}
-                          {acceptance && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Sample Acceptance Criteria:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(acceptance) }} />
-                            </div>
-                          )}
-                          {rejection && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Sample Rejection Criteria:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(rejection) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Reagents & Supplies",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const narrative = det.reagentsNarrative || "";
-                      const onePerLine = det.reagentsOnePerLine || "";
-                      const hasGrid = Array.isArray(det.reagentsGrid) && det.reagentsGrid.some((r: any) => r.item || r.location || r.condition);
-
-                      if (!narrative && !onePerLine && !hasGrid) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reagents & Supplies Narrative:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                          {onePerLine && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reagents list:</strong>
-                              <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
-                                {onePerLine.split("\n").filter((line: string) => line.trim()).map((line: string, idx: number) => (
-                                  <li key={idx}>{line}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {hasGrid && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 6, color: "var(--color-text-muted)" }}>Reagents & Chemicals Matrix (Legacy):</strong>
-                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
-                                <thead>
-                                  <tr style={{ background: "var(--color-surface-2)" }}>
-                                    <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Item (SOP ref)</th>
-                                    <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Storage Location</th>
-                                    <th style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>Storage Condition</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {det.reagentsGrid.map((row: any, ridx: number) => (
-                                    <tr key={ridx} style={{ background: "var(--color-surface)" }}>
-                                      <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.item}</td>
-                                      <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.location}</td>
-                                      <td style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row.condition}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Equipment & Instruments",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const equip = Array.isArray(det.primaryEquipment) ? det.primaryEquipment : [];
-                      const equipOther = det.primaryEquipmentOther || "";
-                      const narrative = det.equipmentOnePerLine || det.equipmentSupplies || "";
-
-                      const hasAny = equip.length > 0 || narrative;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {equip.length > 0 && (
-                            <div>
-                              <strong>Primary Equipment Used:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {equip.map((e: string) => (
-                                  <span key={e} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {e === "Other" && equipOther ? `Other: ${equipOther}` : e}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Equipment & Instruments details:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Quality Control procedures",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const controls = Array.isArray(det.controlsIncluded) ? det.controlsIncluded : [];
-                      const controlsOther = det.controlsIncludedOther || "";
-                      const methods = Array.isArray(det.qcMethods) ? det.qcMethods : [];
-                      const methodsOther = det.qcMethodsOther || "";
-                      const criteria = det.acceptanceRejectionCriteria || "";
-                      const narrative = det.qcNarrative || det.qualityControl || "";
-
-                      const hasAny = controls.length > 0 || methods.length > 0 || criteria || narrative;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {controls.length > 0 && (
-                            <div>
-                              <strong>Controls Included:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {controls.map((c: string) => (
-                                  <span key={c} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {c === "Other" && controlsOther ? `Other: ${controlsOther}` : c}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {methods.length > 0 && (
-                            <div>
-                              <strong>DNA/RNA QC Methods Specified:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {methods.map((m: string) => (
-                                  <span key={m} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {m === "Other" && methodsOther ? `Other: ${methodsOther}` : m}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {criteria && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Acceptance / Rejection Criteria:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(criteria) }} />
-                            </div>
-                          )}
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Quality Control Narrative:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Procedure Sequence",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const narrative = det.procedureNarrative || det.procedure || "";
-                      const steps = det.procedureOnePerLine || "";
-
-                      if (!narrative && !steps) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Procedure Narrative:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                          {steps && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Step-by-step list:</strong>
-                              <ol style={{ margin: "4px 0 0 16px", padding: 0 }}>
-                                {steps.split("\n").filter((line: string) => line.trim()).map((line: string, idx: number) => (
-                                  <li key={idx} style={{ marginBottom: 4 }}>{line}</li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Calculations / Data Analysis",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const formulas = det.calculationsFormulas || "";
-                      const tools = det.softwareAnalysisTools || "";
-                      const rules = det.interpretationThresholds || "";
-
-                      const hasAny = formulas || tools || rules;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {formulas && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Calculations & Formulas:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(formulas) }} />
-                            </div>
-                          )}
-                          {tools && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Software / Analysis Tools Used:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(tools) }} />
-                            </div>
-                          )}
-                          {rules && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Interpretation Rules & Thresholds:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(rules) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Result Reporting & Interpretation",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const format = det.reportingFormat || "";
-                      const cutoffs = det.cutOffsThresholds || "";
-                      const lims = det.limsDatabaseMapping || "";
-                      const narrative = det.resultReportingNarrative || "";
-
-                      const hasAny = format || cutoffs || lims || narrative;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {format && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reporting Format (units, layout):</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(format) }} />
-                            </div>
-                          )}
-                          {cutoffs && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Cut-offs / Thresholds:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(cutoffs) }} />
-                            </div>
-                          )}
-                          {lims && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>LIMS / Database Field Mapping:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(lims) }} />
-                            </div>
-                          )}
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Result Reporting Narrative:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  {
-                    label: "Storage & Transport Requirements",
-                    render: () => {
-                      const det = selectedSopDetails.details || {};
-                      const stTypes = Array.isArray(det.storageSampleTypes) ? det.storageSampleTypes : [];
-                      const stTypesOther = det.storageSampleTypesOther || "";
-                      const temp = det.storageTemperature || "";
-                      const duration = det.maxStorageDuration || "";
-                      const modes = Array.isArray(det.acceptableTransportModes) ? det.acceptableTransportModes : [];
-                      const modesOther = det.acceptableTransportModesOther || "";
-                      const narrative = det.storageTransportNarrative || "";
-
-                      const hasAny = stTypes.length > 0 || temp || duration || modes.length > 0 || narrative;
-                      if (!hasAny) return null;
-
-                      return (
-                        <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
-                          {stTypes.length > 0 && (
-                            <div>
-                              <strong>Sample Types Stored/Transported:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {stTypes.map((t: string) => (
-                                  <span key={t} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {t === "Other" && stTypesOther ? `Other: ${stTypesOther}` : t}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {temp && (
-                            <div>
-                              <strong>Recommended Storage Temperature:</strong>
-                              <span style={{ marginLeft: 8, padding: "2px 8px", background: "var(--color-primary-soft)", color: "var(--color-primary)", borderRadius: 12, fontWeight: "bold", fontSize: "11px" }}>{temp}</span>
-                            </div>
-                          )}
-                          {duration && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Maximum Storage Duration:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(duration) }} />
-                            </div>
-                          )}
-                          {modes.length > 0 && (
-                            <div>
-                              <strong>Acceptable Transport Modes:</strong>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                                {modes.map((m: string) => (
-                                  <span key={m} style={{ padding: "3px 8px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", fontSize: "11px" }}>
-                                    {m === "Other" && modesOther ? `Other: ${modesOther}` : m}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {narrative && (
-                            <div>
-                              <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Storage & Transport Narrative:</strong>
-                              <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  },
-                  { label: "Related Documents", text: selectedSopDetails.details?.relatedDocuments },
-                  { label: "Related Forms", text: selectedSopDetails.details?.relatedForms },
-                  { label: "References", text: selectedSopDetails.details?.references },
-                  { label: "Attachments & Annexes", text: selectedSopDetails.details?.attachments }
-                ].map((sec: any, sidx) => {
-                  if (sec.render) {
-                    const renderedResult = sec.render();
-                    if (!renderedResult) return null;
-                    return (
-                      <div key={sidx} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
-                        <h4 style={{ margin: "0 0 12px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                          {sec.label}
-                        </h4>
-                        {renderedResult}
-                      </div>
-                    );
-                  }
-
-                  const hasVal = sec.text || (sec.data && Array.isArray(sec.data) && sec.data.some((r: any) => Object.values(r).some(v => v)));
-                  if (!hasVal) return null;
-
-                  return (
-                    <div key={sidx} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface)" }}>
-                      <h4 style={{ margin: "0 0 12px 0", color: "var(--color-primary)", fontSize: "14px", borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
-                        {sec.label}
-                      </h4>
-
-                      {sec.text && (
-                        <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)" }} dangerouslySetInnerHTML={{ __html: formatRichText(sec.text) }} />
-                      )}
-
-                      {sec.data && sec.grid && (
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
-                          <thead>
-                            <tr style={{ background: "var(--color-surface-2)" }}>
-                              {sec.grid.map((col: any, cidx: number) => (
-                                <th key={cidx} style={{ padding: "6px 10px", border: "1px solid var(--color-border)", textAlign: "left" }}>{col.h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sec.data.map((row: any, ridx: number) => (
-                              <tr key={ridx}>
-                                {sec.grid!.map((col: any, cidx: number) => (
-                                  <td key={cidx} style={{ padding: "6px 10px", border: "1px solid var(--color-border)" }}>{row[col.k]}</td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div style={{ background: "var(--color-surface-2)", padding: "16px 24px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-              {activeTab === "author" && selectedSopDetails.status.toUpperCase() === "DRAFT" && (
-                <button
-                  onClick={() => handleSubmitForReview(selectedSopDetails)}
-                  style={{ background: "#7b1fa2", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}
-                >
-                  Submit for Review
-                </button>
-              )}
-              {activeTab === "author" && selectedSopDetails.status.toUpperCase() === "RETURNED" && (
-                <button
-                  onClick={() => {
-                    setSelectedSopDetails(null);
-                    handleEdit(selectedSopDetails.code);
-                  }}
-                  style={{ background: "#dd6b20", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}
-                >
-                  Edit SOP
-                </button>
-              )}
-              <button
-                onClick={() => setSelectedSopDetails(null)}
-                style={{ background: "var(--color-primary)", color: "#ffffff", border: "none", padding: "8px 16px", borderRadius: "var(--radius-sm)", fontWeight: 600, cursor: "pointer" }}
-              >
-                Close View
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SHARE MODAL */}
-      {shareSop && (
-        <div style={modalOverlayStyle}>
-          <div style={{ background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-md)", width: 500, maxWidth: "90%", overflow: "hidden" }}>
-            <div style={{ background: "var(--color-surface-2)", padding: "16px 24px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>🔗 Share SOP</h3>
-              <button onClick={() => setShareSop(null)} style={{ background: "none", border: "none", fontSize: "20px", color: "var(--color-text-muted)", cursor: "pointer" }}>×</button>
-            </div>
-
-            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
-              <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>
-                Copy the link below to share access to <strong>{shareSop.code}</strong> with your laboratory staff:
-              </p>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  type="text"
-                  readOnly
-                  value={`${window.location.origin}/domains/qms?view=${shareSop.code}`}
-                  style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-xs)", outline: "none" }}
-                />
-                <button
-                  onClick={() => handleCopyLink(shareSop.code)}
-                  style={{ background: isCopied ? "#10b981" : "var(--color-primary)", color: "#ffffff", border: "none", padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: "pointer", minWidth: 80 }}
-                >
-                  {isCopied ? "Copied! ✓" : "Copy Link"}
-                </button>
-              </div>
-
-              <div style={{ borderTop: "1px solid var(--color-divider)", paddingTop: 16, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button onClick={() => setShareSop(null)} style={{ background: "var(--color-surface-2)", color: "var(--color-text)", border: "1px solid var(--color-border)", padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-xs)", fontWeight: 600, cursor: "pointer" }}>Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* PRINT-ONLY AREA (RENDERED FOR PDF GENERATION) */}
       {printingSop && createPortal(
@@ -1930,31 +1493,106 @@ export default function QMSPage() {
                     <div style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt", color: "#000000", lineHeight: "1.5", textAlign: "justify" }}>
 
                       {/* Revision & Amendment History */}
-                      {printingSop.details?.revisionHistory && Array.isArray(printingSop.details.revisionHistory) && printingSop.details.revisionHistory.length > 0 && (
+                      {(printingSop.details?.annualReviews || printingSop.details?.versionHistory || printingSop.details?.amendmentLog) && (
                         <div className="print-section-container">
                           <h3 className="print-section-title" style={{ margin: "14px 0 4px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
                             Revision & Amendment History
                           </h3>
-                          <table style={{ width: "100%", borderCollapse: "collapse", border: "1.5px solid #000000", marginTop: "8px", fontFamily: '"Times New Roman", Times, serif', fontSize: "11pt" }}>
-                            <thead>
-                              <tr style={{ backgroundColor: "#f1f5f9" }}>
-                                <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", width: "15%", fontWeight: "bold" }}>Rev No</th>
-                                <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", width: "20%", fontWeight: "bold" }}>Rev Date</th>
-                                <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Summary of Changes</th>
-                                <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Rationale for Change</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {printingSop.details.revisionHistory.map((rev: any, idx: number) => (
-                                <tr key={idx}>
-                                  <td style={{ border: "1.5px solid #000000", padding: "6px", fontWeight: "bold" }}>{rev.revNumber}</td>
-                                  <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.revDate}</td>
-                                  <td style={{ border: "1.5px solid #000000", padding: "6px", whiteSpace: "pre-wrap" }}>{rev.changeSummary}</td>
-                                  <td style={{ border: "1.5px solid #000000", padding: "6px", whiteSpace: "pre-wrap" }}>{rev.changeRationale}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          
+                          {/* Table A: Annual Review of Document */}
+                          {printingSop.details?.annualReviews && printingSop.details.annualReviews.length > 0 && (
+                            <div style={{ marginTop: "10px" }}>
+                              <strong style={{ display: "block", marginBottom: "4px", fontSize: "11pt", textTransform: "uppercase", color: "#031755ff" }}>A. Annual Review of Document</strong>
+                              <table style={{ width: "100%", borderCollapse: "collapse", border: "1.5px solid #000000", fontFamily: '"Times New Roman", Times, serif', fontSize: "11pt" }}>
+                                <thead>
+                                  <tr style={{ backgroundColor: "#f1f5f9" }}>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Revision No.</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Review Date</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Reviewed By (Name)</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Reviewed By (Sig.)</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Approved By (Name)</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Approved By (Sig.)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {printingSop.details.annualReviews.map((rev: any, idx: number) => (
+                                    <tr key={idx}>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.revNo || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.reviewDate || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.reviewedByName || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.reviewedBySignature || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.approvedByName || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.approvedBySignature || "-"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {/* Table B: Version History */}
+                          {printingSop.details?.versionHistory && printingSop.details.versionHistory.length > 0 && (
+                            <div style={{ marginTop: "14px" }}>
+                              <strong style={{ display: "block", marginBottom: "4px", fontSize: "11pt", textTransform: "uppercase", color: "#031755ff" }}>B. Version History</strong>
+                              <table style={{ width: "100%", borderCollapse: "collapse", border: "1.5px solid #000000", fontFamily: '"Times New Roman", Times, serif', fontSize: "10pt" }}>
+                                <thead>
+                                  <tr style={{ backgroundColor: "#f1f5f9" }}>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Rev. No.</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Page No.</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Description</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Amend. Date</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Effective Date</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Amend Name</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Amend Sig.</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Approval Name</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "4px", textAlign: "left", fontWeight: "bold" }}>Approval Sig.</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {printingSop.details.versionHistory.map((rev: any, idx: number) => (
+                                    <tr key={idx}>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.revNo || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.pageNo || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px", whiteSpace: "pre-wrap" }}>{rev.description || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.amendmentDate || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.effectiveDate || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.amendName || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.amendSignature || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.approvalName || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "4px" }}>{rev.approvalSignature || "-"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {/* Table C: Amendment Log */}
+                          {printingSop.details?.amendmentLog && printingSop.details.amendmentLog.length > 0 && (
+                            <div style={{ marginTop: "14px" }}>
+                              <strong style={{ display: "block", marginBottom: "4px", fontSize: "11pt", textTransform: "uppercase", color: "#031755ff" }}>C. Amendment</strong>
+                              <table style={{ width: "100%", borderCollapse: "collapse", border: "1.5px solid #000000", fontFamily: '"Times New Roman", Times, serif', fontSize: "11pt" }}>
+                                <thead>
+                                  <tr style={{ backgroundColor: "#f1f5f9" }}>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold", width: "10%" }}>S.N</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold", width: "20%" }}>Version No.</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold", width: "25%" }}>Effective Date</th>
+                                    <th style={{ border: "1.5px solid #000000", padding: "6px", textAlign: "left", fontWeight: "bold" }}>Changes/Comments</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {printingSop.details.amendmentLog.map((rev: any, idx: number) => (
+                                    <tr key={idx}>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px", fontWeight: "bold" }}>{idx + 1}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.versionNo || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px" }}>{rev.effectiveDate || "-"}</td>
+                                      <td style={{ border: "1.5px solid #000000", padding: "6px", whiteSpace: "pre-wrap" }}>{rev.changesComments || "-"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       )}
 
