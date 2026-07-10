@@ -74,6 +74,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
   const [searchQuery, setSearchQuery] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("date-desc");
+  const [historyPage, setHistoryPage] = React.useState(1);
+  const historyPageSize = 15;
 
   const historyCategories = React.useMemo(() => {
     if (!checkOutMovementsData?.data) return [];
@@ -135,6 +137,16 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
 
     return result;
   }, [checkOutMovementsData, searchQuery, categoryFilter, sortBy]);
+
+  const historyTotalPages = Math.max(1, Math.ceil(filteredAndSortedMovements.length / historyPageSize));
+  const historyPagedRows = filteredAndSortedMovements.slice(
+    (historyPage - 1) * historyPageSize,
+    historyPage * historyPageSize
+  );
+  React.useEffect(() => { setHistoryPage(1); }, [searchQuery, categoryFilter, sortBy]);
+  React.useEffect(() => {
+    if (historyPage > historyTotalPages && historyTotalPages > 0) setHistoryPage(historyTotalPages);
+  }, [historyPage, historyTotalPages]);
 
   const [projects, setProjects] = React.useState<string[]>([]);
   const [staffMembers, setStaffMembers] = React.useState<string[]>([]);
@@ -561,7 +573,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
       )}
       </div>
 
-      <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+      <div style={{ padding: 18, border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
           <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>{labelOverrides?.referenceTable || "Check-Out Reference Table (History)"}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -635,27 +647,19 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
               </tr>
             </thead>
             <tbody>
-              {filteredAndSortedMovements.length === 0 ? (
+              {historyPagedRows.length === 0 ? (
                 <tr>
                   <td colSpan={11} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
                     No check-out history records available.
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedMovements.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", height: "40px" }}>
+                historyPagedRows.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                      <div
-                        title={row.stockItem?.name ?? ""}
-                        style={{
-                          maxWidth: "180px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <div title={row.stockItem?.name ?? ""} style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.stockItem?.name ?? "—"}
                       </div>
                     </td>
@@ -667,15 +671,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.requestedBy ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor ?? "—"}</td>
                     <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                      <div
-                        title={row.remark ?? ""}
-                        style={{
-                          maxWidth: "150px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <div title={row.remark ?? ""} style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.remark ?? "—"}
                       </div>
                     </td>
@@ -684,6 +680,47 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* History pagination — outside panel, bottom of page */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          Page {historyPage} of {historyTotalPages}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+            disabled={historyPage <= 1}
+            style={{
+              border: "1px solid var(--color-divider)",
+              background: historyPage <= 1 ? "var(--color-surface-2)" : "var(--color-surface)",
+              color: "var(--color-text)",
+              borderRadius: 8,
+              padding: "6px 12px",
+              fontSize: "var(--fs-xs)",
+              cursor: historyPage <= 1 ? "not-allowed" : "pointer",
+            }}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}
+            disabled={historyPage >= historyTotalPages}
+            style={{
+              border: "1px solid var(--color-divider)",
+              background: historyPage >= historyTotalPages ? "var(--color-surface-2)" : "var(--color-surface)",
+              color: "var(--color-text)",
+              borderRadius: 8,
+              padding: "6px 12px",
+              fontSize: "var(--fs-xs)",
+              cursor: historyPage >= historyTotalPages ? "not-allowed" : "pointer",
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

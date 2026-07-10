@@ -15,7 +15,7 @@ export default function CurrentInventoryPage() {
   const [stockFilter, setStockFilter] = React.useState<StockFilter>("all");
 
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(20);
+  const pageSize = 15;
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [isExportHovered, setIsExportHovered] = React.useState(false);
   const [isSyncHovered, setIsSyncHovered] = React.useState(false);
@@ -128,14 +128,14 @@ export default function CurrentInventoryPage() {
   const totalPages = Math.max(1, Math.ceil(displayTotal / pageSize));
 
   React.useEffect(() => {
-    if (page > totalPages) {
+    if (!isLoading && !isFetching && page > totalPages && totalPages > 0) {
       setPage(totalPages);
     }
-  }, [page, totalPages]);
+  }, [isLoading, isFetching, page, totalPages]);
 
   React.useEffect(() => {
     setPage(1);
-  }, [pageSize, searchTerm, stockFilter]);
+  }, [searchTerm, stockFilter]);
 
   const handleExportCSV = async () => {
     const exportResult = await exportInventoryQuery.refetch();
@@ -325,11 +325,7 @@ export default function CurrentInventoryPage() {
               <option value="low">Low Stock</option>
               <option value="out">Out of Stock</option>
             </select>
-            <select value={String(pageSize)} onChange={(e) => setPageSize(Number(e.target.value))} style={toolbarButtonStyle}>
-              <option value="10">10 / page</option>
-              <option value="20">20 / page</option>
-              <option value="50">50 / page</option>
-            </select>
+
           </div>
         </div>
       </div>
@@ -431,8 +427,8 @@ export default function CurrentInventoryPage() {
                         <td style={cellStyle}>{checkOutTotal}</td>
                         <td style={cellStyle}>{balance}</td>
                         <td style={cellStyle}>{`${Math.round(percentBalance)}%`}</td>
-                        <td style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "5px 10px", fontWeight: 700, color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
+                        <td style={{ padding: "8px 6px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "3px 8px", fontWeight: 700, fontSize: "11px", whiteSpace: "nowrap", color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
                             {statusLabel}
                           </span>
                         </td>

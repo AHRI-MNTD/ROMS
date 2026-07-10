@@ -5,12 +5,9 @@ import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
   { to: "dashboard", label: "Dashboard" },
-  { to: "staff-directory", label: "Personnel Registry" },
   { to: "training-records", label: "Personnel Registration" },
-  { to: "leave", label: "Personnel Leave" },
   { to: "approved", label: "Personnel Files" },
   { to: "approve-employee", label: "Verify Personnel" },
-  { to: "analytics", label: "Analytics" },
 ];
 
 type PageMeta = { icon: string; title: string; description: string };
@@ -21,20 +18,10 @@ const PAGE_META: Record<string, PageMeta> = {
     title: "Dashboard",
     description: "Overview of personnel metrics, headcount, and recent activity.",
   },
-  "staff-directory": {
-    icon: "👥",
-    title: "Personnel Registry",
-    description: "Browse and manage the full directory of registered laboratory personnel.",
-  },
   "training-records": {
     icon: "📋",
     title: "Personnel Registration",
     description: "Complete all required fields to submit your personnel file registration.",
-  },
-  leave: {
-    icon: "🏖️",
-    title: "Leave Management",
-    description: "Submit, review, and track personnel leave requests and replacement cover.",
   },
   approved: {
     icon: "🗂️",
@@ -45,11 +32,6 @@ const PAGE_META: Record<string, PageMeta> = {
     icon: "✅",
     title: "Verify Personnel File",
     description: "Review submitted personnel profiles and verify credentials."
-  },
-  analytics: {
-    icon: "📈",
-    title: "Personnel Analytics",
-    description: "Insights and metrics across laboratory personnel qualifications and training.",
   },
 };
 

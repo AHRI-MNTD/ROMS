@@ -265,7 +265,7 @@ export default function RequestsPage() {
   const [requestSearch, setRequestSearch] = React.useState("");
   const [requestStatusFilter, setRequestStatusFilter] = React.useState("ALL");
   const [requestPage, setRequestPage] = React.useState(1);
-  const [requestPageSize, setRequestPageSize] = React.useState(25);
+  const requestPageSize = 15;
 
   const filteredRequests = React.useMemo(() => {
     return orderedReferenceRows.filter((row) => {
@@ -303,8 +303,9 @@ export default function RequestsPage() {
 
   const requestTotalPages = Math.max(1, Math.ceil(filteredRequests.length / requestPageSize));
 
+  React.useEffect(() => { setRequestPage(1); }, [requestSearch, requestStatusFilter]);
   React.useEffect(() => {
-    if (requestPage > requestTotalPages) {
+    if (requestPage > requestTotalPages && requestTotalPages > 0) {
       setRequestPage(requestTotalPages);
     }
   }, [requestPage, requestTotalPages]);
@@ -907,26 +908,7 @@ export default function RequestsPage() {
               <option value="PARTIAL">PARTIAL</option>
               <option value="REJECTED">REJECTED</option>
             </select>
-            <select
-              value={String(requestPageSize)}
-              onChange={(e) => {
-                setRequestPageSize(Number(e.target.value));
-                setRequestPage(1);
-              }}
-              style={{
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--color-surface)",
-                color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-              }}
-            >
-              <option value="10">10 / page</option>
-              <option value="25">25 / page</option>
-              <option value="50">50 / page</option>
-              <option value="100">100 / page</option>
-            </select>
+
           </div>
         </div>
 
@@ -1029,45 +1011,46 @@ export default function RequestsPage() {
             </tbody>
           </table>
         </div>
+      </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-            Page {requestPage} of {requestTotalPages} (total records: {filteredRequests.length})
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => setRequestPage((p) => Math.max(1, p - 1))}
-              disabled={requestPage <= 1}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: requestPage <= 1 ? "var(--color-surface)" : "var(--color-surface-2)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-                cursor: requestPage <= 1 ? "not-allowed" : "pointer",
-              }}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              onClick={() => setRequestPage((p) => Math.min(requestTotalPages, p + 1))}
-              disabled={requestPage >= requestTotalPages}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: requestPage >= requestTotalPages ? "var(--color-surface)" : "var(--color-surface-2)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-                cursor: requestPage >= requestTotalPages ? "not-allowed" : "pointer",
-              }}
-            >
-              Next
-            </button>
-          </div>
+      {/* Requests pagination — outside panel, bottom of page */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          Page {requestPage} of {requestTotalPages} ({filteredRequests.length} records)
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setRequestPage((p) => Math.max(1, p - 1))}
+            disabled={requestPage <= 1}
+            style={{
+              border: "1px solid var(--color-border)",
+              background: requestPage <= 1 ? "var(--color-surface)" : "var(--color-surface-2)",
+              color: "var(--color-text)",
+              borderRadius: "var(--radius-sm)",
+              padding: "6px 10px",
+              fontSize: "var(--fs-xs)",
+              cursor: requestPage <= 1 ? "not-allowed" : "pointer",
+            }}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            onClick={() => setRequestPage((p) => Math.min(requestTotalPages, p + 1))}
+            disabled={requestPage >= requestTotalPages}
+            style={{
+              border: "1px solid var(--color-border)",
+              background: requestPage >= requestTotalPages ? "var(--color-surface)" : "var(--color-surface-2)",
+              color: "var(--color-text)",
+              borderRadius: "var(--radius-sm)",
+              padding: "6px 10px",
+              fontSize: "var(--fs-xs)",
+              cursor: requestPage >= requestTotalPages ? "not-allowed" : "pointer",
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
