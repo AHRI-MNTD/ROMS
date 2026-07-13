@@ -32,14 +32,14 @@ export default function QMSViewerView({
   const navigate = useNavigate();
 
   // Local state
-  const [searchText, setSearchText] = useState<string>("All");
+  const [searchText, setSearchText] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [filterMethodFamily, setFilterMethodFamily] = useState<string>("All");
   const [filterSopType, setFilterSopType] = useState<string>("All");
   const [localSelectedSopForReading, setLocalSelectedSopForReading] = useState<SOPItem | null>(null);
   const selectedSopForReading = propsSelectedSopForReading !== undefined ? propsSelectedSopForReading : localSelectedSopForReading;
   const setSelectedSopForReading = propsSetSelectedSopForReading !== undefined ? propsSetSelectedSopForReading : setLocalSelectedSopForReading;
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("TOTAL");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("APPROVED");
 
   // Favorites & History states
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -183,7 +183,7 @@ export default function QMSViewerView({
   return (
     <div style={{ width: "100%" }}>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%" }}>
+      <div style={{ display: selectedSopForReading ? "none" : "flex", flexDirection: "column", gap: 16, width: "100%" }}>
 
         {/* SOP Information Narrative Section */}
         <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "20px", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -262,13 +262,13 @@ export default function QMSViewerView({
             <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
             <input
               type="text"
-              value={searchText === "All" ? "" : searchText}
+              value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="Search library..."
               style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
             />
           </div>
-          {(filterSopType !== "All" || selectedStatusFilter !== "TOTAL" || filterCategory !== "All" || filterMethodFamily !== "All" || (searchText && searchText !== "All")) && (
+          {(filterSopType !== "All" || selectedStatusFilter !== "TOTAL" || filterCategory !== "All" || filterMethodFamily !== "All" || searchText) && (
             <button
               onClick={() => { setFilterSopType("All"); setSelectedStatusFilter("TOTAL"); setFilterCategory("All"); setFilterMethodFamily("All"); setSearchText(""); }}
               style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
@@ -282,26 +282,22 @@ export default function QMSViewerView({
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                <th style={thStyle}>SOP Code</th>
+                <th style={{ ...thStyle, width: 140 }}>SOP Code</th>
                 <th style={thStyle}>Title</th>
-                <th style={thStyle}>Version</th>
-                <th style={thStyle}>Effective Date</th>
-                <th style={thStyle}>Category</th>
-                <th style={thStyle}>Status</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Actions</th>
+                <th style={{ ...thStyle, width: 150 }}>SOP Type</th>
+                <th style={{ ...thStyle, width: 150 }}>Status</th>
+                <th style={{ ...thStyle, textAlign: "center", width: 150 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredSops.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
+                  <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
                     No SOPs found matching criteria.
                   </td>
                 </tr>
               ) : (
                 filteredSops.map((sop) => {
-                  const effDateStr = sop.details?.signoff?.effectiveDate || sop.lastUpdated || "N/A";
-
                   let badgeStyle = { background: "#e2e8f0", color: "#475569" };
                   const statusUpper = sop.status.toUpperCase();
                   if (statusUpper === "APPROVED" || statusUpper === "ACTIVE / APPROVED" || statusUpper === "ACTIVE") {
@@ -326,9 +322,7 @@ export default function QMSViewerView({
                     <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
                       <td style={{ ...tdStyle, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
                       <td style={tdStyle}>{sop.title}</td>
-                      <td style={tdStyle}>v{sop.version}</td>
-                      <td style={tdStyle}>{effDateStr}</td>
-                      <td style={tdStyle}>{sop.sopSection}</td>
+                      <td style={tdStyle}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
                       <td style={tdStyle}>
                         <span style={{ fontSize: "10.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", ...badgeStyle }}>
                           {sop.status}
@@ -421,7 +415,7 @@ export default function QMSViewerView({
                   onClick={() => setSelectedSopForReading(null)}
                   style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}
                 >
-                  Close
+                  Back to Library
                 </button>
               </div>
             </div>
@@ -466,31 +460,110 @@ export default function QMSViewerView({
                 </table>
 
                 {/* Revision & Amendment History */}
-                {selectedSopForReading.details?.revisionHistory && Array.isArray(selectedSopForReading.details.revisionHistory) && selectedSopForReading.details.revisionHistory.length > 0 && (
-                  <div style={{ border: "1.5px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface-2)", marginTop: 16 }}>
-                    <h4 style={{ margin: "0 0 12px 0", color: "var(--color-primary)", fontSize: "13.5px", fontWeight: 700 }}>
+                {(selectedSopForReading.details?.annualReviews || selectedSopForReading.details?.versionHistory || selectedSopForReading.details?.amendmentLog) && (
+                  <div style={{ border: "1.5px solid var(--color-border)", borderRadius: "var(--radius)", padding: 16, background: "var(--color-surface-2)", marginTop: 16, display: "flex", flexDirection: "column", gap: 20 }}>
+                    <h4 style={{ margin: "0 0 4px 0", color: "var(--color-primary)", fontSize: "13.5px", fontWeight: 700 }}>
                       📜 Revision & Amendment History
                     </h4>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
-                      <thead>
-                        <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
-                          <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", width: "15%", fontWeight: 700 }}>Rev No</th>
-                          <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", width: "20%", fontWeight: 700 }}>Rev Date</th>
-                          <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Summary of Changes</th>
-                          <th style={{ padding: "8px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Rationale for Change</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedSopForReading.details.revisionHistory.map((rev: any, idx: number) => (
-                          <tr key={idx} style={{ background: "var(--color-surface)" }}>
-                            <td style={{ padding: "8px", border: "1px solid var(--color-border)", fontWeight: 600 }}>{rev.revNumber}</td>
-                            <td style={{ padding: "8px", border: "1px solid var(--color-border)" }}>{rev.revDate}</td>
-                            <td style={{ padding: "8px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeSummary}</td>
-                            <td style={{ padding: "8px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeRationale}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+
+                    {/* Table A */}
+                    {selectedSopForReading.details?.annualReviews && selectedSopForReading.details.annualReviews.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>A. Annual Review of Document</div>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                            <thead>
+                              <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Revision No.</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Review Date</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Reviewed By (Name)</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Reviewed By (Sig.)</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approved By (Name)</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approved By (Sig.)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedSopForReading.details.annualReviews.map((rev: any, idx: number) => (
+                                <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                                  <td style={{ padding: "6px 8px" }}>{rev.revNo}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.reviewDate}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.reviewedByName}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.reviewedBySignature}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.approvedByName}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.approvedBySignature}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Table B */}
+                    {selectedSopForReading.details?.versionHistory && selectedSopForReading.details.versionHistory.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>B. Version History</div>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                            <thead>
+                              <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Rev. No.</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Page No.</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Description</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend. Date</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Effective Date</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend Name</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend Sig.</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approval Name</th>
+                                <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approval Sig.</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedSopForReading.details.versionHistory.map((rev: any, idx: number) => (
+                                <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                                  <td style={{ padding: "6px 8px" }}>{rev.revNo}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.pageNo}</td>
+                                  <td style={{ padding: "6px 8px", whiteSpace: "pre-wrap" }}>{rev.description}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.amendmentDate}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.effectiveDate}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.amendName}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.amendSignature}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.approvalName}</td>
+                                  <td style={{ padding: "6px 8px" }}>{rev.approvalSignature}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Table C */}
+                    {selectedSopForReading.details?.amendmentLog && selectedSopForReading.details.amendmentLog.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>C. Amendment</div>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                          <thead>
+                            <tr style={{ background: "var(--color-surface)", borderBottom: "1.5px solid var(--color-border)" }}>
+                              <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>S.N</th>
+                              <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Version No.</th>
+                              <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Effective Date</th>
+                              <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Changes/Comments</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedSopForReading.details.amendmentLog.map((rev: any, idx: number) => (
+                              <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                                <td style={{ padding: "6px 8px", fontWeight: 600 }}>{idx + 1}</td>
+                                <td style={{ padding: "6px 8px" }}>{rev.versionNo}</td>
+                                <td style={{ padding: "6px 8px" }}>{rev.effectiveDate}</td>
+                                <td style={{ padding: "6px 8px", whiteSpace: "pre-wrap" }}>{rev.changesComments}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1303,27 +1376,17 @@ const historyItemStyle: React.CSSProperties = {
 };
 
 const modalOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  background: "rgba(15, 23, 42, 0.6)",
-  backdropFilter: "blur(4px)",
+  width: "100%",
   display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-  padding: "20px"
+  flexDirection: "column",
+  background: "transparent",
+  padding: "0"
 };
 
 const modalContainerStyle: React.CSSProperties = {
   width: "100%",
-  maxWidth: "950px",
-  height: "calc(100vh - 40px)",
-  background: "var(--color-surface-2)",
+  background: "var(--color-surface)",
   borderRadius: "var(--radius-lg)",
-  boxShadow: "var(--shadow-lg)",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",

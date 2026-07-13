@@ -21,6 +21,7 @@ interface QMSReviewerViewProps {
   onPrintRequest: (sop: SOPItem) => void;
   onShareRequest: (sop: SOPItem) => void;
   onSopApproved?: (sop: SOPItem) => void;
+  showSuccessMessage?: (message: string) => void;
 }
 
 const ViewIcon = () => (
@@ -789,7 +790,7 @@ const formatGridToString = (gridData: any[], type: string) => {
   }
 };
 
-export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest, onSopApproved }: QMSReviewerViewProps) {
+export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest, onSopApproved, showSuccessMessage }: QMSReviewerViewProps) {
   // Local state
   const [searchText, setSearchText] = useState<string>("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
@@ -916,34 +917,36 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
   const handleSendToPanelReview = () => {
     if (!selectedSopForReview) return;
 
-    if (window.confirm(`Are you sure you want to send SOP ${selectedSopForReview.code} to Panel Review & Collaboration?`)) {
-      const todayStr = new Date().toLocaleDateString();
-      const updatedSop = { ...selectedSopForReview };
-      updatedSop.status = "Panel Review";
+    const todayStr = new Date().toLocaleDateString();
+    const updatedSop = { ...selectedSopForReview };
+    updatedSop.status = "Panel Review";
 
-      if (!updatedSop.details) updatedSop.details = {};
-      if (!updatedSop.details.electronicSignatures) {
-        updatedSop.details.electronicSignatures = {
-          author: { name: updatedSop.author || "Author", signedAt: updatedSop.lastUpdated || todayStr },
-          verifierUser: { name: updatedSop.details?.proposedVerifier || "Verifier User", signedAt: "" },
-          verifierQo: { name: "QA Officer", signedAt: "" },
-          authorizerLm: { name: updatedSop.details?.proposedAuthorizer || "Laboratory Manager", signedAt: "" }
-        };
-      }
+    if (!updatedSop.details) updatedSop.details = {};
+    if (!updatedSop.details.electronicSignatures) {
+      updatedSop.details.electronicSignatures = {
+        author: { name: updatedSop.author || "Author", signedAt: updatedSop.lastUpdated || todayStr },
+        verifierUser: { name: updatedSop.details?.proposedVerifier || "Verifier User", signedAt: "" },
+        verifierQo: { name: "QA Officer", signedAt: "" },
+        authorizerLm: { name: updatedSop.details?.proposedAuthorizer || "Laboratory Manager", signedAt: "" }
+      };
+    }
 
-      // Add to audit trail
-      if (!updatedSop.details.history) updatedSop.details.history = [];
-      updatedSop.details.history.push({
-        action: "Sent for Panel Review",
-        user: "Quality Officer",
-        timestamp: new Date().toLocaleString(),
-        details: "Document forwarded to verifiers and authorizer for digital sign-offs."
-      });
+    // Add to audit trail
+    if (!updatedSop.details.history) updatedSop.details.history = [];
+    updatedSop.details.history.push({
+      action: "Sent for Panel Review",
+      user: "Quality Officer",
+      timestamp: new Date().toLocaleString(),
+      details: "Document forwarded to verifiers and authorizer for digital sign-offs."
+    });
 
-      const updatedList = sops.map(s => s.code === updatedSop.code ? updatedSop : s);
-      localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
-      onSopUpdate(updatedList);
-      setSelectedSopForReview(updatedSop);
+    const updatedList = sops.map(s => s.code === updatedSop.code ? updatedSop : s);
+    localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
+    onSopUpdate(updatedList);
+    setSelectedSopForReview(updatedSop);
+    if (showSuccessMessage) {
+      showSuccessMessage(`SOP ${updatedSop.code} has been successfully sent to Panel Review & Collaboration.`);
+    } else {
       alert(`SOP ${updatedSop.code} has been successfully sent to Panel Review & Collaboration.`);
     }
   };
@@ -1046,13 +1049,21 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
     if (isFullyApproved) {
       setSelectedSopForReview(null);
-      alert(`SOP ${updatedSop.code} has received all required digital signatures and is now officially APPROVED!`);
+      if (showSuccessMessage) {
+        showSuccessMessage(`SOP ${updatedSop.code} has received all required digital signatures and is now officially APPROVED!`);
+      } else {
+        alert(`SOP ${updatedSop.code} has received all required digital signatures and is now officially APPROVED!`);
+      }
       if (onSopApproved) {
         onSopApproved(updatedSop);
       }
     } else {
       setSelectedSopForReview(updatedSop);
-      alert(`Sign-off recorded for ${role}. Awaiting other digital signatures.`);
+      if (showSuccessMessage) {
+        showSuccessMessage(`Sign-off recorded for ${role}. Awaiting other digital signatures.`);
+      } else {
+        alert(`Sign-off recorded for ${role}. Awaiting other digital signatures.`);
+      }
     }
   };
 
@@ -1060,23 +1071,25 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
   const handleRequestClarification = () => {
     if (!selectedSopForReview) return;
 
-    if (window.confirm("Change status to 'Awaiting Author Response'?")) {
-      const updatedSop = { ...selectedSopForReview };
-      updatedSop.status = "Awaiting Author Response";
+    const updatedSop = { ...selectedSopForReview };
+    updatedSop.status = "Awaiting Author Response";
 
-      if (!updatedSop.details) updatedSop.details = {};
-      if (!updatedSop.details.history) updatedSop.details.history = [];
-      updatedSop.details.history.push({
-        action: "Clarification Requested",
-        user: "Quality Reviewer",
-        timestamp: new Date().toLocaleString(),
-        details: "Awaiting response from the author on comments."
-      });
+    if (!updatedSop.details) updatedSop.details = {};
+    if (!updatedSop.details.history) updatedSop.details.history = [];
+    updatedSop.details.history.push({
+      action: "Clarification Requested",
+      user: "Quality Reviewer",
+      timestamp: new Date().toLocaleString(),
+      details: "Awaiting response from the author on comments."
+    });
 
-      const updatedList = sops.map(s => s.code === updatedSop.code ? updatedSop : s);
-      localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
-      onSopUpdate(updatedList);
-      setSelectedSopForReview(updatedSop);
+    const updatedList = sops.map(s => s.code === updatedSop.code ? updatedSop : s);
+    localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
+    onSopUpdate(updatedList);
+    setSelectedSopForReview(updatedSop);
+    if (showSuccessMessage) {
+      showSuccessMessage("Status updated to 'Awaiting Author Response'.");
+    } else {
       alert("Status updated to 'Awaiting Author Response'.");
     }
   };
@@ -1115,7 +1128,11 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
     setSelectedSopForReview(null);
     setShowReturnModal(false);
     setReturnReason("");
-    alert(`SOP ${updatedSop.code} returned for revision.`);
+    if (showSuccessMessage) {
+      showSuccessMessage(`SOP ${updatedSop.code} returned for revision.`);
+    } else {
+      alert(`SOP ${updatedSop.code} returned for revision.`);
+    }
   };
 
   // Section List for Comments
@@ -1141,6 +1158,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: selectedSopForReview ? "none" : "flex", flexDirection: "column", gap: 16 }}>
 
 
 
@@ -1217,19 +1235,17 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-              <th style={thStyle}>SOP Code</th>
+              <th style={{ ...thStyle, width: 140 }}>SOP Code</th>
               <th style={thStyle}>Title</th>
-              <th style={thStyle}>Author</th>
-              <th style={thStyle}>Version</th>
-              <th style={thStyle}>Category</th>
-              <th style={thStyle}>Status</th>
-              <th style={{ ...thStyle, textAlign: "center" }}>Action</th>
+              <th style={{ ...thStyle, width: 150 }}>SOP Type</th>
+              <th style={{ ...thStyle, width: 150 }}>Status</th>
+              <th style={{ ...thStyle, textAlign: "center", width: 150 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {reviewQueue.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
+                <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
                   No SOPs currently in the review queue.
                 </td>
               </tr>
@@ -1253,9 +1269,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                   <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
                     <td style={{ ...tdStyle, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
                     <td style={tdStyle}>{sop.title}</td>
-                    <td style={tdStyle}>{sop.author}</td>
-                    <td style={tdStyle}>v{sop.version}</td>
-                    <td style={tdStyle}>{sop.sopSection}</td>
+                    <td style={tdStyle}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
                     <td style={tdStyle}>
                       <span style={{ fontSize: "10.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", ...badgeStyle }}>
                         {sop.status}
@@ -1265,6 +1279,13 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                       <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
                         {(statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") ? (
                           <>
+                            <button
+                              onClick={() => setSelectedSopForReview(sop)}
+                              style={{ background: "none", border: "none", cursor: "pointer" }}
+                              title="View Details"
+                            >
+                              <ViewIcon />
+                            </button>
                             <button
                               onClick={() => onPrintRequest(sop)}
                               style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
@@ -1278,13 +1299,6 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                               title="Share SOP"
                             >
                               🔗
-                            </button>
-                            <button
-                              onClick={() => setSelectedSopForReview(sop)}
-                              style={{ background: "none", border: "none", cursor: "pointer" }}
-                              title="View Details"
-                            >
-                              <ViewIcon />
                             </button>
                           </>
                         ) : (
@@ -1305,6 +1319,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
           </tbody>
         </table>
       </div>
+    </div>
 
       {/* ── READ-ONLY DOCUMENT REVIEW MODAL ── */}
       {selectedSopForReview && (
@@ -1376,7 +1391,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                   }}
                   style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}
                 >
-                  Close
+                  Back to Review Queue
                 </button>
               </div>
             </div>
@@ -1493,32 +1508,112 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                     </table>
 
                     {/* Revision & Amendment History */}
-                    {selectedSopForReview.details?.revisionHistory && Array.isArray(selectedSopForReview.details.revisionHistory) && selectedSopForReview.details.revisionHistory.length > 0 && (
+                    {(selectedSopForReview.details?.annualReviews || selectedSopForReview.details?.versionHistory || selectedSopForReview.details?.amendmentLog) && (
                       <div style={{ border: "1px solid var(--color-border)", borderRadius: 6, overflow: "hidden", marginTop: 16 }}>
                         <div style={{ background: "var(--color-surface)", padding: "8px 12px", fontSize: "12px", fontWeight: 700 }}>
                           📜 Revision & Amendment History
                         </div>
-                        <div style={{ padding: 12 }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", border: "1px solid var(--color-border)" }}>
-                            <thead>
-                              <tr style={{ background: "var(--color-surface-2)", borderBottom: "1.5px solid var(--color-border)" }}>
-                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", width: "15%", fontWeight: 700 }}>Rev No</th>
-                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", width: "20%", fontWeight: 700 }}>Rev Date</th>
-                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Summary of Changes</th>
-                                <th style={{ padding: "6px", border: "1px solid var(--color-border)", textAlign: "left", fontWeight: 700 }}>Rationale for Change</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {selectedSopForReview.details.revisionHistory.map((rev: any, idx: number) => (
-                                <tr key={idx} style={{ background: "var(--color-surface)" }}>
-                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)", fontWeight: 600 }}>{rev.revNumber}</td>
-                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)" }}>{rev.revDate}</td>
-                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeSummary}</td>
-                                  <td style={{ padding: "6px", border: "1px solid var(--color-border)", whiteSpace: "pre-wrap" }}>{rev.changeRationale}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 16 }}>
+
+                          {/* Table A */}
+                          {selectedSopForReview.details?.annualReviews && selectedSopForReview.details.annualReviews.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>A. Annual Review of Document</div>
+                              <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                                  <thead>
+                                    <tr style={{ background: "var(--color-surface-2)", borderBottom: "1.5px solid var(--color-border)" }}>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Revision No.</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Review Date</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Reviewed By (Name)</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Reviewed By (Sig.)</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approved By (Name)</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approved By (Sig.)</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {selectedSopForReview.details.annualReviews.map((rev: any, idx: number) => (
+                                      <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                                        <td style={{ padding: "6px 8px" }}>{rev.revNo}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.reviewDate}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.reviewedByName}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.reviewedBySignature}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.approvedByName}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.approvedBySignature}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Table B */}
+                          {selectedSopForReview.details?.versionHistory && selectedSopForReview.details.versionHistory.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>B. Version History</div>
+                              <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                                  <thead>
+                                    <tr style={{ background: "var(--color-surface-2)", borderBottom: "1.5px solid var(--color-border)" }}>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Rev. No.</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Page No.</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Description</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend. Date</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Effective Date</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend Name</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Amend Sig.</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approval Name</th>
+                                      <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Approval Sig.</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {selectedSopForReview.details.versionHistory.map((rev: any, idx: number) => (
+                                      <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                                        <td style={{ padding: "6px 8px" }}>{rev.revNo}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.pageNo}</td>
+                                        <td style={{ padding: "6px 8px", whiteSpace: "pre-wrap" }}>{rev.description}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.amendmentDate}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.effectiveDate}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.amendName}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.amendSignature}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.approvalName}</td>
+                                        <td style={{ padding: "6px 8px" }}>{rev.approvalSignature}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Table C */}
+                          {selectedSopForReview.details?.amendmentLog && selectedSopForReview.details.amendmentLog.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: "11px", fontWeight: 700, color: "#0d9488", textTransform: "uppercase", marginBottom: 6 }}>C. Amendment</div>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                                <thead>
+                                  <tr style={{ background: "var(--color-surface-2)", borderBottom: "1.5px solid var(--color-border)" }}>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>S.N</th>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Version No.</th>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Effective Date</th>
+                                    <th style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700 }}>Changes/Comments</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedSopForReview.details.amendmentLog.map((rev: any, idx: number) => (
+                                    <tr key={idx} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                                      <td style={{ padding: "6px 8px", fontWeight: 600 }}>{idx + 1}</td>
+                                      <td style={{ padding: "6px 8px" }}>{rev.versionNo}</td>
+                                      <td style={{ padding: "6px 8px" }}>{rev.effectiveDate}</td>
+                                      <td style={{ padding: "6px 8px", whiteSpace: "pre-wrap" }}>{rev.changesComments}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
                         </div>
                       </div>
                     )}
@@ -1980,27 +2075,17 @@ const reviewBtnStyle: React.CSSProperties = {
 };
 
 const modalOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  background: "rgba(15, 23, 42, 0.6)",
-  backdropFilter: "blur(4px)",
+  width: "100%",
   display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-  padding: "20px"
+  flexDirection: "column",
+  background: "transparent",
+  padding: "0"
 };
 
 const modalContainerStyle: React.CSSProperties = {
   width: "100%",
-  maxWidth: "1150px",
-  height: "calc(100vh - 40px)",
-  background: "var(--color-surface-2)",
+  background: "var(--color-surface)",
   borderRadius: "var(--radius-lg)",
-  boxShadow: "var(--shadow-lg)",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
