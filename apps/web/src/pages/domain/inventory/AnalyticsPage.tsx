@@ -474,6 +474,11 @@ export default function AnalyticsPage() {
           }
         }
         #inventory-print-area { display: none; }
+        @media (max-width: 992px) {
+          .grid-asym {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
 
       <div className="report-card" style={pageChromeStyle}>
@@ -620,7 +625,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="report-section" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(0, 0.85fr)", gap: 12, alignItems: "start" }}>
+          <div className="report-section grid-asym" style={{ display: "grid", gap: 12, alignItems: "start" }}>
             <div style={sectionStyle}>
               <div style={sectionHeaderStyle}>Risk Register</div>
               {criticalItems.length === 0 ? (

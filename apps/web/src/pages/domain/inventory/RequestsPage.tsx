@@ -225,12 +225,13 @@ export default function RequestsPage() {
 
   const inputStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-sm)",
+    borderRadius: "6px",
     background: "var(--color-surface-2)",
     color: "var(--color-text)",
-    padding: "8px 10px",
-    fontSize: "var(--fs-xs)",
+    padding: "5px 8px",
+    fontSize: "10.5px",
     width: "100%",
+    height: 30,
   };
 
   const referenceStatusStyles: Record<"ACCEPT" | "PENDING" | "REJECTED" | "PARTIAL", React.CSSProperties> = {
@@ -421,7 +422,7 @@ export default function RequestsPage() {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
           <InventoryItemSelect
             label="Select Item"
             items={data?.data ?? []}
@@ -435,17 +436,18 @@ export default function RequestsPage() {
               setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
             }}
             placeholder="Type item name or Id"
-            inputStyle={inputStyle}
+            inputStyle={{ ...inputStyle, minWidth: "auto" }}
+            wrapperStyle={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
             renderItemMeta={(item) => `Current: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
             variant="minimal"
           />
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Quantity
             <input type="number" min={1} value={requestQty} onChange={(e) => setRequestQty(Number(e.target.value))} style={inputStyle} />
           </label>
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Project
             {projects.length > 0 ? (
               <select value={project} onChange={(e) => setProject(e.target.value)} style={inputStyle}>
@@ -458,12 +460,12 @@ export default function RequestsPage() {
             )}
           </label>
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Request Date
             <input type="date" value={requestDate} onChange={(e) => setRequestDate(e.target.value)} style={inputStyle} />
           </label>
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Requested By
             {staffMembers.length > 0 ? (
               <select value={requestedBy} onChange={(e) => setRequestedBy(e.target.value)} style={inputStyle}>
@@ -476,7 +478,7 @@ export default function RequestsPage() {
             )}
           </label>
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Requested For
             {staffMembers.length > 0 ? (
               <select value={requestedFor} onChange={(e) => setRequestedFor(e.target.value)} style={inputStyle}>
@@ -490,29 +492,29 @@ export default function RequestsPage() {
             )}
           </label>
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Team
             <input value={team} onChange={(e) => setTeam(e.target.value)} style={inputStyle} />
           </label>
 
-          <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Remark
             <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
           </label>
         </div>
 
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Current Stock</div>
-            <div style={{ fontSize: "var(--fs-md)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? currentQty : "—"}</div>
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+          <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Current Stock</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? currentQty : "—"}</div>
           </div>
-          <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Projected Balance</div>
-            <div style={{ fontSize: "var(--fs-md)", color: requestQty > currentQty ? "#b91c1c" : "var(--color-text)", fontWeight: 700 }}>{selectedItem ? projectedBalance : "—"}</div>
+          <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Projected Balance</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: requestQty > currentQty ? "#b91c1c" : "var(--color-text)", fontWeight: 700 }}>{selectedItem ? projectedBalance : "—"}</div>
           </div>
-          <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Validation</div>
-            <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b45309" : "#166534", fontWeight: 700 }}>
+          <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Validation</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b45309" : "#166534", fontWeight: 700 }}>
               {!selectedItem ? "Select item" : requestQty > currentQty ? "⚠ Exceeds stock" : "Valid"}
             </div>
           </div>
@@ -631,71 +633,100 @@ export default function RequestsPage() {
         </div>
 
         {cartItems.length > 0 && (
-          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 12, marginTop: 12 }}>
+          <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 10, marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Request Cart ({cartItems.length} items)</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Request Cart ({cartItems.length} items)</div>
               <button
                 type="button"
                 onClick={() => setCartItems([])}
-                style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
+                style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "10.5px", fontWeight: 600 }}
               >
                 Clear Cart
               </button>
             </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
+              <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "24%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "6%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Team</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
-                    <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 140 }}>Action</th>
+                    {(() => {
+                      const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                      return (
+                        <>
+                          <th style={thStyle} title="Item Label">Item</th>
+                          <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Project">Project</th>
+                          <th style={thStyle} title="Requested By">By</th>
+                          <th style={thStyle} title="Requested For">For</th>
+                          <th style={thStyle} title="Team">Team</th>
+                          <th style={thStyle} title="Remark">Remark</th>
+                          <th style={{ ...thStyle, textAlign: "center" }} title="Action">Action</th>
+                        </>
+                      );
+                    })()}
                   </tr>
                 </thead>
                 <tbody>
-                  {cartItems.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.project}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedBy}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.requestedFor || "—"}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.team || "—"}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark}</td>
-                      <td style={{ padding: "8px", textAlign: "center" }}>
-                        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedItemId(item.stockItemId);
-                              setSelectedItemQuery(item.itemLabel);
-                              setRequestQty(item.quantity);
-                              setProject(item.project);
-                              setRequestedBy(item.requestedBy);
-                              setRequestedFor(item.requestedFor);
-                              setTeam(item.team);
-                              setNote(item.remark);
-                              setCartItems((prev) => prev.filter((i) => i.id !== item.id));
-                            }}
-                            style={{ background: "none", border: "none", color: "var(--color-text)", cursor: "pointer", fontSize: "var(--fs-xs)" }}
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCartItems((prev) => prev.filter((i) => i.id !== item.id))}
-                            style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
-                          >
-                            🗑️ Remove
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {cartItems.map((item) => {
+                    const cellStyle: React.CSSProperties = {
+                      padding: "6px 8px",
+                      fontSize: "10.5px",
+                      color: "var(--color-text-muted)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    };
+                    return (
+                      <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 32 }}>
+                        <td style={cellStyle} title={item.itemLabel}>{item.itemLabel}</td>
+                        <td style={cellStyle}>{item.quantity}</td>
+                        <td style={cellStyle} title={item.project}>{item.project}</td>
+                        <td style={cellStyle} title={item.requestedBy}>{item.requestedBy}</td>
+                        <td style={cellStyle} title={item.requestedFor || "—"}>{item.requestedFor || "—"}</td>
+                        <td style={cellStyle} title={item.team || "—"}>{item.team || "—"}</td>
+                        <td style={cellStyle} title={item.remark}>{item.remark}</td>
+                        <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedItemId(item.stockItemId);
+                                setSelectedItemQuery(item.itemLabel);
+                                setRequestQty(item.quantity);
+                                setProject(item.project);
+                                setRequestedBy(item.requestedBy);
+                                setRequestedFor(item.requestedFor);
+                                setTeam(item.team);
+                                setNote(item.remark);
+                                setCartItems((prev) => prev.filter((i) => i.id !== item.id));
+                              }}
+                              title="Edit item"
+                              style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: "12px", padding: 0 }}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCartItems((prev) => prev.filter((i) => i.id !== item.id))}
+                              title="Remove item"
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 0 }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -725,53 +756,83 @@ export default function RequestsPage() {
         )}
       </div>
 
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Pending requests</div>
+      <div style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface-2)" }}>
+        <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Pending requests</div>
         {(() => {
           const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
           if (pendingLogs.length === 0) return (
-            <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>No request actions recorded yet in this session.</div>
+            <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)" }}>No request actions recorded yet in this session.</div>
           );
           const visibleLogs = showAllLogs ? pendingLogs : pendingLogs.slice(0, 5);
           return (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
+              <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "35%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "17%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Time</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested By</th>
-                    <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Requested For</th>
+                    {(() => {
+                      const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                      return (
+                        <>
+                          <th style={thStyle} title="Time">Time</th>
+                          <th style={thStyle} title="Item">Item</th>
+                          <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Requested By">Requested By</th>
+                          <th style={thStyle} title="Requested For">Requested For</th>
+                        </>
+                      );
+                    })()}
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleLogs.map((entry) => (
-                    <tr
-                      key={entry.id}
-                      style={{ borderBottom: "1px solid var(--color-divider)", cursor: entry.items?.length ? "pointer" : "default" }}
-                      onClick={() => {
-                        if (!entry) return;
-                        const items = entry.items && entry.items.length > 0 ? entry.items : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
-                        setActiveLog(entry);
-                        setModalItems(items.map((it) => ({ id: it.id, movementId: it.movementId ?? it.id, sku: it.sku, name: it.name, quantity: it.quantity, status: "PENDING" as const, acceptedQuantity: it.quantity })));
-                        setModalOpen(true);
-                      }}
-                    >
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.itemLabel}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.quantity}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedBy}</td>
-                      <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{entry.requestedFor || '—'}</td>
-                    </tr>
-                  ))}
+                  {visibleLogs.map((entry) => {
+                    const cellStyle: React.CSSProperties = {
+                      padding: "6px 8px",
+                      fontSize: "10.5px",
+                      color: "var(--color-text-muted)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    };
+                    const timeStr = new Date(entry.timestamp).toLocaleString();
+                    const itemStr = entry.itemLabel;
+                    const qtyStr = String(entry.quantity);
+                    const reqBy = entry.requestedBy;
+                    const reqFor = entry.requestedFor || '—';
+
+                    return (
+                      <tr
+                        key={entry.id}
+                        style={{ borderBottom: "1px solid var(--color-divider)", height: 32, cursor: entry.items?.length ? "pointer" : "default" }}
+                        onClick={() => {
+                          if (!entry) return;
+                          const items = entry.items && entry.items.length > 0 ? entry.items : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
+                          setActiveLog(entry);
+                          setModalItems(items.map((it) => ({ id: it.id, movementId: it.movementId ?? it.id, sku: it.sku, name: it.name, quantity: it.quantity, status: "PENDING" as const, acceptedQuantity: it.quantity })));
+                          setModalOpen(true);
+                        }}
+                      >
+                        <td style={cellStyle} title={timeStr}>{timeStr}</td>
+                        <td style={cellStyle} title={itemStr}>{itemStr}</td>
+                        <td style={cellStyle} title={qtyStr}>{qtyStr}</td>
+                        <td style={cellStyle} title={reqBy}>{reqBy}</td>
+                        <td style={cellStyle} title={reqFor}>{reqFor}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {pendingLogs.length > 5 && (
                 <button
                   type="button"
                   onClick={() => setShowAllLogs((v) => !v)}
-                  style={{ marginTop: 8, fontSize: "var(--fs-xs)", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
+                  style={{ marginTop: 8, fontSize: "10.5px", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
                 >
                   {showAllLogs ? `Show less` : `Show all ${pendingLogs.length} requests`}
                 </button>
@@ -790,8 +851,8 @@ export default function RequestsPage() {
               <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(activeLog.timestamp).toLocaleString()}</div>
             </div>
 
-            <div style={{ maxHeight: "68vh", overflow: "auto", paddingRight: 4 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="table-responsive-container" style={{ maxHeight: "68vh", paddingRight: 4 }}>
+              <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                     <th style={{ textAlign: "left", padding: 8 }}>Item</th>
@@ -865,25 +926,26 @@ export default function RequestsPage() {
         </div>
       )}
 
-      <div style={{ padding: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Request/s Reference Table</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+      <div style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface-2)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>Request/s Reference Table</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
             <input
               value={requestSearch}
               onChange={(e) => {
                 setRequestSearch(e.target.value);
                 setRequestPage(1);
               }}
-              placeholder="Search by Tracking ID, Item, Requested By, Project..."
+              placeholder="Search history..."
               style={{
-                minWidth: 300,
+                minWidth: 260,
                 border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
+                borderRadius: "6px",
                 background: "var(--color-surface)",
                 color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
+                padding: "4px 8px",
+                fontSize: "10px",
+                height: 28,
               }}
             />
             <select
@@ -894,11 +956,12 @@ export default function RequestsPage() {
               }}
               style={{
                 border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
+                borderRadius: "6px",
                 background: "var(--color-surface)",
                 color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
+                padding: "4px 8px",
+                fontSize: "10px",
+                height: 28,
                 fontWeight: 600,
               }}
             >
@@ -912,42 +975,42 @@ export default function RequestsPage() {
           </div>
         </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
+          <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: "7%" }} /> {/* Tracking ID */}
-              <col style={{ width: "6%" }} /> {/* Code No */}
-              <col style={{ width: "6%" }} /> {/* Barcode */}
-              <col style={{ width: "13%" }} /> {/* Item Description */}
+              <col style={{ width: "7%" }} /> {/* Code No */}
+              <col style={{ width: "7%" }} /> {/* Barcode */}
+              <col style={{ width: "15%" }} /> {/* Item Description */}
               <col style={{ width: "4%" }} /> {/* Quantity */}
               <col style={{ width: "4%" }} /> {/* Unit */}
-              <col style={{ width: "8%" }} /> {/* Unit Description */}
-              <col style={{ width: "6%" }} /> {/* Category */}
-              <col style={{ width: "8%" }} /> {/* Date Requested */}
+              <col style={{ width: "6%" }} /> {/* Unit Description */}
+              <col style={{ width: "8%" }} /> {/* Category */}
+              <col style={{ width: "7%" }} /> {/* Date Requested */}
               <col style={{ width: "8%" }} /> {/* Requested By */}
               <col style={{ width: "8%" }} /> {/* Requested For */}
               <col style={{ width: "8%" }} /> {/* Project */}
               <col style={{ width: "4%" }} /> {/* Team */}
-              <col style={{ width: "10%" }} /> {/* Remark */}
-              <col style={{ width: "10%" }} /> {/* Status */}
+              <col style={{ width: "8%" }} /> {/* Remark */}
+              <col style={{ width: "9%" }} /> {/* Status */}
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                 {(() => {
-                  const thStyle: React.CSSProperties = { padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                  const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
                   return (
                     <>
-                      <th style={thStyle} title="Tracking ID">Tracking ID</th>
-                      <th style={thStyle} title="Code_No">Code_No</th>
+                      <th style={thStyle} title="Tracking ID">ID</th>
+                      <th style={thStyle} title="Code_No">Code</th>
                       <th style={thStyle} title="Barcode">Barcode</th>
-                      <th style={thStyle} title="Item_Description">Item_Description</th>
-                      <th style={thStyle} title="Quantity">Quantity</th>
+                      <th style={thStyle} title="Item_Description">Description</th>
+                      <th style={thStyle} title="Quantity">Qty</th>
                       <th style={thStyle} title="Unit">Unit</th>
-                      <th style={thStyle} title="Unit_Description">Unit_Description</th>
+                      <th style={thStyle} title="Unit_Description">Unit Desc</th>
                       <th style={thStyle} title="Category">Category</th>
-                      <th style={thStyle} title="Date_Requested">Date_Requested</th>
-                      <th style={thStyle} title="Requested_By">Requested_By</th>
-                      <th style={thStyle} title="Requested_For">Requested_For</th>
+                      <th style={thStyle} title="Date_Requested">Requested</th>
+                      <th style={thStyle} title="Requested_By">By</th>
+                      <th style={thStyle} title="Requested_For">For</th>
                       <th style={thStyle} title="Project">Project</th>
                       <th style={thStyle} title="Team">Team</th>
                       <th style={thStyle} title="Remark">Remark</th>
@@ -960,38 +1023,54 @@ export default function RequestsPage() {
             <tbody>
               {paginatedRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={15} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textAlign: "center" }}>
+                  <td colSpan={15} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
                     No matching records available.
                   </td>
                 </tr>
               ) : (
                 paginatedRequests.map((row, index) => {
-                  const cellStyle: React.CSSProperties = { padding: "0 8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                  const cellStyle: React.CSSProperties = { padding: "4px 8px", fontSize: "10px", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
                   const s = (v: unknown) => (v == null ? "" : String(v));
                   const fullTrackingId = row.requestBatchId ?? row.movementId ?? row.rowKey;
+                  const trackIdShort = s(fullTrackingId).slice(-8).toUpperCase();
+                  const codeNoVal = s(row.codeNo);
+                  const barcodeVal = s(row.barcode);
+                  const descVal = s(row.itemDescription);
+                  const qtyVal = s(row.quantity);
+                  const unitVal = s(row.unit);
+                  const unitDescVal = s(row.unitDescription);
+                  const catVal = s(row.category);
+                  const dateReqVal = s(row.dateRequested);
+                  const reqByVal = s(row.requestedBy);
+                  const reqForVal = s(row.requestedFor);
+                  const projVal = s(row.project);
+                  const teamVal = s(row.team);
+                  const remarkVal = s(row.remark);
+
                   return (
-                    <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 40, maxHeight: 40 }}>
-                      <td style={{ ...cellStyle, fontWeight: 700 }} title={s(fullTrackingId)}>{s(fullTrackingId).slice(-8).toUpperCase()}</td>
-                      <td style={cellStyle} title={s(row.codeNo)}>{s(row.codeNo)}</td>
-                      <td style={cellStyle} title={s(row.barcode)}>{s(row.barcode)}</td>
-                      <td style={cellStyle} title={s(row.itemDescription)}>{s(row.itemDescription)}</td>
-                      <td style={cellStyle} title={s(row.quantity)}>{s(row.quantity)}</td>
-                      <td style={cellStyle} title={s(row.unit)}>{s(row.unit)}</td>
-                      <td style={cellStyle} title={s(row.unitDescription)}>{s(row.unitDescription)}</td>
-                      <td style={cellStyle} title={s(row.category)}>{s(row.category)}</td>
-                      <td style={cellStyle} title={s(row.dateRequested)}>{s(row.dateRequested)}</td>
-                      <td style={cellStyle} title={s(row.requestedBy)}>{s(row.requestedBy)}</td>
-                      <td style={cellStyle} title={s(row.requestedFor)}>{s(row.requestedFor)}</td>
-                      <td style={cellStyle} title={s(row.project)}>{s(row.project)}</td>
-                      <td style={cellStyle} title={s(row.team)}>{s(row.team)}</td>
-                      <td style={cellStyle} title={s(row.remark)}>{s(row.remark)}</td>
-                      <td style={{ padding: "0 8px", fontSize: "var(--fs-xs)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <tr key={`${row.codeNo}-${index}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 32 }}>
+                      <td style={{ ...cellStyle, fontWeight: 700 }} title={s(fullTrackingId)}>{trackIdShort}</td>
+                      <td style={cellStyle} title={codeNoVal}>{codeNoVal}</td>
+                      <td style={cellStyle} title={barcodeVal}>{barcodeVal}</td>
+                      <td style={cellStyle} title={descVal}>{descVal}</td>
+                      <td style={cellStyle} title={qtyVal}>{qtyVal}</td>
+                      <td style={cellStyle} title={unitVal}>{unitVal}</td>
+                      <td style={cellStyle} title={unitDescVal}>{unitDescVal}</td>
+                      <td style={cellStyle} title={catVal}>{catVal}</td>
+                      <td style={cellStyle} title={dateReqVal}>{dateReqVal}</td>
+                      <td style={cellStyle} title={reqByVal}>{reqByVal}</td>
+                      <td style={cellStyle} title={reqForVal}>{reqForVal}</td>
+                      <td style={cellStyle} title={projVal}>{projVal}</td>
+                      <td style={cellStyle} title={teamVal}>{teamVal}</td>
+                      <td style={cellStyle} title={remarkVal}>{remarkVal}</td>
+                      <td style={{ padding: "4px 8px", fontSize: "10px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         <div
                           style={{
                             display: "inline-block",
-                            padding: "4px 8px",
-                            borderRadius: 8,
+                            padding: "2px 6px",
+                            borderRadius: 6,
                             fontWeight: 700,
+                            fontSize: "9px",
                             ...referenceStatusStyles[referenceStatuses[String(row.rowKey)] ?? "PENDING"],
                           }}
                         >

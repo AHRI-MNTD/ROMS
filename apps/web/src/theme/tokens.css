@@ -8,18 +8,49 @@
  * naming. Both sets are preserved here so legacy component class styles still work.
  */
 
+/* ── Dynamic Scale Factor ─────────────────────────────────────────────────── */
+:root {
+  --scale-factor: 1.0;
+}
+
+@media (max-width: 576px) {
+  :root {
+    --scale-factor: 0.85;
+  }
+}
+@media (min-width: 577px) and (max-width: 992px) {
+  :root {
+    --scale-factor: 0.92;
+  }
+}
+@media (min-width: 993px) and (max-width: 1400px) {
+  :root {
+    --scale-factor: 1.0;
+  }
+}
+@media (min-width: 1401px) and (max-width: 1920px) {
+  :root {
+    --scale-factor: 1.15;
+  }
+}
+@media (min-width: 1921px) {
+  :root {
+    --scale-factor: 1.35;
+  }
+}
+
 /* ── Fonts ─────────────────────────────────────────────────────────────────── */
 :root {
   --font-body: 'Inter', system-ui, sans-serif;
   --font-display: 'Instrument Serif', Georgia, serif;
 
-  --fs-xxs:  9.5px;
-  --fs-xs:   11px;
-  --fs-sm:   12px;
-  --fs-base: 13.5px;
-  --fs-md:   14px;
-  --fs-lg:   18px;
-  --fs-xl:   22px;
+  --fs-xxs:  calc(9.5px * var(--scale-factor));
+  --fs-xs:   calc(11px * var(--scale-factor));
+  --fs-sm:   calc(12px * var(--scale-factor));
+  --fs-base: calc(13.5px * var(--scale-factor));
+  --fs-md:   calc(14px * var(--scale-factor));
+  --fs-lg:   calc(18px * var(--scale-factor));
+  --fs-xl:   calc(22px * var(--scale-factor));
 
   --radius-sm: 5px;
   --radius:    8px;
@@ -292,3 +323,302 @@ a:hover {
 .rel-arrow { color: var(--primary); flex-shrink: 0; }
 .rel-to    { font-weight: 600; color: var(--text); white-space: nowrap; }
 .rel-label { flex: 1; }
+
+/* ── Responsive Layout Utilities ─────────────────────────────────────────── */
+.grid-responsive-stats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(6, 1fr);
+}
+@media (max-width: 1200px) {
+  .grid-responsive-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .grid-responsive-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .grid-responsive-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-responsive-2col {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+@media (max-width: 900px) {
+  .grid-responsive-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-responsive-5col {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 1400px) {
+  .grid-responsive-5col {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .grid-responsive-5col {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 768px) {
+  .grid-responsive-5col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  .grid-responsive-5col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.table-responsive-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Inventory & Domain Layout Responsiveness ──────────────────────────── */
+.inventory-layout-header,
+.domain-layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 28px 12px 28px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.inventory-nav-container,
+.domain-nav-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.inventory-nav-link,
+.domain-nav-link {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 32px;
+}
+
+.inventory-nav-link.active,
+.domain-nav-link.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.inventory-nav-link .nav-icon,
+.domain-nav-link .nav-icon {
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.inventory-nav-link .nav-text,
+.domain-nav-link .nav-text {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease, margin-left 0.2s;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.inventory-nav-link:hover,
+.domain-nav-link:hover {
+  background: var(--color-surface-offset);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.inventory-nav-link:hover .nav-text,
+.domain-nav-link:hover .nav-text {
+  max-width: 150px;
+  opacity: 1;
+  margin-left: 6px;
+}
+
+/* PC/Desktop dashboard grid: 6 columns */
+.inventory-stats-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(6, 1fr);
+  width: 100%;
+}
+
+.inventory-kpi-card {
+  padding: 6px 8px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(16,24,40,0.02);
+  backdrop-filter: blur(8px);
+  min-width: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.inventory-kpi-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(16,24,40,0.05);
+}
+
+.inventory-kpi-card-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  min-width: 0;
+}
+
+.inventory-kpi-card-value {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inventory-kpi-card-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-tables-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* PC screen defaults show full text for nav link above 1300px width */
+@media (min-width: 1301px) {
+  .inventory-nav-link .nav-text,
+  .domain-nav-link .nav-text {
+    max-width: 150px;
+    opacity: 1;
+    margin-left: 6px;
+  }
+}
+
+/* Responsive media queries */
+@media (max-width: 1024px) {
+  .inventory-stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .inventory-layout-header,
+  .domain-layout-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 16px 20px 12px 20px;
+  }
+  .inventory-nav-container,
+  .domain-nav-container {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .dashboard-tables-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .inventory-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Inventory Toolbar layout for CurrentInventoryPage ───────────────────── */
+.inventory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.inventory-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.inventory-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .inventory-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .inventory-toolbar-left {
+    flex-wrap: wrap !important;
+  }
+  .inventory-toolbar-right {
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+}
+
+
+

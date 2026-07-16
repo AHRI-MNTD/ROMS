@@ -5,7 +5,7 @@
  * - Seeds DomainCatalog, SubFunctionCatalog, TaskCatalog from HTML spec
  * - Inserts 3-5 demo records per domain
  */
-
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DOMAIN_CATALOG } from "@roms/shared";

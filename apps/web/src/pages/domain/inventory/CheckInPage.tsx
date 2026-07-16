@@ -362,12 +362,13 @@ export default function CheckInPage() {
 
   const inputStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-sm)",
+    borderRadius: "6px",
     background: "var(--color-surface-2)",
     color: "var(--color-text)",
-    padding: "8px 10px",
-    fontSize: "var(--fs-xs)",
+    padding: "5px 8px",
+    fontSize: "10.5px",
     width: "100%",
+    height: 30,
   };
 
   const checkInMutation = useMutation({
@@ -513,7 +514,7 @@ export default function CheckInPage() {
         )}
 
         {mode === "existing" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
             <InventoryItemSelect
               label="Select Item"
               items={inventoryItems}
@@ -527,12 +528,13 @@ export default function CheckInPage() {
                 setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
               }}
               placeholder="Type item name or Id"
-              inputStyle={inputStyle}
+              inputStyle={{ ...inputStyle, minWidth: "auto" }}
+              wrapperStyle={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
               renderItemMeta={(item) => `Available: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
               variant="minimal"
             />
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Quantity
               <input
                 type="number"
@@ -546,7 +548,7 @@ export default function CheckInPage() {
               />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Project For
               {projects.length > 0 ? (
                 <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
@@ -561,17 +563,17 @@ export default function CheckInPage() {
               )}
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Date Received
               <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Expiry Date
               <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Remark
               <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
             </label>
@@ -579,43 +581,43 @@ export default function CheckInPage() {
         )}
 
         {mode === "new" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Code_No
               <input value={newSku} onChange={(e) => setNewSku(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Barcode
               <input value={newBarcode} onChange={(e) => setNewBarcode(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Item Description
               <input value={newName} onChange={(e) => setNewName(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Quantity
               <input type="number" min={1} value={newOpeningQty} onChange={(e) => setNewOpeningQty(Number(e.target.value))} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Unit
               <input value={newUnit} onChange={(e) => setNewUnit(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Unit_Description
               <input value={newUnitDescription} onChange={(e) => setNewUnitDescription(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Category
               <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Project For
               {projects.length > 0 ? (
                 <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
@@ -630,22 +632,22 @@ export default function CheckInPage() {
               )}
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Date Received
               <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Expiry Date
               <input type="date" value={newExpiryDate} onChange={(e) => setNewExpiryDate(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Min Threshold
               <input type="number" min={0} value={newMinThreshold} onChange={(e) => setNewMinThreshold(Math.max(0, Math.floor(Number(e.target.value) || 0)))} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Remark
               <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
             </label>
@@ -808,99 +810,128 @@ export default function CheckInPage() {
         </div>
 
         {cart.length > 0 && (
-          <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 12, marginTop: 12 }}>
+          <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 10, marginTop: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Check-In Cart ({cart.length} items)</div>
-            <button
-              type="button"
-              onClick={() => setCart([])}
-              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
-            >
-              Clear Cart
-            </button>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Type</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Qty</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date Received</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Expiry Date</th>
-                  <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
-                  <th style={{ padding: "8px", textAlign: "center", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", width: 140 }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cart.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.itemLabel}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                      <span style={{
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        fontSize: "10px",
-                        fontWeight: 700,
-                        background: item.mode === "new" ? "#dcfce7" : "#eff6ff",
-                        color: item.mode === "new" ? "#15803d" : "#1d4ed8",
-                        border: item.mode === "new" ? "1px solid #bbf7d0" : "1px solid #bfdbfe",
-                      }}>
-                        {item.mode === "new" ? "NEW" : "EXISTING"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.projectFor}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.dateReceived}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.expiryDate || "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{item.remark || "—"}</td>
-                    <td style={{ padding: "8px", textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMode(item.mode);
-                            if (item.mode === "existing") {
-                              setSelectedItemId(item.stockItemId || "");
-                              setSelectedItemQuery(item.itemLabel);
-                              setCheckInQty(item.quantity);
-                              setNote(item.remark || "");
-                              setExpiryDate(item.expiryDate || "");
-                            } else {
-                              setNewSku(item.sku || "");
-                              setNewBarcode(item.barcode || "");
-                              setNewName(item.name || "");
-                              setNewUnit(item.unit || "units");
-                              setNewOpeningQty(item.quantity);
-                              setNewUnitDescription(item.unitDescription || "");
-                              setNewCategory(item.category || "");
-                              setNote(item.remark || "");
-                              setNewExpiryDate(item.expiryDate || "");
-                              setNewMinThreshold(item.minThreshold || 5);
-                            }
-                            setProjectFor(item.projectFor);
-                            setDateReceived(item.dateReceived);
-                            setCart((prev) => prev.filter((i) => i.id !== item.id));
-                          }}
-                          style={{ background: "none", border: "none", color: "var(--color-text)", cursor: "pointer", fontSize: "var(--fs-xs)" }}
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCart((prev) => prev.filter((i) => i.id !== item.id))}
-                          style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "var(--fs-xs)" }}
-                        >
-                          🗑️ Remove
-                        </button>
-                      </div>
-                    </td>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Check-In Cart ({cart.length} items)</div>
+              <button
+                type="button"
+                onClick={() => setCart([])}
+                style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "10.5px", fontWeight: 600 }}
+              >
+                Clear Cart
+              </button>
+            </div>
+            <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
+              <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "26%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "6%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                    {(() => {
+                      const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                      return (
+                        <>
+                          <th style={thStyle} title="Item Label">Item</th>
+                          <th style={thStyle} title="Check-in Mode">Type</th>
+                          <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Project For">Project</th>
+                          <th style={thStyle} title="Date Received">Received</th>
+                          <th style={thStyle} title="Expiry Date">Expiry</th>
+                          <th style={thStyle} title="Remark">Remark</th>
+                          <th style={{ ...thStyle, textAlign: "center" }} title="Action">Action</th>
+                        </>
+                      );
+                    })()}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {cart.map((item) => {
+                    const cellStyle: React.CSSProperties = {
+                      padding: "6px 8px",
+                      fontSize: "10.5px",
+                      color: "var(--color-text-muted)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    };
+                    return (
+                      <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 32 }}>
+                        <td style={cellStyle} title={item.itemLabel}>{item.itemLabel}</td>
+                        <td style={cellStyle}>
+                          <span style={{
+                            padding: "1px 5px",
+                            borderRadius: "4px",
+                            fontSize: "8px",
+                            fontWeight: 700,
+                            background: item.mode === "new" ? "#dcfce7" : "#eff6ff",
+                            color: item.mode === "new" ? "#15803d" : "#1d4ed8",
+                            border: item.mode === "new" ? "1px solid #bbf7d0" : "1px solid #bfdbfe",
+                          }}>
+                            {item.mode === "new" ? "NEW" : "EXISTING"}
+                          </span>
+                        </td>
+                        <td style={cellStyle}>{item.quantity}</td>
+                        <td style={cellStyle} title={item.projectFor}>{item.projectFor}</td>
+                        <td style={cellStyle} title={item.dateReceived}>{item.dateReceived}</td>
+                        <td style={cellStyle} title={item.expiryDate || "—"}>{item.expiryDate || "—"}</td>
+                        <td style={cellStyle} title={item.remark || "—"}>{item.remark || "—"}</td>
+                        <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMode(item.mode);
+                                if (item.mode === "existing") {
+                                  setSelectedItemId(item.stockItemId || "");
+                                  setSelectedItemQuery(item.itemLabel);
+                                  setCheckInQty(item.quantity);
+                                  setNote(item.remark || "");
+                                  setExpiryDate(item.expiryDate || "");
+                                } else {
+                                  setNewSku(item.sku || "");
+                                  setNewBarcode(item.barcode || "");
+                                  setNewName(item.name || "");
+                                  setNewUnit(item.unit || "units");
+                                  setNewOpeningQty(item.quantity);
+                                  setNewUnitDescription(item.unitDescription || "");
+                                  setNewCategory(item.category || "");
+                                  setNote(item.remark || "");
+                                  setNewExpiryDate(item.expiryDate || "");
+                                  setNewMinThreshold(item.minThreshold || 5);
+                                }
+                                setProjectFor(item.projectFor);
+                                setDateReceived(item.dateReceived);
+                                setCart((prev) => prev.filter((i) => i.id !== item.id));
+                              }}
+                              title="Edit item"
+                              style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: "12px", padding: 0 }}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCart((prev) => prev.filter((i) => i.id !== item.id))}
+                              title="Remove item"
+                              style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 0 }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
             <button
               type="button"
@@ -956,22 +987,23 @@ export default function CheckInPage() {
       )}
       </div>
 
-      <div style={{ padding: 18, border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check-In Reference Table (History)</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface-2)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>Check-In Reference Table (History)</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search history..."
               style={{
                 border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
+                borderRadius: "6px",
                 background: "var(--color-surface)",
                 color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
-                minWidth: "160px",
+                padding: "4px 8px",
+                fontSize: "10px",
+                height: 28,
+                minWidth: "140px",
               }}
             />
             <select
@@ -979,11 +1011,12 @@ export default function CheckInPage() {
               onChange={(e) => setCategoryFilter(e.target.value)}
               style={{
                 border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
+                borderRadius: "6px",
                 background: "var(--color-surface)",
                 color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
+                padding: "4px 8px",
+                height: 28,
+                fontSize: "10px",
               }}
             >
               <option value="all">All Categories</option>
@@ -996,11 +1029,12 @@ export default function CheckInPage() {
               onChange={(e) => setSortBy(e.target.value)}
               style={{
                 border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-sm)",
+                borderRadius: "6px",
                 background: "var(--color-surface)",
                 color: "var(--color-text)",
-                padding: "6px 10px",
-                fontSize: "var(--fs-xs)",
+                padding: "4px 8px",
+                height: 28,
+                fontSize: "10px",
               }}
             >
               <option value="date-desc">Newest First</option>
@@ -1012,48 +1046,89 @@ export default function CheckInPage() {
             </select>
           </div>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
+          <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "9%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "6%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "12%" }} />
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Code_No</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Barcode</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item_Description</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Mode</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Quantity</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Unit_Description</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Category</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Project</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Date_Received</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Expiry_Date</th>
-                <th style={{ padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Remark</th>
+                {(() => {
+                  const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                  return (
+                    <>
+                      <th style={thStyle} title="Code_No">Code</th>
+                      <th style={thStyle} title="Barcode">Barcode</th>
+                      <th style={thStyle} title="Item_Description">Description</th>
+                      <th style={thStyle} title="Mode">Mode</th>
+                      <th style={thStyle} title="Quantity">Qty</th>
+                      <th style={thStyle} title="Unit">Unit</th>
+                      <th style={thStyle} title="Unit_Description">Unit Desc</th>
+                      <th style={thStyle} title="Category">Category</th>
+                      <th style={thStyle} title="Project">Project</th>
+                      <th style={thStyle} title="Date_Received">Received</th>
+                      <th style={thStyle} title="Expiry_Date">Expiry</th>
+                      <th style={thStyle} title="Remark">Remark</th>
+                    </>
+                  );
+                })()}
               </tr>
             </thead>
             <tbody>
               {historyPagedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ padding: "10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                  <td colSpan={12} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)" }}>
                     No check-in history records available.
                   </td>
                 </tr>
               ) : (
-                historyPagedRows.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.sku ?? "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.name ?? "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark && row.remark.includes("Opening stock") ? "New" : "Existing"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.quantity}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.unit ?? "units"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{`${row.stockItem?.unit ?? "units"} per pack`}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.category ?? "General"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.projectFor ?? "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(row.occurredAt).toLocaleDateString()}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.stockItem?.expiryDate ? new Date(row.stockItem.expiryDate).toLocaleDateString() : "—"}</td>
-                    <td style={{ padding: "8px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{row.remark ?? "—"}</td>
-                  </tr>
-                ))
+                historyPagedRows.map((row) => {
+                  const cellStyle: React.CSSProperties = {
+                    padding: "6px 8px",
+                    fontSize: "10px",
+                    color: "var(--color-text-muted)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  };
+                  const codeVal = row.stockItem?.sku ?? "—";
+                  const descVal = row.stockItem?.name ?? "—";
+                  const unitVal = row.stockItem?.unit ?? "units";
+                  const unitDescVal = `${row.stockItem?.unit ?? "units"} per pack`;
+                  const catVal = row.stockItem?.category ?? "General";
+                  const projVal = row.projectFor ?? "—";
+                  const recDate = new Date(row.occurredAt).toLocaleDateString();
+                  const expDate = row.stockItem?.expiryDate ? new Date(row.stockItem.expiryDate).toLocaleDateString() : "—";
+                  const remarkVal = row.remark ?? "—";
+
+                  return (
+                    <tr key={row.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 32 }}>
+                      <td style={cellStyle} title={codeVal}>{codeVal}</td>
+                      <td style={cellStyle} title={codeVal}>{codeVal}</td>
+                      <td style={cellStyle} title={descVal}>{descVal}</td>
+                      <td style={cellStyle}>{row.remark && row.remark.includes("Opening stock") ? "New" : "Existing"}</td>
+                      <td style={cellStyle}>{row.quantity}</td>
+                      <td style={cellStyle} title={unitVal}>{unitVal}</td>
+                      <td style={cellStyle} title={unitDescVal}>{unitDescVal}</td>
+                      <td style={cellStyle} title={catVal}>{catVal}</td>
+                      <td style={cellStyle} title={projVal}>{projVal}</td>
+                      <td style={cellStyle} title={recDate}>{recDate}</td>
+                      <td style={cellStyle} title={expDate}>{expDate}</td>
+                      <td style={cellStyle} title={remarkVal}>{remarkVal}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

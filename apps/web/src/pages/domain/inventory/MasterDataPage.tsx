@@ -160,20 +160,21 @@ export default function MasterDataPage() {
 
   const formInputStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-sm)",
+    borderRadius: "6px",
     background: "var(--color-surface-2)",
     color: "var(--color-text)",
-    padding: "8px 10px",
-    fontSize: "var(--fs-xs)",
+    padding: "5px 8px",
+    fontSize: "10.5px",
     width: "100%",
+    height: 30,
   };
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
+      <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 8 }}>Master Configurations</div>
-          <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)", marginBottom: 4 }}>Master Configurations</div>
+          <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
             Inventory master records mapping categories, units, projects, and active personnel.
           </div>
         </div>
@@ -186,10 +187,11 @@ export default function MasterDataPage() {
             border: "1px solid var(--color-border)",
             background: "var(--color-accent-soft)",
             color: "var(--color-text)",
-            borderRadius: "var(--radius-sm)",
-            padding: "8px 14px",
-            fontSize: "var(--fs-xs)",
+            borderRadius: "6px",
+            padding: "5px 12px",
+            fontSize: "10.5px",
             fontWeight: 700,
+            height: 30,
             cursor: "pointer",
           }}
         >
@@ -199,11 +201,11 @@ export default function MasterDataPage() {
 
       {formFeedback && (
         <div style={{
-          padding: "10px 14px",
+          padding: "8px 12px",
           background: formFeedback.type === "success" ? "#f0fdf4" : "#fef2f2",
           border: formFeedback.type === "success" ? "1px solid #bbf7d0" : "1px solid #fca5a5",
-          borderRadius: "var(--radius-sm)",
-          fontSize: "var(--fs-xs)",
+          borderRadius: "6px",
+          fontSize: "10.5px",
           color: formFeedback.type === "success" ? "#166534" : "#991b1b",
           display: "flex",
           justifyContent: "space-between",
@@ -215,11 +217,11 @@ export default function MasterDataPage() {
       )}
 
       {showAddForm && (
-        <form onSubmit={handleCreateSubmit} style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 12 }}>
-          <div style={{ fontSize: "var(--fs-xs)", fontWeight: 800, color: "var(--color-text-muted)", textTransform: "uppercase" }}>New Master Data Entry</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Category</label>
+        <form onSubmit={handleCreateSubmit} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 10 }}>
+          <div style={{ fontSize: "10px", fontWeight: 800, color: "var(--color-text-muted)", textTransform: "uppercase" }}>New Master Data Entry</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              Category
               <input
                 type="text"
                 value={newCategory}
@@ -227,9 +229,9 @@ export default function MasterDataPage() {
                 placeholder="e.g. Consumables"
                 style={formInputStyle}
               />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Unit</label>
+            </label>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              Unit
               <input
                 type="text"
                 value={newUnit}
@@ -237,9 +239,9 @@ export default function MasterDataPage() {
                 placeholder="e.g. Vial, Pack"
                 style={formInputStyle}
               />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Project</label>
+            </label>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              Project
               <input
                 type="text"
                 value={newProject}
@@ -247,9 +249,9 @@ export default function MasterDataPage() {
                 placeholder="Optional"
                 style={formInputStyle}
               />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "11px", fontWeight: 600, marginBottom: 4 }}>Staff Name</label>
+            </label>
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              Staff Name
               <input
                 type="text"
                 value={newStaff}
@@ -257,7 +259,7 @@ export default function MasterDataPage() {
                 placeholder="Optional"
                 style={formInputStyle}
               />
-            </div>
+            </label>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
             <button
@@ -267,9 +269,10 @@ export default function MasterDataPage() {
                 border: "1px solid var(--color-border)",
                 background: "var(--color-surface-2)",
                 color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "6px 12px",
-                fontSize: "var(--fs-xs)",
+                borderRadius: "6px",
+                padding: "5px 10px",
+                fontSize: "10.5px",
+                height: 30,
                 cursor: "pointer",
               }}
             >
@@ -282,10 +285,11 @@ export default function MasterDataPage() {
                 border: "1px solid var(--color-border)",
                 background: "var(--color-accent-soft)",
                 color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "6px 12px",
-                fontSize: "var(--fs-xs)",
+                borderRadius: "6px",
+                padding: "5px 12px",
+                fontSize: "10.5px",
                 fontWeight: 700,
+                height: 30,
                 cursor: createMutation.isPending ? "not-allowed" : "pointer",
               }}
             >
@@ -295,45 +299,46 @@ export default function MasterDataPage() {
         </form>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Rows (Total)</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{summary?.rows ?? data?.total ?? 0}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Rows (Total)</div>
+          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.rows ?? data?.total ?? 0}</div>
         </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Categories</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{summary?.categories ?? 0}</div>
+        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Categories</div>
+          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.categories ?? 0}</div>
         </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Units</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{summary?.units ?? 0}</div>
+        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Units</div>
+          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.units ?? 0}</div>
         </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Projects</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{summary?.projects ?? 0}</div>
+        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Projects</div>
+          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.projects ?? 0}</div>
         </div>
-        <div style={{ padding: "12px 14px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-xs)", marginBottom: 4 }}>Staff</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-lg)", fontWeight: 700 }}>{summary?.staff ?? 0}</div>
+        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Staff</div>
+          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.staff ?? 0}</div>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "space-between", alignItems: "center" }}>
         <input
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          placeholder="Search category, unit, project, staff"
+          placeholder="Search category, unit, project, staff..."
           style={{
             minWidth: 260,
             border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-sm)",
+            borderRadius: "6px",
             background: "var(--color-surface-2)",
             color: "var(--color-text)",
-            padding: "8px 10px",
-            fontSize: "var(--fs-xs)",
+            padding: "4px 8px",
+            fontSize: "10px",
+            height: 28,
           }}
         />
 
@@ -345,11 +350,12 @@ export default function MasterDataPage() {
           }}
           style={{
             border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-sm)",
+            borderRadius: "6px",
             background: "var(--color-surface-2)",
             color: "var(--color-text)",
-            padding: "8px 10px",
-            fontSize: "var(--fs-xs)",
+            padding: "4px 8px",
+            fontSize: "10px",
+            height: 28,
           }}
         >
           <option value="25">25 / page</option>
@@ -391,56 +397,62 @@ export default function MasterDataPage() {
           );
         }
 
-        const thStyle: React.CSSProperties = { padding: "7px 10px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", borderBottom: "1px solid var(--color-divider)", background: "var(--color-surface)" };
+        const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", borderBottom: "1px solid var(--color-divider)", background: "var(--color-surface)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
         return (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
             {colDefs.map((c) => {
               const entries = colRows(c.key);
               return (
-                <div key={c.key} style={{ border: "1px solid var(--color-border)", borderRadius: "var(--radius)", background: "var(--color-surface-2)", overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <div key={c.key} style={{ border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface-2)", overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                    <colgroup>
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "60%" }} />
+                      <col style={{ width: "26%" }} />
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th style={{ ...thStyle, width: 28, textAlign: "right", paddingRight: 6 }}>#</th>
-                        <th style={thStyle}>{c.label}</th>
-                        <th style={{ ...thStyle, width: 60, textAlign: "center" }} />
+                        <th style={{ ...thStyle, textAlign: "right", paddingRight: 6 }}>#</th>
+                        <th style={thStyle} title={c.label}>{c.label}</th>
+                        <th style={thStyle} />
                       </tr>
                     </thead>
                     <tbody>
                       {entries.length === 0 ? (
                         <tr>
-                          <td colSpan={3} style={{ padding: "8px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>—</td>
+                          <td colSpan={3} style={{ padding: "6px 8px", fontSize: "10px", color: "var(--color-text-muted)" }}>—</td>
                         </tr>
                       ) : (
                         entries.map((entry, idx) => {
                           const isEditing = editingId === entry.id;
+                          const cellVal = String(entry[c.key] ?? "");
                           return (
-                            <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)", background: isEditing ? "rgba(1,105,111,0.04)" : "none" }}>
-                              <td style={{ padding: "5px 6px 5px 10px", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textAlign: "right", verticalAlign: "middle" }}>{idx + 1}</td>
-                              <td style={{ padding: "5px 10px", verticalAlign: "middle" }}>
+                            <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 32, background: isEditing ? "rgba(1,105,111,0.04)" : "none" }}>
+                              <td style={{ padding: "4px 6px 4px 8px", fontSize: "10px", color: "var(--color-text-faint)", textAlign: "right", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{idx + 1}</td>
+                              <td style={{ padding: "4px 8px", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {isEditing ? (
                                   <input
                                     type="text"
                                     value={c.editValue}
                                     onChange={(e) => c.setEdit(e.target.value)}
-                                    style={{ ...formInputStyle, padding: "4px 8px" }}
+                                    style={{ ...formInputStyle, height: 24, fontSize: "10px", padding: "2px 6px" }}
                                     autoFocus
                                   />
                                 ) : (
-                                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{String(entry[c.key] ?? "")}</span>
+                                  <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }} title={cellVal}>{cellVal}</span>
                                 )}
                               </td>
-                              <td style={{ padding: "5px 8px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap" }}>
+                              <td style={{ padding: "4px 6px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap" }}>
                                 {isEditing ? (
                                   <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
-                                    <button onClick={() => handleSaveEdit(entry.id)} disabled={updateMutation.isPending} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 4, padding: "3px 7px", fontSize: "10px", cursor: "pointer" }}>Save</button>
-                                    <button onClick={handleCancelEdit} style={{ background: "#64748b", color: "white", border: "none", borderRadius: 4, padding: "3px 7px", fontSize: "10px", cursor: "pointer" }}>✕</button>
+                                    <button onClick={() => handleSaveEdit(entry.id)} disabled={updateMutation.isPending} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 4, padding: "2px 5px", fontSize: "9px", cursor: "pointer" }}>Save</button>
+                                    <button onClick={handleCancelEdit} style={{ background: "#64748b", color: "white", border: "none", borderRadius: 4, padding: "2px 5px", fontSize: "9px", cursor: "pointer" }}>✕</button>
                                   </div>
                                 ) : (
-                                  <div style={{ display: "flex", gap: 2, justifyContent: "center" }}>
-                                    <button onClick={() => handleStartEdit(entry)} style={{ background: "none", border: "none", color: "#0d9488", cursor: "pointer", fontSize: "12px", padding: 2 }} title="Edit">✏️</button>
-                                    <button onClick={() => handleDelete(entry.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 2 }} title="Delete">🗑️</button>
+                                  <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                                    <button onClick={() => handleStartEdit(entry)} style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Edit record">✏️</button>
+                                    <button onClick={() => handleDelete(entry.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Delete record">🗑️</button>
                                   </div>
                                 )}
                               </td>
@@ -458,7 +470,7 @@ export default function MasterDataPage() {
       })()}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+        <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)" }}>
           Page {page} of {totalPages} (total rows: {data?.total ?? 0})
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -470,9 +482,10 @@ export default function MasterDataPage() {
               border: "1px solid var(--color-border)",
               background: page <= 1 ? "var(--color-surface)" : "var(--color-surface-2)",
               color: "var(--color-text)",
-              borderRadius: "var(--radius-sm)",
-              padding: "6px 10px",
-              fontSize: "var(--fs-xs)",
+              borderRadius: "6px",
+              padding: "5px 10px",
+              fontSize: "10.5px",
+              height: 30,
               cursor: page <= 1 ? "not-allowed" : "pointer",
             }}
           >
@@ -486,9 +499,10 @@ export default function MasterDataPage() {
               border: "1px solid var(--color-border)",
               background: page >= totalPages ? "var(--color-surface)" : "var(--color-surface-2)",
               color: "var(--color-text)",
-              borderRadius: "var(--radius-sm)",
-              padding: "6px 10px",
-              fontSize: "var(--fs-xs)",
+              borderRadius: "6px",
+              padding: "5px 10px",
+              fontSize: "10.5px",
+              height: 30,
               cursor: page >= totalPages ? "not-allowed" : "pointer",
             }}
           >

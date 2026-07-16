@@ -488,9 +488,9 @@ export default function ApproveEmployeePage() {
               </div>
             </div>
             <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the personnel profile, then verify credentials and authorize task access. Click row to see full profile details.</div>
-            <div>
+            <div className="table-responsive-container">
               {pending.length > 0 ? (
-                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed" }}>
                   {listThead(true)}
                   <tbody>{pending.map((row, i) => renderRow(row, true, i))}</tbody>
                 </table>
@@ -503,9 +503,9 @@ export default function ApproveEmployeePage() {
           {listView === "approved" && (
             <div style={panelStyle("rgba(34, 197, 94, 0.18)")}>
               <div style={headerStyle}>Verified List</div>
-              <div>
+              <div className="table-responsive-container">
                 {approved.length > 0 ? (
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed" }}>
                     {listThead(false)}
                     <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
                   </table>
@@ -519,9 +519,9 @@ export default function ApproveEmployeePage() {
           {listView === "rejected" && (
             <div style={panelStyle("rgba(239, 68, 68, 0.18)")}>
               <div style={headerStyle}>Unverified List</div>
-              <div>
+              <div className="table-responsive-container">
                 {rejected.length > 0 ? (
-                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed" }}>
                     {listThead(false)}
                     <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
                   </table>
@@ -599,7 +599,7 @@ export default function ApproveEmployeePage() {
             {/* Left Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
               <Section title="Section 1: Personal Details & Contact Information">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="grid-responsive-2col">
                   <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
                   <InfoRow label="Sex" value={selected.sex ? selected.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
                   <InfoRow label="Phone Number" value={selected.phone} />
@@ -610,7 +610,7 @@ export default function ApproveEmployeePage() {
               </Section>
 
               <Section title="Section 2: Employment & Position details">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="grid-responsive-2col">
                   <InfoRow label="Department" value={selected.department} />
                   <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
                   <InfoRow label="Employment Type" value={formatEmployment(selected.employmentType)} />
@@ -646,7 +646,7 @@ export default function ApproveEmployeePage() {
                   {/* First Degree */}
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div className="grid-responsive-2col">
                       <InfoRow label="Degree & Field" value={selected.firstDegree} />
                       <InfoRow label="University" value={selected.firstDegreeUniv === "other" ? selected.firstDegreeUnivOther : getUniversityLabel(selected.firstDegreeUniv)} />
                       <InfoRow label="Completed Year" value={selected.firstDegreeYear} />
@@ -657,7 +657,7 @@ export default function ApproveEmployeePage() {
                   {selected.secondDegree && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div className="grid-responsive-2col">
                         <InfoRow label="Degree & Field" value={selected.secondDegree} />
                         <InfoRow label="University" value={selected.secondDegreeUniv === "other" ? selected.secondDegreeUnivOther : getUniversityLabel(selected.secondDegreeUniv)} />
                         <InfoRow label="Completed Year" value={selected.secondDegreeYear} />
@@ -669,7 +669,7 @@ export default function ApproveEmployeePage() {
                   {selected.thirdDegree && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div className="grid-responsive-2col">
                         <InfoRow label="PhD & Field" value={selected.thirdDegree} />
                         <InfoRow label="University & Country" value={selected.thirdDegreeUnivCountry} />
                         <InfoRow label="Completed Year" value={selected.thirdDegreeYear} />
@@ -706,7 +706,7 @@ export default function ApproveEmployeePage() {
               </Section>
 
               <Section title="Section 4: Work Experience">
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="grid-responsive-2col">
                   <InfoRow label="Total Experience" value={getWorkExpLabel(selected.totalWorkExp)} />
                   <InfoRow label="Experience at AHRI" value={getWorkExpLabel(selected.totalWorkExpAhri)} />
                 </div>
@@ -714,24 +714,26 @@ export default function ApproveEmployeePage() {
 
               <Section title="Section 5: Personal Equipment Log">
                 {activeInventory.length > 0 ? (
-                  <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
-                    <thead>
-                      <tr style={{ background: "rgba(0,0,0,0.03)" }}>
-                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
-                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
-                        <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeInventory.map((item) => (
-                        <tr key={item.id}>
-                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
-                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
-                          <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
+                  <div className="table-responsive-container">
+                    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
+                      <thead>
+                        <tr style={{ background: "rgba(0,0,0,0.03)" }}>
+                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
+                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
+                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {activeInventory.map((item) => (
+                          <tr key={item.id}>
+                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
+                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic" }}>No property inventory items registered.</div>
                 )}
@@ -739,7 +741,7 @@ export default function ApproveEmployeePage() {
 
               {selected.reviewedBy && (
                 <Section title="Verification History">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="grid-responsive-2col">
                     <InfoRow label="Verified By" value={selected.reviewedBy.displayName ?? selected.reviewedBy.email ?? "System"} />
                     <InfoRow label="Verified On" value={formatDate(selected.reviewedAt)} />
                     {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Notes" value={selected.reviewNote} /></div>}

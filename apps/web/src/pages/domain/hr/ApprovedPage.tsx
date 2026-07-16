@@ -485,8 +485,8 @@ export default function ApprovedPage() {
               {approved.length === 0 ? "No personnel records yet." : "No results match your search or filter."}
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <div className="table-responsive-container">
+              <table style={{ width: "100%", minWidth: "1100px", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <thead>
                   <tr>
                     <th style={{ ...thStyle("name"), width: "3%", cursor: "default" }}>#</th>
@@ -604,7 +604,7 @@ export default function ApprovedPage() {
               {/* Left Column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
                 <Section title="Section 1: Personal Details & Contact Information">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="grid-responsive-2col">
                     <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
                     <InfoRow label="Sex" value={selected.sex ? selected.sex.replace(/^\w/, c => c.toUpperCase()) : "—"} />
                     <InfoRow label="Phone Number" value={selected.phone} />
@@ -615,7 +615,7 @@ export default function ApprovedPage() {
                 </Section>
 
                 <Section title="Section 2: Employment & Position details">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="grid-responsive-2col">
                     <InfoRow label="Department" value={selected.department} />
                     <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
                     <InfoRow label="Employment Type" value={formatEmployment(selected.employmentType)} />
@@ -651,7 +651,7 @@ export default function ApprovedPage() {
                     {/* First Degree */}
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div className="grid-responsive-2col">
                         <InfoRow label="Degree & Field" value={selected.firstDegree} />
                         <InfoRow label="University" value={selected.firstDegreeUniv === "other" ? selected.firstDegreeUnivOther : getUniversityLabel(selected.firstDegreeUniv)} />
                         <InfoRow label="Completed Year" value={selected.firstDegreeYear} />
@@ -662,7 +662,7 @@ export default function ApprovedPage() {
                     {selected.secondDegree && (
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div className="grid-responsive-2col">
                           <InfoRow label="Degree & Field" value={selected.secondDegree} />
                           <InfoRow label="University" value={selected.secondDegreeUniv === "other" ? selected.secondDegreeUnivOther : getUniversityLabel(selected.secondDegreeUniv)} />
                           <InfoRow label="Completed Year" value={selected.secondDegreeYear} />
@@ -674,7 +674,7 @@ export default function ApprovedPage() {
                     {selected.thirdDegree && (
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div className="grid-responsive-2col">
                           <InfoRow label="PhD & Field" value={selected.thirdDegree} />
                           <InfoRow label="University & Country" value={selected.thirdDegreeUnivCountry} />
                           <InfoRow label="Completed Year" value={selected.thirdDegreeYear} />
@@ -711,7 +711,7 @@ export default function ApprovedPage() {
                 </Section>
 
                 <Section title="Section 4: Work Experience">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="grid-responsive-2col">
                     <InfoRow label="Total Experience" value={getWorkExpLabel(selected.totalWorkExp)} />
                     <InfoRow label="Experience at AHRI" value={getWorkExpLabel(selected.totalWorkExpAhri)} />
                   </div>
@@ -719,31 +719,33 @@ export default function ApprovedPage() {
 
                 <Section title="Section 5: Personal Equipment Log">
                   {activeInventory.length > 0 ? (
-                    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
-                      <thead>
-                        <tr style={{ background: "rgba(0,0,0,0.03)" }}>
-                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
-                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
-                          <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeInventory.map((item) => (
-                          <tr key={item.id}>
-                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
-                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
-                            <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
+                    <div className="table-responsive-container">
+                      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
+                        <thead>
+                          <tr style={{ background: "rgba(0,0,0,0.03)" }}>
+                            <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Equipment Type</th>
+                            <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", width: 80, textAlign: "center" }}>Qty</th>
+                            <th style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>Brand Name/Model</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {activeInventory.map((item) => (
+                            <tr key={item.id}>
+                              <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", fontWeight: 600 }}>{item.type}</td>
+                              <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)", textAlign: "center" }}>{item.quantity}</td>
+                              <td style={{ padding: "4px 8px", fontSize: 11, border: "1px solid var(--color-divider)" }}>{item.brand || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
                     <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic" }}>No property inventory items registered.</div>
                   )}
                 </Section>
 
                 <Section title="Verification & Authorization History">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="grid-responsive-2col">
                     <InfoRow label="Verified On" value={formatDate(selected.reviewedAt)} />
                     <InfoRow label="Verified By" value={selected.reviewedBy?.displayName ?? selected.reviewedBy?.email ?? "System"} />
                     {selected.reviewNote && <div style={{ gridColumn: "1 / -1" }}><InfoRow label="Verifier Remarks" value={selected.reviewNote} /></div>}

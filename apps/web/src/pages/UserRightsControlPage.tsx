@@ -473,8 +473,8 @@ export default function UserRightsControlPage() {
               </div>
             </div>
 
-            <div>
-              <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
+            <div className="table-responsive-container">
+              <table style={{ width: "100%", minWidth: "1000px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     <th style={{ ...columnHeaderStyle, width: "4%" }}>No_</th>
@@ -550,7 +550,7 @@ export default function UserRightsControlPage() {
           </div>
         ) : (
           <div style={{ ...surfaceStyle, padding: "16px 20px", }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)" }}>
               <div>
                 <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--color-text)", lineHeight: 1.2 }}>
                   {activeUser.displayName}
@@ -618,7 +618,7 @@ export default function UserRightsControlPage() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 8 }}>
+            <div className="grid-responsive-5col">
               {DOMAIN_CATALOG.map((domain) => {
                 const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
                 const enabled = activeSelection![domain.slug] ?? new Set<string>();

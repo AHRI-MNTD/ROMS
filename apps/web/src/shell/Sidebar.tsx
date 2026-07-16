@@ -68,19 +68,19 @@ export const Sidebar: React.FC = () => {
             style={({ isActive }) => ({
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              padding: "7px 10px",
+              gap: 7,
+              padding: "5px 9px",
               borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
+              fontSize: "12px",
               color: isActive ? "var(--color-primary)" : "var(--color-text)",
               background: isActive ? "var(--color-primary-highlight)" : "transparent",
               fontWeight: isActive ? 600 : 400,
               textDecoration: "none",
-              marginBottom: 2,
+              marginBottom: 1,
               transition: "background 0.12s",
             })}
           >
-            <span style={{ fontSize: "0.85rem", width: 20, textAlign: "center" }}>{item.icon}</span>
+            <span style={{ fontSize: "0.8rem", width: 18, textAlign: "center" }}>{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
@@ -109,10 +109,10 @@ export const Sidebar: React.FC = () => {
             style={({ isActive }) => ({
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              padding: "6px 10px",
+              gap: 7,
+              padding: "5px 9px",
               borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
+              fontSize: "12px",
               color: isActive ? "var(--color-primary)" : "var(--color-text)",
               background: isActive ? "var(--color-primary-highlight)" : "transparent",
               fontWeight: isActive ? 600 : 400,
@@ -123,9 +123,9 @@ export const Sidebar: React.FC = () => {
           >
             <span
               style={{
-                fontSize: "0.75rem",
-                width: 20,
-                height: 20,
+                fontSize: "0.7rem",
+                width: 18,
+                height: 18,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -155,10 +155,10 @@ export const Sidebar: React.FC = () => {
             style={({ isActive }) => ({
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              padding: "6px 10px",
+              gap: 7,
+              padding: "5px 9px",
               borderRadius: "var(--radius-sm)",
-              fontSize: "var(--fs-sm)",
+              fontSize: "12px",
               color: isActive ? "var(--color-primary)" : "var(--color-text)",
               background: isActive ? "var(--color-primary-highlight)" : "transparent",
               fontWeight: isActive ? 600 : 400,
@@ -169,9 +169,9 @@ export const Sidebar: React.FC = () => {
           >
             <span
               style={{
-                fontSize: "0.75rem",
-                width: 20,
-                height: 20,
+                fontSize: "0.7rem",
+                width: 18,
+                height: 18,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

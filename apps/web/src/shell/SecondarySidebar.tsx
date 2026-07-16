@@ -43,10 +43,10 @@ export const SecondarySidebar: React.FC = () => {
             marginBottom: 4,
           }}
         >
-          <span style={{ fontSize: "1.2rem" }}>{domain.emoji}</span>
+          <span style={{ fontSize: "1rem" }}>{domain.emoji}</span>
           <span
             style={{
-              fontSize: "var(--fs-xs)",
+              fontSize: "11px",
               fontWeight: 700,
               letterSpacing: "0.05em",
               textTransform: "uppercase",
@@ -74,9 +74,9 @@ export const SecondarySidebar: React.FC = () => {
                 style={({ isActive }) => ({
                   display: "flex",
                   flexDirection: "column",
-                  padding: "8px 10px",
+                  padding: "6px 9px",
                   borderRadius: "var(--radius-sm)",
-                  fontSize: "var(--fs-sm)",
+                  fontSize: "12px",
                   color: isActive ? "var(--color-primary)" : "var(--color-text)",
                   background: isActive ? "var(--color-primary-highlight)" : "transparent",
                   fontWeight: isActive ? 600 : 400,
@@ -84,13 +84,13 @@ export const SecondarySidebar: React.FC = () => {
                   transition: "background 0.12s, color 0.12s",
                 })}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span
                     style={{
-                      fontSize: "var(--fs-xs)",
+                      fontSize: "10px",
                       fontWeight: 700,
-                      width: 18,
-                      height: 18,
+                      width: 16,
+                      height: 16,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",

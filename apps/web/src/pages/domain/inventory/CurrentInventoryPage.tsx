@@ -185,43 +185,46 @@ export default function CurrentInventoryPage() {
     border: "1px solid rgba(1, 105, 111, 0.18)",
     background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,246,241,0.92))",
     color: "var(--color-text)",
-    borderRadius: "999px",
-    padding: "10px 14px",
-    fontSize: "var(--fs-xs)",
+    borderRadius: "8px",
+    padding: "5px 9px",
+    fontSize: "10px",
     textDecoration: "none",
     fontWeight: 600,
     display: "inline-flex",
     alignItems: "center",
-    boxShadow: "0 10px 22px rgba(16, 24, 40, 0.06)",
+    height: 30,
+    boxShadow: "0 4px 10px rgba(16, 24, 40, 0.03)",
   };
 
   const panelStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.12)",
-    borderRadius: 20,
+    borderRadius: 12,
     background: "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
-    boxShadow: "0 18px 45px rgba(16, 24, 40, 0.08)",
+    boxShadow: "0 10px 24px rgba(16, 24, 40, 0.05)",
     backdropFilter: "blur(10px)",
   };
 
   const toolbarButtonStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.14)",
-    borderRadius: 14,
+    borderRadius: 8,
     background: "rgba(255,255,255,0.72)",
     color: "var(--color-text)",
-    padding: "10px 12px",
-    fontSize: "var(--fs-xs)",
-    boxShadow: "0 8px 18px rgba(16, 24, 40, 0.04)",
+    padding: "5px 8px",
+    fontSize: "10px",
+    height: 30,
+    boxShadow: "0 4px 10px rgba(16, 24, 40, 0.03)",
   };
 
   const inputStyle: React.CSSProperties = {
-    minWidth: 220,
+    minWidth: 150,
     border: "1px solid rgba(1, 105, 111, 0.14)",
-    borderRadius: 14,
+    borderRadius: 8,
     background: "rgba(255,255,255,0.74)",
     color: "var(--color-text)",
-    padding: "10px 12px",
-    fontSize: "var(--fs-xs)",
-    boxShadow: "0 8px 18px rgba(16, 24, 40, 0.04)",
+    padding: "5px 8px",
+    fontSize: "10px",
+    height: 30,
+    boxShadow: "0 4px 10px rgba(16, 24, 40, 0.03)",
   };
 
   return (
@@ -249,24 +252,24 @@ export default function CurrentInventoryPage() {
           </button>
         </div>
       )}
-      <div style={{ ...panelStyle, padding: 14 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ ...panelStyle, padding: "8px 12px" }}>
+        <div className="inventory-toolbar">
+          <div className="inventory-toolbar-left">
             {/* Summary stat badges */}
-            <div style={{ padding: "6px 4px", display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Low Stock</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#92400e", fontWeight: 800 }}>{lowStockCount}</span>
+            <div style={{ padding: "2px 4px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em", fontWeight: 600 }}>Low Stock</span>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#92400e", fontWeight: 800 }}>{lowStockCount}</span>
             </div>
-            <div style={{ padding: "6px 4px", display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Out of Stock</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "#991b1b", fontWeight: 800 }}>{outOfStockCount}</span>
+            <div style={{ padding: "2px 4px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em", fontWeight: 600 }}>Out of Stock</span>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#991b1b", fontWeight: 800 }}>{outOfStockCount}</span>
             </div>
-            <div style={{ padding: "6px 4px", display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>Total Stock</span>
-              <span style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
+            <div style={{ padding: "2px 4px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: "9px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em", fontWeight: 600 }}>Total Stock</span>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
             </div>
 
-            <div style={{ width: 1, height: 24, background: "rgba(1, 105, 111, 0.15)", margin: "0 4px" }} />
+            <div style={{ width: 1, height: 18, background: "rgba(1, 105, 111, 0.15)", margin: "0 2px" }} />
 
             <button
               onClick={handleExportCSV}
@@ -279,7 +282,7 @@ export default function CurrentInventoryPage() {
                 background: isExportHovered 
                   ? "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))"
                   : "transparent",
-                boxShadow: isExportHovered ? "0 10px 22px rgba(16, 24, 40, 0.06)" : "none",
+                boxShadow: isExportHovered ? "0 4px 10px rgba(16, 24, 40, 0.03)" : "none",
                 color: "#15803d",
                 transform: isExportHovered ? "translateY(-1px)" : "none",
                 transition: "all 0.2s ease",
@@ -306,7 +309,7 @@ export default function CurrentInventoryPage() {
                     : isSyncHovered 
                       ? "linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.95))"
                       : "transparent",
-                  boxShadow: isSyncing || isSyncHovered ? "0 10px 22px rgba(16, 24, 40, 0.06)" : "none",
+                  boxShadow: isSyncing || isSyncHovered ? "0 4px 10px rgba(16, 24, 40, 0.03)" : "none",
                   color: "#1d4ed8",
                   transform: isSyncHovered && !isSyncing ? "translateY(-1px)" : "none",
                   transition: "all 0.2s ease",
@@ -316,7 +319,7 @@ export default function CurrentInventoryPage() {
               </button>
             )}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="inventory-toolbar-right">
             <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search SKU / name / unit" style={inputStyle} />
 
             <select value={stockFilter} onChange={(e) => setStockFilter(e.target.value as StockFilter)} style={toolbarButtonStyle}>
@@ -325,7 +328,6 @@ export default function CurrentInventoryPage() {
               <option value="low">Low Stock</option>
               <option value="out">Out of Stock</option>
             </select>
-
           </div>
         </div>
       </div>
@@ -340,35 +342,35 @@ export default function CurrentInventoryPage() {
 
       {!isLoading && !error && data && (
         <>
-          <div style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <div style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
+            <div className="table-responsive-container">
+              <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "23%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "6%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "10%" }} />
+                  <col style={{ width: isAdmin ? "10%" : "12%" }} />
+                  <col style={{ width: isAdmin ? "25%" : "31%" }} />
+                  <col style={{ width: isAdmin ? "12%" : "12%" }} />
+                  <col style={{ width: isAdmin ? "7%" : "7%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "7%" }} />
                   <col style={{ width: "8%" }} />
-                  {isAdmin && <col style={{ width: "8%" }} />}
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: isAdmin ? "10%" : "6%" }} />
+                  {isAdmin && <col style={{ width: "4%" }} />}
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
                     {(() => {
-                      const thStyle: React.CSSProperties = { padding: "8px", textAlign: "left", fontSize: "var(--fs-xs)", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                      const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
                       return (
                         <>
-                          <th style={thStyle} title="Code_No">Code_No</th>
-                          <th style={thStyle} title="Item_Description">Item_Description</th>
+                          <th style={thStyle} title="Code_No">Code</th>
+                          <th style={thStyle} title="Item_Description">Description</th>
                           <th style={thStyle} title="Category">Category</th>
                           <th style={thStyle} title="Unit">Unit</th>
-                          <th style={thStyle} title="Check-in total">Check-in total</th>
-                          <th style={thStyle} title="Check-out total">Check-out total</th>
-                          <th style={thStyle} title="Balance">Balance</th>
-                          <th style={thStyle} title="% Balance">% Balance</th>
+                          <th style={thStyle} title="Check-in total">In</th>
+                          <th style={thStyle} title="Check-out total">Out</th>
+                          <th style={thStyle} title="Balance">Bal</th>
+                          <th style={thStyle} title="% Balance">% Bal</th>
                           <th style={thStyle} title="Status">Status</th>
                           {isAdmin && <th style={{ ...thStyle, textAlign: "center" }} title="Actions">Actions</th>}
                         </>
@@ -403,8 +405,8 @@ export default function CurrentInventoryPage() {
                     }
 
                     const cellStyle: React.CSSProperties = {
-                      padding: "8px",
-                      fontSize: "var(--fs-xs)",
+                      padding: "6px 8px",
+                      fontSize: "10.5px",
                       color: "var(--color-text-muted)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -417,53 +419,57 @@ export default function CurrentInventoryPage() {
                     return (
                       <tr
                         key={`${row.sku ?? "row"}-${index}`}
-                        style={{ borderBottom: "1px solid var(--color-divider)", height: 40 }}
+                        style={{ borderBottom: "1px solid var(--color-divider)", height: 32 }}
                       >
                         <td style={cellStyle} title={codeVal}>{codeVal}</td>
                         <td style={cellStyle} title={nameVal}>{nameVal}</td>
                         <td style={cellStyle} title={category}>{category}</td>
                         <td style={cellStyle} title={String(row.unit ?? "—")}>{String(row.unit ?? "—")}</td>
-                        <td style={cellStyle}>{checkInTotal}</td>
-                        <td style={cellStyle}>{checkOutTotal}</td>
-                        <td style={cellStyle}>{balance}</td>
-                        <td style={cellStyle}>{`${Math.round(percentBalance)}%`}</td>
-                        <td style={{ padding: "8px 6px", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "3px 8px", fontWeight: 700, fontSize: "11px", whiteSpace: "nowrap", color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
+                        <td style={cellStyle} title={String(checkInTotal)}>{checkInTotal}</td>
+                        <td style={cellStyle} title={String(checkOutTotal)}>{checkOutTotal}</td>
+                        <td style={cellStyle} title={String(balance)}>{balance}</td>
+                        <td style={cellStyle} title={`${Math.round(percentBalance)}%`}>{`${Math.round(percentBalance)}%`}</td>
+                        <td style={{ padding: "4px 6px", fontSize: "10.5px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", borderRadius: "999px", padding: "2px 6px", fontWeight: 700, fontSize: "9px", whiteSpace: "nowrap", color: statusColor, background: statusBackground, border: `1px solid ${statusColor}22` }}>
                             {statusLabel}
                           </span>
                         </td>
                         {isAdmin && (
-                          <td style={{ padding: "8px", textAlign: "center" }}>
-                            <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                          <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(row)}
+                                title="Edit item"
                                 style={{
                                   background: "none",
                                   border: "none",
                                   color: "var(--color-primary)",
                                   cursor: "pointer",
-                                  fontSize: "var(--fs-xs)",
-                                  textDecoration: "underline",
-                                  padding: 0
+                                  fontSize: "12px",
+                                  padding: 0,
+                                  display: "inline-flex",
+                                  alignItems: "center"
                                 }}
                               >
-                                Edit
+                                ✏️
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteItem(row)}
+                                title="Delete item"
                                 style={{
                                   background: "none",
                                   border: "none",
                                   color: "#dc2626",
                                   cursor: "pointer",
-                                  fontSize: "var(--fs-xs)",
-                                  textDecoration: "underline",
-                                  padding: 0
+                                  fontSize: "12px",
+                                  padding: 0,
+                                  display: "inline-flex",
+                                  alignItems: "center"
                                 }}
                               >
-                                Delete
+                                🗑️
                               </button>
                             </div>
                           </td>

@@ -4,10 +4,10 @@ import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
-  { to: "dashboard", label: "Dashboard" },
-  { to: "training-records", label: "Personnel Registration" },
-  { to: "approved", label: "Personnel Files" },
-  { to: "approve-employee", label: "Verify Personnel" },
+  { to: "dashboard", label: "Dashboard", icon: "📊" },
+  { to: "training-records", label: "Personnel Registration", icon: "📋" },
+  { to: "approved", label: "Personnel Files", icon: "🗂️" },
+  { to: "approve-employee", label: "Verify Personnel", icon: "✅" },
 ];
 
 type PageMeta = { icon: string; title: string; description: string };
@@ -54,76 +54,52 @@ export default function HRLayout() {
   const visibleTabs = tabs.filter((tab) => hasTabAccess(user?.roles, "hr", tab.to, user?.permissions));
 
   return (
-    <div style={{ padding: "0 28px 24px 28px", maxWidth: 1400 }}>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "var(--color-bg)",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 16,
-          flexWrap: "wrap",
-          paddingTop: "24px",
-          paddingBottom: "14px",
-          marginBottom: 18,
-          borderBottom: "1px solid var(--color-divider)",
-        }}
-      >
-        {/* Dynamic page title / description */}
-        <div style={{ minWidth: 280 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, maxWidth: 1400, width: "100%" }}>
+      {/* ── Sticky header with title + nav tabs ── */}
+      <div className="domain-layout-header">
+        <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
           <h1
             style={{
               fontFamily: "var(--font-display)",
-              fontSize: "var(--fs-xl)",
+              fontSize: "18px",
               color: "var(--color-text)",
-              marginBottom: 4,
+              marginBottom: 2,
               display: "flex",
               alignItems: "center",
               gap: 8,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             <span>{meta.icon}</span>
             <span>{meta.title}</span>
           </h1>
-          <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.55 }}>
+          <p style={{ fontSize: "12px", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {meta.description}
           </p>
         </div>
 
         {/* Nav tabs */}
-        <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }} aria-label="Personnel sections">
+        <nav className="domain-nav-container" aria-label="Personnel sections">
           {visibleTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               end={tab.to === "dashboard"}
-              style={({ isActive }) => ({
-                border: "1px solid",
-                borderColor: isActive ? "var(--color-accent)" : "var(--color-border)",
-                background: isActive ? "var(--color-accent-soft)" : "var(--color-surface-2)",
-                color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
-                borderRadius: "999px",
-                padding: "8px 14px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                letterSpacing: "0.02em",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-              })}
+              className={({ isActive }) => `domain-nav-link${isActive ? " active" : ""}`}
             >
-              {tab.label}
+              <span className="nav-icon">{tab.icon}</span>
+              <span className="nav-text">{tab.label}</span>
             </NavLink>
           ))}
         </nav>
       </div>
 
-      <Outlet />
+      {/* ── Page content — fills remaining height ── */}
+      <div style={{ flex: 1, minHeight: 0, padding: "16px 28px 24px 28px", overflowY: "auto" }}>
+        <Outlet />
+      </div>
     </div>
   );
 }

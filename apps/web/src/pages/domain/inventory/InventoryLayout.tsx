@@ -3,13 +3,13 @@ import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
-  { to: "dashboard", label: "Dashboard" },
-  { to: "current-inventory", label: "Current Inventory" },
-  { to: "check-in", label: "Check In" },
-  { to: "check-out", label: "Check Out" },
-  { to: "requests", label: "Request/s" },
-  { to: "analytics", label: "Analytics" },
-  { to: "master-data", label: "Master Data" },
+  { to: "dashboard", label: "Dashboard", icon: "📊" },
+  { to: "current-inventory", label: "Current Inventory", icon: "📦" },
+  { to: "check-in", label: "Check In", icon: "📥" },
+  { to: "check-out", label: "Check Out", icon: "📤" },
+  { to: "requests", label: "Request/s", icon: "📋" },
+  //{ to: "analytics", label: "Analytics", icon: "📈" },
+  { to: "master-data", label: "Master Data", icon: "🗂️" },
 ];
 
 export default function InventoryLayout() {
@@ -24,7 +24,7 @@ export default function InventoryLayout() {
 
   if (activePath === "dashboard" || activePath === "stock-management") {
     title = "Operational Command Dashboard";
-    subtitle = "Real-time telemetry and management controls for the research inventory system.";
+    subtitle = "Real-time telemetry and management controls";
   } else if (activePath === "current-inventory") {
     title = "LIVE INVENTORY SNAPSHOT";
     subtitle = "Current inventory";
@@ -46,63 +46,37 @@ export default function InventoryLayout() {
   }
 
   return (
-    <div style={{ padding: "0 28px 24px 28px", maxWidth: 1400 }}>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background: "var(--color-bg)",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 16,
-          flexWrap: "wrap",
-          paddingTop: "24px",
-          paddingBottom: "14px",
-          marginBottom: 18,
-          borderBottom: "1px solid var(--color-divider)",
-        }}
-      >
-        <div style={{ minWidth: 280 }}>
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", marginBottom: 4 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      {/* ── Sticky header with title + nav tabs ── */}
+      <div className="domain-layout-header">
+        <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "18px", color: "var(--color-text)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {title}
           </h1>
-          <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>
+          <p style={{ fontSize: "12px", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {subtitle}
           </p>
         </div>
 
-        <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end" }} aria-label="Inventory sections">
+        <nav className="domain-nav-container" aria-label="Inventory sections">
           {visibleTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               end={tab.to === "dashboard"}
-              style={({ isActive }) => ({
-                border: "1px solid",
-                borderColor: isActive ? "var(--color-accent)" : "var(--color-border)",
-                background: isActive ? "var(--color-accent-soft)" : "var(--color-surface-2)",
-                color: isActive ? "var(--color-text)" : "var(--color-text-muted)",
-                borderRadius: "999px",
-                padding: "8px 14px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                letterSpacing: "0.02em",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-              })}
+              className={({ isActive }) => `domain-nav-link${isActive ? " active" : ""}`}
             >
-              {tab.label}
+              <span className="nav-icon">{tab.icon}</span>
+              <span className="nav-text">{tab.label}</span>
             </NavLink>
           ))}
         </nav>
       </div>
 
-      <Outlet />
+      {/* ── Page content — fills remaining height ── */}
+      <div style={{ flex: 1, minHeight: 0, padding: "16px 28px 24px 28px", overflowY: "auto" }}>
+        <Outlet />
+      </div>
     </div>
   );
 }

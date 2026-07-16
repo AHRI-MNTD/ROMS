@@ -32,7 +32,10 @@ export const AppShell: React.FC = () => {
           style={{
             flex: 1,
             overflowY: "auto",
+            overflowX: "hidden",
             background: "var(--color-bg)",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <Outlet />

@@ -566,7 +566,7 @@ export default function TrainingRecordsPage() {
 
   const grid2: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: "14px 20px",
     padding: "18px 20px",
   };
@@ -835,7 +835,7 @@ export default function TrainingRecordsPage() {
               <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
                 Select your applicable MNTD team(s) {required}
               </span>
-              <div id="mntdTeams" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)" }}>
+              <div id="mntdTeams" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)" }}>
                 {MNTD_TEAMS.map((t) => (
                   <label key={t.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
                     <input 
@@ -856,7 +856,7 @@ export default function TrainingRecordsPage() {
               <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
                 Select all the MNTD projects you are currently involved in {required}
               </span>
-              <div id="mntdProjectsInvolved" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 200, overflowY: "auto" }}>
+              <div id="mntdProjectsInvolved" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 200, overflowY: "auto" }}>
                 {MNTD_PROJECTS.map((p) => (
                   <label key={p.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
                     <input 
@@ -1199,54 +1199,58 @@ export default function TrainingRecordsPage() {
               Enter the quantities and types of all IT/electronic, office, laboratory and field equipment/instruments/devices under your name.
             </div>
 
-            {/* Table Header */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "250px 100px 1fr",
-              gap: 12,
-              paddingBottom: 8,
-              borderBottom: "2px solid var(--color-border)",
-              fontWeight: 800,
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "var(--color-text-muted)"
-            }}>
-              <span>Equipment Type</span>
-              <span>Quantity</span>
-              <span>Brand Name/Model</span>
-            </div>
+            <div className="table-responsive-container">
+              <div style={{ minWidth: "600px" }}>
+                {/* Table Header */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "250px 100px 1fr",
+                  gap: 12,
+                  paddingBottom: 8,
+                  borderBottom: "2px solid var(--color-border)",
+                  fontWeight: 800,
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  color: "var(--color-text-muted)"
+                }}>
+                  <span>Equipment Type</span>
+                  <span>Quantity</span>
+                  <span>Brand Name/Model</span>
+                </div>
 
-            {/* Table Rows */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-              {PROPERTY_ITEMS.map((item) => {
-                const data = form.propertyInventory[item.id] || { quantity: 0, brand: "" };
-                return (
-                  <div key={item.id} style={{
-                    display: "grid",
-                    gridTemplateColumns: "250px 100px 1fr",
-                    gap: 12,
-                    alignItems: "center"
-                  }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text)" }}>{item.label}</span>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={data.quantity === 0 ? "" : data.quantity} 
-                      onChange={(e) => handleInventoryChange(item.id, "quantity", parseInt(e.target.value) || 0)} 
-                      placeholder="0"
-                      style={{ ...inputStyle(false), textAlign: "center" }}
-                    />
-                    <input 
-                      type="text" 
-                      value={data.brand} 
-                      onChange={(e) => handleInventoryChange(item.id, "brand", e.target.value)} 
-                      placeholder="e.g. Dell Latitude 5420 / HP Laserjet" 
-                      style={inputStyle(false)}
-                    />
-                  </div>
-                );
-              })}
+                {/* Table Rows */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+                  {PROPERTY_ITEMS.map((item) => {
+                    const data = form.propertyInventory[item.id] || { quantity: 0, brand: "" };
+                    return (
+                      <div key={item.id} style={{
+                        display: "grid",
+                        gridTemplateColumns: "250px 100px 1fr",
+                        gap: 12,
+                        alignItems: "center"
+                      }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text)" }}>{item.label}</span>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={data.quantity === 0 ? "" : data.quantity} 
+                          onChange={(e) => handleInventoryChange(item.id, "quantity", parseInt(e.target.value) || 0)} 
+                          placeholder="0"
+                          style={{ ...inputStyle(false), textAlign: "center" }}
+                        />
+                        <input 
+                          type="text" 
+                          value={data.brand} 
+                          onChange={(e) => handleInventoryChange(item.id, "brand", e.target.value)} 
+                          placeholder="e.g. Dell Latitude 5420 / HP Laserjet" 
+                          style={inputStyle(false)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
