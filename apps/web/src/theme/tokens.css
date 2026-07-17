@@ -358,6 +358,22 @@ a:hover {
   }
 }
 
+.grid-responsive-4col {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1200px) {
+  .grid-responsive-4col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .grid-responsive-4col {
+    grid-template-columns: 1fr;
+  }
+}
+
 .grid-responsive-5col {
   display: grid;
   gap: 8px;
@@ -469,6 +485,7 @@ a:hover {
   background: var(--color-surface-offset);
   color: var(--color-text);
   border-color: var(--color-text-muted);
+  text-decoration: none;
 }
 
 .inventory-nav-link:hover .nav-text,

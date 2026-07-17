@@ -377,9 +377,9 @@ export default function ApprovedPage() {
   };
 
   const thStyle = (key: SortKey): React.CSSProperties => ({
-    padding: "8px 10px",
+    padding: "6px 8px",
     textAlign: "left",
-    fontSize: "var(--fs-xs)",
+    fontSize: "10px",
     color: "var(--color-text-muted)",
     fontWeight: 700,
     cursor: "pointer",
@@ -390,8 +390,8 @@ export default function ApprovedPage() {
   });
 
   const cellStyle: React.CSSProperties = {
-    padding: "8px 10px",
-    fontSize: "var(--fs-xs)",
+    padding: "6px 8px",
+    fontSize: "10px",
     verticalAlign: "middle",
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -486,50 +486,45 @@ export default function ApprovedPage() {
             </div>
           ) : (
             <div className="table-responsive-container">
-              <table style={{ width: "100%", minWidth: "1100px", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <table style={{ width: "100%", minWidth: "760px", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <thead>
                   <tr>
-                    <th style={{ ...thStyle("name"), width: "3%", cursor: "default" }}>#</th>
-                    <th style={{ ...thStyle("name"), width: "18%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
-                    <th style={{ ...thStyle("department"), width: "17%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
-                    <th style={{ ...thStyle("jobTitle"), width: "17%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
-                    <th style={{ ...thStyle("startDate"), width: "11%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
+                    <th style={{ ...thStyle("name"), width: "5%", cursor: "default" }}>#</th>
+                    <th style={{ ...thStyle("name"), width: "21%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
+                    <th style={{ ...thStyle("department"), width: "20%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
+                    <th style={{ ...thStyle("jobTitle"), width: "19%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
+                    <th style={{ ...thStyle("startDate"), width: "12%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
                     <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Contract Type {sortIcon("employmentType")}</th>
-                    <th style={{ ...thStyle("reviewedAt"), width: "11%", cursor: "default" }}>Contract End</th>
-                    <th style={{ ...thStyle("reviewedAt"), width: "12%" }} onClick={() => toggleSort("reviewedAt")}>Verified On {sortIcon("reviewedAt")}</th>
-                    <th style={{ ...thStyle("name"), width: "8%", cursor: "default" }}>Action</th>
+                    <th style={{ ...thStyle("reviewedAt"), width: "12%", cursor: "default" }}>Contract End</th>
+                    <th style={{ ...thStyle("name"), width: "6%", cursor: "default", textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((row, i) => {
                     const empLabel = formatEmployment(row.employmentType);
-                    const empColor =
-                      empLabel === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
-                        empLabel === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                          empLabel === "MSc Student" ? { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" } :
-                            { bg: "transparent", text: "var(--color-text-muted)", border: "transparent" };
                     return (
                       <tr
                         key={row.id}
                         onClick={() => setSelected(row)}
-                        style={{ cursor: "pointer", transition: "background 0.15s" }}
+                        style={{ cursor: "pointer", transition: "background 0.15s", height: 32 }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                       >
-                        <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "3%" }}>{i + 1}</td>
-                        <td style={{ ...cellStyle, fontWeight: 700, width: "18%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
-                        <td style={{ ...cellStyle, width: "17%" }} title={row.department}>{row.department}</td>
-                        <td style={{ ...cellStyle, width: "17%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
-                        <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.startDate)}</td>
+                        <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "5%" }}>{i + 1}</td>
+                        <td style={{ ...cellStyle, fontWeight: 700, width: "21%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
+                        <td style={{ ...cellStyle, width: "20%" }} title={row.department}>{row.department}</td>
+                        <td style={{ ...cellStyle, width: "19%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
+                        <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.startDate)}</td>
                         <td style={{ ...cellStyle, width: "11%" }}>
-                          <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "2px 8px" }}>
-                            {empLabel}
-                          </span>
+                          {empLabel}
                         </td>
-                        <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.contractEndDate)}</td>
-                        <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.reviewedAt)}</td>
-                        <td style={{ ...cellStyle, width: "8%", textAlign: "center" }}>
-                          <span style={{ fontSize: "var(--fs-xs)", color: "#6366f1", fontWeight: 700, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6, padding: "2px 8px" }}>View</span>
+                        <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.contractEndDate)}</td>
+                        <td style={{ ...cellStyle, width: "6%", textAlign: "center" }}>
+                          <button
+                            type="button"
+                            title="View personnel file"
+                            style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 6, width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#6366f1", fontSize: 14, lineHeight: 1 }}
+                          >👁</button>
                         </td>
                       </tr>
                     );
@@ -560,14 +555,7 @@ export default function ApprovedPage() {
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
-                {(() => {
-                  const emp = formatEmployment(selected.employmentType);
-                  const empColor =
-                    emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
-                      emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                        { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
-                  return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
-                })()}
+                <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{formatEmployment(selected.employmentType)}</span>
               </div>
             </div>
 
@@ -600,9 +588,9 @@ export default function ApprovedPage() {
             </div>
 
             {/* Details Grid layout: 2 Columns side-by-side */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 40, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 20, marginBottom: 20 }}>
               {/* Left Column */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <Section title="Section 1: Personal Details & Contact Information">
                   <div className="grid-responsive-2col">
                     <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
@@ -645,7 +633,7 @@ export default function ApprovedPage() {
               </div>
 
               {/* Right Column */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <Section title="Section 3: Qualifications & Academic Background">
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {/* First Degree */}
@@ -1138,7 +1126,7 @@ export default function ApprovedPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="section-container">
-      <div className="section-title" style={{ fontSize: "var(--fs-xs)", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
+      <div className="section-title" style={{ fontSize: "10px", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
         {title}
       </div>
       <div style={{ display: "grid", gap: 6 }}>{children}</div>
@@ -1162,7 +1150,7 @@ function ActionBtn({ onClick, color, icon, label, disabled }: { onClick: () => v
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: "8px 16px",
+        padding: "6px 12px",
         borderRadius: 10,
         border: "none",
         background: color,

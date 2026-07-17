@@ -340,14 +340,14 @@ export default function ApproveEmployeePage() {
 
   const rowStyle: React.CSSProperties = {
     borderBottom: "1px solid var(--color-divider)",
-    height: 36,
+    height: 32,
     overflow: "hidden",
   };
 
   const cellStyle: React.CSSProperties = {
     padding: "4px 6px",
     verticalAlign: "middle",
-    fontSize: "var(--fs-xs)",
+    fontSize: "10px",
   };
 
   const sharedTh = (width: string) => ({ textAlign: "left" as const, padding: "5px 6px", width });
@@ -384,47 +384,47 @@ export default function ApproveEmployeePage() {
       onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
-      <td style={{ ...cellStyle, width: "3%", textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700 }}>{index + 1}</td>
-      <td style={{ ...cellStyle, width: "11%" }}>
+      <td style={{ ...cellStyle, width: "4%", textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700 }}>{index + 1}</td>
+      <td style={{ ...cellStyle, width: "16%" }}>
         <div title={row.user?.displayName ?? "Unknown"} style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 700, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.user?.displayName ?? "Unknown"}</div>
       </td>
-      <td style={{ ...cellStyle, width: "12%" }} title={row.department}>
+      <td style={{ ...cellStyle, width: "18%" }} title={row.department}>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.department}</div>
       </td>
-      <td style={{ ...cellStyle, width: "12%" }} title={getPositionLabel(row.jobTitle)}>
+      <td style={{ ...cellStyle, width: "18%" }} title={getPositionLabel(row.jobTitle)}>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getPositionLabel(row.jobTitle)}</div>
       </td>
-      <td style={{ ...cellStyle, whiteSpace: "nowrap", width: "8%" }}>{formatDate(row.startDate)}</td>
-      <td style={{ ...cellStyle, width: "9%" }}>
+      <td style={{ ...cellStyle, whiteSpace: "nowrap", width: "10%" }}>{formatDate(row.startDate)}</td>
+      <td style={{ ...cellStyle, width: "11%" }}>
         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatEmployment(row.employmentType)}</div>
       </td>
-      <td style={{ ...cellStyle, width: "8%", whiteSpace: "nowrap" }}>{formatDate(row.contractEndDate ?? null)}</td>
-      <td style={{ ...cellStyle, width: "8%", whiteSpace: "nowrap" }}>{formatDate(row.contractRenewalDate ?? null)}</td>
-      <td style={{ ...cellStyle, width: showActions ? "15%" : "21%" }} onClick={(e) => e.stopPropagation()}>
-        {showActions ? (
-          <input
-            value={notes[row.id] ?? ""}
-            onChange={(e) => setNotes((cur) => ({ ...cur, [row.id]: e.target.value }))}
-            placeholder="Remark"
-            style={{ width: "100%", height: 26, padding: "3px 6px", borderRadius: 5, border: "1px solid var(--color-divider)", background: "rgba(255,255,255,0.95)", font: "inherit", fontSize: "var(--fs-xs)", boxSizing: "border-box" }}
-          />
-        ) : (
-          <div title={row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"} style={{ lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"}</div>
-        )}
-      </td>
+      <td style={{ ...cellStyle, width: "10%", whiteSpace: "nowrap" }}>{formatDate(row.contractEndDate ?? null)}</td>
       {showActions ? (
-        <td style={{ ...cellStyle, textAlign: "right", whiteSpace: "nowrap", width: "14%" }} onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={() => handleDecision(row.id, "APPROVED")} disabled={approveMutation.isPending} style={{ marginRight: 4, background: "#059669", color: "white", border: "none", padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}>
-            ✓ Verify
-          </button>
-          <button type="button" onClick={() => handleDecision(row.id, "REJECTED")} disabled={approveMutation.isPending} style={{ background: "#dc2626", color: "white", border: "none", padding: "4px 8px", borderRadius: 5, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}>
-            ✕ Decline
-          </button>
+        <td style={{ ...cellStyle, textAlign: "center", whiteSpace: "nowrap", width: "13%" }} onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            title="Verify"
+            onClick={() => handleDecision(row.id, "APPROVED")}
+            disabled={approveMutation.isPending}
+            style={{ marginRight: 5, background: "#059669", color: "white", border: "none", width: 26, height: 22, borderRadius: 5, cursor: "pointer", fontWeight: 900, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          >✓</button>
+          <button
+            type="button"
+            title="Decline"
+            onClick={() => handleDecision(row.id, "REJECTED")}
+            disabled={approveMutation.isPending}
+            style={{ background: "#dc2626", color: "white", border: "none", width: 26, height: 22, borderRadius: 5, cursor: "pointer", fontWeight: 900, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          >✕</button>
         </td>
       ) : (
-        <td style={{ ...cellStyle, textAlign: "right", whiteSpace: "nowrap", width: "8%" }}>
-          <span style={{ fontSize: "var(--fs-xs)", color: "#6366f1", fontWeight: 700, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6, padding: "2px 8px" }}>Details</span>
-        </td>
+        <>
+          <td style={{ ...cellStyle, width: "21%" }}>
+            <div title={row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"} style={{ lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"}</div>
+          </td>
+          <td style={{ ...cellStyle, textAlign: "center", whiteSpace: "nowrap", width: "8%" }}>
+            <button type="button" title="View details" style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 6, width: 28, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#6366f1", fontSize: 13 }}>👁</button>
+          </td>
+        </>
       )}
     </tr>
   );
@@ -432,19 +432,15 @@ export default function ApproveEmployeePage() {
   const listThead = (showActions: boolean) => (
     <thead>
       <tr style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-        <th style={{ textAlign: "right", padding: "5px 6px", width: "3%" }}>#</th>
-        <th style={sharedTh("11%")}>Name</th>
-        <th style={sharedTh("12%")}>Department</th>
-        <th style={sharedTh("12%")}>Function / Job Title</th>
-        <th style={sharedTh("8%")}>Start date</th>
-        <th style={sharedTh("9%")}>Contract Type</th>
-        <th style={sharedTh("8%")}>Contract end</th>
-        <th style={sharedTh("8%")}>Renewal date</th>
+        <th style={{ textAlign: "right", padding: "5px 6px", width: "4%" }}>#</th>
+        <th style={sharedTh("16%")}>Name</th>
+        <th style={sharedTh("18%")}>Department</th>
+        <th style={sharedTh("18%")}>Function / Job Title</th>
+        <th style={sharedTh("10%")}>Start date</th>
+        <th style={sharedTh("11%")}>Contract Type</th>
+        <th style={sharedTh("10%")}>Contract end</th>
         {showActions ? (
-          <>
-            <th style={sharedTh("15%")}>Verification Remark</th>
-            <th style={{ padding: "5px 6px", width: "14%", textAlign: "right" }}>Verification Decisions</th>
-          </>
+          <th style={{ padding: "5px 6px", width: "13%", textAlign: "center" }}>Verification Decisions</th>
         ) : (
           <>
             <th style={sharedTh("21%")}>Verified By</th>
@@ -457,6 +453,12 @@ export default function ApproveEmployeePage() {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      {/* ── Top instruction banner ── */}
+      <div style={{ padding: "10px 16px", borderRadius: 10, background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 15, fontStyle: "normal" }}>ℹ️</span>
+        Review the personnel profile, then verify credentials and authorize task access. Click a row to see the full profile details.
+      </div>
+
       {isLoading && <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>Loading…</div>}
 
       {error && (
@@ -487,10 +489,9 @@ export default function ApproveEmployeePage() {
                 </button>
               </div>
             </div>
-            <div style={{ padding: "8px 12px 10px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Review the personnel profile, then verify credentials and authorize task access. Click row to see full profile details.</div>
             <div className="table-responsive-container">
               {pending.length > 0 ? (
-                <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                   {listThead(true)}
                   <tbody>{pending.map((row, i) => renderRow(row, true, i))}</tbody>
                 </table>
@@ -505,7 +506,7 @@ export default function ApproveEmployeePage() {
               <div style={headerStyle}>Verified List</div>
               <div className="table-responsive-container">
                 {approved.length > 0 ? (
-                  <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                     {listThead(false)}
                     <tbody>{approved.map((row, i) => renderRow(row, false, i))}</tbody>
                   </table>
@@ -521,7 +522,7 @@ export default function ApproveEmployeePage() {
               <div style={headerStyle}>Unverified List</div>
               <div className="table-responsive-container">
                 {rejected.length > 0 ? (
-                  <table style={{ width: "100%", minWidth: "900px", borderCollapse: "collapse", tableLayout: "fixed" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                     {listThead(false)}
                     <tbody>{rejected.map((row, i) => renderRow(row, false, i))}</tbody>
                   </table>
@@ -595,9 +596,9 @@ export default function ApproveEmployeePage() {
           </div>
 
           {/* Details Grid layout: 2 Columns side-by-side */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 40, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 20, marginBottom: 20 }}>
             {/* Left Column */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <Section title="Section 1: Personal Details & Contact Information">
                 <div className="grid-responsive-2col">
                   <InfoRow label="Full Name" value={selected.user?.displayName ?? "—"} />
@@ -640,7 +641,7 @@ export default function ApproveEmployeePage() {
             </div>
 
             {/* Right Column */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <Section title="Section 3: Qualifications & Academic Background">
                 <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
                   {/* First Degree */}
@@ -761,7 +762,7 @@ export default function ApproveEmployeePage() {
                     value={notes[selected.id] ?? ""}
                     onChange={(e) => setNotes((cur) => ({ ...cur, [selected.id]: e.target.value }))}
                     placeholder="Enter verification notes..."
-                    style={{ width: "20%", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
+                    style={{ width: "100%", maxWidth: "400px", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
                   />
                 </label>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
@@ -800,7 +801,7 @@ export default function ApproveEmployeePage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: "var(--fs-xs)", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
+      <div style={{ fontSize: "10px", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
         {title}
       </div>
       <div style={{ display: "grid", gap: 6 }}>{children}</div>

@@ -67,7 +67,6 @@ const MNTD_HIRED_PROJECTS = [
 ];
 
 const MNTD_TEAMS = [
-  { name: "Leadership", label: "Leadership (Division Head & Principal Investigators)" },
   { name: "Project_Management/Coordination", label: "Project Management/Coordination" },
   { name: "Team_Leader", label: "Team Leader" },
   { name: "Laboratory_Team", label: "Laboratory Team" },
@@ -76,7 +75,8 @@ const MNTD_TEAMS = [
   { name: "Data_Team", label: "Data Team" },
   { name: "Social_Science_Team", label: "Social Science Team" },
   { name: "Health_Economics_Team", label: "Health Economics Team" },
-  { name: "logistics_finance_team", label: "Logistics/Finance Team" }
+  { name: "logistics_finance_team", label: "Logistics/Finance Team" },
+  { name: "Leadership", label: "Leadership (Division Head & Principal Investigators)" }
 ];
 
 const MNTD_PROJECTS = [
@@ -191,7 +191,9 @@ type FormData = {
   phone: string;
   personalEmail: string;
   ahriEmail: string;
-  emergencyContact: string;
+  emergencyContactName: string;
+  emergencyContactRelationship: string;
+  emergencyContactPhone: string;
 
   department: string;
   jobTitle: string;
@@ -245,7 +247,9 @@ const emptyForm = (): FormData => {
     phone: "",
     personalEmail: "",
     ahriEmail: "",
-    emergencyContact: "",
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: "",
     department: "",
     jobTitle: "",
     startDate: "",
@@ -410,7 +414,13 @@ export default function TrainingRecordsPage() {
       e.ahriEmail = "Please enter a valid AHRI email address.";
     }
 
-    if (!form.emergencyContact.trim()) e.emergencyContact = "Emergency contact info is required.";
+    if (!form.emergencyContactName.trim()) e.emergencyContactName = "Emergency contact name is required.";
+    if (!form.emergencyContactRelationship.trim()) e.emergencyContactRelationship = "Relationship is required.";
+    if (!form.emergencyContactPhone.trim()) {
+      e.emergencyContactPhone = "Emergency contact phone number is required.";
+    } else if (!/^[0-9]{10}$/.test(form.emergencyContactPhone.trim())) {
+      e.emergencyContactPhone = "Phone number must be exactly 10 digits (e.g. 09xxxxxxxx).";
+    }
 
     // Employment
     if (!form.department) e.department = "Department is required.";
@@ -500,7 +510,9 @@ export default function TrainingRecordsPage() {
       contractEndDate: form.contractEndDate ? new Date(form.contractEndDate) : null,
       
       phone: form.phone.trim(),
-      emergencyContact: form.emergencyContact.trim(),
+      emergencyContactName: form.emergencyContactName.trim(),
+      emergencyContactRelationship: form.emergencyContactRelationship.trim(),
+      emergencyContactPhone: form.emergencyContactPhone.trim(),
       sex: form.sex,
       personalEmail: form.personalEmail.trim(),
       ahriEmail: form.ahriEmail.trim() || null,
@@ -720,19 +732,50 @@ export default function TrainingRecordsPage() {
               {errors.ahriEmail && <span style={errSpan}>{errors.ahriEmail}</span>}
             </label>
 
-            {/* Emergency Contact */}
-            <label style={{ ...labelStyle, ...fullWidth }}>
-              <span>Emergency Contact Name and Phone Number {required}</span>
-              <input 
-                type="text" 
-                id="emergencyContact"
-                value={form.emergencyContact} 
-                onChange={(e) => handleChange("emergencyContact", e.target.value)} 
-                placeholder="e.g. Abebe Bekele (Father) - 0911000000" 
-                style={inputStyle(!!errors.emergencyContact)} 
-              />
-              {errors.emergencyContact && <span style={errSpan}>{errors.emergencyContact}</span>}
-            </label>
+            {/* Emergency Contact – split into 3 fields */}
+            <div style={{ ...fullWidth, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px 20px" }}>
+              {/* Name */}
+              <label style={labelStyle}>
+                <span>Emergency Contact Name {required}</span>
+                <input
+                  type="text"
+                  id="emergencyContactName"
+                  value={form.emergencyContactName}
+                  onChange={(e) => handleChange("emergencyContactName", e.target.value)}
+                  placeholder="e.g. Abebe Bekele"
+                  style={inputStyle(!!errors.emergencyContactName)}
+                />
+                {errors.emergencyContactName && <span style={errSpan}>{errors.emergencyContactName}</span>}
+              </label>
+
+              {/* Relationship */}
+              <label style={labelStyle}>
+                <span>Relationship {required}</span>
+                <input
+                  type="text"
+                  id="emergencyContactRelationship"
+                  value={form.emergencyContactRelationship}
+                  onChange={(e) => handleChange("emergencyContactRelationship", e.target.value)}
+                  placeholder="e.g. Father, Spouse, Sibling"
+                  style={inputStyle(!!errors.emergencyContactRelationship)}
+                />
+                {errors.emergencyContactRelationship && <span style={errSpan}>{errors.emergencyContactRelationship}</span>}
+              </label>
+
+              {/* Phone */}
+              <label style={labelStyle}>
+                <span>Emergency Contact Phone {required}</span>
+                <input
+                  type="tel"
+                  id="emergencyContactPhone"
+                  value={form.emergencyContactPhone}
+                  onChange={(e) => handleChange("emergencyContactPhone", e.target.value)}
+                  placeholder="e.g. 0911000000"
+                  style={inputStyle(!!errors.emergencyContactPhone)}
+                />
+                {errors.emergencyContactPhone && <span style={errSpan}>{errors.emergencyContactPhone}</span>}
+              </label>
+            </div>
           </div>
         </div>
 
@@ -856,7 +899,7 @@ export default function TrainingRecordsPage() {
               <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)" }}>
                 Select all the MNTD projects you are currently involved in {required}
               </span>
-              <div id="mntdProjectsInvolved" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 200, overflowY: "auto" }}>
+              <div id="mntdProjectsInvolved" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px 12px", background: "var(--color-surface)", padding: 12, borderRadius: 8, border: "1px solid var(--color-divider)", maxHeight: 320, overflowY: "auto" }}>
                 {MNTD_PROJECTS.map((p) => (
                   <label key={p.name} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, cursor: "pointer", color: "var(--color-text)" }}>
                     <input 

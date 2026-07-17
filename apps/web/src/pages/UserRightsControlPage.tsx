@@ -357,8 +357,8 @@ export default function UserRightsControlPage() {
   };
 
   const columnHeaderStyle: React.CSSProperties = {
-    padding: "8px 6px",
-    fontSize: "10px",
+    padding: "6px 4px",
+    fontSize: "9px",
     fontWeight: 800,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
@@ -374,12 +374,12 @@ export default function UserRightsControlPage() {
     <div style={pageStyle}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", margin: 0 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "18px", color: "var(--color-text)", margin: 0 }}>
             🔐 User Right Control
           </h1>
           <Badge label="Admin access matrix" color="primary" />
         </div>
-        <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", maxWidth: 920, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "12px", color: "var(--color-text-muted)", maxWidth: 920, lineHeight: 1.6 }}>
           Approved employees from HR Personnel Database appear here. Click a user to edit domain-level privileges, review the selected rights, and save the result.
         </p>
       </div>
@@ -504,7 +504,7 @@ export default function UserRightsControlPage() {
                       <tr
                         key={row.user.id}
                         onClick={() => openEditor(row.user)}
-                        style={{ height: "46px", cursor: "pointer", borderBottom: "1px solid rgba(1, 105, 111, 0.08)", transition: "background 0.12s" }}
+                        style={{ height: "32px", cursor: "pointer", borderBottom: "1px solid rgba(1, 105, 111, 0.08)", transition: "background 0.12s" }}
                         onMouseEnter={(event) => {
                           (event.currentTarget as HTMLTableRowElement).style.background = "rgba(1, 105, 111, 0.03)";
                         }}
@@ -512,11 +512,11 @@ export default function UserRightsControlPage() {
                           (event.currentTarget as HTMLTableRowElement).style.background = "transparent";
                         }}
                       >
-                        <td style={{ padding: "10px 12px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", verticalAlign: "middle" }}>{index + 1}</td>
-                        <td style={{ padding: "10px 12px", verticalAlign: "middle", overflow: "hidden" }}>
+                        <td style={{ padding: "6px 8px", fontSize: "10px", color: "var(--color-text-muted)", verticalAlign: "middle" }}>{index + 1}</td>
+                        <td style={{ padding: "6px 8px", verticalAlign: "middle", overflow: "hidden" }}>
                           <div
                             style={{
-                              fontSize: "12px",
+                              fontSize: "11px",
                               fontWeight: "normal",
                               color: "var(--color-text)",
                               lineHeight: 1.25,
@@ -533,8 +533,8 @@ export default function UserRightsControlPage() {
                           const count = row.selection[domain.slug]?.size ?? 0;
                           const active = count > 0;
                           return (
-                            <td key={domain.slug} style={{ padding: "10px 6px", verticalAlign: "middle", textAlign: "center" }}>
-                              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 999, background: active ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.10)", color: active ? "#047857" : "#991b1b", fontWeight: 800, fontSize: "10px", minWidth: 42, justifyContent: "center" }}>
+                            <td key={domain.slug} style={{ padding: "6px 4px", verticalAlign: "middle", textAlign: "center" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 6px", borderRadius: 999, background: active ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.10)", color: active ? "#047857" : "#991b1b", fontWeight: 800, fontSize: "9px", minWidth: 36, justifyContent: "center" }}>
                                 <span aria-hidden="true">{active ? "✓" : "✕"}</span>
                                 <span>{count}</span>
                               </div>
@@ -633,15 +633,15 @@ export default function UserRightsControlPage() {
                       {rights.map((right) => {
                         const checked = enabled.has(right);
                         return (
-                          <label key={right} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 10, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 28 }}>
+                          <label key={right} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px", borderRadius: 8, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 24 }}>
                             <input
                               type="checkbox"
                               checked={checked}
                               onChange={() => toggleRight(domain.slug, right)}
-                              style={{ width: 14, height: 14, accentColor: "var(--color-primary)", flexShrink: 0 }}
+                              style={{ width: 13, height: 13, accentColor: "var(--color-primary)", flexShrink: 0 }}
                             />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
+                              <div style={{ fontSize: 10, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
                             </div>
                           </label>
                         );

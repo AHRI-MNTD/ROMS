@@ -299,26 +299,26 @@ export default function MasterDataPage() {
         </form>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
-        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Rows (Total)</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.rows ?? data?.total ?? 0}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+        <div style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>Rows (Total)</div>
+          <div style={{ color: "var(--color-text)", fontSize: "11px", fontWeight: 700 }}>{summary?.rows ?? data?.total ?? 0}</div>
         </div>
-        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Categories</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.categories ?? 0}</div>
+        <div style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>Categories</div>
+          <div style={{ color: "var(--color-text)", fontSize: "11px", fontWeight: 700 }}>{summary?.categories ?? 0}</div>
         </div>
-        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Units</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.units ?? 0}</div>
+        <div style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>Units</div>
+          <div style={{ color: "var(--color-text)", fontSize: "11px", fontWeight: 700 }}>{summary?.units ?? 0}</div>
         </div>
-        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Projects</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.projects ?? 0}</div>
+        <div style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>Projects</div>
+          <div style={{ color: "var(--color-text)", fontSize: "11px", fontWeight: 700 }}>{summary?.projects ?? 0}</div>
         </div>
-        <div style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-          <div style={{ color: "var(--color-text-muted)", fontSize: "10px", marginBottom: 3 }}>Staff</div>
-          <div style={{ color: "var(--color-text)", fontSize: "var(--fs-md)", fontWeight: 700 }}>{summary?.staff ?? 0}</div>
+        <div style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>Staff</div>
+          <div style={{ color: "var(--color-text)", fontSize: "11px", fontWeight: 700 }}>{summary?.staff ?? 0}</div>
         </div>
       </div>
 
@@ -376,11 +376,17 @@ export default function MasterDataPage() {
         const rows = data?.data ?? [];
 
         type ColKey = "category" | "unit" | "project" | "staff";
-        const colDefs: Array<{ key: ColKey; label: string; editValue: string; setEdit: (v: string) => void }> = [
-          { key: "category", label: "Categories", editValue: editCategory, setEdit: setEditCategory },
-          { key: "unit", label: "Units", editValue: editUnit, setEdit: setEditUnit },
-          { key: "project", label: "Projects", editValue: editProject, setEdit: setEditProject },
-          { key: "staff", label: "Staff", editValue: editStaff, setEdit: setEditStaff },
+        const colDefs: Array<{
+          key: ColKey;
+          label: string;
+          editValue: string;
+          setEdit: (v: string) => void;
+          colWidths: [string, string, string];
+        }> = [
+          { key: "category", label: "Categories", editValue: editCategory, setEdit: setEditCategory, colWidths: ["12%", "72%", "16%"] },
+          { key: "unit", label: "Units", editValue: editUnit, setEdit: setEditUnit, colWidths: ["20%", "56%", "24%"] },
+          { key: "project", label: "Projects", editValue: editProject, setEdit: setEditProject, colWidths: ["20%", "56%", "24%"] },
+          { key: "staff", label: "Staff", editValue: editStaff, setEdit: setEditStaff, colWidths: ["15%", "65%", "20%"] },
         ];
 
         const colRows = (key: ColKey) =>
@@ -400,16 +406,16 @@ export default function MasterDataPage() {
         const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", borderBottom: "1px solid var(--color-divider)", background: "var(--color-surface)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
         return (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+          <div className="grid-responsive-4col">
             {colDefs.map((c) => {
               const entries = colRows(c.key);
               return (
                 <div key={c.key} style={{ border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface-2)", overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                     <colgroup>
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "60%" }} />
-                      <col style={{ width: "26%" }} />
+                      <col style={{ width: c.colWidths[0] }} />
+                      <col style={{ width: c.colWidths[1] }} />
+                      <col style={{ width: c.colWidths[2] }} />
                     </colgroup>
                     <thead>
                       <tr>
@@ -445,12 +451,12 @@ export default function MasterDataPage() {
                               </td>
                               <td style={{ padding: "4px 6px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap" }}>
                                 {isEditing ? (
-                                  <div style={{ display: "flex", gap: 3, justifyContent: "center" }}>
-                                    <button onClick={() => handleSaveEdit(entry.id)} disabled={updateMutation.isPending} style={{ background: "#16a34a", color: "white", border: "none", borderRadius: 4, padding: "2px 5px", fontSize: "9px", cursor: "pointer" }}>Save</button>
-                                    <button onClick={handleCancelEdit} style={{ background: "#64748b", color: "white", border: "none", borderRadius: 4, padding: "2px 5px", fontSize: "9px", cursor: "pointer" }}>✕</button>
+                                  <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
+                                    <button onClick={() => handleSaveEdit(entry.id)} disabled={updateMutation.isPending} style={{ background: "none", border: "none", color: "#16a34a", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Save">✔️</button>
+                                    <button onClick={handleCancelEdit} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Cancel">❌</button>
                                   </div>
                                 ) : (
-                                  <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                                  <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
                                     <button onClick={() => handleStartEdit(entry)} style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Edit record">✏️</button>
                                     <button onClick={() => handleDelete(entry.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Delete record">🗑️</button>
                                   </div>
