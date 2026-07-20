@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../../api/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,59 +15,54 @@ type StaffRow = {
   [key: string]: unknown;
 };
 
-// ─── Department colour map ────────────────────────────────────────────────────
-const DEPT_COLORS: Record<string, string> = {
-  "Research & Development": "#6366f1",
-  "Laboratory Operations": "#0ea5e9",
-  "Clinical Affairs": "#10b981",
-  "Data Management": "#f59e0b",
-  "Finance & Administration": "#8b5cf6",
-  "Human Resources": "#ec4899",
-  "IT & Systems": "#14b8a6",
-  "Regulatory Affairs": "#f97316",
-  "Quality Management": "#06b6d4",
-  "Field Operations": "#84cc16",
-  "Communications & Outreach": "#a78bfa",
-  Other: "#94a3b8",
+type ApprovalRow = {
+  id: string;
+  department: string;
+  jobTitle: string;
+  startDate: string;
+  approvalStatus: string;
+  reviewedAt?: string | null;
+  createdAt?: string | null;
+  employmentType?: string | null;
+  user?: { displayName?: string | null; email?: string | null };
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({
-  icon, label, value, sub, accent, loading,
+  icon, label, value, loading,
 }: {
   icon: string; label: string; value: string | number;
-  sub?: string; accent: string; loading?: boolean;
+  loading?: boolean;
 }) {
   return (
     <div style={{
-      background: "var(--color-surface-2)",
+      background: "var(--color-primary-highlight)",
       border: "1px solid var(--color-border)",
       borderRadius: 16,
-      padding: "18px 20px",
+      padding: "12px 16px",
       display: "flex",
-      alignItems: "flex-start",
-      gap: 14,
-      flex: "1 1 180px",
-      minWidth: 160,
+      alignItems: "center",
+      gap: 12,
+      flex: "1 1 160px",
+      minWidth: 140,
       position: "relative",
       overflow: "hidden",
     }}>
-      <div style={{ position: "absolute", top: 0, left: 0, width: 4, height: "100%", background: accent, borderRadius: "16px 0 0 16px" }} />
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: `${accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+      <div style={{ position: "absolute", top: 0, left: 0, width: 4, height: "100%", background: "var(--color-primary)", borderRadius: "16px 0 0 16px" }} />
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: 4 }}>
+        <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: 2 }}>
           {label}
         </div>
         {loading ? (
-          <div style={{ height: 28, width: 60, background: "var(--color-border)", borderRadius: 6 }} />
+          <div style={{ height: 24, width: 50, background: "var(--color-border)", borderRadius: 6 }} />
         ) : (
-          <div style={{ fontSize: "26px", fontWeight: 800, color: "var(--color-text)", lineHeight: 1, fontFamily: "var(--font-display)" }}>
+          <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--color-primary)", lineHeight: 1, fontFamily: "var(--font-display)" }}>
             {value}
           </div>
         )}
-        {sub && <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 4 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -77,7 +71,6 @@ function StatCard({
 // ─── Dept Bar ─────────────────────────────────────────────────────────────────
 function DeptBar({ name, count, total }: { name: string; count: number; total: number }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  const color = DEPT_COLORS[name] ?? DEPT_COLORS["Other"];
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: "12px", color: "var(--color-text-muted)" }}>
@@ -85,7 +78,7 @@ function DeptBar({ name, count, total }: { name: string; count: number; total: n
         <span>{count} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({pct}%)</span></span>
       </div>
       <div style={{ height: 6, background: "var(--color-border)", borderRadius: 99, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 0.6s cubic-bezier(.4,0,.2,1)" }} />
+        <div style={{ height: "100%", width: `${pct}%`, background: "var(--color-primary)", borderRadius: 99, transition: "width 0.6s cubic-bezier(.4,0,.2,1)" }} />
       </div>
     </div>
   );
@@ -95,16 +88,16 @@ function DeptBar({ name, count, total }: { name: string; count: number; total: n
 function EmploymentMix({ permanent, contract, msc }: { permanent: number; contract: number; msc: number }) {
   const total = permanent + contract + msc;
   const items = [
-    { label: "Permanent", value: permanent, color: "#6366f1" },
-    { label: "Contract", value: contract, color: "#f59e0b" },
-    { label: "MSc Student", value: msc, color: "#10b981" },
+    { label: "Permanent", value: permanent },
+    { label: "Contract", value: contract },
+    { label: "MSc Student", value: msc },
   ];
   if (total === 0) return <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>No data available</span>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {items.map((item) => (
         <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-primary)", flexShrink: 0, opacity: item.label === "Permanent" ? 1 : item.label === "Contract" ? 0.6 : 0.35 }} />
           <span style={{ fontSize: 13, color: "var(--color-text)", flex: 1 }}>{item.label}</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--color-text)" }}>{item.value}</span>
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", minWidth: 36, textAlign: "right" }}>
@@ -113,28 +106,6 @@ function EmploymentMix({ permanent, contract, msc }: { permanent: number; contra
         </div>
       ))}
     </div>
-  );
-}
-
-// ─── Quick Link Button ────────────────────────────────────────────────────────
-function QuickLink({ icon, label, desc, to, accent }: { icon: string; label: string; desc: string; to: string; accent: string }) {
-  const navigate = useNavigate();
-  return (
-    <button
-      onClick={() => navigate(to)}
-      style={{ display: "flex", alignItems: "center", gap: 14, background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", width: "100%", transition: "box-shadow 0.18s, border-color 0.18s" }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = accent; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 0 3px ${accent}22`; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "none"; }}
-    >
-      <div style={{ width: 36, height: 36, borderRadius: 8, background: `${accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-text)" }}>{label}</div>
-        <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: 2 }}>{desc}</div>
-      </div>
-      <span style={{ fontSize: 16, color: "var(--color-text-muted)" }}>›</span>
-    </button>
   );
 }
 
@@ -164,12 +135,46 @@ export default function HRDashboardPage() {
     },
   });
 
+  // Same endpoint as ApprovedPage — fetch real verified personnel
+  const approvalsQuery = useQuery({
+    queryKey: ["hr-dashboard-approvals"],
+    queryFn: async () => {
+      try {
+        const resp = await apiClient.get("/domains/hr/approvals");
+        return resp.data as { data: ApprovalRow[]; total: number };
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
+  });
+
   const approved = approvedQuery.data?.data ?? [];
-  const isLoading = approvedQuery.isLoading || pendingQuery.isLoading;
+  const isLoading = approvedQuery.isLoading || pendingQuery.isLoading || approvalsQuery.isLoading;
   const totalApproved = approvedQuery.data?.total ?? 0;
   const totalPending = pendingQuery.data?.total ?? 0;
 
-  const { deptCounts, employmentCounts, recentActivity } = useMemo(() => {
+  // Top 3 most recently verified — sorted by reviewedAt desc
+  const recentActivity = useMemo(() => {
+    const verifiedRows = (approvalsQuery.data?.data ?? []).filter(
+      (r) => r.approvalStatus === "APPROVED"
+    );
+    return [...verifiedRows]
+      .sort((a, b) => {
+        const ta = a.reviewedAt ?? a.createdAt ?? "";
+        const tb = b.reviewedAt ?? b.createdAt ?? "";
+        return tb.localeCompare(ta);
+      })
+      .slice(0, 3)
+      .map((r) => ({
+        name: r.user?.displayName ?? "—",
+        dept: r.department ?? "—",
+        role: r.jobTitle ?? "—",
+        date: r.startDate ? r.startDate.slice(0, 10) : "—",
+        verifiedAt: r.reviewedAt ?? r.createdAt ?? "—",
+      }));
+  }, [approvalsQuery.data]);
+
+  const { deptCounts, employmentCounts } = useMemo(() => {
     const deptMap: Record<string, number> = {};
     approved.forEach((r) => {
       const dept = String(r.department ?? "Other");
@@ -184,14 +189,7 @@ export default function HRDashboardPage() {
       else if (t === "msc_student" || t === "msc student") empMap.msc_student++;
     });
 
-    const recentActivity = [...approved].slice(0, 5).map((r) => ({
-      name: String(r.fullName ?? r.firstName ?? "—"),
-      dept: String(r.department ?? "—"),
-      role: String(r.jobTitle ?? r.position ?? "—"),
-      date: String(r.startDate ?? "—"),
-    }));
-
-    return { deptCounts: deptMap, employmentCounts: empMap, recentActivity };
+    return { deptCounts: deptMap, employmentCounts: empMap };
   }, [approved]);
 
   const sortedDepts = Object.entries(deptCounts).sort(([, a], [, b]) => b - a).slice(0, 6);
@@ -202,10 +200,9 @@ export default function HRDashboardPage() {
 
       {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalApproved} sub="Active staff files" accent="#6366f1" loading={isLoading} />
-        <StatCard icon="📋" label="Pending Registrations" value={isLoading ? "—" : totalPending} sub="Awaiting verification" accent="#f59e0b" loading={isLoading} />
-        <StatCard icon="🏢" label="Departments" value={isLoading ? "—" : Object.keys(deptCounts).length} sub="Active units" accent="#10b981" loading={isLoading} />
-        <StatCard icon="🔬" label="Employment Types" value={3} sub="Permanent · Contract · MSc" accent="#0ea5e9" />
+        <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalApproved} loading={isLoading} />
+        <StatCard icon="📋" label="Pending Registrations" value={isLoading ? "—" : totalPending} loading={isLoading} />
+        <StatCard icon="🏢" label="Departments" value={isLoading ? "—" : Object.keys(deptCounts).length} loading={isLoading} />
       </div>
 
       {/* ── Middle Row ─────────────────────────────────────────────────────── */}
@@ -249,14 +246,6 @@ export default function HRDashboardPage() {
             </div>
           ))}
         </div>
-
-        {/* Quick Actions */}
-        <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 16, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-text)", marginBottom: 4 }}>⚡ Quick Actions</div>
-          <QuickLink icon="📋" label="Register Personnel" desc="Submit a new staff file for review" to="../training-records" accent="#6366f1" />
-          <QuickLink icon="🗂️" label="View Personnel Files" desc="Browse verified staff records" to="../approved" accent="#10b981" />
-          <QuickLink icon="✅" label="Verify Submissions" desc="Approve or reject pending files" to="../approve-employee" accent="#f59e0b" />
-        </div>
       </div>
 
       {/* ── Recent Activity Table ───────────────────────────────────────────── */}
@@ -273,7 +262,7 @@ export default function HRDashboardPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-                  {["Full Name", "Department", "Role / Title", "Start Date", "Status"].map((h) => (
+                  {["Full Name", "Department", "Role / Title", "Start Date", "Verified On", "Status"].map((h) => (
                     <th key={h} style={{ padding: "6px 12px", fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--color-text-muted)", textAlign: "left", whiteSpace: "nowrap" }}>
                       {h}
                     </th>
@@ -281,24 +270,40 @@ export default function HRDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentActivity.map((row, i) => (
-                  <tr
-                    key={i}
-                    style={{ borderBottom: "1px solid var(--color-divider)", transition: "background 0.1s" }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "var(--color-surface)")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "")}
-                  >
-                    <td style={{ padding: "8px 12px", fontSize: 13, fontWeight: 600, color: "var(--color-text)" }}>{row.name}</td>
-                    <td style={{ padding: "8px 12px", fontSize: 12, color: "var(--color-text-muted)" }}>{row.dept}</td>
-                    <td style={{ padding: "8px 12px", fontSize: 12, color: "var(--color-text-muted)" }}>{row.role}</td>
-                    <td style={{ padding: "8px 12px", fontSize: 12, color: "var(--color-text-muted)" }}>{row.date}</td>
-                    <td style={{ padding: "8px 12px" }}>
-                      <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#15803d" }}>
-                        Verified
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {recentActivity.map((row, i) => {
+                  const verifiedOnLabel = row.verifiedAt !== "—"
+                    ? new Date(row.verifiedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
+                    : "—";
+                  const cellBase: React.CSSProperties = {
+                    padding: "0 12px",
+                    height: 36,
+                    maxHeight: 36,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    borderBottom: "1px solid var(--color-divider)",
+                    verticalAlign: "middle",
+                  };
+                  return (
+                    <tr
+                      key={i}
+                      style={{ borderBottom: "1px solid var(--color-divider)", transition: "background 0.1s" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "var(--color-primary-highlight)")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "")}
+                    >
+                      <td style={{ ...cellBase, fontSize: 13, fontWeight: 600, color: "var(--color-text)" }} title={row.name}>{row.name}</td>
+                      <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={row.dept}>{row.dept}</td>
+                      <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={row.role}>{row.role}</td>
+                      <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={row.date}>{row.date}</td>
+                      <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={verifiedOnLabel}>{verifiedOnLabel}</td>
+                      <td style={{ ...cellBase }}>
+                        <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: "var(--color-primary-highlight)", color: "var(--color-primary)", border: "1px solid var(--color-border)" }}>
+                          Verified
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -404,7 +404,69 @@ export default function UserRightsControlPage() {
       )}
 
       {!isLoading && !isError && (
-        activeUser === null ? (
+        // Three view states: matrix list → rights editor → review & confirm
+        reviewOpen && activeUser && draftPermissions ? (
+          /* ── REVIEW PAGE ─────────────────────────────────────────────── */
+          <div style={{ ...surfaceStyle, padding: "20px 24px" }}>
+
+            {/* ⚠️ Caution banner */}
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 12,
+              padding: "12px 16px", borderRadius: 12, marginBottom: 16,
+              background: "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))",
+              border: "1px solid rgba(245,158,11,0.35)",
+            }}>
+              <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", lineHeight: 1.35, marginBottom: 3 }}>
+                  You are about to grant access rights to {activeUser.displayName}
+                </div>
+                <div style={{ fontSize: 12, color: "#a16207", lineHeight: 1.5 }}>
+                  This will assign the{" "}
+                  <strong style={{ color: "#78350f" }}>{selectedRole.replace(/_/g, " ")}</strong>{" "}
+                  role with {listSelectedRights(draftPermissions).length} privilege{listSelectedRights(draftPermissions).length === 1 ? "" : "s"}. Please review carefully before confirming.
+                </div>
+              </div>
+            </div>
+
+            {/* Rights summary — domain + badges on the same row */}
+            <div style={{ marginBottom: 16 }}>
+              {selectedRightsByDomain(draftPermissions).length > 0 ? (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {selectedRightsByDomain(draftPermissions).map(({ domain, rights }) => (
+                    <div key={domain.slug} style={{
+                      display: "flex", alignItems: "center", flexWrap: "wrap",
+                      gap: 8, padding: "8px 12px", borderRadius: 10,
+                      background: "rgba(1, 105, 111, 0.04)",
+                      border: "1px solid rgba(1, 105, 111, 0.10)",
+                    }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text)", whiteSpace: "nowrap", minWidth: 220 }}>
+                        {domain.emoji} {domain.name}
+                      </span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}>
+                        {rights.map((right) => (
+                          <Badge key={`${domain.slug}-${right}`} label={right} color="primary" />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>No rights selected.</div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 12, borderTop: "1px solid var(--color-divider)" }}>
+              <Button variant="secondary" onClick={() => setReviewOpen(false)}>
+                No, cancel
+              </Button>
+              <Button variant="primary" onClick={confirmSave} disabled={listSelectedRights(draftPermissions).length === 0}>
+                Yes, give the privilege
+              </Button>
+            </div>
+          </div>
+        ) : activeUser === null ? (
           <div style={{ ...surfaceStyle, overflow: "hidden" }}>
             <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -550,85 +612,117 @@ export default function UserRightsControlPage() {
           </div>
         ) : (
           <div style={{ ...surfaceStyle, padding: "16px 20px", }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)" }}>
-              <div>
-                <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--color-text)", lineHeight: 1.2 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap", marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)", minWidth: 0 }}>
+              {/* Left: user identity — compact sizing so it doesn't push right side to a new row */}
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: "0 1 auto" }}>
+                <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: "var(--color-text)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {activeUser.displayName}
                 </div>
-                <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: 2 }}>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {activeUser.jobTitle} · {activeUser.department} · {activeUser.email}
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-muted)" }}>Assigned Role:</span>
-                  <select
-                    value={selectedRole}
-                    onChange={(e) => {
-                      const newRole = e.target.value;
-                      setSelectedRole(newRole);
 
-                      const seed = ROLE_SEEDS[newRole] ?? {};
-                      const newPerms = Object.fromEntries(
-                        DOMAIN_CATALOG.map((domain) => {
-                          if (newRole === "STAFF") {
-                            if (domain.slug === "hr") {
-                              return ["hr", new Set(["Training Records"])];
-                            }
-                            return [domain.slug, new Set()];
+              {/* Right: role selector + badges + actions — all on the same row, no wrap */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, flexWrap: "nowrap" }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Assigned Role:</span>
+                <select
+                  value={selectedRole}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    setSelectedRole(newRole);
+
+                    const seed = ROLE_SEEDS[newRole] ?? {};
+                    const newPerms = Object.fromEntries(
+                      DOMAIN_CATALOG.map((domain) => {
+                        if (newRole === "STAFF") {
+                          if (domain.slug === "hr") {
+                            return ["hr", new Set(["Training Records"])];
                           }
-                          const rights = seed[domain.slug] ?? [];
-                          const allowedRights = (DOMAIN_RIGHTS[domain.slug] ?? []).filter((right) => rights.includes(right));
-                          return [domain.slug, new Set(allowedRights)];
-                        })
-                      ) as PermissionState;
-                      setDraftPermissions(newPerms);
-                    }}
-                    style={{
-                      padding: "5px 24px 5px 10px",
-                      fontSize: "12px", borderRadius: 8,
-                      border: "1px solid rgba(1,105,111,0.18)",
-                      background: "rgba(255,255,255,0.85)",
-                      color: "var(--color-text)",
-                      outline: "none", cursor: "pointer",
-                      appearance: "none",
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                      backgroundRepeat: "no-repeat",
-                      backgroundPosition: "right 8px center",
-                    }}
-                  >
-                    <option value="STAFF">Staff (Restricted Onboarding)</option>
-                    <option value="LAB_SCIENTIST">Lab Scientist</option>
-                    <option value="DATA_MANAGER">Data Manager</option>
-                    <option value="RESEARCH_ADMIN">Research Admin</option>
-                    <option value="PRINCIPAL_INVESTIGATOR">Principal Investigator</option>
-                    <option value="QA_OFFICER">QA Officer</option>
-                    <option value="COMMUNITY_ENGAGEMENT">Community Engagement</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </div>
+                          return [domain.slug, new Set()];
+                        }
+                        const rights = seed[domain.slug] ?? [];
+                        const allowedRights = (DOMAIN_RIGHTS[domain.slug] ?? []).filter((right) => rights.includes(right));
+                        return [domain.slug, new Set(allowedRights)];
+                      })
+                    ) as PermissionState;
+                    setDraftPermissions(newPerms);
+                  }}
+                  style={{
+                    padding: "4px 22px 4px 8px",
+                    fontSize: "11px", borderRadius: 8,
+                    border: "1px solid rgba(1,105,111,0.18)",
+                    background: "rgba(255,255,255,0.85)",
+                    color: "var(--color-text)",
+                    outline: "none", cursor: "pointer",
+                    appearance: "none",
+                    maxWidth: 160,
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 6px center",
+                  }}
+                >
+                  <option value="STAFF">Staff (Restricted Onboarding)</option>
+                  <option value="LAB_SCIENTIST">Lab Scientist</option>
+                  <option value="DATA_MANAGER">Data Manager</option>
+                  <option value="RESEARCH_ADMIN">Research Admin</option>
+                  <option value="PRINCIPAL_INVESTIGATOR">Principal Investigator</option>
+                  <option value="QA_OFFICER">QA Officer</option>
+                  <option value="COMMUNITY_ENGAGEMENT">Community Engagement</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
                 <Badge label={activeUser.role.replace(/_/g, " ")} color="primary" />
                 <Badge label={`${listSelectedRights(activeSelection!).length} selected rights`} color="success" />
-                <Button variant="secondary" onClick={closeEditor} style={{ padding: "6px 12px", height: "auto" }}>
+                <Button variant="secondary" onClick={closeEditor} style={{ padding: "5px 10px", height: "auto", fontSize: "11px" }}>
                   Back
                 </Button>
-                <Button variant="primary" onClick={saveDraft} disabled={listSelectedRights(activeSelection!).length === 0} style={{ padding: "6px 16px", height: "auto" }}>
+                <Button variant="primary" onClick={saveDraft} disabled={listSelectedRights(activeSelection!).length === 0} style={{ padding: "5px 12px", height: "auto", fontSize: "11px" }}>
                   Save
                 </Button>
               </div>
             </div>
 
-            <div className="grid-responsive-5col">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
               {DOMAIN_CATALOG.map((domain) => {
                 const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
                 const enabled = activeSelection![domain.slug] ?? new Set<string>();
+                const domainLabel = `${domain.emoji} ${domain.name}`;
                 return (
                   <Card
                     key={domain.slug}
-                    title={`${domain.emoji} ${domain.name}`}
-                    subtitle={`${enabled.size}/${rights.length} selected`}
                     style={editorCardStyle}
                   >
+                    {/* Custom domain header: centered title (2-line clamped), left-aligned count */}
+                    <div style={{ marginBottom: 10 }}>
+                      <div
+                        title={domainLabel}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "var(--color-text)",
+                          lineHeight: 1.3,
+                          textAlign: "center",
+                          ...(domain.slug === "hr"
+                            ? {}
+                            : {
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }),
+                          cursor: "default",
+                        }}
+                      >
+                        {domain.slug === "hr" ? (
+                          <>{domain.emoji} HR &amp; Staff<br />Operations</>
+                        ) : (
+                          domainLabel
+                        )}
+                      </div>
+                      <div style={{ fontSize: "var(--fs-xs, 11px)", color: "var(--color-text-muted)", marginTop: 4, textAlign: "left" }}>
+                        {enabled.size}/{rights.length} selected
+                      </div>
+                    </div>
                     <div style={{ display: "grid", gap: 5 }}>
                       {rights.map((right) => {
                         const checked = enabled.has(right);
@@ -653,69 +747,6 @@ export default function UserRightsControlPage() {
             </div>
           </div>
         )
-      )}
-
-      {reviewOpen && activeUser && draftPermissions && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: sidebarWidth,
-            background: "rgba(15, 23, 42, 0.58)",
-            zIndex: 70,
-            display: "grid",
-            placeItems: "center",
-            padding: 20,
-          }}
-          onClick={() => setReviewOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="review-rights-title"
-            onClick={(event) => event.stopPropagation()}
-            style={{ width: "min(760px, 100%)", borderRadius: 24, background: "linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,248,244,0.98))", border: "1px solid rgba(255,255,255,0.24)", boxShadow: "0 30px 80px rgba(15, 23, 42, 0.35)", overflow: "hidden" }}
-          >
-            <div style={{ padding: 20, borderBottom: "1px solid var(--color-divider)" }}>
-              <div id="review-rights-title" style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--color-text)", marginBottom: 6 }}>
-                Are you sure you want to give these rights to {activeUser.displayName}?
-              </div>
-              <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
-                Confirming will assign the <strong style={{ color: "var(--color-primary)" }}>{selectedRole.replace(/_/g, " ")}</strong> role and apply {listSelectedRights(draftPermissions).length} selected privilege{listSelectedRights(draftPermissions).length === 1 ? "" : "s"} to this staff user.
-              </div>
-            </div>
-            <div style={{ padding: 20, maxHeight: 420, overflowY: "auto" }}>
-              {selectedRightsByDomain(draftPermissions).length > 0 ? (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {selectedRightsByDomain(draftPermissions).map(({ domain, rights }) => (
-                    <div key={domain.slug} style={{ padding: 14, borderRadius: 16, background: "rgba(1, 105, 111, 0.05)", border: "1px solid rgba(1, 105, 111, 0.10)" }}>
-                      <div style={{ fontWeight: 800, color: "var(--color-text)", marginBottom: 8 }}>
-                        {domain.emoji} {domain.name}
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        {rights.map((right) => (
-                          <Badge key={`${domain.slug}-${right}`} label={right} color="primary" />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>No rights selected.</div>
-              )}
-            </div>
-            <div style={{ padding: 20, borderTop: "1px solid var(--color-divider)", display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-              <Button variant="secondary" onClick={() => setReviewOpen(false)}>
-                No, cancel
-              </Button>
-              <Button variant="primary" onClick={confirmSave} disabled={listSelectedRights(draftPermissions).length === 0}>
-                Yes, give the privilege
-              </Button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

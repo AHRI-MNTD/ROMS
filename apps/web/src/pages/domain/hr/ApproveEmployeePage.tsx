@@ -381,7 +381,7 @@ export default function ApproveEmployeePage() {
       key={row.id}
       onClick={() => setSelected(row)}
       style={{ ...rowStyle, cursor: "pointer", transition: "background 0.1s", ...(index === 0 ? { borderTop: "2px solid var(--color-divider)" } : {}) }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--color-primary) 15%, transparent)")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
       <td style={{ ...cellStyle, width: "4%", textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700 }}>{index + 1}</td>
@@ -403,17 +403,21 @@ export default function ApproveEmployeePage() {
         <td style={{ ...cellStyle, textAlign: "center", whiteSpace: "nowrap", width: "13%" }} onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            title="Verify"
+            title="Verify & Authorize"
             onClick={() => handleDecision(row.id, "APPROVED")}
             disabled={approveMutation.isPending}
-            style={{ marginRight: 5, background: "#059669", color: "white", border: "none", width: 26, height: 22, borderRadius: 5, cursor: "pointer", fontWeight: 900, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            style={{ marginRight: 5, background: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.35)", width: 26, height: 22, borderRadius: 5, cursor: "pointer", fontWeight: 900, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s, border-color 0.15s, transform 0.1s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(16,185,129,0.25)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.6)"; e.currentTarget.style.transform = "scale(1.12)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "scale(1)"; }}
           >✓</button>
           <button
             type="button"
-            title="Decline"
+            title="Decline Verification"
             onClick={() => handleDecision(row.id, "REJECTED")}
             disabled={approveMutation.isPending}
-            style={{ background: "#dc2626", color: "white", border: "none", width: 26, height: 22, borderRadius: 5, cursor: "pointer", fontWeight: 900, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            style={{ background: "rgba(239,68,68,0.10)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.30)", width: 26, height: 22, borderRadius: 5, cursor: "pointer", fontWeight: 900, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s, border-color 0.15s, transform 0.1s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.22)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.55)"; e.currentTarget.style.transform = "scale(1.12)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.10)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.30)"; e.currentTarget.style.transform = "scale(1)"; }}
           >✕</button>
         </td>
       ) : (
@@ -422,7 +426,7 @@ export default function ApproveEmployeePage() {
             <div title={row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"} style={{ lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reviewedBy ? `${row.reviewedBy.displayName ?? row.reviewedBy.email ?? "System"}${row.reviewNote ? ` · ${row.reviewNote}` : ""}` : "—"}</div>
           </td>
           <td style={{ ...cellStyle, textAlign: "center", whiteSpace: "nowrap", width: "8%" }}>
-            <button type="button" title="View details" style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 6, width: 28, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#6366f1", fontSize: 13 }}>👁</button>
+            <button type="button" title="View details" style={{ background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", border: "1px solid var(--color-border)", borderRadius: 6, width: 28, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-primary)", fontSize: 13 }}>👁</button>
           </td>
         </>
       )}
@@ -454,8 +458,8 @@ export default function ApproveEmployeePage() {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* ── Top instruction banner ── */}
-      <div style={{ padding: "10px 16px", borderRadius: 10, background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.15)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 15, fontStyle: "normal" }}>ℹ️</span>
+      <div style={{ padding: "10px 16px", borderRadius: 10, background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 15, fontStyle: "normal", background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "2px 6px" }}>ℹ️</span>
         Review the personnel profile, then verify credentials and authorize task access. Click a row to see the full profile details.
       </div>
 
@@ -476,14 +480,18 @@ export default function ApproveEmployeePage() {
                 <button
                   type="button"
                   onClick={() => setListView((v) => v === "approved" ? null : "approved")}
-                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #86efac", background: listView === "approved" ? "#059669" : "#f0fdf4", color: listView === "approved" ? "#fff" : "#059669", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: listView === "approved" ? "1px solid rgba(16,185,129,0.5)" : "1px solid rgba(16,185,129,0.25)", background: listView === "approved" ? "rgba(16,185,129,0.18)" : "rgba(16,185,129,0.07)", color: "#059669", fontWeight: listView === "approved" ? 700 : 400, fontSize: "var(--fs-xs)", cursor: "pointer", transition: "all 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.fontWeight = "700"; e.currentTarget.style.background = listView === "approved" ? "rgba(16,185,129,0.22)" : "rgba(16,185,129,0.13)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.fontWeight = listView === "approved" ? "700" : "400"; e.currentTarget.style.background = listView === "approved" ? "rgba(16,185,129,0.18)" : "rgba(16,185,129,0.07)"; }}
                 >
                   Verified List ({approved.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setListView((v) => v === "rejected" ? null : "rejected")}
-                  style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid #fca5a5", background: listView === "rejected" ? "#dc2626" : "#fef2f2", color: listView === "rejected" ? "#fff" : "#dc2626", fontWeight: 700, fontSize: "var(--fs-xs)", cursor: "pointer" }}
+                  style={{ padding: "4px 12px", borderRadius: 6, border: listView === "rejected" ? "1px solid rgba(239,68,68,0.45)" : "1px solid rgba(239,68,68,0.22)", background: listView === "rejected" ? "rgba(239,68,68,0.14)" : "rgba(239,68,68,0.06)", color: "#dc2626", fontWeight: listView === "rejected" ? 700 : 400, fontSize: "var(--fs-xs)", cursor: "pointer", transition: "all 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.fontWeight = "700"; e.currentTarget.style.background = listView === "rejected" ? "rgba(239,68,68,0.18)" : "rgba(239,68,68,0.11)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.fontWeight = listView === "rejected" ? "700" : "400"; e.currentTarget.style.background = listView === "rejected" ? "rgba(239,68,68,0.14)" : "rgba(239,68,68,0.06)"; }}
                 >
                   Unverified List ({rejected.length})
                 </button>
@@ -539,7 +547,7 @@ export default function ApproveEmployeePage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-divider)", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--color-primary-highlight)", border: "2px solid var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "var(--color-primary)", flexShrink: 0 }}>
                   {(selected.user?.displayName ?? "?")[0].toUpperCase()}
                 </div>
                 <div>
@@ -556,20 +564,20 @@ export default function ApproveEmployeePage() {
                 <span style={{
                   fontSize: "var(--fs-xs)",
                   fontWeight: 700,
-                  background: selected.approvalStatus === "PENDING" ? "#fef9c3" : selected.approvalStatus === "APPROVED" ? "#dcfce7" : "#fef2f2",
-                  color: selected.approvalStatus === "PENDING" ? "#854d0e" : selected.approvalStatus === "APPROVED" ? "#166534" : "#991b1b",
-                  border: `1px solid ${selected.approvalStatus === "PENDING" ? "#fde047" : selected.approvalStatus === "APPROVED" ? "#86efac" : "#fca5a5"}`,
+                  background: selected.approvalStatus === "PENDING" ? "rgba(234,179,8,0.10)" : selected.approvalStatus === "APPROVED" ? "var(--color-primary-highlight)" : "rgba(239,68,68,0.10)",
+                  color: selected.approvalStatus === "PENDING" ? "#a16207" : selected.approvalStatus === "APPROVED" ? "var(--color-primary)" : "#dc2626",
+                  border: `1px solid ${selected.approvalStatus === "PENDING" ? "rgba(234,179,8,0.35)" : selected.approvalStatus === "APPROVED" ? "var(--color-border)" : "rgba(239,68,68,0.30)"}`,
                   borderRadius: 999,
                   padding: "3px 12px"
                 }}>
-                  {selected.approvalStatus === "PENDING" ? "PENDING VERIFICATION" : selected.approvalStatus === "APPROVED" ? "VERIFIED" : "UNVERIFIED"}
+                  {selected.approvalStatus === "PENDING" ? "PENDING VERIFICATION" : selected.approvalStatus === "APPROVED" ? "✓ VERIFIED" : "UNVERIFIED"}
                 </span>
                 {(() => {
                   const emp = formatEmployment(selected.employmentType);
                   const empColor =
-                    emp === "Contract" ? { bg: "#fef9c3", text: "#854d0e", border: "#fde047" } :
-                      emp === "Permanent" ? { bg: "#dcfce7", text: "#166534", border: "#86efac" } :
-                        { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" };
+                    emp === "Contract" ? { bg: "rgba(234,179,8,0.10)", text: "#a16207", border: "rgba(234,179,8,0.35)" } :
+                      emp === "Permanent" ? { bg: "var(--color-primary-highlight)", text: "var(--color-primary)", border: "var(--color-border)" } :
+                        { bg: "rgba(59,130,246,0.10)", text: "#2563eb", border: "rgba(59,130,246,0.30)" };
                   return <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: empColor.bg, color: empColor.text, border: `1px solid ${empColor.border}`, borderRadius: 999, padding: "3px 12px" }}>{emp}</span>;
                 })()}
               </div>
@@ -770,7 +778,9 @@ export default function ApproveEmployeePage() {
                     type="button"
                     onClick={() => handleDecision(selected.id, "REJECTED")}
                     disabled={approveMutation.isPending}
-                    style={{ background: "#dc2626", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
+                    style={{ background: "rgba(239,68,68,0.10)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.35)", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)", transition: "background 0.15s, border-color 0.15s, color 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.20)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.55)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.10)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)"; }}
                   >
                     ✕ Decline Verification
                   </button>
@@ -778,7 +788,9 @@ export default function ApproveEmployeePage() {
                     type="button"
                     onClick={() => handleDecision(selected.id, "APPROVED")}
                     disabled={approveMutation.isPending}
-                    style={{ background: "#059669", color: "white", border: "none", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)" }}
+                    style={{ background: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.35)", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)", transition: "background 0.15s, border-color 0.15s, color 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(16,185,129,0.24)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.60)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }}
                   >
                     ✓ Verify & Authorize
                   </button>

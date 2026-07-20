@@ -380,13 +380,13 @@ export default function ApprovedPage() {
     padding: "6px 8px",
     textAlign: "left",
     fontSize: "10px",
-    color: "var(--color-text-muted)",
+    color: sortKey === key ? "var(--color-primary)" : "var(--color-text-muted)",
     fontWeight: 700,
     cursor: "pointer",
     userSelect: "none",
     whiteSpace: "nowrap",
     borderBottom: "1px solid var(--color-divider)",
-    background: sortKey === key ? "rgba(99,102,241,0.05)" : "transparent",
+    background: sortKey === key ? "var(--color-primary-highlight)" : "transparent",
   });
 
   const cellStyle: React.CSSProperties = {
@@ -438,7 +438,7 @@ export default function ApprovedPage() {
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>Personnel Registry & Files</span>
-              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "#059669", background: "#dcfce7", border: "1px solid #86efac", borderRadius: 999, padding: "2px 10px" }}>
+              <span style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-primary)", background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", borderRadius: 999, padding: "2px 10px" }}>
                 {filtered.length} {filtered.length === approved.length ? "total" : `of ${approved.length}`}
               </span>
             </div>
@@ -507,7 +507,7 @@ export default function ApprovedPage() {
                         key={row.id}
                         onClick={() => setSelected(row)}
                         style={{ cursor: "pointer", transition: "background 0.15s", height: 32 }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(99,102,241,0.05)")}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--color-primary) 15%, transparent)")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                       >
                         <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "5%" }}>{i + 1}</td>
@@ -523,7 +523,7 @@ export default function ApprovedPage() {
                           <button
                             type="button"
                             title="View personnel file"
-                            style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 6, width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#6366f1", fontSize: 14, lineHeight: 1 }}
+                            style={{ background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", border: "1px solid var(--color-border)", borderRadius: 6, width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-primary)", fontSize: 14, lineHeight: 1 }}
                           >👁</button>
                         </td>
                       </tr>
@@ -540,7 +540,7 @@ export default function ApprovedPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-divider)", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--color-primary-highlight)", border: "2px solid var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "var(--color-primary)", flexShrink: 0 }}>
                   {(selected.user?.displayName ?? "?")[0].toUpperCase()}
                 </div>
                 <div>
@@ -554,7 +554,7 @@ export default function ApprovedPage() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "#dcfce7", color: "#166534", border: "1px solid #86efac", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
+                <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, background: "var(--color-primary-highlight)", color: "var(--color-primary)", border: "1px solid var(--color-border)", borderRadius: 999, padding: "3px 12px" }}>✓ VERIFIED</span>
                 <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{formatEmployment(selected.employmentType)}</span>
               </div>
             </div>
@@ -747,14 +747,14 @@ export default function ApprovedPage() {
           <div style={{ padding: "14px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
             <ActionBtn
               onClick={handleDownloadPdf}
-              color={pdfStatus === "generating" ? "#0d9488" : "#0f766e"}
+              isPending={pdfStatus === "generating"}
               icon={pdfStatus === "generating" ? "⏳" : "⬇"}
               label={pdfStatus === "generating" ? "Generating..." : "Download PDF"}
               disabled={pdfStatus === "generating"}
             />
             <ActionBtn
               onClick={handlePrint}
-              color={printStatus === "printing" ? "#2563eb" : "#1d4ed8"}
+              isPending={printStatus === "printing"}
               icon={printStatus === "printing" ? "⏳" : "🖨"}
               label={printStatus === "printing" ? "Printing..." : "Print"}
               disabled={printStatus === "printing"}
@@ -927,7 +927,7 @@ export default function ApprovedPage() {
                     invItems = typeof printingPersonnel.propertyInventory === "string"
                       ? JSON.parse(printingPersonnel.propertyInventory)
                       : printingPersonnel.propertyInventory;
-                  } catch (e) {}
+                  } catch (e) { }
                 }
                 return invItems.length > 0 ? (
                   <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 4 }}>
@@ -966,11 +966,11 @@ export default function ApprovedPage() {
           {/* Formal Signatures */}
           <div className="signature-section">
             <div className="signature-box">
-              <strong>Employee Signature</strong><br/>
+              <strong>Employee Signature</strong><br />
               Date: ________________________
             </div>
             <div className="signature-box">
-              <strong>Authorized HR Representative</strong><br/>
+              <strong>Authorized HR Representative</strong><br />
               Date: ________________________
             </div>
           </div>
@@ -1143,18 +1143,18 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function ActionBtn({ onClick, color, icon, label, disabled }: { onClick: () => void; color: string; icon: string; label: string; disabled?: boolean }) {
+function ActionBtn({ onClick, isPending, icon, label, disabled }: { onClick: () => void; isPending?: boolean; icon: string; label: string; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: "6px 12px",
+        padding: "6px 14px",
         borderRadius: 10,
-        border: "none",
-        background: color,
-        color: "#fff",
+        border: "1px solid var(--color-primary)",
+        background: isPending ? "var(--color-primary-highlight)" : "var(--color-primary)",
+        color: isPending ? "var(--color-primary)" : "#fff",
         fontSize: "var(--fs-xs)",
         fontWeight: 700,
         cursor: disabled ? "not-allowed" : "pointer",

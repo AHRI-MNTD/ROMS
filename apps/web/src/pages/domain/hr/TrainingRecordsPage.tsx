@@ -571,9 +571,9 @@ export default function TrainingRecordsPage() {
     fontWeight: 850,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color: "var(--color-text-muted)",
-    background: "rgba(99,102,241,0.06)",
-    borderBottom: "1px solid var(--color-divider)",
+    color: "var(--color-primary)",
+    background: "var(--color-primary-highlight)",
+    borderBottom: "1px solid var(--color-border)",
   };
 
   const grid2: React.CSSProperties = {
@@ -1313,14 +1313,14 @@ export default function TrainingRecordsPage() {
             style={{
               padding: "10px 28px",
               borderRadius: 10,
-              border: "none",
-              background: mutation.isPending ? "#a5b4fc" : "linear-gradient(135deg, #6366f1, #8b5cf6)",
-              color: "#fff",
+              border: "1px solid var(--color-primary)",
+              background: mutation.isPending ? "var(--color-primary-highlight)" : "var(--color-primary)",
+              color: mutation.isPending ? "var(--color-primary)" : "#fff",
               fontSize: "var(--fs-xs)",
               fontWeight: 800,
               cursor: mutation.isPending ? "not-allowed" : "pointer",
               letterSpacing: "0.03em",
-              boxShadow: mutation.isPending ? "none" : "0 4px 14px rgba(99,102,241,0.35)",
+              opacity: mutation.isPending ? 0.7 : 1,
               transition: "all 0.2s",
             }}
           >
