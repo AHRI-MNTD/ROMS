@@ -34,36 +34,44 @@ function StatCard({
   icon: string; label: string; value: string | number;
   loading?: boolean;
 }) {
+  // Split label into two lines at the last space
+  const parts = label.split(" ");
+  const mid = Math.ceil(parts.length / 2);
+  const line1 = parts.slice(0, mid).join(" ");
+  const line2 = parts.slice(mid).join(" ");
+
   return (
     <div style={{
       background: "var(--color-primary-highlight)",
       border: "1px solid var(--color-border)",
-      borderRadius: 16,
-      padding: "12px 16px",
+      borderRadius: 14,
+      padding: "8px 14px 8px 18px",
       display: "flex",
       alignItems: "center",
-      gap: 12,
+      gap: 10,
       flex: "1 1 160px",
       minWidth: 140,
       position: "relative",
       overflow: "hidden",
     }}>
-      <div style={{ position: "absolute", top: 0, left: 0, width: 4, height: "100%", background: "var(--color-primary)", borderRadius: "16px 0 0 16px" }} />
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+      <div style={{ position: "absolute", top: 0, left: 0, width: 4, height: "100%", background: "var(--color-primary)", borderRadius: "14px 0 0 14px" }} />
+      {/* Icon */}
+      <div style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }}>
         {icon}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: 2 }}>
-          {label}
-        </div>
-        {loading ? (
-          <div style={{ height: 24, width: 50, background: "var(--color-border)", borderRadius: 6 }} />
-        ) : (
-          <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--color-primary)", lineHeight: 1, fontFamily: "var(--font-display)" }}>
-            {value}
-          </div>
-        )}
+      {/* Two-line label */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-primary)", lineHeight: 1.25 }}>{line1}</div>
+        {line2 && <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-primary)", lineHeight: 1.25 }}>{line2}</div>}
       </div>
+      {/* Number */}
+      {loading ? (
+        <div style={{ marginLeft: "auto", height: 20, width: 40, background: "var(--color-border)", borderRadius: 6 }} />
+      ) : (
+        <div style={{ marginLeft: "auto", fontSize: "22px", fontWeight: 800, color: "var(--color-primary)", lineHeight: 1, fontFamily: "var(--font-display)", flexShrink: 0 }}>
+          {value}
+        </div>
+      )}
     </div>
   );
 }
@@ -199,7 +207,7 @@ export default function HRDashboardPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
         <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalApproved} loading={isLoading} />
         <StatCard icon="📋" label="Pending Registrations" value={isLoading ? "—" : totalPending} loading={isLoading} />
         <StatCard icon="🏢" label="Departments" value={isLoading ? "—" : Object.keys(deptCounts).length} loading={isLoading} />
@@ -276,8 +284,8 @@ export default function HRDashboardPage() {
                     : "—";
                   const cellBase: React.CSSProperties = {
                     padding: "0 12px",
-                    height: 36,
-                    maxHeight: 36,
+                    height: 30,
+                    maxHeight: 30,
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -291,7 +299,7 @@ export default function HRDashboardPage() {
                       onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "var(--color-primary-highlight)")}
                       onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.background = "")}
                     >
-                      <td style={{ ...cellBase, fontSize: 13, fontWeight: 600, color: "var(--color-text)" }} title={row.name}>{row.name}</td>
+                      <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text)" }} title={row.name}>{row.name}</td>
                       <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={row.dept}>{row.dept}</td>
                       <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={row.role}>{row.role}</td>
                       <td style={{ ...cellBase, fontSize: 12, color: "var(--color-text-muted)" }} title={row.date}>{row.date}</td>

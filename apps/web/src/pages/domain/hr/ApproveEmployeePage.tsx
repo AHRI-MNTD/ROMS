@@ -459,7 +459,7 @@ export default function ApproveEmployeePage() {
     <div style={{ display: "grid", gap: 16 }}>
       {/* ── Top instruction banner ── */}
       <div style={{ padding: "10px 16px", borderRadius: 10, background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 15, fontStyle: "normal", background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "2px 6px" }}>ℹ️</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
         Review the personnel profile, then verify credentials and authorize task access. Click a row to see the full profile details.
       </div>
 
