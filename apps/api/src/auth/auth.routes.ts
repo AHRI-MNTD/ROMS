@@ -313,6 +313,10 @@ router.post("/refresh", async (req: Request, res: Response) => {
 
   try {
     const payload = verifyToken(refreshToken);
+    if (payload.type !== "refresh") {
+      res.status(401).json({ code: "INVALID_TOKEN", message: "Invalid token type: refresh token expected" });
+      return;
+    }
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) {
       res.status(401).json({ code: "INVALID_TOKEN", message: "User not found" });
@@ -361,6 +365,12 @@ router.patch("/users/:id/roles", requireAuth, async (req: Request, res: Response
   const { roles, permissions } = req.body;
   if (!Array.isArray(roles)) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "roles must be an array of strings" });
+    return;
+  }
+
+  // Prevent RESEARCH_ADMIN from granting ADMIN role or admin:all permission
+  if ((roles.includes(Role.ADMIN) || (Array.isArray(permissions) && permissions.includes("admin:all"))) && !req.user?.roles.includes(Role.ADMIN)) {
+    res.status(403).json({ code: "FORBIDDEN", message: "Only full Admins can assign the Admin role or admin:all permission" });
     return;
   }
 

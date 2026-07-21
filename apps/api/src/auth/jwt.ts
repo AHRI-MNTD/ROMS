@@ -8,6 +8,7 @@ export interface JwtPayload {
   permissions: string[];
   iat?: number;
   exp?: number;
+  type?: string;
 }
 
 export function signAccessToken(payload: Omit<JwtPayload, "iat" | "exp">): string {

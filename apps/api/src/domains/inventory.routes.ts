@@ -469,7 +469,10 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
               throw new Error("INVALID_ITEM_ID");
             }
 
-            const stockItem = await tx.stockItem.findUnique({ where: { id: resolvedStockItemId } });
+            const stockItems = await tx.$queryRaw<any[]>(
+              Prisma.sql`SELECT * FROM "StockItem" WHERE id = ${resolvedStockItemId} FOR UPDATE`
+            );
+            const stockItem = stockItems[0];
             if (!stockItem) {
               throw new Error("ITEM_NOT_FOUND");
             }
