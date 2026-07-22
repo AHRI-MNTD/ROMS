@@ -21,7 +21,10 @@
     "db:reset": "pnpm --filter @roms/db exec prisma migrate reset --force && pnpm db:seed",
     "infra:up": "docker compose up -d postgres redis mosquitto minio",
     "infra:down": "docker compose down",
-    "infra:up:all": "docker compose up -d"
+    "infra:up:all": "docker compose up -d",
+    "prod:up": "docker compose -f docker-compose.prod.yml up -d --build",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "prod:logs": "docker compose -f docker-compose.prod.yml logs -f"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

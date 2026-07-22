@@ -37,28 +37,29 @@ router.post("/register", async (req: Request, res: Response) => {
         displayName,
         emailVerified: false,
         verificationCode,
-        roles: [],
+        roles: ["LAB_SCIENTIST"],
       },
     });
 
-    logger.info(`
-==================================================
-📬 [MOCK EMAIL] Verification Code for ${user.email}:
-👉 Code: ${verificationCode}
-==================================================
-    `);
-
+    let emailSent = false;
     try {
       await sendVerificationEmail(user.email, verificationCode);
+      emailSent = true;
     } catch (emailErr) {
-      logger.error(emailErr, "Failed to send email during registration");
+      logger.error(emailErr, "Failed to send verification email");
     }
 
+    const smtpConfigured = Boolean(env.SMTP_USER && env.SMTP_PASS && !env.SMTP_PASS.includes("your-gmail-app-password"));
+
+    logger.info({ userId: user.id, email: user.email, verificationCode }, "User registered; email verification code generated");
 
     res.status(201).json({
       status: "VERIFICATION_REQUIRED",
       email: user.email,
-      message: "Registration successful. Please verify your email to log in."
+      message: emailSent
+        ? "Verification code sent to your email."
+        : "Registration successful. Please verify your email code.",
+      devVerificationCode: !smtpConfigured ? verificationCode : undefined,
     });
   } catch (err) {
     logger.error(err, "Register error");
@@ -173,10 +174,13 @@ router.post("/login", async (req: Request, res: Response) => {
       }
 
 
+      const smtpConfigured = Boolean(env.SMTP_USER && env.SMTP_PASS && !env.SMTP_PASS.includes("your-gmail-app-password"));
+
       res.status(401).json({
         code: "EMAIL_UNVERIFIED",
         message: "Email is not verified. Please verify your email first.",
-        email: user.email
+        email: user.email,
+        devVerificationCode: !smtpConfigured ? code : undefined,
       });
       return;
     }

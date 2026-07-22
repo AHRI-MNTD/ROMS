@@ -619,7 +619,7 @@ export default function UserRightsControlPage() {
                   {activeUser.displayName}
                 </div>
                 <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {activeUser.jobTitle} · {activeUser.department} · {activeUser.email}
+                  {activeUser.department} · {activeUser.email}
                 </div>
               </div>
 

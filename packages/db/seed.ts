@@ -541,7 +541,7 @@ async function main() {
   const users = await Promise.all([
     prisma.user.upsert({
       where: { email: "scientist@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "scientist@roms.dev",
         hashedPassword: password,
@@ -552,7 +552,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "datamanager@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "datamanager@roms.dev",
         hashedPassword: password,
@@ -563,7 +563,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "admin@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "admin@roms.dev",
         hashedPassword: password,
@@ -574,7 +574,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "pi@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "pi@roms.dev",
         hashedPassword: password,
@@ -585,7 +585,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "qa@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "qa@roms.dev",
         hashedPassword: password,
@@ -596,7 +596,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "community@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "community@roms.dev",
         hashedPassword: password,
@@ -607,7 +607,7 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "sysadmin@roms.dev" },
-      update: {},
+      update: { hashedPassword: password, emailVerified: true },
       create: {
         email: "sysadmin@roms.dev",
         hashedPassword: password,

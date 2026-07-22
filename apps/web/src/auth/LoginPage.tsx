@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { useAuth } from "./useAuth";
+import { isApprovedUser } from "./permissions";
 
 interface LoginResponse {
   accessToken: string;
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [showVerification, setShowVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [devCode, setDevCode] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ export default function LoginPage() {
       if (google && google.accounts) {
         clearInterval(interval);
         google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "your-google-client-id-here.apps.googleusercontent.com",
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "575925483255-v7vbqh1umjliu65kebqb7n5o60opob30.apps.googleusercontent.com",
           callback: handleGoogleCredentialResponse,
         });
 
@@ -86,6 +88,10 @@ export default function LoginPage() {
         const resp = await apiClient.post<any>("/auth/register", { email, password, displayName });
         if (resp.data.status === "VERIFICATION_REQUIRED") {
           setVerificationEmail(email);
+          if (resp.data.devVerificationCode) {
+            setDevCode(resp.data.devVerificationCode);
+            setVerificationCode(resp.data.devVerificationCode);
+          }
           setShowVerification(true);
         } else {
           const { accessToken, refreshToken, user } = resp.data;
@@ -96,12 +102,20 @@ export default function LoginPage() {
         const resp = await apiClient.post<LoginResponse>("/auth/login", { email, password });
         const { accessToken, refreshToken, user } = resp.data;
         login(user, accessToken, refreshToken);
-        navigate("/");
+        if (!isApprovedUser(user.roles, user.permissions)) {
+          navigate("/domains/hr/recruitment-onboarding/training-records");
+        } else {
+          navigate("/");
+        }
       }
     } catch (err: any) {
       const responseData = err.response?.data;
       if (responseData?.code === "EMAIL_UNVERIFIED") {
         setVerificationEmail(responseData.email || email);
+        if (responseData.devVerificationCode) {
+          setDevCode(responseData.devVerificationCode);
+          setVerificationCode(responseData.devVerificationCode);
+        }
         setShowVerification(true);
       } else {
         setError(responseData?.message || "Authentication failed. Please check your credentials.");
@@ -122,7 +136,11 @@ export default function LoginPage() {
       });
       const { accessToken, refreshToken, user } = resp.data;
       login(user, accessToken, refreshToken);
-      navigate("/domains/hr/recruitment-onboarding/training-records");
+      if (!isApprovedUser(user.roles, user.permissions)) {
+        navigate("/domains/hr/recruitment-onboarding/training-records");
+      } else {
+        navigate("/");
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Verification failed. Please check your code.");
     } finally {
@@ -186,7 +204,16 @@ export default function LoginPage() {
             <form onSubmit={handleVerificationSubmit}>
               <div style={{ marginBottom: 20 }}>
                 <p style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", marginBottom: 14, lineHeight: "1.4" }}>
-                  A 6-digit verification code was sent to <strong style={{ color: "var(--color-text)" }}>{verificationEmail}</strong>. Please check your console/API logs to retrieve the code.
+                  A 6-digit verification code was sent to <strong style={{ color: "var(--color-text)" }}>{verificationEmail}</strong>.
+                  {devCode ? (
+                    <span style={{ display: "block", marginTop: 8, color: "var(--color-primary)", fontWeight: 600 }}>
+                      👉 Local/Demo Mode: Your verification code is <strong>{devCode}</strong>
+                    </span>
+                  ) : (
+                    <span style={{ display: "block", marginTop: 6, color: "var(--color-text-muted)" }}>
+                      Please check your email inbox to retrieve the 6-digit code.
+                    </span>
+                  )}
                 </p>
                 <label
                   htmlFor="verificationCode"

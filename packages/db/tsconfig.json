@@ -4,8 +4,8 @@
     "outDir": "./dist",
     "rootDir": ".",
     "composite": true,
-    "moduleResolution": "node16",
-    "module": "Node16"
+    "moduleResolution": "node",
+    "module": "CommonJS"
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules", "dist"]

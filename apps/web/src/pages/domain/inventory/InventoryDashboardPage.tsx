@@ -133,24 +133,24 @@ export default function InventoryDashboardPage() {
                 {topDemandItems.length === 0
                   ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "9px" }}>No data available.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
-                      const item = topDemandItems[i];
-                      return (
-                        <div key={i} style={rowBase}>
-                          {item ? (
-                            <>
-                              <div>
-                                <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.name ?? "Unknown item"}</div>
-                                <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>SKU: {item.sku}</div>
-                              </div>
-                              <div style={{ textAlign: "right" }}>
-                                <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.checkOutTotal} used</div>
-                                <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>Qty left: {item.quantity}</div>
-                              </div>
-                            </>
-                          ) : emptyCell}
-                        </div>
-                      );
-                    })
+                    const item = topDemandItems[i];
+                    return (
+                      <div key={i} style={rowBase}>
+                        {item ? (
+                          <>
+                            <div>
+                              <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.name ?? "Unknown item"}</div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>SKU: {item.sku}</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.checkOutTotal} used</div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>Qty left: {item.quantity}</div>
+                            </div>
+                          </>
+                        ) : emptyCell}
+                      </div>
+                    );
+                  })
                 }
               </div>
             </div>
@@ -165,22 +165,22 @@ export default function InventoryDashboardPage() {
                 {criticalItems.length === 0
                   ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#166534", fontSize: "10px", fontWeight: 700 }}>✅ All inventory levels are healthy!</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
-                      const item = criticalItems[i];
-                      if (!item) return <div key={i} style={rowBase}>{emptyCell}</div>;
-                      const qty = Number(item.quantity ?? 0);
-                      const isOut = qty <= 0;
-                      return (
-                        <div key={i} style={rowBase}>
-                          <div>
-                            <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.name}</div>
-                            <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>SKU: {item.sku}</div>
-                          </div>
-                          <div style={{ fontSize: "10px", color: isOut ? "#dc2626" : "#d97706", fontWeight: 600 }}>
-                            {isOut ? "OUT OF STOCK" : `${qty} left`}
-                          </div>
+                    const item = criticalItems[i];
+                    if (!item) return <div key={i} style={rowBase}>{emptyCell}</div>;
+                    const qty = Number(item.quantity ?? 0);
+                    const isOut = qty <= 0;
+                    return (
+                      <div key={i} style={rowBase}>
+                        <div>
+                          <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.name}</div>
+                          <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>SKU: {item.sku}</div>
                         </div>
-                      );
-                    })
+                        <div style={{ fontSize: isOut ? "9px" : "10px", color: isOut ? "#f87171" : "#d97706", fontWeight: 600 }}>
+                          {isOut ? "OUT OF STOCK" : `${qty} left`}
+                        </div>
+                      </div>
+                    );
+                  })
                 }
               </div>
             </div>
@@ -195,26 +195,26 @@ export default function InventoryDashboardPage() {
                 {recentMovements.length === 0
                   ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "9px" }}>No recent inventory movements recorded.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
-                      const m = recentMovements[i];
-                      if (!m) return <div key={i} style={rowBase}>{emptyCell}</div>;
-                      const isCheckIn = m.movementType === "CHECK_IN";
-                      const formattedDate = new Date(m.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-                      return (
-                        <div key={i} style={rowBase}>
-                          <div style={{ padding: "2px 5px", borderRadius: 4, background: isCheckIn ? "#f0fdf4" : "#fffbeb", color: isCheckIn ? "#16a34a" : "#d97706", fontSize: 8, fontWeight: 700, flexShrink: 0, marginRight: 8 }}>
-                            {isCheckIn ? "IN" : "OUT"}
+                    const m = recentMovements[i];
+                    if (!m) return <div key={i} style={rowBase}>{emptyCell}</div>;
+                    const isCheckIn = m.movementType === "CHECK_IN";
+                    const formattedDate = new Date(m.occurredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <div key={i} style={rowBase}>
+                        <div style={{ padding: "2px 5px", borderRadius: 4, background: isCheckIn ? "#f0fdf4" : "#fffbeb", color: isCheckIn ? "var(--color-primary)" : "#d97706", fontSize: 8, fontWeight: 700, flexShrink: 0, marginRight: 8 }}>
+                          {isCheckIn ? "IN" : "OUT"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "10px", color: "var(--color-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 500 }}>
+                            {m.stockItem?.name ?? "Unknown Item"} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({m.quantity} {m.stockItem?.unit ?? "units"})</span>
                           </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: "10px", color: "var(--color-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 500 }}>
-                              {m.stockItem?.name ?? "Unknown Item"} <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>({m.quantity} {m.stockItem?.unit ?? "units"})</span>
-                            </div>
-                            <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>
-                              {m.requestedBy ?? "System"} · {formattedDate}
-                            </div>
+                          <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>
+                            {m.requestedBy ?? "System"} · {formattedDate}
                           </div>
                         </div>
-                      );
-                    })
+                      </div>
+                    );
+                  })
                 }
               </div>
             </div>
@@ -227,24 +227,24 @@ export default function InventoryDashboardPage() {
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
                 {expiringSoonItems.length === 0
-                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#166534", fontSize: "10px", fontWeight: 700 }}>✅ No reagents expiring within 30 days.</div>
+                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", fontSize: "10px", fontWeight: 700 }}>✅ No reagents expiring within 30 days.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
-                      const item = expiringSoonItems[i];
-                      if (!item) return <div key={i} style={rowBase}>{emptyCell}</div>;
-                      const expDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
-                      return (
-                        <div key={i} style={rowBase}>
-                          <div>
-                            <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.name}</div>
-                            <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>SKU: {item.sku}</div>
-                          </div>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: "10px", color: "#ea580c", fontWeight: 600 }}>{expDate}</div>
-                            <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>Qty: {item.quantity}</div>
-                          </div>
+                    const item = expiringSoonItems[i];
+                    if (!item) return <div key={i} style={rowBase}>{emptyCell}</div>;
+                    const expDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+                    return (
+                      <div key={i} style={rowBase}>
+                        <div>
+                          <div style={{ fontSize: "10px", color: "var(--color-text)", fontWeight: 500 }}>{item.name}</div>
+                          <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>SKU: {item.sku}</div>
                         </div>
-                      );
-                    })
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: "10px", color: "#ea580c", fontWeight: 600 }}>{expDate}</div>
+                          <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>Qty: {item.quantity}</div>
+                        </div>
+                      </div>
+                    );
+                  })
                 }
               </div>
             </div>

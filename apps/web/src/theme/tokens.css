@@ -580,9 +580,9 @@ a:hover {
 
 .inventory-nav-link.active,
 .domain-nav-link.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft);
-  color: var(--color-text);
+  border-color: var(--color-primary);
+  background: var(--color-primary-highlight);
+  color: var(--color-primary);
   font-weight: 600;
 }
 

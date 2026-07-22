@@ -53,19 +53,19 @@ export async function buildApp() {
   app.get("/openapi.json", (_req, res) => res.json(openApiSpec));
 
   // ─── REST routes ──────────────────────────────────────────────────────────
-  app.use("/auth", authRouter);
-  app.use("/catalog", catalogRouter);
-  app.use("/architecture", architectureRouter);
-  app.use("/domains/biospecimen", biospecimenRouter);
-  app.use("/domains/inventory", inventoryRouter);
-  app.use("/domains/qms", qmsRouter);
-  app.use("/domains/lab-workflow", labWorkflowRouter);
-  app.use("/domains/data-management", dataManagementRouter);
-  app.use("/domains/infrastructure", infrastructureRouter);
-  app.use("/domains/hr", hrRouter);
-  app.use("/domains/finance", financeRouter);
-  app.use("/domains/participant", participantRouter);
-  app.use("/domains/regulatory", regulatoryRouter);
+  app.use(["/auth", "/api/auth"], authRouter);
+  app.use(["/catalog", "/api/catalog"], catalogRouter);
+  app.use(["/architecture", "/api/architecture"], architectureRouter);
+  app.use(["/domains/biospecimen", "/api/domains/biospecimen"], biospecimenRouter);
+  app.use(["/domains/inventory", "/api/domains/inventory"], inventoryRouter);
+  app.use(["/domains/qms", "/api/domains/qms"], qmsRouter);
+  app.use(["/domains/lab-workflow", "/api/domains/lab-workflow"], labWorkflowRouter);
+  app.use(["/domains/data-management", "/api/domains/data-management"], dataManagementRouter);
+  app.use(["/domains/infrastructure", "/api/domains/infrastructure"], infrastructureRouter);
+  app.use(["/domains/hr", "/api/domains/hr"], hrRouter);
+  app.use(["/domains/finance", "/api/domains/finance"], financeRouter);
+  app.use(["/domains/participant", "/api/domains/participant"], participantRouter);
+  app.use(["/domains/regulatory", "/api/domains/regulatory"], regulatoryRouter);
 
   // ─── GraphQL ──────────────────────────────────────────────────────────────
   const apolloServer = new ApolloServer({
