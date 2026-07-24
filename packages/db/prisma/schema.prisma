@@ -520,6 +520,7 @@ model StaffProfile {
   sex                 String?
   personalEmail       String?
   ahriEmail           String?
+  dutyStation         String?
   mntdProject         String?
   mntdTeams           String[]
   mntdProjectsInvolved String[]

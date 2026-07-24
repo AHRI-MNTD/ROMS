@@ -21,11 +21,11 @@ type PermissionState = Record<string, Set<string>>;
 const DOMAIN_RIGHTS: Record<string, string[]> = {
   biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
   inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Analytics", "Master Data"],
-  qms: ["Dashboard", "Document Control", "Training", "Audits", "CAPA", "Incidents", "Analytics"],
+  qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
   "lab-workflow": ["Dashboard", "Protocols", "Instruments", "Experiments", "Runs", "Reports", "Analytics"],
   "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
   infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
-  hr: ["Dashboard", "Profiles", "Leave", "Onboarding", "Training Records", "Performance", "Analytics"],
+  hr: ["Dashboard", "Profiles", "Leave", "Onboarding", "Personnel Registration", "Performance", "Analytics"],
   finance: ["Dashboard", "Grants", "Budgets", "Expenses", "Approvals", "Reports", "Analytics"],
   participant: ["Dashboard", "Participants", "Consent", "Visits", "Engagement", "Follow-up", "Analytics"],
   regulatory: ["Dashboard", "Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting", "Analytics"],
@@ -37,7 +37,7 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
     inventory: ["Dashboard", "Current Inventory"],
     "lab-workflow": ["Dashboard", "Protocols", "Runs"],
     "data-management": ["Dashboard"],
-    qms: ["Document Control"],
+    qms: ["SOP Library", "Document Control"],
   },
   DATA_MANAGER: {
     biospecimen: ["Dashboard"],
@@ -50,8 +50,8 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard", "Current Inventory", "Analytics", "Check In", "Check Out", "Request/s"],
-    qms: ["Dashboard", "Document Control", "Audits", "CAPA"],
-    hr: ["Dashboard", "Profiles", "Onboarding", "Training Records"],
+    qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA"],
+    hr: ["Dashboard", "Profiles", "Onboarding", "Personnel Registration"],
     finance: ["Dashboard", "Grants", "Budgets"],
     participant: ["Dashboard"],
     regulatory: ["Dashboard", "Compliance Register"],
@@ -73,7 +73,7 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   QA_OFFICER: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "Document Control", "Audits", "CAPA", "Incidents"],
+    qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA"],
     "lab-workflow": ["Dashboard"],
     "data-management": ["Dashboard"],
     hr: ["Dashboard"],
@@ -127,12 +127,12 @@ function buildPermissionState(user: ControlUser): PermissionState {
     ) as PermissionState;
   }
 
-  // New/Staff approved users start with exactly and only Training & Competency under hr
+  // New/Staff approved users start with Personnel Registration under hr
   if (user.role === "STAFF" || !ROLE_SEEDS[user.role]) {
     return Object.fromEntries(
       DOMAIN_CATALOG.map((domain) => {
         if (domain.slug === "hr") {
-          return ["hr", new Set(["Training & Competency"])];
+          return ["hr", new Set(["Personnel Registration"])];
         }
         return [domain.slug, new Set()];
       })
@@ -184,21 +184,27 @@ export default function UserRightsControlPage() {
   // Map API response to ControlUser[]
   const users: ControlUser[] = React.useMemo(() => {
     if (!approvedData?.data) return [];
-    return (approvedData.data as any[]).map((profile: any) => {
-      const userRoles = profile.user?.roles ?? [];
-      const primaryRole = userRoles.length > 0 ? userRoles[0] : "STAFF";
-      return {
-        id: profile.id,
-        userId: profile.user?.id ?? "",
-        displayName: profile.user?.displayName ?? "—",
-        email: profile.user?.email ?? "—",
-        department: profile.department ?? "—",
-        jobTitle: profile.jobTitle ?? "—",
-        role: primaryRole.toUpperCase().replace(/\s+/g, "_"),
-        startDate: profile.startDate ?? profile.createdAt ?? "",
-        permissions: profile.user?.permissions ?? [],
-      };
-    });
+    const excludedNames = ["david asante", "carol nzinga"];
+    return (approvedData.data as any[])
+      .filter((profile: any) => {
+        const name = (profile.user?.displayName ?? "").toLowerCase();
+        return !excludedNames.some((ex) => name.includes(ex));
+      })
+      .map((profile: any) => {
+        const userRoles = profile.user?.roles ?? [];
+        const primaryRole = userRoles.length > 0 ? userRoles[0] : "STAFF";
+        return {
+          id: profile.id,
+          userId: profile.user?.id ?? "",
+          displayName: profile.user?.displayName ?? "—",
+          email: profile.user?.email ?? "—",
+          department: profile.department ?? "—",
+          jobTitle: profile.jobTitle ?? "—",
+          role: primaryRole.toUpperCase().replace(/\s+/g, "_"),
+          startDate: profile.startDate ?? profile.createdAt ?? "",
+          permissions: profile.user?.permissions ?? [],
+        };
+      });
   }, [approvedData]);
 
   const [assignments, setAssignments] = React.useState<Record<string, PermissionState>>({});

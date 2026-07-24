@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { apiClient } from "../../../api/client";
 import logoAhri from "../../../assets/logo_ahri.png";
@@ -177,6 +177,7 @@ type ApprovalRow = {
   sex?: string | null;
   personalEmail?: string | null;
   ahriEmail?: string | null;
+  dutyStation?: string | null;
   phone?: string | null;
   emergencyContact?: string | null;
   mntdProject?: string | null;
@@ -271,6 +272,8 @@ type SortKey = "name" | "department" | "jobTitle" | "startDate" | "employmentTyp
 type SortDir = "asc" | "desc";
 
 export default function ApprovedPage() {
+  const queryClient = useQueryClient();
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["hr-employee-approvals"],
     queryFn: async () => {
@@ -291,8 +294,28 @@ export default function ApprovedPage() {
   const [printStatus, setPrintStatus] = useState<"idle" | "printing">("idle");
   const [pdfStatus, setPdfStatus] = useState<"idle" | "generating">("idle");
 
+  // Editing personnel detail state
+  const [editingRow, setEditingRow] = useState<ApprovalRow | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [saveErrorMsg, setSaveErrorMsg] = useState("");
+
+  // Filter out demo users Carol Nzinga and Dr. David Asante as requested
   const approved = useMemo(() => {
-    return (data?.data ?? []).filter((r) => r.approvalStatus === "APPROVED");
+    return (data?.data ?? []).filter((r) => {
+      if (r.approvalStatus !== "APPROVED") return false;
+      const name = (r.user?.displayName ?? "").toLowerCase();
+      const email = (r.user?.email ?? "").toLowerCase();
+      if (
+        name.includes("carol nzinga") ||
+        name.includes("david asante") ||
+        email === "admin@roms.dev" ||
+        email === "pi@roms.dev"
+      ) {
+        return false;
+      }
+      return true;
+    });
   }, [data]);
 
   const selected = useMemo(() => {
@@ -306,6 +329,79 @@ export default function ApprovedPage() {
     } else {
       setSearchParams({});
     }
+  };
+
+  const handleStartEdit = (e: React.MouseEvent, row: ApprovalRow) => {
+    e.stopPropagation();
+    setEditingRow(row);
+    setEditForm({
+      displayName: row.user?.displayName ?? "",
+      personalEmail: row.personalEmail ?? "",
+      ahriEmail: row.ahriEmail ?? "",
+      phone: row.phone ?? "",
+      sex: row.sex ?? "male",
+      emergencyContact: row.emergencyContact ?? "",
+      department: row.department ?? "",
+      jobTitle: row.jobTitle ?? "",
+      employmentType: row.employmentType ?? "permanent",
+      dutyStation: row.dutyStation ?? "",
+      startDate: row.startDate ? new Date(row.startDate).toISOString().slice(0, 10) : "",
+      contractEndDate: row.contractEndDate ? new Date(row.contractEndDate).toISOString().slice(0, 10) : "",
+      mntdProject: row.mntdProject ?? "",
+      mntdTeams: row.mntdTeams ?? [],
+      mntdProjectsInvolved: row.mntdProjectsInvolved ?? [],
+      firstDegree: row.firstDegree ?? "",
+      firstDegreeUniv: row.firstDegreeUniv ?? "",
+      firstDegreeUnivOther: row.firstDegreeUnivOther ?? "",
+      firstDegreeYear: row.firstDegreeYear ?? "",
+      secondDegree: row.secondDegree ?? "",
+      secondDegreeUniv: row.secondDegreeUniv ?? "",
+      secondDegreeUnivOther: row.secondDegreeUnivOther ?? "",
+      secondDegreeYear: row.secondDegreeYear ?? "",
+      thirdDegree: row.thirdDegree ?? "",
+      thirdDegreeUnivCountry: row.thirdDegreeUnivCountry ?? "",
+      thirdDegreeYear: row.thirdDegreeYear ?? "",
+      currentlyStudying: Boolean(row.currentlyStudying),
+      studyMastersField: row.studyMastersField ?? "",
+      studyMastersUniv: row.studyMastersUniv ?? "",
+      studyMastersYear: row.studyMastersYear ?? "",
+      studyPhdField: row.studyPhdField ?? "",
+      studyPhdUniv: row.studyPhdUniv ?? "",
+      studyPhdYear: row.studyPhdYear ?? "",
+      studyCertField: row.studyCertField ?? "",
+      studyCertUniv: row.studyCertUniv ?? "",
+      studyCertYear: row.studyCertYear ?? "",
+      totalWorkExp: row.totalWorkExp ?? "",
+      totalWorkExpAhri: row.totalWorkExpAhri ?? "",
+    });
+    setSaveStatus("idle");
+    setSaveErrorMsg("");
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      if (!editingRow) return;
+      const resp = await apiClient.patch(`/domains/hr/staff/${editingRow.id}`, payload);
+      return resp.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["hr-employee-approvals"] });
+      setSaveStatus("success");
+      setTimeout(() => {
+        setEditingRow(null);
+        setSaveStatus("idle");
+      }, 1000);
+    },
+    onError: (err: any) => {
+      setSaveStatus("error");
+      setSaveErrorMsg(err?.response?.data?.message || err?.message || "Failed to save personnel changes.");
+    },
+  });
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaveStatus("saving");
+    updateMutation.mutate(editForm);
   };
 
   const filtered = useMemo(() => {
@@ -423,6 +519,25 @@ export default function ApprovedPage() {
     }
   }, [selected]);
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "6px 10px",
+    fontSize: "12px",
+    borderRadius: 6,
+    border: "1px solid var(--color-divider)",
+    background: "var(--color-surface)",
+    color: "var(--color-text)",
+    outline: "none",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "11px",
+    fontWeight: 700,
+    color: "var(--color-text-muted)",
+    marginBottom: 3,
+    display: "block",
+  };
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {isLoading && <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>Loading…</div>}
@@ -432,7 +547,445 @@ export default function ApprovedPage() {
         </div>
       )}
 
-      {!selected ? (
+      {/* ── EDIT MODE FORM VIEW ── */}
+      {editingRow ? (
+        <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", padding: "20px 24px" }}>
+          {/* Edit Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid var(--color-divider)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(234, 179, 8, 0.15)", border: "2px solid #eab308", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                ✏️
+              </div>
+              <div>
+                <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>
+                  Edit Personnel Detail — {editingRow.user?.displayName ?? "Personnel"}
+                </div>
+                <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                  Update employee profile information and save changes to the database.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setEditingRow(null)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                Back to Registry
+              </button>
+            </div>
+          </div>
+
+          {/* Edit Alert Status */}
+          {saveStatus === "success" && (
+            <div style={{ padding: "10px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, color: "#166534", fontSize: "12px", fontWeight: 700, marginBottom: 16 }}>
+              ✓ Personnel details updated successfully!
+            </div>
+          )}
+
+          {saveStatus === "error" && (
+            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, color: "#991b1b", fontSize: "12px", fontWeight: 600, marginBottom: 16 }}>
+              ⚠️ {saveErrorMsg}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveEdit}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Section 1: Personal Info */}
+              <Section title="Section 1: Personal Details & Contact Information">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Full Name</label>
+                    <input
+                      type="text"
+                      value={editForm.displayName}
+                      onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                      style={inputStyle}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Sex</label>
+                    <select
+                      value={editForm.sex}
+                      onChange={(e) => setEditForm({ ...editForm, sex: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Phone Number</label>
+                    <input
+                      type="text"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Personal Email</label>
+                    <input
+                      type="email"
+                      value={editForm.personalEmail}
+                      onChange={(e) => setEditForm({ ...editForm, personalEmail: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>AHRI Email</label>
+                    <input
+                      type="email"
+                      value={editForm.ahriEmail}
+                      onChange={(e) => setEditForm({ ...editForm, ahriEmail: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Emergency Contact</label>
+                    <input
+                      type="text"
+                      value={editForm.emergencyContact}
+                      onChange={(e) => setEditForm({ ...editForm, emergencyContact: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              </Section>
+
+              {/* Section 2: Employment & Position */}
+              <Section title="Section 2: Employment & Position Details">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Department</label>
+                    <input
+                      type="text"
+                      value={editForm.department}
+                      onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                      style={inputStyle}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Position / Job Title</label>
+                    <select
+                      value={editForm.jobTitle}
+                      onChange={(e) => setEditForm({ ...editForm, jobTitle: e.target.value })}
+                      style={inputStyle}
+                    >
+                      {POSITIONS.map((pos) => (
+                        <option key={pos.name} value={pos.name}>
+                          {pos.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Employment Type</label>
+                    <select
+                      value={editForm.employmentType}
+                      onChange={(e) => setEditForm({ ...editForm, employmentType: e.target.value })}
+                      style={inputStyle}
+                    >
+                      {EMPLOYMENT_TYPES.map((t) => (
+                        <option key={t.name} value={t.name}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Duty Station</label>
+                    <input
+                      type="text"
+                      value={editForm.dutyStation}
+                      onChange={(e) => setEditForm({ ...editForm, dutyStation: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>AHRI Start Date</label>
+                    <input
+                      type="date"
+                      value={editForm.startDate}
+                      onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  {editForm.employmentType === "contract" && (
+                    <div>
+                      <label style={labelStyle}>Contract End Date</label>
+                      <input
+                        type="date"
+                        value={editForm.contractEndDate}
+                        onChange={(e) => setEditForm({ ...editForm, contractEndDate: e.target.value })}
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label style={labelStyle}>Hired Project</label>
+                    <select
+                      value={editForm.mntdProject}
+                      onChange={(e) => setEditForm({ ...editForm, mntdProject: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="">Select Project…</option>
+                      {MNTD_HIRED_PROJECTS.map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Teams & Projects Selection */}
+                <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div>
+                    <label style={labelStyle}>MNTD Teams (Select all that apply)</label>
+                    <div style={{ maxHeight: 140, overflowY: "auto", border: "1px solid var(--color-divider)", borderRadius: 6, padding: 8, background: "var(--color-surface)", display: "flex", flexDirection: "column", gap: 6 }}>
+                      {MNTD_TEAMS.map((t) => {
+                        const isChecked = editForm.mntdTeams?.includes(t.name);
+                        return (
+                          <label key={t.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "11px", color: "var(--color-text)", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const current = editForm.mntdTeams || [];
+                                const updated = e.target.checked
+                                  ? [...current, t.name]
+                                  : current.filter((x: string) => x !== t.name);
+                                setEditForm({ ...editForm, mntdTeams: updated });
+                              }}
+                            />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Projects Involved (Select all that apply)</label>
+                    <div style={{ maxHeight: 140, overflowY: "auto", border: "1px solid var(--color-divider)", borderRadius: 6, padding: 8, background: "var(--color-surface)", display: "flex", flexDirection: "column", gap: 6 }}>
+                      {MNTD_PROJECTS.map((p) => {
+                        const isChecked = editForm.mntdProjectsInvolved?.includes(p.name);
+                        return (
+                          <label key={p.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "11px", color: "var(--color-text)", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const current = editForm.mntdProjectsInvolved || [];
+                                const updated = e.target.checked
+                                  ? [...current, p.name]
+                                  : current.filter((x: string) => x !== p.name);
+                                setEditForm({ ...editForm, mntdProjectsInvolved: updated });
+                              }}
+                            />
+                            {p.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </Section>
+
+              {/* Section 3: Academic Background */}
+              <Section title="Section 3: Academic Background & Qualifications">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Undergraduate/First Degree</label>
+                    <input
+                      type="text"
+                      value={editForm.firstDegree}
+                      onChange={(e) => setEditForm({ ...editForm, firstDegree: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>University</label>
+                    <select
+                      value={editForm.firstDegreeUniv}
+                      onChange={(e) => setEditForm({ ...editForm, firstDegreeUniv: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="">Select University…</option>
+                      {UNIVERSITIES.map((u) => (
+                        <option key={u.name} value={u.name}>
+                          {u.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Completion Year</label>
+                    <input
+                      type="text"
+                      value={editForm.firstDegreeYear}
+                      onChange={(e) => setEditForm({ ...editForm, firstDegreeYear: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Second Degree (Master's)</label>
+                    <input
+                      type="text"
+                      value={editForm.secondDegree}
+                      onChange={(e) => setEditForm({ ...editForm, secondDegree: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>University (Master's)</label>
+                    <select
+                      value={editForm.secondDegreeUniv}
+                      onChange={(e) => setEditForm({ ...editForm, secondDegreeUniv: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="">Select University…</option>
+                      {UNIVERSITIES.map((u) => (
+                        <option key={u.name} value={u.name}>
+                          {u.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Completion Year (Master's)</label>
+                    <input
+                      type="text"
+                      value={editForm.secondDegreeYear}
+                      onChange={(e) => setEditForm({ ...editForm, secondDegreeYear: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Third Degree (PhD)</label>
+                    <input
+                      type="text"
+                      value={editForm.thirdDegree}
+                      onChange={(e) => setEditForm({ ...editForm, thirdDegree: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>PhD University & Country</label>
+                    <input
+                      type="text"
+                      value={editForm.thirdDegreeUnivCountry}
+                      onChange={(e) => setEditForm({ ...editForm, thirdDegreeUnivCountry: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Completion Year (PhD)</label>
+                    <input
+                      type="text"
+                      value={editForm.thirdDegreeYear}
+                      onChange={(e) => setEditForm({ ...editForm, thirdDegreeYear: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              </Section>
+
+              {/* Section 4: Work Experience */}
+              <Section title="Section 4: Work Experience">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div>
+                    <label style={labelStyle}>Total Work Experience</label>
+                    <select
+                      value={editForm.totalWorkExp}
+                      onChange={(e) => setEditForm({ ...editForm, totalWorkExp: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="">Select Experience…</option>
+                      {WORK_EXP_OPTIONS.map((w) => (
+                        <option key={w.name} value={w.name}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Experience at AHRI</label>
+                    <select
+                      value={editForm.totalWorkExpAhri}
+                      onChange={(e) => setEditForm({ ...editForm, totalWorkExpAhri: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="">Select Experience…</option>
+                      {WORK_EXP_OPTIONS.map((w) => (
+                        <option key={w.name} value={w.name}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </Section>
+            </div>
+
+            {/* Save Buttons Bar */}
+            <div style={{ marginTop: 24, padding: "14px 20px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 12, justifyContent: "flex-end", background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
+              <button
+                type="button"
+                onClick={() => setEditingRow(null)}
+                style={{
+                  padding: "8px 20px",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saveStatus === "saving"}
+                style={{
+                  padding: "8px 24px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "var(--color-primary)",
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  cursor: saveStatus === "saving" ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  opacity: saveStatus === "saving" ? 0.7 : 1,
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.15)"
+                }}
+              >
+                {saveStatus === "saving" ? "⏳ Saving Changes…" : "💾 Save Changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : !selected ? (
         <div style={{ borderRadius: 18, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", overflow: "hidden" }}>
           {/* Header */}
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-divider)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
@@ -486,17 +1039,17 @@ export default function ApprovedPage() {
             </div>
           ) : (
             <div className="table-responsive-container">
-              <table style={{ width: "100%", minWidth: "760px", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <table style={{ width: "100%", minWidth: "820px", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <thead>
                   <tr>
-                    <th style={{ ...thStyle("name"), width: "5%", cursor: "default" }}>#</th>
-                    <th style={{ ...thStyle("name"), width: "21%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
-                    <th style={{ ...thStyle("department"), width: "20%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
-                    <th style={{ ...thStyle("jobTitle"), width: "19%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
-                    <th style={{ ...thStyle("startDate"), width: "12%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
-                    <th style={{ ...thStyle("employmentType"), width: "11%" }} onClick={() => toggleSort("employmentType")}>Contract Type {sortIcon("employmentType")}</th>
-                    <th style={{ ...thStyle("reviewedAt"), width: "12%", cursor: "default" }}>Contract End</th>
-                    <th style={{ ...thStyle("name"), width: "6%", cursor: "default", textAlign: "center" }}>Action</th>
+                    <th style={{ ...thStyle("name"), width: "4%", cursor: "default" }}>#</th>
+                    <th style={{ ...thStyle("name"), width: "20%" }} onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
+                    <th style={{ ...thStyle("department"), width: "19%" }} onClick={() => toggleSort("department")}>Department {sortIcon("department")}</th>
+                    <th style={{ ...thStyle("jobTitle"), width: "18%" }} onClick={() => toggleSort("jobTitle")}>Function / Job Title {sortIcon("jobTitle")}</th>
+                    <th style={{ ...thStyle("startDate"), width: "11%" }} onClick={() => toggleSort("startDate")}>Start Date {sortIcon("startDate")}</th>
+                    <th style={{ ...thStyle("employmentType"), width: "10%" }} onClick={() => toggleSort("employmentType")}>Contract Type {sortIcon("employmentType")}</th>
+                    <th style={{ ...thStyle("reviewedAt"), width: "10%", cursor: "default" }}>Contract End</th>
+                    <th style={{ ...thStyle("name"), width: "8%", cursor: "default", textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -506,25 +1059,34 @@ export default function ApprovedPage() {
                       <tr
                         key={row.id}
                         onClick={() => setSelected(row)}
-                        style={{ cursor: "pointer", transition: "background 0.15s", height: 32 }}
+                        style={{ cursor: "pointer", transition: "background 0.15s", height: 34 }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--color-primary) 15%, transparent)")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                       >
-                        <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "5%" }}>{i + 1}</td>
-                        <td style={{ ...cellStyle, fontWeight: 700, width: "21%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
-                        <td style={{ ...cellStyle, width: "20%" }} title={row.department}>{row.department}</td>
-                        <td style={{ ...cellStyle, width: "19%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
-                        <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.startDate)}</td>
-                        <td style={{ ...cellStyle, width: "11%" }}>
+                        <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "4%" }}>{i + 1}</td>
+                        <td style={{ ...cellStyle, fontWeight: 700, width: "20%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
+                        <td style={{ ...cellStyle, width: "19%" }} title={row.department}>{row.department}</td>
+                        <td style={{ ...cellStyle, width: "18%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
+                        <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.startDate)}</td>
+                        <td style={{ ...cellStyle, width: "10%" }}>
                           {empLabel}
                         </td>
-                        <td style={{ ...cellStyle, width: "12%" }}>{formatDate(row.contractEndDate)}</td>
-                        <td style={{ ...cellStyle, width: "6%", textAlign: "center" }}>
-                          <button
-                            type="button"
-                            title="View personnel file"
-                            style={{ background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", border: "1px solid var(--color-border)", borderRadius: 6, width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-primary)", fontSize: 14, lineHeight: 1 }}
-                          >👁</button>
+                        <td style={{ ...cellStyle, width: "10%" }}>{formatDate(row.contractEndDate)}</td>
+                        <td style={{ ...cellStyle, width: "8%", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => setSelected(row)}
+                              title="View personnel file"
+                              style={{ background: "color-mix(in srgb, var(--color-primary) 15%, transparent)", border: "1px solid var(--color-border)", borderRadius: 6, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-primary)", fontSize: 12 }}
+                            >👁</button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartEdit(e, row)}
+                              title="Edit personnel detail"
+                              style={{ background: "rgba(234, 179, 8, 0.15)", border: "1px solid rgba(234, 179, 8, 0.3)", borderRadius: 6, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#b45309", fontSize: 12 }}
+                            >✏️</button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -559,7 +1121,26 @@ export default function ApprovedPage() {
               </div>
             </div>
 
-            <div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={(e) => handleStartEdit(e, selected)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(234, 179, 8, 0.4)",
+                  background: "rgba(234, 179, 8, 0.15)",
+                  color: "#b45309",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                ✏️ Edit Profile
+              </button>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
@@ -607,6 +1188,7 @@ export default function ApprovedPage() {
                     <InfoRow label="Department" value={selected.department} />
                     <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
                     <InfoRow label="Employment Type" value={formatEmployment(selected.employmentType)} />
+                    <InfoRow label="Duty Station" value={selected.dutyStation} />
                     <InfoRow label="AHRI Start Date" value={formatDate(selected.startDate)} />
                     {selected.employmentType === "contract" && (
                       <>
@@ -763,7 +1345,7 @@ export default function ApprovedPage() {
         </div>
       )}
 
-      {/* PRINT-ONLY PORTAL AREA (Identical to QMSPage approach) */}
+      {/* PRINT-ONLY PORTAL AREA */}
       {printingPersonnel && createPortal(
         <div id="hr-personnel-print-area">
           {/* Institutional Letterhead */}

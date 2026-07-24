@@ -606,12 +606,12 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "sysadmin@roms.dev" },
-      update: { hashedPassword: password, emailVerified: true },
+      where: { email: "gfikerak@yahoo.com" },
+      update: { hashedPassword: password, emailVerified: true, roles: ["ADMIN"] },
       create: {
-        email: "sysadmin@roms.dev",
+        email: "gfikerak@yahoo.com",
         hashedPassword: password,
-        displayName: "Grace Abubakar",
+        displayName: "Fikregabriel Abera",
         roles: ["ADMIN"],
         emailVerified: true,
       },
@@ -1190,7 +1190,7 @@ async function main() {
     ["pi@roms.dev", "PRINCIPAL_INVESTIGATOR", "Dr. David Asante"],
     ["qa@roms.dev", "QA_OFFICER", "Eve Diallo"],
     ["community@roms.dev", "COMMUNITY_ENGAGEMENT", "Frank Mensah"],
-    ["sysadmin@roms.dev", "ADMIN", "Grace Abubakar"],
+    ["gfikerak@yahoo.com", "ADMIN", "Fikregabriel Abera"],
   ];
   rows.forEach(([email, role, name]) => {
     console.log(`  ${name.padEnd(28)} ${email.padEnd(30)} [${role}]`);

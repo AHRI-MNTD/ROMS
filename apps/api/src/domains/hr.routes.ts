@@ -81,9 +81,36 @@ router.post("/staff", requireAuth, auditMutation("StaffProfile", "CREATE"), asyn
 
 router.patch("/staff/:id", requireAuth, requirePermission("hr:write"), auditMutation("StaffProfile", "UPDATE"), async (req, res) => {
   // Strip fields that must only be set through the dedicated approval endpoint
-  const { approvalStatus: _a, reviewedById: _b, reviewedAt: _c, reviewNote: _d, userId: _u, ...safeData } = req.body as Record<string, unknown>;
-  const p = await prisma.staffProfile.update({ where: { id: req.params.id }, data: safeData });
-  res.json(p);
+  const { approvalStatus: _a, reviewedById: _b, reviewedAt: _c, reviewNote: _d, userId: _u, displayName, email, startDate, contractEndDate, contractRenewalDate, ...safeData } = req.body as Record<string, any>;
+  
+  const updateData: Record<string, any> = { ...safeData };
+  if (startDate) updateData.startDate = new Date(startDate);
+  if (contractEndDate !== undefined) updateData.contractEndDate = contractEndDate ? new Date(contractEndDate) : null;
+  if (contractRenewalDate !== undefined) updateData.contractRenewalDate = contractRenewalDate ? new Date(contractRenewalDate) : null;
+
+  const p = await prisma.staffProfile.update({
+    where: { id: req.params.id },
+    data: updateData,
+  });
+
+  if (displayName || email) {
+    await prisma.user.update({
+      where: { id: p.userId },
+      data: {
+        ...(displayName ? { displayName: String(displayName) } : {}),
+        ...(email ? { email: String(email) } : {}),
+      },
+    });
+  }
+
+  const updated = await prisma.staffProfile.findUnique({
+    where: { id: req.params.id },
+    include: {
+      user: { select: { id: true, displayName: true, email: true, roles: true, permissions: true } },
+      reviewedBy: { select: { displayName: true, email: true } },
+    },
+  });
+  res.json(updated);
 });
 
 router.patch("/approvals/:id", requireAuth, requirePermission("hr:write"), auditMutation("StaffProfile", "UPDATE"), async (req, res) => {

@@ -350,12 +350,12 @@ export default function CurrentInventoryPage() {
                   <col style={{ width: isAdmin ? "25%" : "31%" }} />
                   <col style={{ width: isAdmin ? "12%" : "12%" }} />
                   <col style={{ width: isAdmin ? "7%" : "7%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "6%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: isAdmin ? "10%" : "6%" }} />
-                  {isAdmin && <col style={{ width: "4%" }} />}
+                  <col style={{ width: isAdmin ? "10%" : "12%" }} />
+                  {isAdmin && <col style={{ width: "10%" }} />}
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>

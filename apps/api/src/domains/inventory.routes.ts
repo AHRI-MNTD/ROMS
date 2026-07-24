@@ -294,13 +294,18 @@ router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESE
   }
 });
 
-router.get("/requests", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
+router.get("/requests", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
+  const statusFilter = req.query.status as string | undefined;
+  const where: any = {
+    movementType: "CHECK_OUT",
+    requestBatchId: { not: null },
+  };
+  if (statusFilter && statusFilter !== "ALL") {
+    where.status = statusFilter;
+  }
+
   const movements = await prisma.inventoryMovement.findMany({
-    where: {
-      movementType: "CHECK_OUT",
-      requestBatchId: { not: null },
-      status: "PENDING",
-    },
+    where,
     include: {
       stockItem: {
         select: { id: true, sku: true, name: true, unit: true, category: true },

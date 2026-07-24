@@ -8,6 +8,7 @@ const tabs = [
   { to: "check-in", label: "Check In", icon: "📥" },
   { to: "check-out", label: "Check Out", icon: "📤" },
   { to: "requests", label: "Request/s", icon: "📋" },
+  { to: "inventory-manager", label: "Inventory Manager", icon: "👨‍💼" },
   //{ to: "analytics", label: "Analytics", icon: "📈" },
   { to: "master-data", label: "Master Data", icon: "🗂️" },
 ];
@@ -36,7 +37,10 @@ export default function InventoryLayout() {
     subtitle = "Record stock item withdrawals and track allocations.";
   } else if (activePath === "requests") {
     title = "Requisitions & Requests";
-    subtitle = "Review, approve, and track lab staff material requisitions.";
+    subtitle = "Submit and track lab staff material requisitions.";
+  } else if (activePath === "inventory-manager") {
+    title = "Inventory Manager & Requisition Approvals";
+    subtitle = "Review pending material requests, approve or adjust quantities, and inspect request logs.";
   } else if (activePath === "analytics") {
     title = "Inventory Analytics & Insights";
     subtitle = "Monitor stock usage patterns, replenishment telemetry, and trends.";

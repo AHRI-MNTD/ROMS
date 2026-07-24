@@ -64,7 +64,11 @@ export default function LoginPage() {
       const resp = await apiClient.post<LoginResponse>("/auth/google", { credential });
       const { accessToken, refreshToken, user } = resp.data;
       login(user, accessToken, refreshToken);
-      navigate("/");
+      if (!isApprovedUser(user.roles, user.permissions)) {
+        navigate("/domains/hr/recruitment-onboarding/training-records");
+      } else {
+        navigate("/");
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Google authentication failed.");
     } finally {

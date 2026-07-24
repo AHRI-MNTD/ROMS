@@ -14,6 +14,7 @@ const CurrentInventoryPage = lazy(() => import("./pages/domain/inventory/Current
 const CheckInPage = lazy(() => import("./pages/domain/inventory/CheckInPage"));
 const CheckOutPage = lazy(() => import("./pages/domain/inventory/CheckOutPage"));
 const RequestsPage = lazy(() => import("./pages/domain/inventory/RequestsPage"));
+const InventoryManagerPage = lazy(() => import("./pages/domain/inventory/InventoryManagerPage"));
 const AnalyticsPage = lazy(() => import("./pages/domain/inventory/AnalyticsPage"));
 const MasterDataPage = lazy(() => import("./pages/domain/inventory/MasterDataPage"));
 const QMSLayout = lazy(() => import("./pages/domain/qms/QMSLayout"));
@@ -72,6 +73,7 @@ export const routes: RouteObject[] = [
               { path: "check-in", element: <CheckInPage /> },
               { path: "check-out", element: <CheckOutPage /> },
               { path: "requests", element: <RequestsPage /> },
+              { path: "inventory-manager", element: <InventoryManagerPage /> },
               { path: "analytics", element: <AnalyticsPage /> },
               { path: "master-data", element: <MasterDataPage /> },
             ],

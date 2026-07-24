@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, NavLink } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { useAuth } from "../auth/useAuth";
@@ -14,6 +14,15 @@ export const SecondarySidebar: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
+  // Collapsed state saved in localStorage so preference persists
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem("roms_sec_sidebar_collapsed") === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("roms_sec_sidebar_collapsed", String(isCollapsed));
+  }, [isCollapsed]);
+
   // Find the domain slug from pathname /domains/:slug/...
   const match = location.pathname.match(/^\/domains\/([^/]+)/);
   const domainSlug = match ? match[1] : null;
@@ -21,92 +30,168 @@ export const SecondarySidebar: React.FC = () => {
 
   if (!domain) return null;
 
+  const accessibleSubfunctions = domain.subfunctions.filter((sub) =>
+    hasSubfunctionAccess(user?.roles, domain.slug, slugify(sub.name), user?.permissions)
+  );
+
   return (
     <div
       style={{
-        width: 220,
-        minWidth: 220,
+        width: isCollapsed ? 44 : 220,
+        minWidth: isCollapsed ? 44 : 220,
         background: "var(--color-surface)",
         borderRight: "1px solid var(--color-border)",
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
+        overflowX: "hidden",
         flexShrink: 0,
+        transition: "width 0.2s ease, min-width 0.2s ease",
+        position: "relative",
       }}
     >
-      <div style={{ padding: "16px 12px 8px" }}>
+      {/* ── Header Area ── */}
+      <div style={{ padding: isCollapsed ? "12px 6px 8px" : "14px 10px 8px" }}>
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            justifyContent: isCollapsed ? "center" : "space-between",
+            gap: 6,
             marginBottom: 4,
           }}
         >
-          <span style={{ fontSize: "1rem" }}>{domain.emoji}</span>
-          <span
+          {!isCollapsed && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: "1.05rem", flexShrink: 0 }}>{domain.emoji}</span>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  color: "var(--color-text-muted)",
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={domain.name}
+              >
+                {domain.name}
+              </span>
+            </div>
+          )}
+
+          {/* Expand/Collapse Toggle Button */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title={isCollapsed ? "Expand sidebar (view domain menus)" : "Collapse sidebar (maximize screen space)"}
+            aria-label={isCollapsed ? "Expand secondary menu" : "Collapse secondary menu"}
             style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
+              width: 26,
+              height: 26,
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--color-border)",
+              background: "var(--color-surface-offset)",
               color: "var(--color-text-muted)",
-              lineHeight: 1.2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              flexShrink: 0,
+              transition: "background 0.15s, color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--color-primary-highlight)";
+              e.currentTarget.style.color = "var(--color-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--color-surface-offset)";
+              e.currentTarget.style.color = "var(--color-text-muted)";
             }}
           >
-            {domain.name}
-          </span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transform: isCollapsed ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s ease",
+              }}
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
         </div>
-        <div style={{ borderTop: "1px solid var(--color-divider)", marginTop: 12, marginBottom: 8 }} />
+        <div style={{ borderTop: "1px solid var(--color-divider)", marginTop: 8, marginBottom: 6 }} />
       </div>
 
-      <div style={{ padding: "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {domain.subfunctions
-          .filter((sub) => hasSubfunctionAccess(user?.roles, domain.slug, slugify(sub.name), user?.permissions))
-          .map((sub, idx) => {
-            const subSlug = slugify(sub.name);
-            const path = `/domains/${domain.slug}/${subSlug}`;
+      {/* ── Subfunctions Navigation Items ── */}
+      <div style={{ padding: isCollapsed ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+        {accessibleSubfunctions.map((sub, idx) => {
+          const subSlug = slugify(sub.name);
+          const path = `/domains/${domain.slug}/${subSlug}`;
 
-            return (
-              <NavLink
-                key={subSlug}
-                to={path}
-                style={({ isActive }) => ({
-                  display: "flex",
-                  flexDirection: "column",
-                  padding: "6px 9px",
-                  borderRadius: "var(--radius-sm)",
-                  fontSize: "12px",
-                  color: isActive ? "var(--color-primary)" : "var(--color-text)",
-                  background: isActive ? "var(--color-primary-highlight)" : "transparent",
-                  fontWeight: isActive ? 600 : 400,
-                  textDecoration: "none",
-                  transition: "background 0.12s, color 0.12s",
-                })}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      width: 16,
-                      height: 16,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "var(--color-surface-offset)",
-                      borderRadius: "var(--radius-sm)",
-                      opacity: 0.8,
-                    }}
-                  >
-                    {idx + 1}
+          return (
+            <NavLink
+              key={subSlug}
+              to={path}
+              onClick={() => {
+                // Auto-collapse when user selects a subfunction to maximize screen width
+                if (!isCollapsed) {
+                  setIsCollapsed(true);
+                }
+              }}
+              title={isCollapsed ? `${idx + 1}. ${sub.name}` : undefined}
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                justifyContent: isCollapsed ? "center" : "flex-start",
+                padding: isCollapsed ? "7px 0" : "6px 9px",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "12px",
+                color: isActive ? "var(--color-primary)" : "var(--color-text)",
+                background: isActive ? "var(--color-primary-highlight)" : "transparent",
+                fontWeight: isActive ? 600 : 400,
+                textDecoration: "none",
+                transition: "background 0.12s, color 0.12s",
+              })}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 7, width: isCollapsed ? "auto" : "100%" }}>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    width: 22,
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "var(--color-surface-offset)",
+                    borderRadius: "var(--radius-sm)",
+                    opacity: 0.9,
+                    flexShrink: 0,
+                  }}
+                >
+                  {idx + 1}
+                </span>
+                {!isCollapsed && (
+                  <span style={{ flex: 1, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {sub.name}
                   </span>
-                  <span style={{ flex: 1, lineHeight: 1.3 }}>{sub.name}</span>
-                </div>
-              </NavLink>
-            );
-          })}
+                )}
+              </div>
+            </NavLink>
+          );
+        })}
       </div>
     </div>
   );
 };
+

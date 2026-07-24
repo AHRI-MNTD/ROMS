@@ -183,6 +183,7 @@ type ApprovalRow = {
   sex?: string | null;
   personalEmail?: string | null;
   ahriEmail?: string | null;
+  dutyStation?: string | null;
   phone?: string | null;
   emergencyContact?: string | null;
   mntdProject?: string | null;
@@ -301,7 +302,15 @@ export default function ApproveEmployeePage() {
     },
   });
 
-  const rows = data?.data ?? [];
+  const demoNamesToExclude = ["henry osei", "brian okonkwo", "alice mwangi"];
+  const rows = useMemo(() => {
+    const raw = data?.data ?? [];
+    return raw.filter((row) => {
+      const name = (row.user?.displayName ?? "").toLowerCase();
+      return !demoNamesToExclude.some((demoName) => name.includes(demoName));
+    });
+  }, [data]);
+
   const sortByRecent = (a: ApprovalRow, b: ApprovalRow) => {
     const ta = new Date(a.createdAt ?? a.reviewedAt ?? a.startDate ?? 0).getTime();
     const tb = new Date(b.createdAt ?? b.reviewedAt ?? b.startDate ?? 0).getTime();
@@ -623,6 +632,7 @@ export default function ApproveEmployeePage() {
                   <InfoRow label="Department" value={selected.department} />
                   <InfoRow label="Current Position" value={getPositionLabel(selected.jobTitle)} />
                   <InfoRow label="Employment Type" value={formatEmployment(selected.employmentType)} />
+                  <InfoRow label="Duty Station" value={selected.dutyStation} />
                   <InfoRow label="AHRI Start Date" value={formatDate(selected.startDate)} />
                   {selected.employmentType === "contract" && (
                     <>

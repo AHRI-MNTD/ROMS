@@ -105,7 +105,7 @@ export const SUBFUNCTION_RIGHTS_MAP: Record<string, Record<string, string>> = {
   },
   hr: {
     "recruitment-onboarding": "Dashboard",
-    "training-competency": "Training Records",
+    "training-competency": "Personnel Registration",
     "scheduling-capacity": "Leave",
     "performance-management": "Profiles",
     "health-safety-records": "Onboarding",
@@ -141,12 +141,13 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "check-in": "Check In",
     "check-out": "Check Out",
     "requests": "Request/s",
+    "inventory-manager": "Request/s",
     "analytics": "Analytics",
     "master-data": "Master Data",
   },
   hr: {
     "dashboard": "Dashboard",
-    "training-records": "Training Records",
+    "training-records": "Personnel Registration",
     "approved": "Profiles",
     "approve-employee": "Onboarding",
   },
@@ -172,7 +173,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
           "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
           "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
           infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
-          hr: ["Dashboard", "Profiles", "Training Records", "Onboarding"],
+          hr: ["Dashboard", "Profiles", "Personnel Registration", "Onboarding", "Leave", "Performance", "Analytics"],
           finance: ["Dashboard", "Grants", "Budgets", "Expenses", "Approvals", "Reports", "Analytics"],
           participant: ["Dashboard", "Participants", "Consent", "Visits", "Engagement", "Follow-up", "Analytics"],
           regulatory: ["Dashboard", "Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting", "Analytics"],
@@ -202,7 +203,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
       "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
       "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
       infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
-      hr: ["Dashboard", "Profiles", "Training Records", "Onboarding"],
+      hr: ["Dashboard", "Profiles", "Personnel Registration", "Onboarding", "Leave", "Performance", "Analytics"],
       finance: ["Dashboard", "Grants", "Budgets", "Expenses", "Approvals", "Reports", "Analytics"],
       participant: ["Dashboard", "Participants", "Consent", "Visits", "Engagement", "Follow-up", "Analytics"],
       regulatory: ["Dashboard", "Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting", "Analytics"],
@@ -232,8 +233,8 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
   // 3. Fallback: if no rights and no custom permissions (or role is STAFF and no custom permissions)
   const totalRights = Object.values(result).reduce((sum, set) => sum + set.size, 0);
   if (totalRights === 0) {
-    // New/unapproved users have only Training Records in hr
-    result["hr"].add("Training Records");
+    // New/unapproved users have only Personnel Registration in hr
+    result["hr"].add("Personnel Registration");
   }
 
   return result;
@@ -252,26 +253,14 @@ export function hasDomainAccess(roles: string[] | undefined, domainSlug: string,
   return (rights[domainSlug]?.size ?? 0) > 0;
 }
 
-export function hasSubfunctionAccess(roles: string[] | undefined, domainSlug: string, subfunctionSlug: string, permissions?: string[]): boolean {
+export function hasSubfunctionAccess(roles: string[] | undefined, domainSlug: string, subfunctionSlug?: string, permissions?: string[]): boolean {
   if (roles?.includes("ADMIN") || permissions?.includes("admin:all")) return true;
-
-  // Layout-level subfunctions allow access if the user has domain access
-  if (subfunctionSlug === "recruitment-onboarding" || subfunctionSlug === "stock-management") {
-    return hasDomainAccess(roles, domainSlug, permissions);
-  }
-
-  const rights = getUserRights(roles, permissions);
-  const requiredRight = SUBFUNCTION_RIGHTS_MAP[domainSlug]?.[subfunctionSlug];
-  if (!requiredRight) return false;
-  return rights[domainSlug]?.has(requiredRight) ?? false;
+  return hasDomainAccess(roles, domainSlug, permissions);
 }
 
-export function hasTabAccess(roles: string[] | undefined, domainSlug: string, tabSlug: string, permissions?: string[]): boolean {
+export function hasTabAccess(roles: string[] | undefined, domainSlug: string, tabSlug?: string, permissions?: string[]): boolean {
   if (roles?.includes("ADMIN") || permissions?.includes("admin:all")) return true;
-  const rights = getUserRights(roles, permissions);
-  const requiredRight = TAB_RIGHTS_MAP[domainSlug]?.[tabSlug];
-  if (!requiredRight) return false;
-  return rights[domainSlug]?.has(requiredRight) ?? false;
+  return hasDomainAccess(roles, domainSlug, permissions);
 }
 
 export function hasPathAccess(roles: string[] | undefined, pathname: string, permissions?: string[]): boolean {

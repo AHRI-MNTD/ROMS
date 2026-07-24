@@ -2,19 +2,7 @@ import React, { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../api/client";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type StaffRow = {
-  id?: string | number;
-  fullName?: string;
-  firstName?: string;
-  department?: string;
-  jobTitle?: string;
-  position?: string;
-  employmentType?: string;
-  startDate?: string;
-  [key: string]: unknown;
-};
-
+// ─── Types & Data ─────────────────────────────────────────────────────────────
 type ApprovalRow = {
   id: string;
   department: string;
@@ -26,6 +14,41 @@ type ApprovalRow = {
   employmentType?: string | null;
   user?: { displayName?: string | null; email?: string | null };
 };
+
+const POSITIONS = [
+  { name: "division_head", label: "Division Head" },
+  { name: "lead_scientist", label: "Lead Scientist" },
+  { name: "senior_scientist", label: "Senior Scientist" },
+  { name: "post-doctoral_researcher", label: "Post-Doctoral Researcher" },
+  { name: "researcher_ii", label: "Researcher II" },
+  { name: "researcher_i", label: "Researcher I" },
+  { name: "associate_researcher_ii", label: "Associate Researcher II" },
+  { name: "associate_researcher_i", label: "Associate Researcher I" },
+  { name: "assistant_researcher_ii", label: "Assistant Researcher II" },
+  { name: "assistant_researcher_i", label: "Assistant Researcher I" },
+  { name: "assistant_researcher", label: "Assistant Researcher" },
+  { name: "junior_researcher", label: "Junior Researcher" },
+  { name: "project_manager", label: "Project Manager" },
+  { name: "assistant_project_management", label: "Assistant Project Management" },
+  { name: "project_coordinator", label: "Project Coordinator" },
+  { name: "senior_project_accountant", label: "Senior Project Accountant" },
+  { name: "project_accountant", label: "Project Accountant" },
+  { name: "junior_administration_officer", label: "Junior Administration Officer" },
+  { name: "driver", label: "Driver" }
+];
+
+function getPositionLabel(value?: string | null) {
+  if (!value) return "—";
+  const found = POSITIONS.find(p => p.name === value);
+  return found ? found.label : value;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
+}
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({
@@ -119,33 +142,8 @@ function EmploymentMix({ permanent, contract, msc }: { permanent: number; contra
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function HRDashboardPage() {
-  const approvedQuery = useQuery({
-    queryKey: ["hr-dashboard-approved"],
-    queryFn: async () => {
-      try {
-        const resp = await apiClient.get("/domains/hr/staff?page=1&limit=200");
-        return resp.data as { data: StaffRow[]; total: number };
-      } catch {
-        return { data: [], total: 0 };
-      }
-    },
-  });
-
-  const pendingQuery = useQuery({
-    queryKey: ["hr-dashboard-pending"],
-    queryFn: async () => {
-      try {
-        const resp = await apiClient.get("/domains/hr/training-records?limit=200");
-        return resp.data as { data: StaffRow[]; total: number };
-      } catch {
-        return { data: [], total: 0 };
-      }
-    },
-  });
-
-  // Same endpoint as ApprovedPage — fetch real verified personnel
-  const approvalsQuery = useQuery({
-    queryKey: ["hr-dashboard-approvals"],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["hr-employee-approvals"],
     queryFn: async () => {
       try {
         const resp = await apiClient.get("/domains/hr/approvals");
@@ -156,59 +154,86 @@ export default function HRDashboardPage() {
     },
   });
 
-  const approved = approvedQuery.data?.data ?? [];
-  const isLoading = approvedQuery.isLoading || pendingQuery.isLoading || approvalsQuery.isLoading;
-  const totalApproved = approvedQuery.data?.total ?? 0;
-  const totalPending = pendingQuery.data?.total ?? 0;
+  const allProfiles = useMemo(() => data?.data ?? [], [data]);
 
-  // Top 3 most recently verified — sorted by reviewedAt desc
-  const recentActivity = useMemo(() => {
-    const verifiedRows = (approvalsQuery.data?.data ?? []).filter(
-      (r) => r.approvalStatus === "APPROVED"
+  // Apply the same demo-user exclusion as the Personnel Files (ApprovedPage) so
+  // all KPI numbers stay in sync across the HR module.
+  const isDemoUser = (r: ApprovalRow) => {
+    const name = (r.user?.displayName ?? "").toLowerCase();
+    const email = (r.user?.email ?? "").toLowerCase();
+    return (
+      name.includes("carol nzinga") ||
+      name.includes("david asante") ||
+      email === "admin@roms.dev" ||
+      email === "pi@roms.dev"
     );
-    return [...verifiedRows]
+  };
+
+  const verifiedProfiles = useMemo(() => {
+    return allProfiles.filter((r) => r.approvalStatus === "APPROVED" && !isDemoUser(r));
+  }, [allProfiles]);
+
+  const pendingProfiles = useMemo(() => {
+    return allProfiles.filter((r) => r.approvalStatus === "PENDING" && !isDemoUser(r));
+  }, [allProfiles]);
+
+  const totalVerified = verifiedProfiles.length;
+  const totalPending = pendingProfiles.length;
+
+  // Top 5 most recently verified staff members — sorted by reviewedAt / createdAt desc
+  const recentActivity = useMemo(() => {
+    return [...verifiedProfiles]
       .sort((a, b) => {
         const ta = a.reviewedAt ?? a.createdAt ?? "";
         const tb = b.reviewedAt ?? b.createdAt ?? "";
         return tb.localeCompare(ta);
       })
-      .slice(0, 3)
+      .slice(0, 5)
       .map((r) => ({
         name: r.user?.displayName ?? "—",
         dept: r.department ?? "—",
-        role: r.jobTitle ?? "—",
-        date: r.startDate ? r.startDate.slice(0, 10) : "—",
-        verifiedAt: r.reviewedAt ?? r.createdAt ?? "—",
+        role: getPositionLabel(r.jobTitle),
+        date: formatDate(r.startDate),
+        verifiedAt: r.reviewedAt ?? r.createdAt ?? null,
       }));
-  }, [approvalsQuery.data]);
+  }, [verifiedProfiles]);
 
   const { deptCounts, employmentCounts } = useMemo(() => {
     const deptMap: Record<string, number> = {};
-    approved.forEach((r) => {
-      const dept = String(r.department ?? "Other");
+    verifiedProfiles.forEach((r) => {
+      const dept = r.department?.trim() || "Unassigned";
       deptMap[dept] = (deptMap[dept] ?? 0) + 1;
     });
 
+    // Normalise stored employment type values to match the canonical enum:
+    // stored as: "permanent" | "contract" | "msc_student"
     const empMap = { permanent: 0, contract: 0, msc_student: 0 };
-    approved.forEach((r) => {
-      const t = String(r.employmentType ?? "").toLowerCase();
-      if (t === "permanent") empMap.permanent++;
-      else if (t === "contract") empMap.contract++;
-      else if (t === "msc_student" || t === "msc student") empMap.msc_student++;
+    verifiedProfiles.forEach((r) => {
+      const raw = String(r.employmentType ?? "").toLowerCase().trim();
+      // Strip separators to allow flexible matching
+      const t = raw.replace(/[-_\s]/g, "");
+      if (t === "permanent" || t === "fulltime") empMap.permanent++;
+      else if (t === "contract" || t === "contractual") empMap.contract++;
+      else if (t === "mscstudent") empMap.msc_student++;
     });
 
     return { deptCounts: deptMap, employmentCounts: empMap };
-  }, [approved]);
+  }, [verifiedProfiles]);
 
-  const sortedDepts = Object.entries(deptCounts).sort(([, a], [, b]) => b - a).slice(0, 6);
+  const sortedDepts = Object.entries(deptCounts).sort(([, a], [, b]) => b - a);
   const totalInDepts = sortedDepts.reduce((s, [, n]) => s + n, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {error && (
+        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, fontSize: 13, color: "#991b1b" }}>
+          Failed to load HR dashboard metrics. Ensure the API server is running.
+        </div>
+      )}
 
       {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-        <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalApproved} loading={isLoading} />
+        <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalVerified} loading={isLoading} />
         <StatCard icon="📋" label="Pending Registrations" value={isLoading ? "—" : totalPending} loading={isLoading} />
         <StatCard icon="🏢" label="Departments" value={isLoading ? "—" : Object.keys(deptCounts).length} loading={isLoading} />
       </div>
@@ -279,9 +304,7 @@ export default function HRDashboardPage() {
               </thead>
               <tbody>
                 {recentActivity.map((row, i) => {
-                  const verifiedOnLabel = row.verifiedAt !== "—"
-                    ? new Date(row.verifiedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
-                    : "—";
+                  const verifiedOnLabel = formatDate(row.verifiedAt);
                   const cellBase: React.CSSProperties = {
                     padding: "0 12px",
                     height: 30,

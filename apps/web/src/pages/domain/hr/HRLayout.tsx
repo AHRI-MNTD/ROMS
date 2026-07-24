@@ -6,8 +6,8 @@ import { hasTabAccess } from "../../../auth/permissions";
 const tabs = [
   { to: "dashboard", label: "Dashboard", icon: "📊" },
   { to: "training-records", label: "Personnel Registration", icon: "📋" },
-  { to: "approved", label: "Personnel Files", icon: "🗂️" },
-  { to: "approve-employee", label: "Verify Personnel", icon: "✅" },
+  { to: "approved", label: "Personnel Database", icon: "🗂️" },
+  { to: "approve-employee", label: "Personnel Verification", icon: "✅" },
 ];
 
 type PageMeta = { icon: string; title: string; description: string };
@@ -25,12 +25,12 @@ const PAGE_META: Record<string, PageMeta> = {
   },
   approved: {
     icon: "🗂️",
-    title: "Personnel Files Database",
+    title: "Personnel Database",
     description: "View and manage verified personnel files, qualifications, and credentials.",
   },
   "approve-employee": {
     icon: "✅",
-    title: "Verify Personnel File",
+    title: "Personnel Verification",
     description: "Review submitted personnel profiles and verify credentials."
   },
 };
