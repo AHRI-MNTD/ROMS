@@ -303,55 +303,7 @@ export default function RequestsPage() {
             >
               ➕ Add to Cart
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFeedback(null);
-                if (!selectedItem) {
-                  setFeedback({ type: 'error', message: 'Select an item to request.' });
-                  return;
-                }
-                if (!Number.isFinite(requestQty) || requestQty <= 0) {
-                  setFeedback({ type: 'error', message: 'Request quantity must be greater than zero.' });
-                  return;
-                }
-                if (!project.trim()) {
-                  setFeedback({ type: 'error', message: 'Project is required.' });
-                  return;
-                }
-                if (!requestedBy.trim()) {
-                  setFeedback({ type: 'error', message: 'Requested by is required.' });
-                  return;
-                }
 
-                const newItem: CartItem = {
-                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  stockItemId: selectedItem.id!,
-                  itemLabel: `${selectedItem.sku ?? ""} - ${selectedItem.name ?? ""}`.trim(),
-                  quantity: requestQty,
-                  project: project.trim(),
-                  requestedBy: requestedBy.trim(),
-                  requestedFor: requestedFor.trim(),
-                  team: team.trim(),
-                  remark: note.trim() || "Request item",
-                };
-
-                bulkRequestMutation.mutate([newItem]);
-              }}
-              disabled={bulkRequestMutation.isPending}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "var(--color-accent-soft)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 12px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: bulkRequestMutation.isPending ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {bulkRequestMutation.isPending ? "Submitting..." : "Submit"}
-            </button>
           </div>
         </div>
 

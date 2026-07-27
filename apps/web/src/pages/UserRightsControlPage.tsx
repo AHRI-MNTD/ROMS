@@ -184,11 +184,18 @@ export default function UserRightsControlPage() {
   // Map API response to ControlUser[]
   const users: ControlUser[] = React.useMemo(() => {
     if (!approvedData?.data) return [];
-    const excludedNames = ["david asante", "carol nzinga"];
+    // Exclude demo accounts and the ROMS System Administrator (sign-in credential only,
+    // not a real staff member — must never appear in the User Rights matrix).
+    const excludedNames = ["david asante", "carol nzinga", "roms system administrator"];
+    const excludedEmails = ["systemadmin@roms.com"];
     return (approvedData.data as any[])
       .filter((profile: any) => {
         const name = (profile.user?.displayName ?? "").toLowerCase();
-        return !excludedNames.some((ex) => name.includes(ex));
+        const email = (profile.user?.email ?? "").toLowerCase();
+        return (
+          !excludedNames.some((ex) => name.includes(ex)) &&
+          !excludedEmails.includes(email)
+        );
       })
       .map((profile: any) => {
         const userRoles = profile.user?.roles ?? [];

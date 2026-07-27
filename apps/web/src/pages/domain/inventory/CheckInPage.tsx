@@ -786,26 +786,7 @@ export default function CheckInPage() {
             >
               ➕ Add to Cart
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFeedback(null);
-                checkInMutation.mutate();
-              }}
-              disabled={checkInMutation.isPending}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "var(--color-accent-soft)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 12px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: checkInMutation.isPending ? "not-allowed" : "pointer",
-              }}
-            >
-              {checkInMutation.isPending ? "Submitting..." : mode === "existing" ? "Submit" : "Create Item + Submit"}
-            </button>
+
           </div>
         </div>
 

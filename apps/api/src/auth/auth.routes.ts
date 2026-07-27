@@ -396,4 +396,57 @@ router.patch("/users/:id/roles", requireAuth, async (req: Request, res: Response
   }
 });
 
+// POST /auth/change-password
+router.post("/change-password", requireAuth, async (req: Request, res: Response) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Current password and new password are required" });
+    return;
+  }
+
+  if (newPassword.length < 8) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "New password must be at least 8 characters long" });
+    return;
+  }
+
+  if (currentPassword === newPassword) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "New password must be different from the current password" });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user) {
+      res.status(404).json({ code: "NOT_FOUND", message: "User not found" });
+      return;
+    }
+
+    if (!user.hashedPassword) {
+      res.status(400).json({ code: "GOOGLE_ACCOUNT", message: "This account uses Google Sign-In and does not have a password" });
+      return;
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.hashedPassword);
+    if (!valid) {
+      res.status(401).json({ code: "INVALID_CREDENTIALS", message: "Current password is incorrect" });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { hashedPassword },
+    });
+
+    logger.info({ userId: user.id, email: user.email }, "User changed password");
+
+    res.json({ message: "Password changed successfully" });
+  } catch (err) {
+    logger.error(err, "Change password error");
+    res.status(500).json({ code: "INTERNAL_ERROR", message: "Failed to change password" });
+  }
+});
+
 export default router;
+

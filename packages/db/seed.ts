@@ -605,14 +605,29 @@ async function main() {
         emailVerified: true,
       },
     }),
+    // Personal account — regular STAFF user (admin assigns roles as needed)
     prisma.user.upsert({
       where: { email: "gfikerak@yahoo.com" },
-      update: { hashedPassword: password, emailVerified: true, roles: ["ADMIN"] },
+      update: { hashedPassword: password, emailVerified: true, roles: ["STAFF"], permissions: [] },
       create: {
         email: "gfikerak@yahoo.com",
         hashedPassword: password,
         displayName: "Fikregabriel Abera",
+        roles: ["STAFF"],
+        permissions: [],
+        emailVerified: true,
+      },
+    }),
+    // Dedicated system administrator account
+    prisma.user.upsert({
+      where: { email: "systemadmin@roms.com" },
+      update: { emailVerified: true, roles: ["ADMIN"], permissions: ["admin:all"] },
+      create: {
+        email: "systemadmin@roms.com",
+        displayName: "ROMS System Administrator",
+        hashedPassword: await (await import("bcryptjs")).default.hash("R0ms@Sys#2026!Sec", 12),
         roles: ["ADMIN"],
+        permissions: ["admin:all"],
         emailVerified: true,
       },
     }),
@@ -1190,7 +1205,8 @@ async function main() {
     ["pi@roms.dev", "PRINCIPAL_INVESTIGATOR", "Dr. David Asante"],
     ["qa@roms.dev", "QA_OFFICER", "Eve Diallo"],
     ["community@roms.dev", "COMMUNITY_ENGAGEMENT", "Frank Mensah"],
-    ["gfikerak@yahoo.com", "ADMIN", "Fikregabriel Abera"],
+    ["gfikerak@yahoo.com", "STAFF", "Fikregabriel Abera"],
+    ["systemadmin@roms.com", "ADMIN + admin:all", "ROMS System Administrator"],
   ];
   rows.forEach(([email, role, name]) => {
     console.log(`  ${name.padEnd(28)} ${email.padEnd(30)} [${role}]`);

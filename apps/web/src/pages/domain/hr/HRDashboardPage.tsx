@@ -156,8 +156,8 @@ export default function HRDashboardPage() {
 
   const allProfiles = useMemo(() => data?.data ?? [], [data]);
 
-  // Apply the same demo-user exclusion as the Personnel Files (ApprovedPage) so
-  // all KPI numbers stay in sync across the HR module.
+  // Use the exact same exclusion logic as ApprovedPage (Personnel Files) so the
+  // "Verified Personnel" KPI always matches the count shown there.
   const isDemoUser = (r: ApprovalRow) => {
     const name = (r.user?.displayName ?? "").toLowerCase();
     const email = (r.user?.email ?? "").toLowerCase();
@@ -165,7 +165,9 @@ export default function HRDashboardPage() {
       name.includes("carol nzinga") ||
       name.includes("david asante") ||
       email === "admin@roms.dev" ||
-      email === "pi@roms.dev"
+      email === "pi@roms.dev" ||
+      email === "systemadmin@roms.com" ||
+      name === "roms system administrator"
     );
   };
 
@@ -234,7 +236,7 @@ export default function HRDashboardPage() {
       {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
         <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalVerified} loading={isLoading} />
-        <StatCard icon="📋" label="Pending Registrations" value={isLoading ? "—" : totalPending} loading={isLoading} />
+        <StatCard icon="📋" label="Pending Verification" value={isLoading ? "—" : totalPending} loading={isLoading} />
         <StatCard icon="🏢" label="Departments" value={isLoading ? "—" : Object.keys(deptCounts).length} loading={isLoading} />
       </div>
 

@@ -300,7 +300,9 @@ export default function ApprovedPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [saveErrorMsg, setSaveErrorMsg] = useState("");
 
-  // Filter out demo users Carol Nzinga and Dr. David Asante as requested
+  // Filter out demo users Carol Nzinga and Dr. David Asante as requested,
+  // and always exclude the ROMS System Administrator account — it is a system
+  // sign-in credential only, not a real personnel record.
   const approved = useMemo(() => {
     return (data?.data ?? []).filter((r) => {
       if (r.approvalStatus !== "APPROVED") return false;
@@ -310,7 +312,9 @@ export default function ApprovedPage() {
         name.includes("carol nzinga") ||
         name.includes("david asante") ||
         email === "admin@roms.dev" ||
-        email === "pi@roms.dev"
+        email === "pi@roms.dev" ||
+        email === "systemadmin@roms.com" ||
+        name === "roms system administrator"
       ) {
         return false;
       }

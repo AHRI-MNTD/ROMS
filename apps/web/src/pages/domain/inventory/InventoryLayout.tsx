@@ -40,7 +40,7 @@ export default function InventoryLayout() {
     subtitle = "Submit and track lab staff material requisitions.";
   } else if (activePath === "inventory-manager") {
     title = "Inventory Manager & Requisition Approvals";
-    subtitle = "Review pending material requests, approve or adjust quantities, and inspect request logs.";
+    subtitle = "Review pending material requests, approve or adjust quantities.";
   } else if (activePath === "analytics") {
     title = "Inventory Analytics & Insights";
     subtitle = "Monitor stock usage patterns, replenishment telemetry, and trends.";

@@ -302,13 +302,24 @@ export default function ApproveEmployeePage() {
     },
   });
 
-  const demoNamesToExclude = ["henry osei", "brian okonkwo", "alice mwangi"];
+  // Shared demo-user exclusion — must match ApprovedPage (Personnel Files) exactly
+  // so all HR page counts stay in sync.
+  const isDemoUser = (row: ApprovalRow) => {
+    const name = (row.user?.displayName ?? "").toLowerCase();
+    const email = (row.user?.email ?? "").toLowerCase();
+    return (
+      name.includes("carol nzinga") ||
+      name.includes("david asante") ||
+      email === "admin@roms.dev" ||
+      email === "pi@roms.dev" ||
+      email === "systemadmin@roms.com" ||
+      name === "roms system administrator"
+    );
+  };
+
   const rows = useMemo(() => {
     const raw = data?.data ?? [];
-    return raw.filter((row) => {
-      const name = (row.user?.displayName ?? "").toLowerCase();
-      return !demoNamesToExclude.some((demoName) => name.includes(demoName));
-    });
+    return raw.filter((row) => !isDemoUser(row));
   }, [data]);
 
   const sortByRecent = (a: ApprovalRow, b: ApprovalRow) => {

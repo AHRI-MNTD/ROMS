@@ -455,26 +455,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
             >
               ➕ Add to Cart
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setFeedback(null);
-                checkOutMutation.mutate();
-              }}
-              disabled={checkOutMutation.isPending}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "var(--color-accent-soft)",
-                color: "var(--color-text)",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 12px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: checkOutMutation.isPending ? "not-allowed" : "pointer",
-              }}
-            >
-              {checkOutMutation.isPending ? "Submitting..." : "Submit"}
-            </button>
+
           </div>
         </div>
 
