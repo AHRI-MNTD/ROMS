@@ -479,7 +479,7 @@ export default function ApproveEmployeePage() {
     <div style={{ display: "grid", gap: 16 }}>
       {/* ── Top instruction banner ── */}
       <div style={{ padding: "10px 16px", borderRadius: 10, background: "var(--color-primary-highlight)", border: "1px solid var(--color-border)", fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontStyle: "italic", display: "flex", alignItems: "center", gap: 8 }}>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="8" /><line x1="12" y1="12" x2="12" y2="16" /></svg>
         Review the personnel profile, then verify credentials and authorize task access. Click a row to see the full profile details.
       </div>
 
@@ -603,28 +603,31 @@ export default function ApproveEmployeePage() {
               </div>
             </div>
 
-            <div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <button
                 type="button"
+                title="Back to List"
                 onClick={() => setSelected(null)}
                 style={{
-                  padding: "6px 16px",
+                  width: 32, height: 32,
                   borderRadius: 8,
                   border: "1px solid var(--color-divider)",
                   background: "var(--color-surface)",
                   color: "var(--color-text-muted)",
-                  fontSize: "var(--fs-xs)",
-                  fontWeight: 700,
-                  cursor: "pointer"
+                  fontSize: 15,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  flexShrink: 0,
                 }}
               >
-                Back to List
+                ←
               </button>
             </div>
           </div>
 
           {/* Details Grid layout: 2 Columns side-by-side */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 20, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", columnGap: 48, rowGap: 20, marginBottom: 20 }}>
             {/* Left Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <Section title="Section 1: Personal Details & Contact Information">
@@ -675,7 +678,7 @@ export default function ApproveEmployeePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
                   {/* First Degree */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Undergraduate/First Degree</div>
                     <div className="grid-responsive-2col">
                       <InfoRow label="Degree & Field" value={selected.firstDegree} />
                       <InfoRow label="University" value={selected.firstDegreeUniv === "other" ? selected.firstDegreeUnivOther : getUniversityLabel(selected.firstDegreeUniv)} />
@@ -686,7 +689,7 @@ export default function ApproveEmployeePage() {
                   {/* Second Degree */}
                   {selected.secondDegree && (
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Postgraduate/Second Degree</div>
                       <div className="grid-responsive-2col">
                         <InfoRow label="Degree & Field" value={selected.secondDegree} />
                         <InfoRow label="University" value={selected.secondDegreeUniv === "other" ? selected.secondDegreeUnivOther : getUniversityLabel(selected.secondDegreeUniv)} />
@@ -698,7 +701,7 @@ export default function ApproveEmployeePage() {
                   {/* Third Degree */}
                   {selected.thirdDegree && (
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
                       <div className="grid-responsive-2col">
                         <InfoRow label="PhD & Field" value={selected.thirdDegree} />
                         <InfoRow label="University & Country" value={selected.thirdDegreeUnivCountry} />
@@ -709,7 +712,7 @@ export default function ApproveEmployeePage() {
 
                   {/* Currently Studying */}
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Current Study Status</div>
                     <InfoRow label="Currently Studying?" value={selected.currentlyStudying ? "Yes" : "No"} />
 
                     {selected.currentlyStudying && (
@@ -782,24 +785,24 @@ export default function ApproveEmployeePage() {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ padding: "16px 22px", marginTop: "50px", borderTop: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12, background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
+          <div style={{ padding: "16px 22px", marginTop: "20px", borderTop: "1px solid var(--color-divider)", display: "flex", flexDirection: "column", gap: 12, background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
             {selected.approvalStatus === "PENDING" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 700 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 700, flex: 1, minWidth: 200 }}>
                   <span>Verification Remarks / Notes (Optional)</span>
                   <input
                     value={notes[selected.id] ?? ""}
                     onChange={(e) => setNotes((cur) => ({ ...cur, [selected.id]: e.target.value }))}
                     placeholder="Enter verification notes..."
-                    style={{ width: "100%", maxWidth: "400px", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
+                    style={{ width: "50%", height: 34, padding: "0 10px", borderRadius: 8, border: "1px solid var(--color-divider)", background: "var(--color-surface)", fontSize: "var(--fs-xs)", color: "var(--color-text)", outline: "none", boxSizing: "border-box" }}
                   />
                 </label>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <button
                     type="button"
                     onClick={() => handleDecision(selected.id, "REJECTED")}
                     disabled={approveMutation.isPending}
-                    style={{ background: "rgba(239,68,68,0.10)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.35)", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)", transition: "background 0.15s, border-color 0.15s, color 0.15s" }}
+                    style={{ background: "rgba(239,68,68,0.10)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.35)", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)", transition: "background 0.15s, border-color 0.15s, color 0.15s", whiteSpace: "nowrap" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.20)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.55)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.10)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)"; }}
                   >
@@ -809,11 +812,11 @@ export default function ApproveEmployeePage() {
                     type="button"
                     onClick={() => handleDecision(selected.id, "APPROVED")}
                     disabled={approveMutation.isPending}
-                    style={{ background: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.35)", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)", transition: "background 0.15s, border-color 0.15s, color 0.15s" }}
+                    style={{ background: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.35)", padding: "8px 20px", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: "var(--fs-xs)", transition: "background 0.15s, border-color 0.15s, color 0.15s", whiteSpace: "nowrap" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(16,185,129,0.24)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.60)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }}
                   >
-                    ✓ Verify & Authorize
+                    ✓ Verify &amp; Authorize
                   </button>
                 </div>
               </div>
@@ -833,9 +836,30 @@ export default function ApproveEmployeePage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div style={{ fontSize: "10px", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
-        {title}
+    <div className="section-container">
+      <div style={{ marginBottom: 10 }}>
+        <div
+          className="section-title"
+          style={{
+            fontSize: "10px",
+            fontWeight: 850,
+            color: "var(--color-text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            lineHeight: 1.4,
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            marginTop: 3,
+            height: 2,
+            width: "80%",
+            background: "var(--color-primary)",
+            borderRadius: 2,
+          }}
+        />
       </div>
       <div style={{ display: "grid", gap: 6 }}>{children}</div>
     </div>
@@ -844,9 +868,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 6, alignItems: "start" }}>
-      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500 }}>{value || "—"}</span>
+    <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 4, alignItems: "start" }}>
+      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600, wordBreak: "break-word" }}>{label}</span>
+      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500, wordBreak: "break-word" }}>{value || "—"}</span>
     </div>
   );
 }
