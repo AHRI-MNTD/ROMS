@@ -466,7 +466,7 @@ a:hover {
 
 .grid-responsive-2col {
   display: grid;
-  gap: 16px;
+  gap: 8px;
   grid-template-columns: 1fr 1fr;
   min-height: 0;
 }

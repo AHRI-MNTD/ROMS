@@ -18,7 +18,7 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory", "Analytics", "Master Data"],
+    inventory: ["Dashboard", "Current Inventory", "Inventory Manager", "Master Data"],
     qms: ["Dashboard", "SOP Library", "Audits"],
     hr: ["Dashboard", "Profiles"],
     finance: ["Dashboard", "Grants", "Budgets"],
@@ -141,7 +141,7 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "check-in": "Check In",
     "check-out": "Check Out",
     "requests": "Request/s",
-    "inventory-manager": "Request/s",
+    "inventory-manager": "Inventory Manager",
     "analytics": "Analytics",
     "master-data": "Master Data",
   },
@@ -168,7 +168,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
       if (perm === "admin:all") {
         const DOMAIN_RIGHTS: Record<string, string[]> = {
           biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-          inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Analytics", "Master Data"],
+          inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
           qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
           "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
           "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -198,7 +198,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
     // Admin has all rights
     const DOMAIN_RIGHTS: Record<string, string[]> = {
       biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-      inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Analytics", "Master Data"],
+      inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
       qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
       "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
       "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -260,6 +260,17 @@ export function hasSubfunctionAccess(roles: string[] | undefined, domainSlug: st
 
 export function hasTabAccess(roles: string[] | undefined, domainSlug: string, tabSlug?: string, permissions?: string[]): boolean {
   if (roles?.includes("ADMIN") || permissions?.includes("admin:all")) return true;
+
+  // If we have a specific tab slug, check the exact right required for that tab
+  if (tabSlug && TAB_RIGHTS_MAP[domainSlug]) {
+    const requiredRight = TAB_RIGHTS_MAP[domainSlug][tabSlug];
+    if (requiredRight) {
+      const rights = getUserRights(roles, permissions);
+      return rights[domainSlug]?.has(requiredRight) ?? false;
+    }
+  }
+
+  // Fallback: any access to the domain
   return hasDomainAccess(roles, domainSlug, permissions);
 }
 

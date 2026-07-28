@@ -1125,41 +1125,96 @@ export default function ApprovedPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              {/* Download PDF */}
               <button
                 type="button"
-                onClick={(e) => handleStartEdit(e, selected)}
+                title="Download PDF"
+                onClick={handleDownloadPdf}
+                disabled={pdfStatus === "generating"}
                 style={{
-                  padding: "6px 14px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(234, 179, 8, 0.4)",
-                  background: "rgba(234, 179, 8, 0.15)",
-                  color: "#b45309",
-                  fontSize: "var(--fs-xs)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6
-                }}
-              >
-                ✏️ Edit Profile
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                style={{
-                  padding: "6px 16px",
+                  width: 32, height: 32,
                   borderRadius: 8,
                   border: "1px solid var(--color-divider)",
                   background: "var(--color-surface)",
                   color: "var(--color-text-muted)",
-                  fontSize: "var(--fs-xs)",
-                  fontWeight: 700,
-                  cursor: "pointer"
+                  fontSize: 15,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: pdfStatus === "generating" ? "not-allowed" : "pointer",
+                  opacity: pdfStatus === "generating" ? 0.7 : 1,
+                  transition: "all 0.2s ease",
+                  flexShrink: 0,
                 }}
               >
-                Back to Registry
+                {pdfStatus === "generating" ? "⏳" : "⬇️"}
+              </button>
+
+              {/* Print */}
+              <button
+                type="button"
+                title="Print"
+                onClick={handlePrint}
+                disabled={printStatus === "printing"}
+                style={{
+                  width: 32, height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: 15,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: printStatus === "printing" ? "not-allowed" : "pointer",
+                  opacity: printStatus === "printing" ? 0.7 : 1,
+                  transition: "all 0.2s ease",
+                  flexShrink: 0,
+                }}
+              >
+                {printStatus === "printing" ? "⏳" : "🖨️"}
+              </button>
+
+              {/* Divider */}
+              <div style={{ width: 1, height: 22, background: "var(--color-divider)", margin: "0 2px" }} />
+
+              {/* Edit Profile */}
+              <button
+                type="button"
+                title="Edit Profile"
+                onClick={(e) => handleStartEdit(e, selected)}
+                style={{
+                  width: 32, height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: 15,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  flexShrink: 0,
+                }}
+              >
+                ✏️
+              </button>
+
+              {/* Back to Registry */}
+              <button
+                type="button"
+                title="Back to Registry"
+                onClick={() => setSelected(null)}
+                style={{
+                  width: 32, height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--color-divider)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  fontSize: 15,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  flexShrink: 0,
+                }}
+              >
+                ←
               </button>
             </div>
           </div>
@@ -1173,7 +1228,7 @@ export default function ApprovedPage() {
             </div>
 
             {/* Details Grid layout: 2 Columns side-by-side */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 20, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", columnGap: 48, rowGap: 20, marginBottom: 20 }}>
               {/* Left Column */}
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <Section title="Section 1: Personal Details & Contact Information">
@@ -1224,7 +1279,7 @@ export default function ApprovedPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {/* First Degree */}
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Undergraduate/First Degree</div>
                       <div className="grid-responsive-2col">
                         <InfoRow label="Degree & Field" value={selected.firstDegree} />
                         <InfoRow label="University" value={selected.firstDegreeUniv === "other" ? selected.firstDegreeUnivOther : getUniversityLabel(selected.firstDegreeUniv)} />
@@ -1235,7 +1290,7 @@ export default function ApprovedPage() {
                     {/* Second Degree */}
                     {selected.secondDegree && (
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Postgraduate/Second Degree</div>
                         <div className="grid-responsive-2col">
                           <InfoRow label="Degree & Field" value={selected.secondDegree} />
                           <InfoRow label="University" value={selected.secondDegreeUniv === "other" ? selected.secondDegreeUnivOther : getUniversityLabel(selected.secondDegreeUniv)} />
@@ -1247,7 +1302,7 @@ export default function ApprovedPage() {
                     {/* Third Degree */}
                     {selected.thirdDegree && (
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
                         <div className="grid-responsive-2col">
                           <InfoRow label="PhD & Field" value={selected.thirdDegree} />
                           <InfoRow label="University & Country" value={selected.thirdDegreeUnivCountry} />
@@ -1258,7 +1313,7 @@ export default function ApprovedPage() {
 
                     {/* Currently Studying */}
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Current Study Status</div>
                       <InfoRow label="Currently Studying?" value={selected.currentlyStudying ? "Yes" : "No"} />
 
                       {selected.currentlyStudying && (
@@ -1329,23 +1384,7 @@ export default function ApprovedPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div style={{ padding: "14px 22px", borderTop: "1px solid var(--color-divider)", display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", background: "rgba(0,0,0,0.02)", borderRadius: 12 }}>
-            <ActionBtn
-              onClick={handleDownloadPdf}
-              isPending={pdfStatus === "generating"}
-              icon={pdfStatus === "generating" ? "⏳" : "⬇"}
-              label={pdfStatus === "generating" ? "Generating..." : "Download PDF"}
-              disabled={pdfStatus === "generating"}
-            />
-            <ActionBtn
-              onClick={handlePrint}
-              isPending={printStatus === "printing"}
-              icon={printStatus === "printing" ? "⏳" : "🖨"}
-              label={printStatus === "printing" ? "Printing..." : "Print"}
-              disabled={printStatus === "printing"}
-            />
-          </div>
+
         </div>
       )}
 
@@ -1437,7 +1476,7 @@ export default function ApprovedPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {/* First Degree */}
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Undergraduate/First Degree</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Undergraduate/First Degree</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <InfoRow label="Degree & Field" value={printingPersonnel.firstDegree} />
                     <InfoRow label="University" value={printingPersonnel.firstDegreeUniv === "other" ? printingPersonnel.firstDegreeUnivOther : getUniversityLabel(printingPersonnel.firstDegreeUniv)} />
@@ -1448,7 +1487,7 @@ export default function ApprovedPage() {
                 {/* Second Degree */}
                 {printingPersonnel.secondDegree && (
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Second Degree</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Postgraduate/Second Degree</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <InfoRow label="Degree & Field" value={printingPersonnel.secondDegree} />
                       <InfoRow label="University" value={printingPersonnel.secondDegreeUniv === "other" ? printingPersonnel.secondDegreeUnivOther : getUniversityLabel(printingPersonnel.secondDegreeUniv)} />
@@ -1460,7 +1499,7 @@ export default function ApprovedPage() {
                 {/* Third Degree */}
                 {printingPersonnel.thirdDegree && (
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Postgraduate/Third Degree (PhD)</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <InfoRow label="PhD & Field" value={printingPersonnel.thirdDegree} />
                       <InfoRow label="University & Country" value={printingPersonnel.thirdDegreeUnivCountry} />
@@ -1471,7 +1510,7 @@ export default function ApprovedPage() {
 
                 {/* Currently Studying */}
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", borderBottom: "1px dashed var(--color-divider)", paddingBottom: 2, marginBottom: 4 }}>Current Study Status</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--color-text)", marginBottom: 4 }}>Current Study Status</div>
                   <InfoRow label="Currently Studying?" value={printingPersonnel.currentlyStudying ? "Yes" : "No"} />
 
                   {printingPersonnel.currentlyStudying && (
@@ -1712,8 +1751,30 @@ export default function ApprovedPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="section-container">
-      <div className="section-title" style={{ fontSize: "10px", fontWeight: 850, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8, borderBottom: "1px solid var(--color-divider)", paddingBottom: 4 }}>
-        {title}
+      <div style={{ marginBottom: 10 }}>
+        <div
+          className="section-title"
+          style={{
+            fontSize: "10px",
+            fontWeight: 850,
+            color: "var(--color-text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            lineHeight: 1.4,
+          }}
+        >
+          {title}
+        </div>
+        {/* Short gradient underline — spans only under the text, not full width */}
+        <div
+          style={{
+            marginTop: 3,
+            height: 2,
+            width: "80%",
+            background: "var(--color-primary)",
+            borderRadius: 2,
+          }}
+        />
       </div>
       <div style={{ display: "grid", gap: 6 }}>{children}</div>
     </div>
@@ -1722,9 +1783,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "132px 1fr", gap: 6, alignItems: "start" }}>
-      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500 }}>{value || "—"}</span>
+    <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 4, alignItems: "start" }}>
+      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)", fontWeight: 600, wordBreak: "break-word" }}>{label}</span>
+      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text)", fontWeight: 500, wordBreak: "break-word" }}>{value || "—"}</span>
     </div>
   );
 }

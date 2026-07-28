@@ -20,7 +20,7 @@ type PermissionState = Record<string, Set<string>>;
 
 const DOMAIN_RIGHTS: Record<string, string[]> = {
   biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Analytics", "Master Data"],
+  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
   qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
   "lab-workflow": ["Dashboard", "Protocols", "Instruments", "Experiments", "Runs", "Reports", "Analytics"],
   "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -49,7 +49,7 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory", "Analytics", "Check In", "Check Out", "Request/s"],
+    inventory: ["Dashboard", "Current Inventory", "Inventory Manager", "Check In", "Check Out", "Request/s"],
     qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA"],
     hr: ["Dashboard", "Profiles", "Onboarding", "Personnel Registration"],
     finance: ["Dashboard", "Grants", "Budgets"],
