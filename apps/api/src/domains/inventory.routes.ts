@@ -257,6 +257,8 @@ router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_A
     },
   });
 
+  GoogleSheetsSyncService.syncMasterData({ category, unit, project, staff });
+
   res.status(201).json(record);
 });
 
@@ -274,6 +276,9 @@ router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARC
         staff: staff ? String(staff).trim() : null,
       },
     });
+
+    GoogleSheetsSyncService.syncMasterData({ category, unit, project, staff });
+
     res.json(record);
   } catch (error) {
     res.status(404).json({ error: "Master data record not found." });
@@ -749,11 +754,15 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
 // POST /google-sheets/sync - Sync inventory with Google Sheets
 router.post("/google-sheets/sync", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req, res) => {
   try {
-    const result = await GoogleSheetsSyncService.pullStockItems(prisma);
+    const result = await GoogleSheetsSyncService.pullAll(prisma);
     res.json({
       success: true,
-      message: `Successfully synchronized inventory from Google Sheets.`,
-      importedCount: result.imported,
+      message: `Successfully synchronized inventory with ${result.source === "google" ? "Google Sheets" : "local fallback CSVs"}. (Stock Items: ${result.importedStockItems}, Check-ins: ${result.importedCheckIns}, Check-outs: ${result.importedCheckOuts}, Master Data: ${result.importedMasterData})`,
+      importedCount: result.importedStockItems,
+      importedStockItems: result.importedStockItems,
+      importedCheckIns: result.importedCheckIns,
+      importedCheckOuts: result.importedCheckOuts,
+      importedMasterData: result.importedMasterData,
       source: result.source,
     });
   } catch (error: any) {

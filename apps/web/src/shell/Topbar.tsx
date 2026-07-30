@@ -47,6 +47,13 @@ const EyeIcon = ({ show }: { show: boolean }) =>
     </svg>
   );
 
+const UserPersonIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
+
 // ── Shared: spinner ───────────────────────────────────────────────────────────
 const Spinner = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
@@ -533,9 +540,6 @@ export const Topbar: React.FC = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const avatarInitials = user
-    ? user.displayName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-    : "?";
 
   return (
     <>
@@ -599,15 +603,13 @@ export const Topbar: React.FC = () => {
               style={{
                 width: 30, height: 30, borderRadius: "50%",
                 background: "var(--color-primary)", color: "#fff",
-                fontSize: "11px", fontWeight: 800,
                 border: `2px solid ${showDropdown ? "var(--color-primary-hover)" : "transparent"}`,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "border-color 0.15s, transform 0.15s",
                 transform: showDropdown ? "scale(1.08)" : "scale(1)",
-                letterSpacing: "0.03em",
               }}
             >
-              {avatarInitials}
+              <UserPersonIcon size={16} />
             </button>
 
             {/* Dropdown */}
@@ -632,9 +634,9 @@ export const Topbar: React.FC = () => {
                       width: 36, height: 36, borderRadius: "50%",
                       background: "var(--color-primary)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "13px", fontWeight: 800, color: "#fff", flexShrink: 0,
+                      color: "#fff", flexShrink: 0,
                     }}>
-                      {avatarInitials}
+                      <UserPersonIcon size={18} />
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

@@ -1064,13 +1064,13 @@ async function main() {
       prisma.staffProfile.upsert({
         where: { userId: u.id },
         update: {
-          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED", "PENDING", "PENDING"][i] as any,
-          reviewedById: i >= 2 && i < 6 ? users[6]?.id : null,
-          reviewedAt: i >= 2 && i < 6 ? new Date("2025-05-01T10:00:00") : null,
+          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED", "APPROVED", "PENDING"][i] as any,
+          reviewedById: (i >= 2 && i < 6) || i === 6 ? users[7]?.id : null,
+          reviewedAt: (i >= 2 && i < 6) || i === 6 ? new Date("2025-05-01T10:00:00") : null,
           reviewNote:
             i >= 4 && i < 6
               ? "Employee did not meet the approval criteria yet."
-              : i >= 2 && i < 4
+              : (i >= 2 && i < 4) || i === 6
                 ? "Employee approved for HR access."
                 : null,
           employmentType:
@@ -1119,13 +1119,13 @@ async function main() {
             "researcher_i",
           ][i],
           startDate: new Date("2022-01-01"),
-          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED", "PENDING", "PENDING"][i] as any,
-          reviewedById: i >= 2 && i < 6 ? users[6]?.id : undefined,
-          reviewedAt: i >= 2 && i < 6 ? new Date("2025-05-01T10:00:00") : undefined,
+          approvalStatus: ["PENDING", "PENDING", "APPROVED", "APPROVED", "REJECTED", "REJECTED", "APPROVED", "PENDING"][i] as any,
+          reviewedById: (i >= 2 && i < 6) || i === 6 ? users[7]?.id : undefined,
+          reviewedAt: (i >= 2 && i < 6) || i === 6 ? new Date("2025-05-01T10:00:00") : undefined,
           reviewNote:
             i >= 4 && i < 6
               ? "Employee did not meet the approval criteria yet."
-              : i >= 2 && i < 4
+              : (i >= 2 && i < 4) || i === 6
                 ? "Employee approved for HR access."
                 : undefined,
           employmentType: [

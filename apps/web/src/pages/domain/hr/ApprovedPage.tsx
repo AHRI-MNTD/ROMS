@@ -224,6 +224,16 @@ function formatDate(value?: string | null) {
   return parsed.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
 }
 
+function formatDateGC(value?: string | Date | null) {
+  if (!value) return "—";
+  const parsed = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  const month = parsed.getMonth() + 1;
+  const day = parsed.getDate();
+  const year = String(parsed.getFullYear()).slice(-2);
+  return `${month}/${day}/${year} GC`;
+}
+
 function formatEmployment(value?: string | null): string {
   if (!value) return "—";
   const found = EMPLOYMENT_TYPES.find(t => t.name === value.toLowerCase());
@@ -311,10 +321,20 @@ export default function ApprovedPage() {
       if (
         name.includes("carol nzinga") ||
         name.includes("david asante") ||
+        name.includes("brian okonkwo") ||
+        name.includes("henry osei") ||
+        name.includes("alice mwangi") ||
+        name.includes("eve diallo") ||
+        name.includes("frank mensah") ||
+        name === "roms system administrator" ||
         email === "admin@roms.dev" ||
         email === "pi@roms.dev" ||
+        email === "scientist@roms.dev" ||
+        email === "datamanager@roms.dev" ||
+        email === "qa@roms.dev" ||
+        email === "community@roms.dev" ||
         email === "systemadmin@roms.com" ||
-        name === "roms system administrator"
+        email.endsWith("@roms.dev")
       ) {
         return false;
       }
@@ -1426,7 +1446,7 @@ export default function ApprovedPage() {
             </div>
             <div className="metadata-item">
               <span className="metadata-label">Report Date</span>
-              <span className="metadata-value">{new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+              <span className="metadata-value">{formatDateGC(new Date())}</span>
             </div>
           </div>
 
@@ -1606,17 +1626,28 @@ export default function ApprovedPage() {
       {/* PRINT MEDIA STYLES */}
       <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          html, body {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           #root { display: none !important; }
-          body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
           #hr-personnel-print-area {
             display: block !important;
             position: static !important;
+            box-sizing: border-box !important;
             width: 100% !important;
             background: #ffffff !important;
             overflow: visible !important;
             height: auto !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 12mm 16mm 14mm 16mm !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
             color: #0f172a !important;
           }
@@ -1626,8 +1657,10 @@ export default function ApprovedPage() {
             justify-content: space-between !important;
             align-items: center !important;
             border-bottom: 2px solid #0f172a !important;
-            padding-bottom: 12px !important;
-            margin-bottom: 24px !important;
+            padding-bottom: 8px !important;
+            margin-bottom: 12px !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
           #hr-personnel-print-area .letterhead-logo {
             font-size: 20px !important;
@@ -1644,28 +1677,33 @@ export default function ApprovedPage() {
           }
           #hr-personnel-print-area .doc-title-container {
             text-align: center !important;
-            margin-bottom: 24px !important;
+            margin-bottom: 12px !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
           #hr-personnel-print-area .doc-title {
             font-size: 18px !important;
             font-weight: 800 !important;
             text-transform: uppercase !important;
             margin: 0 !important;
+            color: #0f172a !important;
           }
           #hr-personnel-print-area .doc-subtitle {
-            font-size: 12px !important;
+            font-size: 11px !important;
             color: #475569 !important;
-            margin: 4px 0 0 !important;
+            margin: 2px 0 0 !important;
           }
           #hr-personnel-print-area .metadata-summary {
             display: grid !important;
             grid-template-columns: repeat(4, 1fr) !important;
-            gap: 16px !important;
+            gap: 12px !important;
             background: #f8fafc !important;
             border: 1px solid #e2e8f0 !important;
             border-radius: 8px !important;
-            padding: 12px 16px !important;
-            margin-bottom: 30px !important;
+            padding: 10px 14px !important;
+            margin-bottom: 16px !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
           #hr-personnel-print-area .metadata-item {
             display: flex !important;
@@ -1683,14 +1721,12 @@ export default function ApprovedPage() {
             color: #0f172a !important;
           }
           #hr-personnel-print-area .details-vertical {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 24px !important;
+            display: block !important;
           }
           #hr-personnel-print-area .section-container {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            margin-bottom: 24px !important;
+            display: block !important;
+            margin-bottom: 16px !important;
+            break-inside: auto !important;
           }
           #hr-personnel-print-area .section-title {
             font-size: 11px !important;
@@ -1698,13 +1734,18 @@ export default function ApprovedPage() {
             color: #1e3a8a !important;
             text-transform: uppercase !important;
             border-bottom: 1.5px solid #1e3a8a !important;
-            padding-bottom: 4px !important;
-            margin-bottom: 12px !important;
+            padding-bottom: 3px !important;
+            margin-bottom: 8px !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+          }
+          #hr-personnel-print-area .section-underline {
+            display: none !important;
           }
           #hr-personnel-print-area table {
             width: 100% !important;
             border-collapse: collapse !important;
-            margin-top: 8px !important;
+            margin-top: 6px !important;
           }
           #hr-personnel-print-area th {
             background: #f1f5f9 !important;
@@ -1712,11 +1753,11 @@ export default function ApprovedPage() {
             font-size: 10px !important;
             color: #475569 !important;
             text-transform: uppercase !important;
-            padding: 6px 10px !important;
+            padding: 5px 8px !important;
             border: 1px solid #e2e8f0 !important;
           }
           #hr-personnel-print-area td {
-            padding: 6px 10px !important;
+            padding: 5px 8px !important;
             border: 1px solid #e2e8f0 !important;
             font-size: 11px !important;
             color: #0f172a !important;
@@ -1724,21 +1765,17 @@ export default function ApprovedPage() {
           #hr-personnel-print-area .signature-section {
             display: flex !important;
             justify-content: space-between !important;
-            margin-top: 60px !important;
+            margin-top: 36px !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
           #hr-personnel-print-area .signature-box {
             width: 42% !important;
             border-top: 1px solid #94a3b8 !important;
-            padding-top: 8px !important;
+            padding-top: 6px !important;
             text-align: center !important;
             font-size: 11px !important;
             color: #475569 !important;
-          }
-          @page {
-            size: portrait;
-            margin: 0.6in 0.8in 0.8in 0.8in;
           }
         }
 
@@ -1765,8 +1802,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         >
           {title}
         </div>
-        {/* Short gradient underline — spans only under the text, not full width */}
         <div
+          className="section-underline"
           style={{
             marginTop: 3,
             height: 2,

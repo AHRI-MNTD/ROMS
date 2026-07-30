@@ -56,6 +56,8 @@ router.post("/staff", requireAuth, auditMutation("StaffProfile", "CREATE"), asyn
     return;
   }
   try {
+    const existing = await prisma.staffProfile.findUnique({ where: { userId: parsed.data.userId } });
+    const isAlreadyApproved = existing?.approvalStatus === "APPROVED";
     const p = await prisma.staffProfile.upsert({
       where: { userId: parsed.data.userId },
       create: {
@@ -64,11 +66,10 @@ router.post("/staff", requireAuth, auditMutation("StaffProfile", "CREATE"), asyn
       },
       update: {
         ...parsed.data,
-        // Reset approval on re-submission so HR must re-review
-        approvalStatus: "PENDING",
-        reviewedById: null,
-        reviewedAt: null,
-        reviewNote: null,
+        approvalStatus: isAlreadyApproved ? "APPROVED" : "PENDING",
+        reviewedById: isAlreadyApproved ? existing.reviewedById : null,
+        reviewedAt: isAlreadyApproved ? existing.reviewedAt : null,
+        reviewNote: isAlreadyApproved ? existing.reviewNote : null,
       },
     });
     res.status(201).json(p);

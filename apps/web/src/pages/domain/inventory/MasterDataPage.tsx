@@ -44,6 +44,27 @@ export default function MasterDataPage() {
   const [editUnit, setEditUnit] = React.useState("");
   const [editProject, setEditProject] = React.useState("");
   const [editStaff, setEditStaff] = React.useState("");
+  const [isSyncing, setIsSyncing] = React.useState(false);
+
+  const handleSyncGoogleSheets = async () => {
+    setFormFeedback(null);
+    setIsSyncing(true);
+    try {
+      const resp = await apiClient.post<{ message?: string }>("/domains/inventory/google-sheets/sync", {});
+      setFormFeedback({
+        type: "success",
+        message: resp.data.message || "Successfully synchronized with Google Sheets!",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-master-data"] });
+    } catch (err: any) {
+      setFormFeedback({
+        type: "error",
+        message: err?.response?.data?.message || err?.message || "Failed to sync with Google Sheets.",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const { data, isLoading, error, isFetching } = useQuery({
     queryKey: ["inventory-master-data", page, pageSize, search],
@@ -178,25 +199,45 @@ export default function MasterDataPage() {
             Inventory master records mapping categories, units, projects, and active personnel.
           </div>
         </div>
-        <button
-          onClick={() => {
-            setShowAddForm(!showAddForm);
-            setFormFeedback(null);
-          }}
-          style={{
-            border: "1px solid var(--color-border)",
-            background: "var(--color-accent-soft)",
-            color: "var(--color-text)",
-            borderRadius: "6px",
-            padding: "5px 12px",
-            fontSize: "10.5px",
-            fontWeight: 700,
-            height: 30,
-            cursor: "pointer",
-          }}
-        >
-          {showAddForm ? "✕ Close Editor" : "➕ Add Master Record"}
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={handleSyncGoogleSheets}
+            disabled={isSyncing}
+            style={{
+              border: "1px solid var(--color-border)",
+              background: "var(--color-surface)",
+              color: "var(--color-text)",
+              borderRadius: "6px",
+              padding: "5px 12px",
+              fontSize: "10.5px",
+              fontWeight: 700,
+              height: 30,
+              cursor: isSyncing ? "not-allowed" : "pointer",
+              opacity: isSyncing ? 0.7 : 1,
+            }}
+          >
+            {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}
+          </button>
+          <button
+            onClick={() => {
+              setShowAddForm(!showAddForm);
+              setFormFeedback(null);
+            }}
+            style={{
+              border: "1px solid var(--color-border)",
+              background: "var(--color-accent-soft)",
+              color: "var(--color-text)",
+              borderRadius: "6px",
+              padding: "5px 12px",
+              fontSize: "10.5px",
+              fontWeight: 700,
+              height: 30,
+              cursor: "pointer",
+            }}
+          >
+            {showAddForm ? "✕ Close Editor" : "➕ Add Master Record"}
+          </button>
+        </div>
       </div>
 
       {formFeedback && (

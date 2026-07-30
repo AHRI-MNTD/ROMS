@@ -164,10 +164,20 @@ export default function HRDashboardPage() {
     return (
       name.includes("carol nzinga") ||
       name.includes("david asante") ||
+      name.includes("brian okonkwo") ||
+      name.includes("henry osei") ||
+      name.includes("alice mwangi") ||
+      name.includes("eve diallo") ||
+      name.includes("frank mensah") ||
+      name === "roms system administrator" ||
       email === "admin@roms.dev" ||
       email === "pi@roms.dev" ||
+      email === "scientist@roms.dev" ||
+      email === "datamanager@roms.dev" ||
+      email === "qa@roms.dev" ||
+      email === "community@roms.dev" ||
       email === "systemadmin@roms.com" ||
-      name === "roms system administrator"
+      email.endsWith("@roms.dev")
     );
   };
 
