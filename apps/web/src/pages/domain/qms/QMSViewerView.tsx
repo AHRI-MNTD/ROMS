@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+
 import logoAhri from "../../../assets/logo_ahri.png";
+import QMSFilterStrip, { matchesSopFilters } from "./QMSFilterStrip";
 
 interface SOPItem {
   id: string;
@@ -31,19 +34,30 @@ export default function QMSViewerView({
 }: QMSViewerViewProps) {
   const navigate = useNavigate();
 
-  // Local state
+  // Standardized filter states
   const [searchText, setSearchText] = useState<string>("");
-  const [filterCategory, setFilterCategory] = useState<string>("All");
-  const [filterMethodFamily, setFilterMethodFamily] = useState<string>("All");
-  const [filterSopType, setFilterSopType] = useState<string>("All");
+  const [sopType, setSopType] = useState<string>("All");
+  const [sopStatus, setSopStatus] = useState<string>("All");
+  const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
   const [localSelectedSopForReading, setLocalSelectedSopForReading] = useState<SOPItem | null>(null);
   const selectedSopForReading = propsSelectedSopForReading !== undefined ? propsSelectedSopForReading : localSelectedSopForReading;
   const setSelectedSopForReading = propsSetSelectedSopForReading !== undefined ? propsSetSelectedSopForReading : setLocalSelectedSopForReading;
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("APPROVED");
 
   // Favorites & History states
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentHistory, setRecentHistory] = useState<{ code: string; title: string; timestamp: string }[]>([]);
+
+  // Unique titles for dynamic filter
+  const availableTitles = useMemo(() => {
+    const titles = sops.map(s => s.title).filter(Boolean);
+    return Array.from(new Set(titles)).sort();
+  }, [sops]);
+
+  // Real-time status counts for summary metrics
+  const totalSopsCount = sops.length;
+  const draftsCount = useMemo(() => sops.filter(s => (s.status || "").toUpperCase() === "DRAFT").length, [sops]);
+  const underReviewCount = useMemo(() => sops.filter(s => ["UNDER REVIEW", "REVIEW", "SUBMITTED", "PANEL REVIEW", "REQUESTED", "AWAITING AUTHOR RESPONSE", "AWAITING RESPONSE"].includes((s.status || "").toUpperCase())).length, [sops]);
+  const approvedCount = useMemo(() => sops.filter(s => ["APPROVED", "ACTIVE", "ACTIVE / APPROVED"].includes((s.status || "").toUpperCase())).length, [sops]);
 
   // Load favorites and history from localStorage
   useEffect(() => {
@@ -69,45 +83,12 @@ export default function QMSViewerView({
     return { total, drafts, submitted, approved, returned };
   }, [sops]);
 
-  // Filter SOPs list based on active status card, category, method family, and search
+  // Filter SOPs list using standardized filter matcher
   const filteredSops = useMemo(() => {
-    return sops.filter(sop => {
-      const statusUpper = sop.status.toUpperCase();
-      let matchesStatus = true;
-
-      if (selectedStatusFilter === "DRAFTS") {
-        matchesStatus = statusUpper === "DRAFT";
-      } else if (selectedStatusFilter === "SUBMITTED") {
-        matchesStatus = statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW" || statusUpper === "SUBMITTED";
-      } else if (selectedStatusFilter === "APPROVED") {
-        matchesStatus = statusUpper === "APPROVED" || statusUpper === "ACTIVE / APPROVED" || statusUpper === "ACTIVE";
-      } else if (selectedStatusFilter === "RETURNED") {
-        matchesStatus = statusUpper === "RETURNED" || statusUpper === "NEEDS REVISION" || statusUpper === "REJECTED";
-      }
-
-      const matchesSearch =
-        sop.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        sop.code.toLowerCase().includes(searchText.toLowerCase()) ||
-        sop.author.toLowerCase().includes(searchText.toLowerCase());
-
-      const matchesCategory = filterCategory === "All" || sop.sopSection === filterCategory || sop.details?.assayCategory === filterCategory;
-      const matchesFamily = filterMethodFamily === "All" || sop.details?.methodFamily === filterMethodFamily;
-      const matchesSopType = filterSopType === "All" || (sop.sopType || sop.sopSection) === filterSopType;
-
-      return matchesStatus && matchesSearch && matchesCategory && matchesFamily && matchesSopType;
-    });
-  }, [sops, searchText, filterCategory, filterMethodFamily, filterSopType, selectedStatusFilter]);
-
-  // Dynamic Options for Filters
-  const categoriesList = useMemo(() => {
-    const cats = sops.map(s => s.sopSection).filter(Boolean);
-    return Array.from(new Set(cats)).sort();
-  }, [sops]);
-
-  const methodFamiliesList = useMemo(() => {
-    const fams = sops.map(s => s.details?.methodFamily).filter(Boolean);
-    return Array.from(new Set(fams)).sort();
-  }, [sops]);
+    return sops.filter(sop =>
+      matchesSopFilters(sop, sopType, sopStatus, selectedTitles, searchText)
+    );
+  }, [sops, sopType, sopStatus, selectedTitles, searchText]);
 
   // Toggling favorite
   const handleToggleFavorite = (code: string) => {
@@ -162,120 +143,84 @@ export default function QMSViewerView({
     return text;
   };
 
-  // Helper to map selectedStatusFilter to readable status filter values
-  const getSelectedStatusLabel = () => {
-    if (selectedStatusFilter === "TOTAL") return "All Statuses";
-    if (selectedStatusFilter === "DRAFTS") return "Draft";
-    if (selectedStatusFilter === "SUBMITTED") return "Under Review";
-    if (selectedStatusFilter === "APPROVED") return "Approved";
-    if (selectedStatusFilter === "RETURNED") return "Returned";
-    return "All Statuses";
-  };
-
-  const handleStatusChange = (val: string) => {
-    if (val === "All") setSelectedStatusFilter("TOTAL");
-    else if (val === "DRAFT") setSelectedStatusFilter("DRAFTS");
-    else if (val === "REVIEW") setSelectedStatusFilter("SUBMITTED");
-    else if (val === "APPROVED") setSelectedStatusFilter("APPROVED");
-    else if (val === "RETURNED") setSelectedStatusFilter("RETURNED");
-  };
 
   return (
     <div style={{ width: "100%" }}>
 
       <div style={{ display: selectedSopForReading ? "none" : "flex", flexDirection: "column", gap: 16, width: "100%" }}>
 
-        {/* SOP Information Narrative Section */}
-        <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: "20px", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div>
-            <h2 style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text)", margin: 0, textAlign: "center" }}>
-              Standard Operating Procedures (SOPs) Guide
-            </h2>
-            <p
-              onClick={() => navigate("guidelines")}
-              style={{
-                fontSize: "13px",
-                color: "var(--color-primary)",
-                margin: "6px 0 0 0",
-                textAlign: "center",
-                cursor: "pointer",
-                textDecoration: "underline",
-                fontWeight: 600,
-                display: "inline-block",
-                width: "100%",
-              }}
-              title="Click to view the interactive SOP guidelines"
-            >
-              "Key guidelines for writing, standardizing, and implementing quality procedures in the laboratory"
-            </p>
+        {/* Real-time Quantitative Summary Dashboard Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, width: "100%" }}>
+          {/* Total SOPs */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "10px", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e6f4f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 16, height: 16 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>Total SOPs</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1 }}>{totalSopsCount}</span>
+            </div>
+          </div>
+
+          {/* Drafts */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "10px", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffedd5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 16, height: 16 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+              </svg>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>Drafts</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1 }}>{draftsCount}</span>
+            </div>
+          </div>
+
+          {/* Under Review */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "10px", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f3e8ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 16, height: 16 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+              </svg>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>Under Review</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1 }}>{underReviewCount}</span>
+            </div>
+          </div>
+
+          {/* Approved */}
+          <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "10px", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 16, height: 16 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.02em" }}>Approved</span>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1 }}>{approvedCount}</span>
+            </div>
           </div>
         </div>
-        {/* Search & Filters — compact scientific strip */}
-        <div style={filterPanelStyle}>
-          <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
-          <select
-            value={filterSopType}
-            onChange={(e) => setFilterSopType(e.target.value)}
-            style={{ ...compactSelectStyle, borderColor: filterSopType !== "All" ? "#0d9488" : "var(--color-border)", background: filterSopType !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-          >
-            <option value="All">All Types</option>
-            <option value="Procedure SOP">Procedure SOP</option>
-            <option value="Equipment SOP">Equipment SOP</option>
-            <option value="Analysis SOP">Analysis SOP</option>
-          </select>
-
-          <select
-            value={selectedStatusFilter === "TOTAL" ? "All" : selectedStatusFilter === "DRAFTS" ? "DRAFT" : selectedStatusFilter === "SUBMITTED" ? "REVIEW" : selectedStatusFilter === "APPROVED" ? "APPROVED" : selectedStatusFilter === "RETURNED" ? "RETURNED" : "All"}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            style={{ ...compactSelectStyle, borderColor: selectedStatusFilter !== "TOTAL" ? "#0d9488" : "var(--color-border)", background: selectedStatusFilter !== "TOTAL" ? "#f0fdfa" : "var(--color-surface-2)" }}
-          >
-            <option value="All">All Statuses</option>
-            <option value="DRAFT">Draft</option>
-            <option value="REVIEW">Under Review</option>
-            <option value="APPROVED">Approved</option>
-            <option value="RETURNED">Returned</option>
-          </select>
-
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            style={{ ...compactSelectStyle, borderColor: filterCategory !== "All" ? "#0d9488" : "var(--color-border)", background: filterCategory !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-          >
-            <option value="All">All Assay Categories</option>
-            {categoriesList.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-
-          <select
-            value={filterMethodFamily}
-            onChange={(e) => setFilterMethodFamily(e.target.value)}
-            style={{ ...compactSelectStyle, borderColor: filterMethodFamily !== "All" ? "#0d9488" : "var(--color-border)", background: filterMethodFamily !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-          >
-            <option value="All">All Method Families</option>
-            {methodFamiliesList.map(fam => (
-              <option key={fam} value={fam}>{fam}</option>
-            ))}
-          </select>
-
-          <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
-            <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
-            <input
-              type="text"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="Search library..."
-              style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
-            />
-          </div>
-          {(filterSopType !== "All" || selectedStatusFilter !== "TOTAL" || filterCategory !== "All" || filterMethodFamily !== "All" || searchText) && (
-            <button
-              onClick={() => { setFilterSopType("All"); setSelectedStatusFilter("TOTAL"); setFilterCategory("All"); setFilterMethodFamily("All"); setSearchText(""); }}
-              style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
-              title="Clear all filters"
-            >✕ Clear</button>
-          )}
-        </div>
+        {/* Search & Filters — standardized filter strip */}
+        <QMSFilterStrip
+          sopType={sopType}
+          onSopTypeChange={setSopType}
+          sopStatus={sopStatus}
+          onSopStatusChange={setSopStatus}
+          availableTitles={availableTitles}
+          selectedTitles={selectedTitles}
+          onSelectedTitlesChange={setSelectedTitles}
+          searchText={searchText}
+          onSearchTextChange={setSearchText}
+          onClear={() => {
+            setSopType("All");
+            setSopStatus("All");
+            setSelectedTitles([]);
+            setSearchText("");
+          }}
+        />
 
         {/* Library Table */}
         <div style={tableContainerStyle}>
@@ -631,7 +576,7 @@ export default function QMSViewerView({
                           <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
                             {purp && (
                               <div>
-                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Purpose (verbatim):</strong>
+                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Purpose:</strong>
                                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(purp) }} />
                               </div>
                             )}
@@ -664,7 +609,6 @@ export default function QMSViewerView({
                           <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
                             {narrative && (
                               <div>
-                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Responsibility & accountability (narrative):</strong>
                                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                               </div>
                             )}
@@ -852,7 +796,7 @@ export default function QMSViewerView({
                           <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
                             {narrative && (
                               <div>
-                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reagents & Supplies Narrative:</strong>
+
                                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                               </div>
                             )}
@@ -920,7 +864,7 @@ export default function QMSViewerView({
                             )}
                             {narrative && (
                               <div>
-                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Equipment & Instruments details:</strong>
+
                                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                               </div>
                             )}
@@ -976,7 +920,7 @@ export default function QMSViewerView({
                             )}
                             {narrative && (
                               <div>
-                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Quality Control Narrative:</strong>
+
                                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                               </div>
                             )}
@@ -997,10 +941,11 @@ export default function QMSViewerView({
                           <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
                             {narrative && (
                               <div>
-                                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Procedure Narrative:</strong>
+
                                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                               </div>
                             )}
+
                             {steps && (
                               <div>
                                 <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Step-by-step list:</strong>

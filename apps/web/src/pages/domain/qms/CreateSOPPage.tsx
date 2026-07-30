@@ -2620,7 +2620,7 @@ export default function CreateSOPPage() {
             </h3>
 
             <RichTextEditor
-              label="Purpose (verbatim) *"
+              label="Purpose *"
               required
               value={purpose}
               onChange={setPurpose}
@@ -2667,12 +2667,13 @@ export default function CreateSOPPage() {
 
             <div style={{ marginBottom: 20 }}>
               <RichTextEditor
-                label="Responsibility & accountability (narrative)"
+                label="Responsibility & accountability"
                 value={responsibilityAccountability}
                 onChange={setResponsibilityAccountability}
-                placeholder="Narrative description of responsibilities and accountabilities..."
+                placeholder="Description of responsibilities and accountabilities..."
               />
             </div>
+
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 10px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>
@@ -3014,10 +3015,10 @@ export default function CreateSOPPage() {
                   Reagents & supplies
                 </h3>
                 <RichTextEditor
-                  label="Reagents & supplies (full narrative as in SOP)"
+                  label="Reagents & supplies details"
                   value={reagentsNarrative}
                   onChange={setReagentsNarrative}
-                  placeholder="Verbatim reagents and supplies details..."
+                  placeholder="Reagents and supplies details..."
                 />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Reagents & supplies (one per line)</label>
@@ -3088,10 +3089,10 @@ export default function CreateSOPPage() {
                   rows={3}
                 />
                 <RichTextEditor
-                  label="Quality control narrative (verbatim from SOP)"
+                  label="Quality control details"
                   value={qcNarrative}
                   onChange={setQcNarrative}
-                  placeholder="Verbatim Quality Control narrative details..."
+                  placeholder="Quality Control details..."
                 />
               </div>
 
@@ -3101,11 +3102,11 @@ export default function CreateSOPPage() {
                   Stepwise Procedure
                 </h3>
                 <RichTextEditor
-                  label="Full procedure narrative (verbatim from SOP – preserves original wording) *"
+                  label="Procedure details *"
                   required
                   value={procedureNarrative}
                   onChange={setProcedureNarrative}
-                  placeholder="Verbatim step-by-step procedure description..."
+                  placeholder="Step-by-step procedure description..."
                 />
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Stepwise procedure (one step per line)</label>
@@ -3236,11 +3237,11 @@ export default function CreateSOPPage() {
                 Stepwise Procedure
               </h3>
               <RichTextEditor
-                label="Full procedure narrative (verbatim from SOP – preserves original wording) *"
+                label="Procedure details *"
                 required
                 value={procedureNarrative}
                 onChange={setProcedureNarrative}
-                placeholder="Verbatim stepwise procedure description..."
+                placeholder="Stepwise procedure description..."
               />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Stepwise procedure (one step per line)</label>

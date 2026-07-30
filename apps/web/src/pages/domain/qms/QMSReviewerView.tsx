@@ -1,5 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import logoAhri from "../../../assets/logo_ahri.png";
+
+
+import QMSFilterStrip, { matchesSopFilters } from "./QMSFilterStrip";
 
 interface SOPItem {
   id: string;
@@ -24,12 +27,7 @@ interface QMSReviewerViewProps {
   showSuccessMessage?: (message: string) => void;
 }
 
-const ViewIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 18, height: 18, display: "inline-block", verticalAlign: "middle" }}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-  </svg>
-);
+
 
 const formatRichTextLocal = (text: string) => {
   if (!text) return "N/A";
@@ -52,7 +50,7 @@ const getReviewSections = (sopType: string, details: any) => {
           <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
             {purp && (
               <div>
-                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Purpose (verbatim):</strong>
+                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Purpose:</strong>
                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(purp) }} />
               </div>
             )}
@@ -84,7 +82,6 @@ const getReviewSections = (sopType: string, details: any) => {
           <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
             {narrative && (
               <div>
-                <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Responsibility & accountability (narrative):</strong>
                 <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
               </div>
             )}
@@ -273,7 +270,6 @@ const getReviewSections = (sopType: string, details: any) => {
             <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
               {narrative && (
                 <div>
-                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Reagents & Supplies Narrative:</strong>
                   <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                 </div>
               )}
@@ -457,7 +453,6 @@ const getReviewSections = (sopType: string, details: any) => {
               )}
               {narrative && (
                 <div>
-                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Quality Control Narrative:</strong>
                   <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                 </div>
               )}
@@ -477,7 +472,6 @@ const getReviewSections = (sopType: string, details: any) => {
             <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
               {narrative && (
                 <div>
-                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Procedure Narrative:</strong>
                   <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                 </div>
               )}
@@ -648,7 +642,6 @@ const getReviewSections = (sopType: string, details: any) => {
             <div style={{ fontSize: "var(--fs-sm)", display: "flex", flexDirection: "column", gap: 12 }}>
               {narrative && (
                 <div>
-                  <strong style={{ display: "block", marginBottom: 4, color: "var(--color-text-muted)" }}>Procedure Narrative:</strong>
                   <div dangerouslySetInnerHTML={{ __html: formatRichTextLocal(narrative) }} />
                 </div>
               )}
@@ -682,7 +675,7 @@ const getReviewSections = (sopType: string, details: any) => {
 
 const getDiffSections = (sopType: string): any[] => {
   const sections: any[] = [
-    { title: "Purpose (verbatim)", key: "purpose", textOnly: true },
+    { title: "Purpose", key: "purpose", textOnly: true },
     { title: "Scope", key: "scope", textOnly: true },
     { title: "Background / Introduction", key: "background", textOnly: true },
     { title: "Objectives & Scope (Legacy)", key: "objectivesScope", textOnly: true },
@@ -791,14 +784,13 @@ const formatGridToString = (gridData: any[], type: string) => {
 };
 
 export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest, onSopApproved, showSuccessMessage }: QMSReviewerViewProps) {
-  // Local state
+  // Standardized filter states & sub-tabs
+  const [reviewerSubTab, setReviewerSubTab] = useState<"approved" | "review">("approved");
   const [searchText, setSearchText] = useState<string>("");
-  const [filterCategory, setFilterCategory] = useState<string>("All");
-  const [filterSopType, setFilterSopType] = useState<string>("All");
-  const [filterStatus, setFilterStatus] = useState<string>("All");
-  const [filterMethodFamily, setFilterMethodFamily] = useState<string>("All");
+  const [sopType, setSopType] = useState<string>("All");
+  const [sopStatus, setSopStatus] = useState<string>("All");
+  const [selectedTitles, setSelectedTitles] = useState<string[]>([]);
   const [selectedSopForReview, setSelectedSopForReview] = useState<SOPItem | null>(null);
-
   // Reviewer specific inputs
   const [commentSection, setCommentSection] = useState<string>("General Comments");
   const [commentText, setCommentText] = useState<string>("");
@@ -806,6 +798,20 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
   const [showReturnModal, setShowReturnModal] = useState<boolean>(false);
   const [showDiffView, setShowDiffView] = useState<boolean>(false);
   const [panelRole, setPanelRole] = useState<string>("Verifier (User)");
+
+  // Dynamic list of available titles for Authorizer review queue
+  const availableTitles = useMemo(() => {
+    const titles = sops.map(s => s.title).filter(Boolean);
+    return Array.from(new Set(titles)).sort();
+  }, [sops]);
+
+  // Realtime updatable count for pending SOPs in review queue
+  const pendingReviewCount = useMemo(() => {
+    return sops.filter(sop => {
+      const st = sop.status.toUpperCase();
+      return st !== "APPROVED" && st !== "ACTIVE / APPROVED" && st !== "ACTIVE";
+    }).length;
+  }, [sops]);
 
   // Compute reviewer metrics
   const metrics = useMemo(() => {
@@ -830,41 +836,37 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
     return { pending, returned, approvedToday, reviewed };
   }, [sops]);
 
-  // Review Queue list (Submitted, Under Review, Panel Review or Approved items)
+  // Review Queue list (filtered using standardized filter matcher & sub-tab)
   const reviewQueue = useMemo(() => {
     return sops.filter(sop => {
-      const isReviewable =
-        sop.status.toUpperCase() === "UNDER REVIEW" ||
-        sop.status.toUpperCase() === "REVIEW" ||
-        sop.status.toUpperCase() === "SUBMITTED" ||
-        sop.status.toUpperCase() === "AWAITING AUTHOR RESPONSE" ||
-        sop.status.toUpperCase() === "RETURNED" ||
-        sop.status.toUpperCase() === "PANEL REVIEW" ||
-        sop.status.toUpperCase() === "APPROVED" ||
-        sop.status.toUpperCase() === "ACTIVE / APPROVED" ||
-        sop.status.toUpperCase() === "ACTIVE";
-
-      const matchesSearch =
-        sop.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        sop.code.toLowerCase().includes(searchText.toLowerCase()) ||
-        sop.author.toLowerCase().includes(searchText.toLowerCase());
-
-      const matchesCategory = filterCategory === "All" || sop.sopSection === filterCategory || sop.details?.assayCategory === filterCategory;
-      const matchesSopType = filterSopType === "All" || (sop.sopType || sop.sopSection) === filterSopType;
-      const matchesMethodFamily = filterMethodFamily === "All" || sop.details?.methodFamily === filterMethodFamily;
-
-      let matchesStatus = isReviewable;
-      if (filterStatus !== "All") {
-        if (filterStatus === "APPROVED") {
-          matchesStatus = sop.status.toUpperCase() === "APPROVED" || sop.status.toUpperCase() === "ACTIVE" || sop.status.toUpperCase() === "ACTIVE / APPROVED";
-        } else {
-          matchesStatus = sop.status.toUpperCase() === filterStatus.toUpperCase();
-        }
+      const matches = matchesSopFilters(sop, sopType, sopStatus, selectedTitles, searchText);
+      if (!matches) return false;
+      const st = sop.status.toUpperCase();
+      if (reviewerSubTab === "approved") {
+        return st === "APPROVED" || st === "ACTIVE / APPROVED" || st === "ACTIVE";
+      } else {
+        return st !== "APPROVED" && st !== "ACTIVE / APPROVED" && st !== "ACTIVE";
       }
-
-      return matchesStatus && matchesSearch && matchesCategory && matchesSopType && matchesMethodFamily;
     });
-  }, [sops, searchText, filterCategory, filterSopType, filterStatus, filterMethodFamily]);
+  }, [sops, sopType, sopStatus, selectedTitles, searchText, reviewerSubTab]);
+
+  // Auto-populate or correct selectedSopForReview when in "review" tab
+  useEffect(() => {
+    if (reviewerSubTab === "review") {
+      if (reviewQueue.length > 0) {
+        const isCurrentlySelectedInQueue = selectedSopForReview && reviewQueue.some(s => s.id === selectedSopForReview.id);
+        if (!selectedSopForReview || !isCurrentlySelectedInQueue) {
+          setSelectedSopForReview(reviewQueue[0]);
+        }
+      } else {
+        setSelectedSopForReview(null);
+      }
+    } else {
+      if (selectedSopForReview !== null) {
+        setSelectedSopForReview(null);
+      }
+    }
+  }, [reviewerSubTab, reviewQueue, selectedSopForReview]);
 
   // Dynamic Method Families list
   const methodFamilyOptions = useMemo(() => {
@@ -1158,168 +1160,171 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: selectedSopForReview ? "none" : "flex", flexDirection: "column", gap: 16 }}>
+      {/* ── SEARCH & FILTER PANEL (placed ABOVE buttons) ── */}
+      <QMSFilterStrip
+        sopType={sopType}
+        onSopTypeChange={setSopType}
+        sopStatus={sopStatus}
+        onSopStatusChange={setSopStatus}
+        availableTitles={availableTitles}
+        selectedTitles={selectedTitles}
+        onSelectedTitlesChange={setSelectedTitles}
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+        onClear={() => {
+          setSopType("All");
+          setSopStatus("All");
+          setSelectedTitles([]);
+          setSearchText("");
+        }}
+      />
 
-
-
-      {/* ── SEARCH & FILTER PANEL ── */}
-      <div style={filterPanelStyle}>
-        <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
-        <select
-          value={filterSopType}
-          onChange={(e) => setFilterSopType(e.target.value)}
-          style={{ ...compactSelectStyle, borderColor: filterSopType !== "All" ? "#0d9488" : "var(--color-border)", background: filterSopType !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+      {/* Left-aligned Side-by-Side Action Sub-Navigation Buttons */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button
+          type="button"
+          onClick={() => {
+            setReviewerSubTab("approved");
+          }}
+          style={{
+            background: reviewerSubTab === "approved" ? "var(--color-primary)" : "var(--color-surface)",
+            color: reviewerSubTab === "approved" ? "#ffffff" : "var(--color-text)",
+            border: "1px solid var(--color-border)",
+            padding: "7px 16px",
+            borderRadius: "var(--radius-sm, 6px)",
+            fontSize: "var(--fs-xs)",
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "all 0.2s ease"
+          }}
         >
-          <option value="All">All Types</option>
-          <option value="Procedure SOP">Procedure SOP</option>
-          <option value="Equipment SOP">Equipment SOP</option>
-          <option value="Analysis SOP">Analysis SOP</option>
-        </select>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{ ...compactSelectStyle, borderColor: filterStatus !== "All" ? "#0d9488" : "var(--color-border)", background: filterStatus !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
+          ✅ Approved SOP
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setReviewerSubTab("review");
+          }}
+          style={{
+            background: reviewerSubTab === "review" ? "var(--color-primary)" : "var(--color-surface)",
+            color: reviewerSubTab === "review" ? "#ffffff" : "var(--color-text)",
+            border: "1px solid var(--color-border)",
+            padding: "7px 16px",
+            borderRadius: "var(--radius-sm, 6px)",
+            fontSize: "var(--fs-xs)",
+            fontWeight: 700,
+            cursor: "pointer",
+            transition: "all 0.2s ease"
+          }}
         >
-          <option value="All">All Statuses</option>
-          <option value="UNDER REVIEW">Under Review</option>
-          <option value="PANEL REVIEW">Panel Review</option>
-          <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-          <option value="RETURNED">Returned</option>
-          <option value="APPROVED">Approved / Active</option>
-        </select>
-
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          style={{ ...compactSelectStyle, borderColor: filterCategory !== "All" ? "#0d9488" : "var(--color-border)", background: filterCategory !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-        >
-          <option value="All">All Assay Categories</option>
-          {categoryOptions.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterMethodFamily}
-          onChange={(e) => setFilterMethodFamily(e.target.value)}
-          style={{ ...compactSelectStyle, borderColor: filterMethodFamily !== "All" ? "#0d9488" : "var(--color-border)", background: filterMethodFamily !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-        >
-          <option value="All">All Method Families</option>
-          {methodFamilyOptions.map(fam => (
-            <option key={fam} value={fam}>{fam}</option>
-          ))}
-        </select>
-
-        <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
-          <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            placeholder="Search review queue..."
-            style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
-          />
-        </div>
-        {(filterSopType !== "All" || filterStatus !== "All" || filterCategory !== "All" || filterMethodFamily !== "All" || searchText) && (
-          <button
-            onClick={() => { setFilterSopType("All"); setFilterStatus("All"); setFilterCategory("All"); setFilterMethodFamily("All"); setSearchText(""); }}
-            style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
-            title="Clear all filters"
-          >✕ Clear</button>
-        )}
+          🔎 Review SOP ({pendingReviewCount})
+        </button>
       </div>
 
-      {/* ── REVIEW QUEUE TABLE ── */}
-      <div style={tableContainerStyle}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-              <th style={{ ...thStyle, width: 140 }}>SOP Code</th>
-              <th style={thStyle}>Title</th>
-              <th style={{ ...thStyle, width: 150 }}>SOP Type</th>
-              <th style={{ ...thStyle, width: 150 }}>Status</th>
-              <th style={{ ...thStyle, textAlign: "center", width: 150 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reviewQueue.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
-                  No SOPs currently in the review queue.
-                </td>
-              </tr>
-            ) : (
-              reviewQueue.map((sop) => {
-                let badgeStyle = { background: "#e2e8f0", color: "#475569" };
-                const statusUpper = sop.status.toUpperCase();
-                if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW" || statusUpper === "SUBMITTED") {
-                  badgeStyle = { background: "#ffedd5", color: "#c2410c" };
-                } else if (statusUpper === "PANEL REVIEW") {
-                  badgeStyle = { background: "#f3e8ff", color: "#6b21a8" };
-                } else if (statusUpper === "AWAITING AUTHOR RESPONSE") {
-                  badgeStyle = { background: "#fef3c7", color: "#d97706" };
-                } else if (statusUpper === "RETURNED") {
-                  badgeStyle = { background: "#fee2e2", color: "#b91c1c" };
-                } else if (statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") {
-                  badgeStyle = { background: "#dcfce7", color: "#15803d" };
-                }
+      {reviewerSubTab === "approved" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: selectedSopForReview ? "none" : "flex", flexDirection: "column", gap: 16 }}>
 
-                return (
-                  <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <td style={{ ...tdStyle, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
-                    <td style={tdStyle}>{sop.title}</td>
-                    <td style={tdStyle}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
-                    <td style={tdStyle}>
-                      <span style={{ fontSize: "10.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", ...badgeStyle }}>
-                        {sop.status}
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-                        {(statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") ? (
-                          <>
-                            <button
-                              onClick={() => setSelectedSopForReview(sop)}
-                              style={{ background: "none", border: "none", cursor: "pointer" }}
-                              title="View Details"
-                            >
-                              <ViewIcon />
-                            </button>
-                            <button
-                              onClick={() => onPrintRequest(sop)}
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
-                              title="Download PDF"
-                            >
-                              🖨️
-                            </button>
-                            <button
-                              onClick={() => onShareRequest(sop)}
-                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
-                              title="Share SOP"
-                            >
-                              🔗
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => setSelectedSopForReview(sop)}
-                            style={{ ...reviewBtnStyle, display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", padding: 0, fontSize: "14px" }}
-                            title="Review SOP"
-                          >
-                            🔍
-                          </button>
-                        )}
-                      </div>
-                    </td>
+            {/* ── REVIEW QUEUE TABLE ── */}
+            <div style={tableContainerStyle}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
+                    <th style={{ ...thStyle, width: 140 }}>SOP Code</th>
+                    <th style={thStyle}>Title</th>
+                    <th style={{ ...thStyle, width: 150 }}>SOP Type</th>
+                    <th style={{ ...thStyle, width: 150 }}>Status</th>
+                    <th style={{ ...thStyle, textAlign: "center", width: 150 }}>Actions</th>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                </thead>
+                <tbody>
+                  {reviewQueue.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)" }}>
+                        No approved SOPs found.
+                      </td>
+                    </tr>
+                  ) : (
+                    reviewQueue.map((sop) => {
+                      let badgeStyle = { background: "#e2e8f0", color: "#475569" };
+                      const statusUpper = sop.status.toUpperCase();
+                      if (statusUpper === "UNDER REVIEW" || statusUpper === "REVIEW" || statusUpper === "SUBMITTED") {
+                        badgeStyle = { background: "#ffedd5", color: "#c2410c" };
+                      } else if (statusUpper === "PANEL REVIEW") {
+                        badgeStyle = { background: "#f3e8ff", color: "#6b21a8" };
+                      } else if (statusUpper === "AWAITING AUTHOR RESPONSE") {
+                        badgeStyle = { background: "#fef3c7", color: "#d97706" };
+                      } else if (statusUpper === "RETURNED") {
+                        badgeStyle = { background: "#fee2e2", color: "#b91c1c" };
+                      } else if (statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") {
+                        badgeStyle = { background: "#dcfce7", color: "#15803d" };
+                      }
+
+                      return (
+                        <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                          <td style={{ ...tdStyle, fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
+                          <td style={tdStyle}>{sop.title}</td>
+                          <td style={tdStyle}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
+                          <td style={tdStyle}>
+                            <span style={{ fontSize: "10.5px", fontWeight: 600, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", ...badgeStyle }}>
+                              {sop.status}
+                            </span>
+                          </td>
+                          <td style={{ ...tdStyle, textAlign: "center" }}>
+                            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                              {(statusUpper === "APPROVED" || statusUpper === "ACTIVE" || statusUpper === "ACTIVE / APPROVED") ? (
+                                <>
+                                  <button
+                                    onClick={() => setSelectedSopForReview(sop)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                                    title="View Details"
+                                  >
+                                    📖
+                                  </button>
+                                  <button
+                                    onClick={() => onPrintRequest(sop)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                                    title="Download PDF"
+                                  >
+                                    🖨️
+                                  </button>
+                                  <button
+                                    onClick={() => onShareRequest(sop)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}
+                                    title="Share SOP"
+                                  >
+                                    🔗
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => setSelectedSopForReview(sop)}
+                                  style={{ ...reviewBtnStyle, display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: "50%", padding: 0, fontSize: "14px" }}
+                                  title="Review SOP"
+                                >
+                                  🔍
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewerSubTab === "review" && reviewQueue.length === 0 && (
+        <div style={{ padding: "48px 24px", textAlign: "center", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: "36px" }}>🎉</span>
+          <strong style={{ fontSize: "16px", color: "var(--color-text)" }}>All caught up!</strong>
+          <p style={{ margin: 0, fontSize: "var(--fs-sm)" }}>No SOPs currently in the review queue.</p>
+        </div>
+      )}
 
       {/* ── READ-ONLY DOCUMENT REVIEW MODAL ── */}
       {selectedSopForReview && (
@@ -1342,7 +1347,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                 </h2>
               </div>
 
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {previousVersionSop && (
                   <button
                     onClick={() => setShowDiffView(!showDiffView)}
@@ -1352,47 +1357,95 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                   </button>
                 )}
 
-                {selectedSopForReview.status.toUpperCase() !== "APPROVED" &&
-                  selectedSopForReview.status.toUpperCase() !== "ACTIVE" &&
-                  selectedSopForReview.status.toUpperCase() !== "ACTIVE / APPROVED" && (
-                    <>
+                {reviewerSubTab === "approved" ? (
+                  <button
+                    onClick={() => {
+                      setSelectedSopForReview(null);
+                      setShowDiffView(false);
+                    }}
+                    style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}
+                  >
+                    Back to Approved List
+                  </button>
+                ) : (
+                  /* Queue Navigation Controls */
+                  reviewQueue.length > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button
-                        onClick={handleRequestClarification}
-                        style={{ ...btnBaseStyle, border: "1px solid #f59e0b", color: "#b45309", background: "transparent" }}
+                        onClick={() => {
+                          const idx = reviewQueue.findIndex(s => s.id === selectedSopForReview.id);
+                          if (idx > 0) {
+                            setSelectedSopForReview(reviewQueue[idx - 1]);
+                            setShowDiffView(false);
+                          }
+                        }}
+                        disabled={reviewQueue.findIndex(s => s.id === selectedSopForReview.id) === 0}
+                        style={{
+                          ...btnBaseStyle,
+                          border: "1px solid var(--color-border)",
+                          background: "var(--color-surface-offset)",
+                          color: reviewQueue.findIndex(s => s.id === selectedSopForReview.id) === 0 ? "var(--color-text-faint)" : "var(--color-text)",
+                          cursor: reviewQueue.findIndex(s => s.id === selectedSopForReview.id) === 0 ? "not-allowed" : "pointer"
+                        }}
+                        title="Previous SOP"
                       >
-                        ❓ Ask Clarification
+                        ◀ Prev
                       </button>
+                      
+                      <span style={{ fontSize: "11px", color: "var(--color-text-muted)", fontWeight: 600 }}>
+                        {reviewQueue.findIndex(s => s.id === selectedSopForReview.id) + 1} of {reviewQueue.length}
+                      </span>
+
                       <button
-                        onClick={() => setShowReturnModal(true)}
-                        style={{ ...btnBaseStyle, background: "#ef4444", color: "#ffffff" }}
+                        onClick={() => {
+                          const idx = reviewQueue.findIndex(s => s.id === selectedSopForReview.id);
+                          if (idx < reviewQueue.length - 1) {
+                            setSelectedSopForReview(reviewQueue[idx + 1]);
+                            setShowDiffView(false);
+                          }
+                        }}
+                        disabled={reviewQueue.findIndex(s => s.id === selectedSopForReview.id) === reviewQueue.length - 1}
+                        style={{
+                          ...btnBaseStyle,
+                          border: "1px solid var(--color-border)",
+                          background: "var(--color-surface-offset)",
+                          color: reviewQueue.findIndex(s => s.id === selectedSopForReview.id) === reviewQueue.length - 1 ? "var(--color-text-faint)" : "var(--color-text)",
+                          cursor: reviewQueue.findIndex(s => s.id === selectedSopForReview.id) === reviewQueue.length - 1 ? "not-allowed" : "pointer"
+                        }}
+                        title="Next SOP"
                       >
-                        ↩️ Return for Revision
+                        Next ▶
                       </button>
 
-                      {selectedSopForReview.status.toUpperCase() !== "PANEL REVIEW" ? (
-                        <button
-                          onClick={handleSendToPanelReview}
-                          style={{ ...btnBaseStyle, background: "#10b981", color: "#ffffff" }}
-                        >
-                          👥 Send for Panel Review
-                        </button>
-                      ) : (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "11px", fontWeight: 700, color: "#7b1fa2", background: "#f3e5f5", padding: "6px 12px", borderRadius: "var(--radius-sm)" }}>
-                          👥 In Panel Review
-                        </span>
-                      )}
-                    </>
-                  )}
-
-                <button
-                  onClick={() => {
-                    setSelectedSopForReview(null);
-                    setShowDiffView(false);
-                  }}
-                  style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}
-                >
-                  Back to Review Queue
-                </button>
+                      <select
+                        value={selectedSopForReview.id}
+                        onChange={(e) => {
+                          const selected = reviewQueue.find(s => s.id === e.target.value);
+                          if (selected) {
+                            setSelectedSopForReview(selected);
+                            setShowDiffView(false);
+                          }
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "11px",
+                          borderRadius: "var(--radius-sm, 6px)",
+                          border: "1px solid var(--color-border)",
+                          background: "var(--color-surface)",
+                          color: "var(--color-text)",
+                          fontWeight: 600,
+                          outline: "none"
+                        }}
+                      >
+                        {reviewQueue.map(sop => (
+                          <option key={sop.id} value={sop.id}>
+                            {sop.code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                )}
               </div>
             </div>
 
@@ -1881,6 +1934,43 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                     Post Comment
                   </button>
                 </div>
+
+                {/* Review Decision Action Buttons — relocated below post comment section */}
+                {selectedSopForReview.status.toUpperCase() !== "APPROVED" &&
+                  selectedSopForReview.status.toUpperCase() !== "ACTIVE" &&
+                  selectedSopForReview.status.toUpperCase() !== "ACTIVE / APPROVED" && (
+                    <div style={{ border: "1px solid var(--color-border)", borderRadius: 6, padding: 12, background: "var(--color-surface)", display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                      <label style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
+                        ⚡ REVIEW DECISION & ACTIONS:
+                      </label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <button
+                          onClick={handleRequestClarification}
+                          style={{ ...btnBaseStyle, width: "100%", justifyContent: "center", border: "1px solid #f59e0b", color: "#b45309", background: "#fffbeb", padding: "8px" }}
+                        >
+                          ❓ Ask Clarification
+                        </button>
+                        <button
+                          onClick={() => setShowReturnModal(true)}
+                          style={{ ...btnBaseStyle, width: "100%", justifyContent: "center", background: "#ef4444", color: "#ffffff", padding: "8px" }}
+                        >
+                          ↩️ Return for Revision
+                        </button>
+                        {selectedSopForReview.status.toUpperCase() !== "PANEL REVIEW" ? (
+                          <button
+                            onClick={handleSendToPanelReview}
+                            style={{ ...btnBaseStyle, width: "100%", justifyContent: "center", background: "#10b981", color: "#ffffff", padding: "8px" }}
+                          >
+                            👥 Send for Panel Review
+                          </button>
+                        ) : (
+                          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: "11px", fontWeight: 700, color: "#7b1fa2", background: "#f3e5f5", padding: "8px", borderRadius: "var(--radius-sm)" }}>
+                            👥 In Panel Review
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                 {/* List of Comments */}
                 <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
