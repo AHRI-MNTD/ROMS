@@ -3,9 +3,14 @@ import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
 import logoAhri from "../../../assets/logo_ahri.png";
+import logoRoms from "../../../assets/Roms.png";
+
+
 import QMSDashboardView from "./QMSDashboardView";
 import QMSReviewerView from "./QMSReviewerView";
 import QMSViewerView from "./QMSViewerView";
+import SOPResourcesView from "./SOPResourcesView";
+import QMSFilterStrip, { matchesSopFilters } from "./QMSFilterStrip";
 
 // Define TypeScript interfaces for our data structures
 interface SOPItem {
@@ -74,12 +79,7 @@ const getStatusColors = (status: string) => {
   return { bg: "#e2e8f0", text: "#475569" };
 };
 
-const ViewIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 18, height: 18, display: "inline-block", verticalAlign: "middle" }}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-  </svg>
-);
+
 
 const EditIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 18, height: 18, display: "inline-block", verticalAlign: "middle" }}>
@@ -113,8 +113,8 @@ export default function QMSPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Navigation tabs: "sops" (Viewer Library), "author" (Author dashboard), "qo" (QO dashboard), "review-sop" (Reviewers)
-  const [activeTab, setActiveTab] = useState<"sops" | "author" | "qo" | "review-sop">("sops");
+  // Navigation tabs: "overview" (Landing Hub), "sops" (Viewer Library), "author" (Author dashboard), "qo" (QO dashboard), "review-sop" (Reviewers), "resources" (Guides & WHO links)
+  const [activeTab, setActiveTab] = useState<"overview" | "sops" | "author" | "qo" | "review-sop" | "resources">("overview");
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   // Filtering states
@@ -149,16 +149,18 @@ export default function QMSPage() {
   const [shareEmailTo, setShareEmailTo] = useState("");
   const [printingSop, setPrintingSop] = useState<SOPItem | null>(null);
 
-  // Author & QO specific filters
+  // Author & QO specific standardized filters & sub-tabs
+  const [authorSubTab, setAuthorSubTab] = useState<"status" | "create">("status");
+  const [qoSubTab, setQoSubTab] = useState<"active" | "pending">("active");
+
   const [authorSopTypeFilter, setAuthorSopTypeFilter] = useState<string>("All");
   const [authorStatusFilter, setAuthorStatusFilter] = useState<string>("All");
-  const [authorAssayCategoryFilter, setAuthorAssayCategoryFilter] = useState<string>("All");
-  const [authorMethodFamilyFilter, setAuthorMethodFamilyFilter] = useState<string>("All");
+  const [authorSelectedTitles, setAuthorSelectedTitles] = useState<string[]>([]);
+
   const [qoSearchText, setQoSearchText] = useState<string>("");
   const [qoSopTypeFilter, setQoSopTypeFilter] = useState<string>("All");
   const [qoStatusFilter, setQoStatusFilter] = useState<string>("All");
-  const [qoAssayCategoryFilter, setQoAssayCategoryFilter] = useState<string>("All");
-  const [qoMethodFamilyFilter, setQoMethodFamilyFilter] = useState<string>("All");
+  const [qoSelectedTitles, setQoSelectedTitles] = useState<string[]>([]);
 
   // Author: Request SOP modal states
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -222,6 +224,14 @@ export default function QMSPage() {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
+
+  // Always reset to overview landing page when navigating via sidebar / location key
+  useEffect(() => {
+    setActiveTab("overview");
+    setSelectedSopDetails(null);
+    setSelectedSopForReading(null);
+    setShareSop(null);
+  }, [location.key]);
 
   const allSops = useMemo(() => {
     const localCodes = new Set(localSops.map(s => s.code));
@@ -340,55 +350,40 @@ export default function QMSPage() {
 
   // Filtered lists for Author perspective
   const authorSops = useMemo(() => {
-    return allSops.filter(sop => {
-      const matchesSearch =
-        sop.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        sop.code.toLowerCase().includes(searchText.toLowerCase()) ||
-        sop.author.toLowerCase().includes(searchText.toLowerCase());
-
-      const matchesType = authorSopTypeFilter === "All" || (sop.sopType || sop.sopSection) === authorSopTypeFilter;
-
-      const matchesStatus = authorStatusFilter === "All" || sop.status.toUpperCase() === authorStatusFilter.toUpperCase();
-
-      const matchesAssayCategory = authorAssayCategoryFilter === "All" || sop.details?.assayCategory === authorAssayCategoryFilter || sop.sopSection === authorAssayCategoryFilter;
-
-      const matchesMethodFamily = authorMethodFamilyFilter === "All" || sop.details?.methodFamily === authorMethodFamilyFilter;
-
-      return matchesSearch && matchesType && matchesStatus && matchesAssayCategory && matchesMethodFamily;
-    });
-  }, [allSops, searchText, authorSopTypeFilter, authorStatusFilter, authorAssayCategoryFilter, authorMethodFamilyFilter]);
+    return allSops.filter(sop =>
+      matchesSopFilters(sop, {
+        sopType: authorSopTypeFilter,
+        sopStatus: authorStatusFilter,
+        selectedTitles: authorSelectedTitles,
+        searchText: searchText
+      })
+    );
+  }, [allSops, searchText, authorSopTypeFilter, authorStatusFilter, authorSelectedTitles]);
 
   // Filtered lists for QO perspective
   const requestedSopsQO = useMemo(() => {
     return allSops.filter(sop => {
       const isRequested = sop.status.toUpperCase() === "REQUESTED";
-      const matchesSearch =
-        sop.title.toLowerCase().includes(qoSearchText.toLowerCase()) ||
-        sop.code.toLowerCase().includes(qoSearchText.toLowerCase()) ||
-        sop.author.toLowerCase().includes(qoSearchText.toLowerCase());
-      const matchesType = qoSopTypeFilter === "All" || (sop.sopType || sop.sopSection) === qoSopTypeFilter;
-      const matchesAssayCategory = qoAssayCategoryFilter === "All" || sop.details?.assayCategory === qoAssayCategoryFilter;
-      const matchesMethodFamily = qoMethodFamilyFilter === "All" || sop.details?.methodFamily === qoMethodFamilyFilter;
-
-      return isRequested && matchesSearch && matchesType && matchesAssayCategory && matchesMethodFamily;
+      return isRequested && matchesSopFilters(sop, {
+        sopType: qoSopTypeFilter,
+        sopStatus: "All",
+        selectedTitles: qoSelectedTitles,
+        searchText: qoSearchText
+      });
     });
-  }, [allSops, qoSearchText, qoSopTypeFilter, qoAssayCategoryFilter, qoMethodFamilyFilter]);
+  }, [allSops, qoSearchText, qoSopTypeFilter, qoSelectedTitles]);
 
   const existingSopsQO = useMemo(() => {
     return allSops.filter(sop => {
       const isNotRequested = sop.status.toUpperCase() !== "REQUESTED";
-      const matchesSearch =
-        sop.title.toLowerCase().includes(qoSearchText.toLowerCase()) ||
-        sop.code.toLowerCase().includes(qoSearchText.toLowerCase()) ||
-        sop.author.toLowerCase().includes(qoSearchText.toLowerCase());
-      const matchesType = qoSopTypeFilter === "All" || (sop.sopType || sop.sopSection) === qoSopTypeFilter;
-      const matchesStatus = qoStatusFilter === "All" || sop.status.toUpperCase() === qoStatusFilter.toUpperCase();
-      const matchesAssayCategory = qoAssayCategoryFilter === "All" || sop.details?.assayCategory === qoAssayCategoryFilter;
-      const matchesMethodFamily = qoMethodFamilyFilter === "All" || sop.details?.methodFamily === qoMethodFamilyFilter;
-
-      return isNotRequested && matchesSearch && matchesType && matchesStatus && matchesAssayCategory && matchesMethodFamily;
+      return isNotRequested && matchesSopFilters(sop, {
+        sopType: qoSopTypeFilter,
+        sopStatus: qoStatusFilter,
+        selectedTitles: qoSelectedTitles,
+        searchText: qoSearchText
+      });
     });
-  }, [allSops, qoSearchText, qoSopTypeFilter, qoStatusFilter, qoAssayCategoryFilter, qoMethodFamilyFilter]);
+  }, [allSops, qoSearchText, qoSopTypeFilter, qoStatusFilter, qoSelectedTitles]);
 
   // Pagination constants
   const itemsPerPage = 10;
@@ -478,21 +473,27 @@ export default function QMSPage() {
     ? new Date(printingSop.details?.effectiveDate || printingSop.lastUpdated || Date.now()).getFullYear()
     : new Date().getFullYear();
 
-  let dynamicTitle = "SOP & Quality Management";
-  let dynamicSubtitle = "Digital approval pipelines, verifications, and workflows";
+  let dynamicTitle = "Standard Operating Procedure (SOP)";
+  let dynamicSubtitle = "";
 
-  if (activeTab === "sops") {
+  if (activeTab === "overview") {
+    dynamicTitle = "Standard Operating Procedure (SOP)";
+    dynamicSubtitle = "Centralized repository for standard operating procedures, authoring pipelines, quality controls, and reference guidelines.";
+  } else if (activeTab === "sops") {
     dynamicTitle = "SOP Library & Reference";
-    dynamicSubtitle = "Browse, read, and search standard operating procedures";
+    dynamicSubtitle = "Search, Read, and Download standard operating procedures";
   } else if (activeTab === "author") {
     dynamicTitle = "SOP Drafting & Authoring";
-    dynamicSubtitle = "Draft, revise, and submit procedures for review";
+    dynamicSubtitle = "Draft, Revise, and Submit procedures for review";
   } else if (activeTab === "qo") {
     dynamicTitle = "Quality Officer Controls";
-    dynamicSubtitle = "Assign codes, and approve drafting requests";
+    dynamicSubtitle = "Assign codes, and Approve drafting requests";
   } else if (activeTab === "review-sop") {
     dynamicTitle = "Document Approval & Sign-off";
-    dynamicSubtitle = "Review queues, verification, and manager authorization";
+    dynamicSubtitle = "Review queues, Verify, and Authorize";
+  } else if (activeTab === "resources") {
+    dynamicTitle = "Resources";
+    dynamicSubtitle = "SOP Guides, Templates, and Reference Standards";
   }
 
   const renderSopDetailsInline = () => {
@@ -775,12 +776,13 @@ export default function QMSPage() {
         {/* Active Title Block — Inventory-style header */}
         <div
           style={{
-            padding: "18px 24px 14px",
+            padding: activeTab === "overview" ? "36px 34px 26px" : "28px 34px 24px",
             borderBottom: "1px solid var(--color-divider)",
             background: "var(--color-surface)",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: activeTab === "overview" ? "center" : "space-between",
+            textAlign: activeTab === "overview" ? "center" : "left",
             flexWrap: "wrap",
             gap: 16,
             position: "sticky",
@@ -788,61 +790,143 @@ export default function QMSPage() {
             zIndex: 10,
           }}
         >
-          {/* Left side: Title + Subtitle only */}
-          <div style={{ width: 360, flexShrink: 0 }}>
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", margin: 0, marginBottom: 4 }}>
-              {dynamicTitle}
-            </h1>
-            <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: 0 }}>
-              {dynamicSubtitle}
-            </p>
+          {/* Left side: Title + Back Button */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: activeTab === "overview" ? "center" : "flex-start", width: activeTab === "overview" ? "100%" : "auto", textAlign: activeTab === "overview" ? "center" : "left", gap: 12, flexShrink: 0 }}>
+            {activeTab === "overview" ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", textAlign: "center" }}>
+                <img src={logoAhri} alt="AHRI Logo" style={{ height: "64px", width: "64px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px", border: "1px solid var(--color-border, #cbd5e1)", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)" }} />
+                <span style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "0.04em", color: "var(--color-primary)", textTransform: "uppercase" }}>
+                  Research Operation management system(ROMS)
+                </span>
+                <div style={{ width: "calc(100% + 68px)", height: "1px", backgroundColor: "var(--color-divider)", margin: "16px -34px" }} />
+                <h1 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
+                  Standard Operating Procedure (SOP)
+                </h1>
+                {dynamicSubtitle && (
+                  <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "4px 0 0 0", maxWidth: "820px" }}>
+                    {dynamicSubtitle}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div style={{ textAlign: "left" }}>
+                <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                  {activeTab === "sops" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 24, height: 24, flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                    </svg>
+                  )}
+                  {activeTab === "author" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 24, height: 24, flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                    </svg>
+                  )}
+                  {activeTab === "qo" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 24, height: 24, flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                    </svg>
+                  )}
+                  {activeTab === "review-sop" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 24, height: 24, flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                  {activeTab === "resources" && (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#e11d48" style={{ width: 24, height: 24, flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                  )}
+                  <span>{dynamicTitle}</span>
+                </h1>
+                {dynamicSubtitle && (
+                  <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
+                    {dynamicSubtitle}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right side: Nav Tabs + Action button */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {/* Role Tab selection — pill style */}
-            <nav style={{ display: "flex", flexWrap: "wrap", gap: 8 }} aria-label="SOP sections">
-              {[
-                { id: "sops", label: "SOPs" },
-                { id: "author", label: "Author" },
-                { id: "qo", label: "Quality Officer" },
-                { id: "review-sop", label: "Authorizer" }
-              ].map(tab => {
-                const isActive = activeTab === tab.id;
-                const isHovered = hoveredTab === tab.id;
-                return (
-                  <div
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id as any);
-                      setCurrentPage(1);
-                    }}
-                    onMouseEnter={() => setHoveredTab(tab.id)}
-                    onMouseLeave={() => setHoveredTab(null)}
-                    style={{
-                      border: "1px solid",
-                      borderColor: isActive ? "var(--color-primary)" : "var(--color-border)",
-                      background: isActive 
-                        ? "var(--color-primary-highlight)" 
-                        : (isHovered ? "var(--color-surface-offset)" : "var(--color-surface-2)"),
-                      color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
-                      borderRadius: "999px",
-                      padding: "8px 14px",
-                      fontSize: "var(--fs-xs)",
-                      fontWeight: 700,
-                      letterSpacing: "0.02em",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {tab.label}
-                  </div>
-                );
-              })}
-            </nav>
+            {/* Role Tab selection — pill style (shown on sub-pages: SOPs, Author, Quality Officer, Authorizer) */}
+            {["sops", "author", "qo", "review-sop"].includes(activeTab) && (
+              <nav style={{ display: "flex", flexWrap: "wrap", gap: 8 }} aria-label="SOP sections">
+                {[
+                  {
+                    id: "sops",
+                    label: "Library",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                      </svg>
+                    )
+                  },
+                  {
+                    id: "author",
+                    label: "Authoring",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                      </svg>
+                    )
+                  },
+                  {
+                    id: "qo",
+                    label: "Controls",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                      </svg>
+                    )
+                  },
+                  {
+                    id: "review-sop",
+                    label: "Approval",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )
+                  }
+                ].map(tab => {
+                  const isActive = activeTab === tab.id;
+                  const isHovered = hoveredTab === tab.id;
+                  return (
+                    <div
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as any);
+                        setCurrentPage(1);
+                      }}
+                      onMouseEnter={() => setHoveredTab(tab.id)}
+                      onMouseLeave={() => setHoveredTab(null)}
+                      style={{
+                        border: "1px solid",
+                        borderColor: isActive ? "var(--color-primary)" : "var(--color-border)",
+                        background: isActive
+                          ? "var(--color-primary-highlight)"
+                          : (isHovered ? "var(--color-surface-offset)" : "var(--color-surface-2)"),
+                        color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
+                        borderRadius: "999px",
+                        padding: "8px 14px",
+                        fontSize: "var(--fs-xs)",
+                        fontWeight: 700,
+                        letterSpacing: "0.02em",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {tab.icon}
+                      {tab.label}
+                    </div>
+                  );
+                })}
+              </nav>
+            )}
           </div>
         </div>
 
@@ -871,11 +955,311 @@ export default function QMSPage() {
               </button>
             </div>
           )}
-
           {/* sops Error handler */}
           {sopsError && (
             <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "var(--radius-sm)", fontSize: "var(--fs-sm)", color: "#991b1b", marginBottom: 16 }}>
               API synced reading fallback enabled.
+            </div>
+          )}
+
+          {/* TAB 0: OVERVIEW LANDING PAGE WITH 5 PROCESS CARDS */}
+          {activeTab === "overview" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "16px 4px 24px" }}>
+              {/* 5 Main Process Cards in One Row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                  gap: 16,
+                  width: "100%"
+                }}
+              >
+                {[
+                  {
+                    id: "sops",
+                    title: "SOP Library and Reference",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 20, height: 20, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                      </svg>
+                    ),
+                    bullets: [
+                      {
+                        label: "Browse SOP Repository", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Search by Category", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "View Version History", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Download PDF Copies", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                        )
+                      }
+                    ],
+                    subtitle: "Search, Read, and Download"
+                  },
+                  {
+                    id: "author",
+                    title: "SOP Drafting and Authoring",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 20, height: 20, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                      </svg>
+                    ),
+                    bullets: [
+                      {
+                        label: "Create New SOP", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dd6b20" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Edit Existing Drafts", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dd6b20" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Save as Draft", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dd6b20" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Submit for Review", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dd6b20" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )
+                      }
+                    ],
+                    subtitle: "Draft, Revise, and Submit"
+                  },
+                  {
+                    id: "qo",
+                    title: "SOP Quality Controls",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 20, height: 20, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+                      </svg>
+                    ),
+                    bullets: [
+                      {
+                        label: "Assign Reviewers", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7b1fa2" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a5.97 5.97 0 00-.942 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Return with Comments", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7b1fa2" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Track Review Progress", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7b1fa2" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )
+                      }
+                    ],
+                    subtitle: "Assign, and Approve Requests"
+                  },
+                  {
+                    id: "review-sop",
+                    title: "SOP Approval and Sign-off",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 20, height: 20, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ),
+                    bullets: [
+                      {
+                        label: "Verify Compliance", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Approve or Reject", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V2.75a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.465-.958.742-1.564.742H11.75a1.75 1.75 0 01-1.75-1.75v-1.25a.75.75 0 00-.75-.75h-1.5a.75.75 0 00-.75.75v1.25c0 .966-.784 1.75-1.75 1.75H4.25a1.75 1.75 0 01-1.75-1.75V12a1.75 1.75 0 011.75-1.75h2.383z" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Electronic Sign-off", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Publish Approved SOPs", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" />
+                          </svg>
+                        )
+                      }
+                    ],
+                    subtitle: "Review, Verify, and Authorize"
+                  },
+                  {
+                    id: "resources",
+                    title: "Resources Library",
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#e11d48" style={{ width: 20, height: 20, flexShrink: 0 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                    ),
+                    bullets: [
+                      {
+                        label: "SOP Templates", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#e11d48" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5-3h7.5M8.25 9h1.5" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Writing Guidelines", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#e11d48" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Regulatory Standards", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#e11d48" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21V3m0 0a9.004 9.004 0 018.716 6.747M12 3a9.004 9.004 0 00-8.716 6.747M3.284 14.253a8.96 8.96 0 010-4.506m17.432 0a8.96 8.96 0 010 4.506" />
+                          </svg>
+                        )
+                      },
+                      {
+                        label: "Training Documents", icon: (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#e11d48" style={{ width: 16, height: 16, flexShrink: 0 }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342" />
+                          </svg>
+                        )
+                      }
+                    ],
+                    subtitle: "Guides, Templates, and Standards"
+                  }
+                ].map((card) => (
+                  <div
+                    key={card.id}
+                    onClick={() => {
+                      setActiveTab(card.id as any);
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      background: "var(--color-surface)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "20px",
+                      padding: "26px 22px 22px",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      transition: "all 0.2s ease-in-out",
+                      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+                      minHeight: "300px",
+                      height: "340px"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.08)";
+                      e.currentTarget.style.borderColor = "var(--color-primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.04)";
+                      e.currentTarget.style.borderColor = "var(--color-border)";
+                    }}
+                  >
+                    {/* Header with Icon in front of neutral title text */}
+                    <h1
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: 800,
+                        color: "var(--color-text)",
+                        margin: 0,
+                        lineHeight: "1.3",
+                        borderBottom: "1px solid var(--color-border)",
+                        paddingBottom: "10px",
+                        marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        width: "100%"
+                      }}
+                    >
+                      {card.icon}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{card.title}</span>
+                    </h1>
+
+                    {/* Middle area with bullets */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px", justifyContent: "flex-start", paddingLeft: "4px" }}>
+                      {card.bullets.map((b, idx) => (
+                        <div key={idx} style={{ fontSize: "13px", color: "var(--color-text)", display: "flex", alignItems: "center", gap: "8px", lineHeight: "1.4" }}>
+                          {b.icon}
+                          <span>{b.label}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Bottom area: line first, then sub-topic subtitle under line */}
+                    <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {/* Thin non-bold divider line */}
+                      <div
+                        style={{
+                          height: "1px",
+                          background: "var(--color-border)",
+                          width: "100%"
+                        }}
+                      />
+
+                      {/* Sub Topic subtitle under the line */}
+                      <h3
+                        style={{
+                          fontSize: "13.5px",
+                          fontWeight: 600,
+                          color: "var(--color-text-muted)",
+                          margin: 0,
+                          lineHeight: "1.5"
+                        }}
+                      >
+                        {card.subtitle}
+                      </h3>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -887,6 +1271,11 @@ export default function QMSPage() {
               selectedSopForReading={selectedSopForReading}
               setSelectedSopForReading={setSelectedSopForReading}
             />
+          )}
+
+          {/* TAB 5: RESOURCES VIEW */}
+          {activeTab === "resources" && (
+            <SOPResourcesView />
           )}
 
           {/* TAB 2: AUTHOR PERSPECTIVE */}
@@ -940,7 +1329,7 @@ export default function QMSPage() {
 
                 {/* Scroll Body */}
                 <div style={{ flex: 1, padding: 24, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
                     <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed SOP Title *</label>
                     <input
                       type="text"
@@ -951,7 +1340,7 @@ export default function QMSPage() {
                     />
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
                     <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author Name / Initials *</label>
                     <input
                       type="text"
@@ -962,16 +1351,16 @@ export default function QMSPage() {
                     />
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
                     <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Type *</label>
                     <select
                       value={requestType}
                       onChange={(e) => setRequestType(e.target.value as any)}
                       style={{ ...selectStyle, padding: "10px 12px" }}
                     >
-                      <option value="Procedure SOP">Procedure SOP</option>
-                      <option value="Equipment SOP">Equipment SOP</option>
                       <option value="Analysis SOP">Analysis SOP</option>
+                      <option value="Equipment SOP">Equipment SOP</option>
+                      <option value="Procedure SOP">Procedure SOP</option>
                     </select>
                   </div>
                 </div>
@@ -986,168 +1375,190 @@ export default function QMSPage() {
               renderSopDetailsInline()
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {/* Request New SOP — above filter strip */}
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                {/* Search and Filters for Author — standardized filter strip */}
+                <QMSFilterStrip
+                  allSops={allSops}
+                  sopType={authorSopTypeFilter}
+                  onSopTypeChange={setAuthorSopTypeFilter}
+                  sopStatus={authorStatusFilter}
+                  onSopStatusChange={setAuthorStatusFilter}
+                  selectedTitles={authorSelectedTitles}
+                  onSelectedTitlesChange={setAuthorSelectedTitles}
+                  searchText={searchText}
+                  onSearchTextChange={setSearchText}
+                  onClearAll={() => {
+                    setAuthorSopTypeFilter("All");
+                    setAuthorStatusFilter("All");
+                    setAuthorSelectedTitles([]);
+                    setSearchText("");
+                  }}
+                />
+
+                {/* Left-aligned Side-by-Side Action Sub-Navigation Buttons */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <button
-                    onClick={() => setIsRequestModalOpen(true)}
+                    type="button"
+                    onClick={() => setAuthorSubTab("status")}
                     style={{
-                      background: "var(--color-primary)",
-                      color: "#ffffff",
-                      border: "none",
-                      padding: "8px 16px",
-                      borderRadius: "999px",
+                      background: authorSubTab === "status" ? "var(--color-primary)" : "var(--color-surface)",
+                      color: authorSubTab === "status" ? "#ffffff" : "var(--color-text)",
+                      border: "1px solid var(--color-border)",
+                      padding: "7px 16px",
+                      borderRadius: "var(--radius-sm, 6px)",
                       fontSize: "var(--fs-xs)",
                       fontWeight: 700,
-                      letterSpacing: "0.02em",
                       cursor: "pointer",
-                      boxShadow: "var(--shadow-sm)",
-                      whiteSpace: "nowrap",
+                      transition: "all 0.2s ease"
                     }}
                   >
-                    + Request New SOP
+                    📊 SOP Status
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthorSubTab("create")}
+                    style={{
+                      background: authorSubTab === "create" ? "var(--color-primary)" : "var(--color-surface)",
+                      color: authorSubTab === "create" ? "#ffffff" : "var(--color-text)",
+                      border: "1px solid var(--color-border)",
+                      padding: "7px 16px",
+                      borderRadius: "var(--radius-sm, 6px)",
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    ➕ Create New SOP
                   </button>
                 </div>
 
-                {/* Search and Filters for Author — compact scientific strip */}
-                <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
-                  <select
-                    value={authorSopTypeFilter}
-                    onChange={(e) => setAuthorSopTypeFilter(e.target.value)}
-                    style={{ ...compactSelectStyle, borderColor: authorSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                  >
-                    <option value="All">All Types</option>
-                    <option value="Procedure SOP">Procedure SOP</option>
-                    <option value="Equipment SOP">Equipment SOP</option>
-                    <option value="Analysis SOP">Analysis SOP</option>
-                  </select>
-                  <select
-                    value={authorStatusFilter}
-                    onChange={(e) => setAuthorStatusFilter(e.target.value)}
-                    style={{ ...compactSelectStyle, borderColor: authorStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="REQUESTED">Requested</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="UNDER REVIEW">Under Review</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="RETURNED">Returned</option>
-                    <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-                  </select>
-                  <select
-                    value={authorAssayCategoryFilter}
-                    onChange={(e) => setAuthorAssayCategoryFilter(e.target.value)}
-                    style={{ ...compactSelectStyle, borderColor: authorAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                  >
-                    <option value="All">All Assay Categories</option>
-                    {ASSAY_CATEGORY_OPTIONS.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={authorMethodFamilyFilter}
-                    onChange={(e) => setAuthorMethodFamilyFilter(e.target.value)}
-                    style={{ ...compactSelectStyle, borderColor: authorMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: authorMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}
-                  >
-                    <option value="All">All Method Families</option>
-                    {METHOD_FAMILY_OPTIONS.map(fam => (
-                      <option key={fam} value={fam}>{fam}</option>
-                    ))}
-                  </select>
-                  <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
-                    <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
-                    <input
-                      type="text"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                      placeholder="Search SOPs..."
-                      style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }}
-                    />
+                {authorSubTab === "create" ? (
+                  <div style={{ display: "flex", flexDirection: "column", width: "100%", maxWidth: 680, margin: "0 auto", background: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflow: "hidden" }}>
+                    <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderBottom: "1px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h3 style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
+                        Request New SOP Drafting
+                      </h3>
+                      <button onClick={() => setAuthorSubTab("status")} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)" }}>
+                        Back to List
+                      </button>
+                    </div>
+                    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
+                        <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed SOP Title *</label>
+                        <input
+                          type="text"
+                          placeholder=" "
+                          value={requestTitle}
+                          onChange={(e) => setRequestTitle(e.target.value)}
+                          style={{ ...inputStyle, padding: "10px 12px" }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
+                        <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author Name / Initials *</label>
+                        <input
+                          type="text"
+                          placeholder=" "
+                          value={requestAuthorName}
+                          onChange={(e) => setRequestAuthorName(e.target.value)}
+                          style={{ ...inputStyle, padding: "10px 12px" }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
+                        <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>SOP Type *</label>
+                        <select
+                          value={requestType}
+                          onChange={(e) => setRequestType(e.target.value as any)}
+                          style={{ ...selectStyle, padding: "10px 12px" }}
+                        >
+                          <option value="Analysis SOP">Analysis SOP</option>
+                          <option value="Equipment SOP">Equipment SOP</option>
+                          <option value="Procedure SOP">Procedure SOP</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                      <button onClick={() => setAuthorSubTab("status")} style={{ ...btnBaseStyle, border: "1px solid var(--color-border)", color: "var(--color-text)", background: "var(--color-surface-offset)", padding: "8px 16px" }}>Cancel</button>
+                      <button onClick={() => { handleRequestSOP(); setAuthorSubTab("status"); }} style={{ ...btnBaseStyle, background: "var(--color-primary)", color: "#ffffff", padding: "8px 16px" }}>Request SOP</button>
+                    </div>
                   </div>
-                  {(authorSopTypeFilter !== "All" || authorStatusFilter !== "All" || authorAssayCategoryFilter !== "All" || authorMethodFamilyFilter !== "All" || searchText) && (
-                    <button
-                      onClick={() => { setAuthorSopTypeFilter("All"); setAuthorStatusFilter("All"); setAuthorAssayCategoryFilter("All"); setAuthorMethodFamilyFilter("All"); setSearchText(""); }}
-                      style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }}
-                      title="Clear all filters"
-                    >✕ Clear</button>
-                  )}
-                </div>
+                ) : (
+                  <>
+                    {/* Author's SOP list */}
+                    <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
+                            <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 140 }}>SOP Code</th>
+                            <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>Title</th>
+                            <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>SOP Type</th>
+                            <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>Status</th>
+                            <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "center", width: 180 }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedAuthorSops.length > 0 ? (
+                            paginatedAuthorSops.map((sop) => {
+                              const statusColor = getStatusColors(sop.status);
 
-                {/* Author's SOP list */}
-                <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)" }}>
-                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 140 }}>SOP Code</th>
-                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left" }}>Title</th>
-                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>SOP Type</th>
-                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "left", width: 150 }}>Status</th>
-                        <th style={{ padding: "14px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", textAlign: "center", width: 180 }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedAuthorSops.length > 0 ? (
-                        paginatedAuthorSops.map((sop) => {
-                          const statusColor = getStatusColors(sop.status);
+                              return (
+                                <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                                  <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)", fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
+                                  <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
+                                  <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
+                                  <td style={{ padding: "12px 16px", fontSize: "10px" }}>
+                                    <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, background: statusColor.bg, color: statusColor.text, textTransform: "uppercase" }}>
+                                      {sop.status}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: "12px 16px", display: "flex", gap: 12, justifyContent: "center" }}>
+                                    <button onClick={() => handleViewDetails(sop)} title="View" style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}>📖</button>
 
-                          return (
-                            <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                              <td style={{ padding: "12px 16px", fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text)", fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
-                              <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text)" }}>{sop.title}</td>
-                              <td style={{ padding: "12px 16px", fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
-                              <td style={{ padding: "12px 16px", fontSize: "10px" }}>
-                                <span style={{ padding: "3px 8px", borderRadius: "10px", fontWeight: 700, background: statusColor.bg, color: statusColor.text, textTransform: "uppercase" }}>
-                                  {sop.status}
-                                </span>
-                              </td>
-                              <td style={{ padding: "12px 16px", display: "flex", gap: 12, justifyContent: "center" }}>
-                                <button onClick={() => handleViewDetails(sop)} title="View" style={{ background: "none", border: "none", cursor: "pointer" }}><ViewIcon /></button>
+                                    {(() => {
+                                      const isEditable = sop.status.toUpperCase() === "DRAFT" || sop.status.toUpperCase() === "RETURNED";
+                                      return (
+                                        <button
+                                          disabled={!isEditable}
+                                          onClick={() => isEditable && handleEdit(sop.code)}
+                                          title={isEditable ? "Edit SOP" : "Only Draft or Returned SOPs can be edited"}
+                                          style={{
+                                            background: "none",
+                                            border: "none",
+                                            cursor: isEditable ? "pointer" : "not-allowed",
+                                            opacity: isEditable ? 1 : 0.35,
+                                          }}
+                                        >
+                                          <EditIcon />
+                                        </button>
+                                      );
+                                    })()}
 
-                                {(() => {
-                                  const isEditable = sop.status.toUpperCase() === "DRAFT" || sop.status.toUpperCase() === "RETURNED";
-                                  return (
-                                    <button
-                                      disabled={!isEditable}
-                                      onClick={() => isEditable && handleEdit(sop.code)}
-                                      title={isEditable ? "Edit SOP" : "Only Draft or Returned SOPs can be edited"}
-                                      style={{
-                                        background: "none",
-                                        border: "none",
-                                        cursor: isEditable ? "pointer" : "not-allowed",
-                                        opacity: isEditable ? 1 : 0.35,
-                                      }}
-                                    >
-                                      <EditIcon />
-                                    </button>
-                                  );
-                                })()}
-
-                                <button onClick={() => handlePrintPDF(sop)} title="Print" style={{ background: "none", border: "none", cursor: "pointer" }}>🖨️</button>
-                                <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
-                                <button onClick={() => handleDelete(sop.code)} title="Delete" style={{ background: "none", border: "none", cursor: "pointer" }}>🗑️</button>
-                              </td>
+                                    <button onClick={() => handlePrintPDF(sop)} title="Print" style={{ background: "none", border: "none", cursor: "pointer" }}>🖨️</button>
+                                    <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={5} style={{ padding: "24px", color: "var(--color-text-faint)", textAlign: "center", fontSize: "var(--fs-sm)" }}>No SOPs requested or authored by you.</td>
                             </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ padding: "24px", color: "var(--color-text-faint)", textAlign: "center", fontSize: "var(--fs-sm)" }}>No SOPs requested or authored by you.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
 
-                {/* Pagination */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px" }}>
-                  <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-                    Page {currentPage} of {authorTotalPages}
-                  </span>
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === 1 ? 0.5 : 1 }}>&lt;</button>
-                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === authorTotalPages} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === authorTotalPages ? 0.5 : 1 }}>&gt;</button>
-                  </div>
-                </div>
+                    {/* Pagination */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px" }}>
+                      <span style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
+                        Page {currentPage} of {authorTotalPages}
+                      </span>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === 1 ? 0.5 : 1 }}>&lt;</button>
+                        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === authorTotalPages} style={{ padding: "4px 10px", background: "var(--color-surface-2)", border: "1px solid var(--color-border)", cursor: "pointer", opacity: currentPage === authorTotalPages ? 0.5 : 1 }}>&gt;</button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )
           )}
@@ -1219,112 +1630,136 @@ export default function QMSPage() {
               renderSopDetailsInline()
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                {/* Search & Filters for QO */}
-                <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--color-surface)", padding: "8px 12px", borderRadius: "var(--radius)", border: "1px solid var(--color-border)", borderTop: "2.5px solid #0d9488", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "13px", marginRight: 2, opacity: 0.7 }} title="Filters">⚗</span>
-                  <select value={qoSopTypeFilter} onChange={(e) => setQoSopTypeFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoSopTypeFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoSopTypeFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
-                    <option value="All">All Types</option>
-                    <option value="Procedure SOP">Procedure SOP</option>
-                    <option value="Equipment SOP">Equipment SOP</option>
-                    <option value="Analysis SOP">Analysis SOP</option>
-                  </select>
-                  <select value={qoStatusFilter} onChange={(e) => setQoStatusFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoStatusFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoStatusFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
-                    <option value="All">All Statuses (Excl. Requested)</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="UNDER REVIEW">Under Review</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="RETURNED">Returned</option>
-                    <option value="AWAITING AUTHOR RESPONSE">Awaiting Response</option>
-                  </select>
-                  <select value={qoAssayCategoryFilter} onChange={(e) => setQoAssayCategoryFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoAssayCategoryFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoAssayCategoryFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
-                    <option value="All">All Assay Categories</option>
-                    {ASSAY_CATEGORY_OPTIONS.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
-                  </select>
-                  <select value={qoMethodFamilyFilter} onChange={(e) => setQoMethodFamilyFilter(e.target.value)} style={{ ...compactSelectStyle, borderColor: qoMethodFamilyFilter !== "All" ? "#0d9488" : "var(--color-border)", background: qoMethodFamilyFilter !== "All" ? "#f0fdfa" : "var(--color-surface-2)" }}>
-                    <option value="All">All Method Families</option>
-                    {METHOD_FAMILY_OPTIONS.map(fam => (<option key={fam} value={fam}>{fam}</option>))}
-                  </select>
-                  <div style={{ position: "relative", flex: 1, minWidth: "140px" }}>
-                    <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "var(--color-text-faint)" }}>🔍</span>
-                    <input type="text" value={qoSearchText} onChange={(e) => setQoSearchText(e.target.value)} placeholder="Search SOPs..." style={{ width: "100%", padding: "5px 10px 5px 26px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "11.5px", outline: "none", boxSizing: "border-box" }} />
-                  </div>
-                  {(qoSopTypeFilter !== "All" || qoStatusFilter !== "All" || qoAssayCategoryFilter !== "All" || qoMethodFamilyFilter !== "All" || qoSearchText) && (
-                    <button onClick={() => { setQoSopTypeFilter("All"); setQoStatusFilter("All"); setQoAssayCategoryFilter("All"); setQoMethodFamilyFilter("All"); setQoSearchText(""); }} style={{ background: "none", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", padding: "4px 8px", fontSize: "11px", color: "var(--color-text-muted)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 600 }} title="Clear all filters">✕ Clear</button>
-                  )}
+                {/* Search & Filters for QO — standardized filter strip */}
+                <QMSFilterStrip
+                  allSops={allSops}
+                  sopType={qoSopTypeFilter}
+                  onSopTypeChange={setQoSopTypeFilter}
+                  sopStatus={qoStatusFilter}
+                  onSopStatusChange={setQoStatusFilter}
+                  selectedTitles={qoSelectedTitles}
+                  onSelectedTitlesChange={setQoSelectedTitles}
+                  searchText={qoSearchText}
+                  onSearchTextChange={setQoSearchText}
+                  onClearAll={() => {
+                    setQoSopTypeFilter("All");
+                    setQoStatusFilter("All");
+                    setQoSelectedTitles([]);
+                    setQoSearchText("");
+                  }}
+                />
+
+                {/* Left-aligned Side-by-Side Action Sub-Navigation Buttons */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setQoSubTab("active")}
+                    style={{
+                      background: qoSubTab === "active" ? "var(--color-primary)" : "var(--color-surface)",
+                      color: qoSubTab === "active" ? "#ffffff" : "var(--color-text)",
+                      border: "1px solid var(--color-border)",
+                      padding: "7px 16px",
+                      borderRadius: "var(--radius-sm, 6px)",
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    📋 Active SOP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQoSubTab("pending")}
+                    style={{
+                      background: qoSubTab === "pending" ? "var(--color-primary)" : "var(--color-surface)",
+                      color: qoSubTab === "pending" ? "#ffffff" : "var(--color-text)",
+                      border: "1px solid var(--color-border)",
+                      padding: "7px 16px",
+                      borderRadius: "var(--radius-sm, 6px)",
+                      fontSize: "var(--fs-xs)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    🔔 Pending SOP Request ({requestedSopsQO.length})
+                  </button>
                 </div>
 
-                {/* Pending SOP Requests */}
-                <div>
-                  <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0", color: "var(--color-primary)" }}>🔔 Pending SOP Requests ({requestedSopsQO.length})</h3>
-                  <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
-                          <th style={{ padding: "10px 14px", textAlign: "left" }}>Proposed Title</th>
-                          <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Type</th>
-                          <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Requested By</th>
-                          <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Proposed LM</th>
-                          <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {requestedSopsQO.length > 0 ? requestedSopsQO.map((sop) => (
-                          <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
-                            <td style={{ padding: "10px 14px", fontWeight: 600 }}>{sop.title}</td>
-                            <td style={{ padding: "10px 14px" }}>{sop.sopType || "Procedure SOP"}</td>
-                            <td style={{ padding: "10px 14px" }}>{sop.author}</td>
-                            <td style={{ padding: "10px 14px" }}>{sop.details?.proposedAuthorizer}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                              <button onClick={() => setSelectedSopForQOApprove(sop)} style={{ background: "var(--color-primary)", color: "#ffffff", border: "none", padding: "4px 10px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: "11px" }}>Approve & Code</button>
-                            </td>
+                {qoSubTab === "pending" ? (
+                  /* Pending SOP Requests */
+                  <div>
+                    <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0", color: "var(--color-primary)" }}>🔔 Pending SOP Requests ({requestedSopsQO.length})</h3>
+                    <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
+                            <th style={{ padding: "10px 14px", textAlign: "left" }}>Proposed Title</th>
+                            <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Type</th>
+                            <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Requested By</th>
+                            <th style={{ padding: "10px 14px", textAlign: "left", width: 120 }}>Proposed LM</th>
+                            <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Action</th>
                           </tr>
-                        )) : (
-                          <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No pending requests matching criteria.</td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {requestedSopsQO.length > 0 ? requestedSopsQO.map((sop) => (
+                            <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
+                              <td style={{ padding: "10px 14px", fontWeight: 600 }}>{sop.title}</td>
+                              <td style={{ padding: "10px 14px" }}>{sop.sopType || "Procedure SOP"}</td>
+                              <td style={{ padding: "10px 14px" }}>{sop.author}</td>
+                              <td style={{ padding: "10px 14px" }}>{sop.details?.proposedAuthorizer}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                                <button onClick={() => setSelectedSopForQOApprove(sop)} style={{ background: "var(--color-primary)", color: "#ffffff", border: "none", padding: "4px 10px", borderRadius: 4, cursor: "pointer", fontWeight: 600, fontSize: "11px" }}>Approve & Code</button>
+                              </td>
+                            </tr>
+                          )) : (
+                            <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No pending requests matching criteria.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-
-                {/* Active SOPs */}
-                <div>
-                  <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0" }}>📋 Active SOP Document Controls ({existingSopsQO.length})</h3>
-                  <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
-                          <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Code</th>
-                          <th style={{ padding: "10px 14px", textAlign: "left" }}>Title</th>
-                          <th style={{ padding: "10px 14px", textAlign: "left", width: 150 }}>SOP Type</th>
-                          <th style={{ padding: "10px 14px", textAlign: "left", width: 150 }}>Status</th>
-                          <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {existingSopsQO.length > 0 ? existingSopsQO.map((sop) => (
-                          <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
-                            <td style={{ padding: "10px 14px", fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
-                            <td style={{ padding: "10px 14px" }}>{sop.title}</td>
-                            <td style={{ padding: "10px 14px" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
-                            <td style={{ padding: "10px 14px" }}>
-                              <span style={{ fontSize: "10px", padding: "2.5px 6px", borderRadius: 4, background: getStatusColors(sop.status).bg, color: getStatusColors(sop.status).text, fontWeight: "bold", textTransform: "uppercase" }}>{sop.status}</span>
-                            </td>
-                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                                <button onClick={() => handleViewDetails(sop)} style={{ background: "none", border: "none", cursor: "pointer" }}><ViewIcon /></button>
-                                <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
-                                <button onClick={() => handlePrintPDF(sop)} style={{ background: "none", border: "none", cursor: "pointer" }}>🖨️</button>
-                                <button onClick={() => handleDelete(sop.code)} style={{ background: "none", border: "none", cursor: "pointer" }}>🗑️</button>
-                              </div>
-                            </td>
+                ) : (
+                  /* Active SOPs */
+                  <div>
+                    <h3 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 10px 0" }}>📋 Active SOP Document Controls ({existingSopsQO.length})</h3>
+                    <div style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "var(--color-surface)", borderBottom: "1px solid var(--color-border)", fontSize: "var(--fs-xs)" }}>
+                            <th style={{ padding: "10px 14px", textAlign: "left", width: 140 }}>SOP Code</th>
+                            <th style={{ padding: "10px 14px", textAlign: "left" }}>Title</th>
+                            <th style={{ padding: "10px 14px", textAlign: "left", width: 150 }}>SOP Type</th>
+                            <th style={{ padding: "10px 14px", textAlign: "left", width: 150 }}>Status</th>
+                            <th style={{ padding: "10px 14px", textAlign: "center", width: 150 }}>Actions</th>
                           </tr>
-                        )) : (
-                          <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No coded SOPs matching criteria.</td></tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {existingSopsQO.length > 0 ? existingSopsQO.map((sop) => (
+                            <tr key={sop.id} style={{ borderBottom: "1px solid var(--color-divider)", fontSize: "var(--fs-sm)" }}>
+                              <td style={{ padding: "10px 14px", fontWeight: 600, fontFamily: "monospace", letterSpacing: "0.02em" }}>{sop.code}</td>
+                              <td style={{ padding: "10px 14px" }}>{sop.title}</td>
+                              <td style={{ padding: "10px 14px" }}>{sop.sopType || sop.sopSection || "Procedure SOP"}</td>
+                              <td style={{ padding: "10px 14px" }}>
+                                <span style={{ fontSize: "10px", padding: "2.5px 6px", borderRadius: 4, background: getStatusColors(sop.status).bg, color: getStatusColors(sop.status).text, fontWeight: "bold", textTransform: "uppercase" }}>{sop.status}</span>
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                                  <button onClick={() => handleViewDetails(sop)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}>📖</button>
+                                  <button onClick={() => handleShare(sop)} title="Share" style={{ background: "none", border: "none", cursor: "pointer" }}>🔗</button>
+                                  <button onClick={() => handlePrintPDF(sop)} style={{ background: "none", border: "none", cursor: "pointer" }}>🖨️</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )) : (
+                            <tr><td colSpan={5} style={{ padding: "20px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "var(--fs-sm)" }}>No coded SOPs matching criteria.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )
           )}
@@ -1481,7 +1916,7 @@ export default function QMSPage() {
               <tfoot>
                 <tr>
                   <td style={{ border: "none", padding: 0 }}>
-                    <div className="footer-line" style={{ borderTop: "2.5px solid #071338ff", marginTop: "6px", width: "100%", height: "1px" }} />
+                    <div style={{ height: "20px" }} />
                   </td>
                 </tr>
               </tfoot>
@@ -1495,10 +1930,10 @@ export default function QMSPage() {
                       {/* Revision & Amendment History */}
                       {(printingSop.details?.annualReviews || printingSop.details?.versionHistory || printingSop.details?.amendmentLog) && (
                         <div className="print-section-container">
-                          <h3 className="print-section-title" style={{ margin: "14px 0 4px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
+                          <h3 className="print-section-title" style={{ margin: "10px 0 3px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
                             Revision & Amendment History
                           </h3>
-                          
+
                           {/* Table A: Annual Review of Document */}
                           {printingSop.details?.annualReviews && printingSop.details.annualReviews.length > 0 && (
                             <div style={{ marginTop: "10px" }}>
@@ -1609,19 +2044,19 @@ export default function QMSPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                 {purp && (
                                   <div>
-                                    <strong style={{ textDecoration: "underline" }}>Purpose (verbatim):</strong>
+                                    <strong>Purpose:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(purp) }} />
                                   </div>
                                 )}
                                 {sc && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Scope:</strong>
+                                    <strong>Scope:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(sc) }} />
                                   </div>
                                 )}
                                 {bg && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Background / Introduction:</strong>
+                                    <strong>Background / Introduction:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(bg) }} />
                                   </div>
                                 )}
@@ -1642,7 +2077,6 @@ export default function QMSPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                 {narrative && (
                                   <div>
-                                    <strong style={{ textDecoration: "underline" }}>Responsibility & accountability (narrative):</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -1714,13 +2148,13 @@ export default function QMSPage() {
                                 )}
                                 {waste && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Waste Handling Instructions:</strong>
+                                    <strong>Waste Handling Instructions:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(waste) }} />
                                   </div>
                                 )}
                                 {addSafety && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Additional Safety / Environmental Controls:</strong>
+                                    <strong>Additional Safety / Environmental Controls:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(addSafety) }} />
                                   </div>
                                 )}
@@ -1773,13 +2207,13 @@ export default function QMSPage() {
                                 )}
                                 {acceptance && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Sample Acceptance Criteria:</strong>
+                                    <strong>Sample Acceptance Criteria:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(acceptance) }} />
                                   </div>
                                 )}
                                 {rejection && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Sample Rejection Criteria:</strong>
+                                    <strong>Sample Rejection Criteria:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(rejection) }} />
                                   </div>
                                 )}
@@ -1801,7 +2235,6 @@ export default function QMSPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                 {narrative && (
                                   <div>
-                                    <strong style={{ textDecoration: "underline" }}>Reagents & Supplies Narrative:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -1817,7 +2250,7 @@ export default function QMSPage() {
                                 )}
                                 {hasGrid && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong>Reagents & Chemicals Matrix (Legacy):</strong>
+                                    <strong>Reagents & Chemicals Matrix:</strong>
                                     <table style={{ width: "100%", borderCollapse: "collapse", border: "1.5px solid #000000", marginTop: "4px" }}>
                                       <thead>
                                         <tr style={{ backgroundColor: "#f1f5f9" }}>
@@ -1862,7 +2295,6 @@ export default function QMSPage() {
                                 )}
                                 {narrative && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Equipment & Instruments details:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -1898,13 +2330,12 @@ export default function QMSPage() {
                                 )}
                                 {criteria && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Acceptance / Rejection Criteria:</strong>
+                                    <strong>Acceptance / Rejection Criteria:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(criteria) }} />
                                   </div>
                                 )}
                                 {narrative && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Quality Control Narrative:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -1925,7 +2356,6 @@ export default function QMSPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                 {narrative && (
                                   <div>
-                                    <strong style={{ textDecoration: "underline" }}>Procedure Narrative:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -1958,19 +2388,19 @@ export default function QMSPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                 {formulas && (
                                   <div>
-                                    <strong style={{ textDecoration: "underline" }}>Calculations & Formulas:</strong>
+                                    <strong>Calculations & Formulas:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(formulas) }} />
                                   </div>
                                 )}
                                 {tools && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Software / Analysis Tools Used:</strong>
+                                    <strong>Software / Analysis Tools Used:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(tools) }} />
                                   </div>
                                 )}
                                 {rules && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Interpretation Rules & Thresholds:</strong>
+                                    <strong>Interpretation Rules & Thresholds:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(rules) }} />
                                   </div>
                                 )}
@@ -1994,25 +2424,25 @@ export default function QMSPage() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                                 {format && (
                                   <div>
-                                    <strong style={{ textDecoration: "underline" }}>Reporting Format (units, layout):</strong>
+                                    <strong>Reporting Format (units, layout):</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(format) }} />
                                   </div>
                                 )}
                                 {cutoffs && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Cut-offs / Thresholds:</strong>
+                                    <strong>Cut-offs / Thresholds:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(cutoffs) }} />
                                   </div>
                                 )}
                                 {lims && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>LIMS / Database Field Mapping:</strong>
+                                    <strong>LIMS / Database Field Mapping:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(lims) }} />
                                   </div>
                                 )}
                                 {narrative && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Result Reporting Narrative:</strong>
+                                    <strong>Result Reporting Narrative:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -2049,7 +2479,7 @@ export default function QMSPage() {
                                 )}
                                 {duration && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Maximum Storage Duration:</strong>
+                                    <strong>Maximum Storage Duration:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(duration) }} />
                                   </div>
                                 )}
@@ -2060,7 +2490,7 @@ export default function QMSPage() {
                                 )}
                                 {narrative && (
                                   <div style={{ marginTop: "4px" }}>
-                                    <strong style={{ textDecoration: "underline" }}>Storage & Transport Narrative:</strong>
+                                    <strong>Storage & Transport Narrative:</strong>
                                     <div dangerouslySetInnerHTML={{ __html: formatRichText(narrative) }} />
                                   </div>
                                 )}
@@ -2092,7 +2522,7 @@ export default function QMSPage() {
                           if (!renderedResult) return null;
                           return (
                             <div key={sidx} className="print-section-container">
-                              <h3 className="print-section-title" style={{ margin: "14px 0 4px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
+                              <h3 className="print-section-title" style={{ margin: "10px 0 3px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
                                 {sec.label}
                               </h3>
                               {renderedResult}
@@ -2105,7 +2535,7 @@ export default function QMSPage() {
 
                         return (
                           <div key={sidx} className="print-section-container">
-                            <h3 className="print-section-title" style={{ margin: "14px 0 4px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
+                            <h3 className="print-section-title" style={{ margin: "10px 0 3px 0", fontSize: "13pt", fontWeight: "bold", color: "#031755ff", textTransform: "uppercase" }}>
                               {sec.label}
                             </h3>
 
@@ -2161,7 +2591,7 @@ export default function QMSPage() {
           #qms-sop-print-area .footer-line { border-top: 2.5px solid #071338ff !important; border-color: #071338ff !important; }
           table.print-outer-wrapper-table { border-collapse: separate !important; border-spacing: 0 !important; width: 100% !important; border: none !important; }
           table.print-outer-wrapper-table > tbody > tr > td, table.print-outer-wrapper-table > thead > tr > td, table.print-outer-wrapper-table > tfoot > tr > td { border: none !important; padding: 0 !important; }
-          #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) { width: calc(100% - 2px) !important; border-collapse: collapse !important; border: 1.5px solid #000000 !important; margin-bottom: 15px !important; margin-right: 2px !important; }
+          #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) { width: calc(100% - 2px) !important; border-collapse: collapse !important; border: 1.5px solid #000000 !important; margin-bottom: 8px !important; margin-right: 2px !important; }
           #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) td, #qms-sop-print-area table:not(.print-outer-wrapper-table):not(.header-inner-table) th { border: 1.5px solid #000000 !important; padding: 6px 12px !important; }
           #qms-sop-print-area table.header-inner-table, #qms-sop-print-area table.header-inner-table td { border: none !important; }
           #qms-sop-print-area table.header-inner-table td.header-doc-no { border-right: 1.5px solid #000000 !important; }
@@ -2169,11 +2599,17 @@ export default function QMSPage() {
           #qms-sop-print-area h1, #qms-sop-print-area h2, #qms-sop-print-area h3, #qms-sop-print-area h4, #qms-sop-print-area th, #qms-sop-print-area td { text-align: left !important; }
           #qms-sop-print-area .text-center, #qms-sop-print-area .text-center * { text-align: center !important; }
           .cover-page { page-break-after: always !important; break-after: always !important; box-sizing: border-box !important; display: block !important; margin: 0 !important; padding: 0 !important; }
-          .print-section-container { page-break-inside: auto !important; break-inside: auto !important; margin-bottom: 10px !important; margin-top: 0 !important; padding: 0 !important; }
-          .print-section-container h3 { page-break-after: avoid !important; break-after: avoid !important; margin: 0 0 4px 0 !important; }
-          .print-subsection-container { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 6px !important; }
+          .print-section-container { page-break-inside: auto !important; break-inside: auto !important; margin-bottom: 6px !important; margin-top: 0 !important; padding: 0 !important; }
+          .print-section-container h3 { page-break-after: avoid !important; break-after: avoid !important; margin: 10px 0 3px 0 !important; }
+          .print-subsection-container { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 4px !important; }
           .print-subsection-container h4 { page-break-after: avoid !important; break-after: avoid !important; margin: 0 0 2px 0 !important; }
-          table, tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+          tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+          table.print-outer-wrapper-table,
+          table.print-outer-wrapper-table > tbody > tr,
+          table.print-outer-wrapper-table > tbody > tr > td {
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
           .page-break-before { page-break-before: always !important; break-before: always !important; }
           .page-break-after { page-break-after: always !important; break-after: always !important; }
           @page {
@@ -2183,23 +2619,30 @@ export default function QMSPage() {
             @top-center { content: ""; }
             @top-right { content: ""; }
             @bottom-left {
-              content: "${footerYear}/AHRI-MNTD" !important;
-              font-family: "Times New Roman", Times, serif !important;
-              font-size: 10px !important;
-              font-weight: bold !important;
-              color: #490b09ff !important;
-              vertical-align: top !important;
-              padding-top: 4px !important;
+              content: "${footerYear}/AHRI-MNTD";
+              font-family: "Times New Roman", Times, serif;
+              font-size: 10px;
+              font-weight: bold;
+              color: #490b09ff;
+              vertical-align: top;
+              padding-top: 6px;
+              border-top: 2.5px solid #071338ff;
             }
-            @bottom-center { content: ""; }
+            @bottom-center {
+              content: "";
+              vertical-align: top;
+              padding-top: 6px;
+              border-top: 2.5px solid #071338ff;
+            }
             @bottom-right {
-              content: "Page " counter(page) !important;
-              font-family: "Times New Roman", Times, serif !important;
-              font-size: 10px !important;
-              font-weight: bold !important;
-              color: #071338ff !important;
-              vertical-align: top !important;
-              padding-top: 4px !important;
+              content: "Page " counter(page);
+              font-family: "Times New Roman", Times, serif;
+              font-size: 10px;
+              font-weight: bold;
+              color: #071338ff;
+              vertical-align: top;
+              padding-top: 6px;
+              border-top: 2.5px solid #071338ff;
             }
           }
           @page :first {
@@ -2209,9 +2652,18 @@ export default function QMSPage() {
             @top-left { content: ""; }
             @top-center { content: ""; }
             @top-right { content: ""; }
-            @bottom-left { content: none !important; }
-            @bottom-center { content: ""; }
-            @bottom-right { content: none !important; }
+            @bottom-left {
+              content: "";
+              border-top: none;
+            }
+            @bottom-center {
+              content: "";
+              border-top: none;
+            }
+            @bottom-right {
+              content: "";
+              border-top: none;
+            }
           }
           .printable-body-wrapper { position: relative; overflow: visible !important; height: auto !important; }
         }
