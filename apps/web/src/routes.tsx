@@ -9,6 +9,7 @@ const ArchitecturePage = lazy(() => import("./pages/ArchitecturePage"));
 const OperationsPage = lazy(() => import("./pages/OperationsPage"));
 const BiospecimenPage = lazy(() => import("./pages/domain/BiospecimenPage"));
 const InventoryLayout = lazy(() => import("./pages/domain/inventory/InventoryLayout"));
+const InventoryLandingPage = lazy(() => import("./pages/domain/inventory/InventoryLandingPage"));
 const InventoryDashboardPage = lazy(() => import("./pages/domain/inventory/InventoryDashboardPage"));
 const CurrentInventoryPage = lazy(() => import("./pages/domain/inventory/CurrentInventoryPage"));
 const CheckInPage = lazy(() => import("./pages/domain/inventory/CheckInPage"));
@@ -67,7 +68,8 @@ export const routes: RouteObject[] = [
             path: "stock-management",
             element: <InventoryLayout />,
             children: [
-              { index: true, element: <Navigate to="dashboard" replace /> },
+              { index: true, element: <InventoryLandingPage /> },
+              { path: "overview", element: <InventoryLandingPage /> },
               { path: "dashboard", element: <InventoryDashboardPage /> },
               { path: "current-inventory", element: <CurrentInventoryPage /> },
               { path: "check-in", element: <CheckInPage /> },

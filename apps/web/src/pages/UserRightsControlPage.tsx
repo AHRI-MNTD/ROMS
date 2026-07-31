@@ -21,7 +21,7 @@ type PermissionState = Record<string, Set<string>>;
 const DOMAIN_RIGHTS: Record<string, string[]> = {
   biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
   inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
-  qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
+  qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
   "lab-workflow": ["Dashboard", "Protocols", "Instruments", "Experiments", "Runs", "Reports", "Analytics"],
   "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
   infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
@@ -34,10 +34,10 @@ const DOMAIN_RIGHTS: Record<string, string[]> = {
 const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   LAB_SCIENTIST: {
     biospecimen: ["Dashboard", "Sample Collection", "Processing"],
-    inventory: ["Dashboard", "Current Inventory"],
+    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s"],
     "lab-workflow": ["Dashboard", "Protocols", "Runs"],
     "data-management": ["Dashboard"],
-    qms: ["SOP Library", "Document Control"],
+    qms: ["Dashboard", "Author"],
   },
   DATA_MANAGER: {
     biospecimen: ["Dashboard"],
@@ -49,8 +49,8 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory", "Inventory Manager", "Check In", "Check Out", "Request/s"],
-    qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA"],
+    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
+    qms: ["Dashboard", "Author", "Quality Officer", "Audits", "CAPA"],
     hr: ["Dashboard", "Profiles", "Onboarding", "Personnel Registration"],
     finance: ["Dashboard", "Grants", "Budgets"],
     participant: ["Dashboard"],
@@ -61,7 +61,7 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   PRINCIPAL_INVESTIGATOR: {
     biospecimen: ["Dashboard", "Retrieval"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "Audits"],
+    qms: ["Dashboard", "Authorizer", "Audits"],
     "lab-workflow": ["Dashboard", "Runs"],
     "data-management": ["Dashboard", "Studies", "Analytics"],
     hr: ["Dashboard"],
@@ -73,7 +73,7 @@ const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   QA_OFFICER: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA"],
+    qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA"],
     "lab-workflow": ["Dashboard"],
     "data-management": ["Dashboard"],
     hr: ["Dashboard"],
@@ -222,6 +222,28 @@ export default function UserRightsControlPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState("");
 
+  // Users Column Sorting & Filtering states
+  type UserSortKey = "name_asc" | "name_desc" | "rights_desc" | "rights_asc" | "dept_asc" | "role_asc";
+  const [userSortKey, setUserSortKey] = React.useState<UserSortKey>("name_asc");
+  const [deptFilter, setDeptFilter] = React.useState<string>("");
+  const [accessFilter, setAccessFilter] = React.useState<"all" | "has_access" | "no_access" | "admin">("all");
+  const [userDropdownOpen, setUserDropdownOpen] = React.useState<boolean>(false);
+  const userDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const allDepartments = React.useMemo(() => {
+    return Array.from(new Set(users.map((u) => u.department).filter(Boolean))).sort();
+  }, [users]);
+
   // Seed default permissions for new users that don't have assignments yet
   React.useEffect(() => {
     if (users.length === 0) return;
@@ -253,15 +275,45 @@ export default function UserRightsControlPage() {
 
   const filteredRows = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return matrixRows.filter((row) => {
+    let result = matrixRows.filter((row) => {
       const matchesSearch =
         q === "" ||
         row.user.displayName.toLowerCase().includes(q) ||
-        row.user.email.toLowerCase().includes(q);
+        row.user.email.toLowerCase().includes(q) ||
+        row.user.department.toLowerCase().includes(q) ||
+        row.user.jobTitle.toLowerCase().includes(q);
       const matchesRole = roleFilter === "" || row.user.role === roleFilter;
-      return matchesSearch && matchesRole;
+      const matchesDept = deptFilter === "" || row.user.department === deptFilter;
+
+      let matchesAccess = true;
+      if (accessFilter === "has_access") {
+        matchesAccess = row.enabledRights > 0;
+      } else if (accessFilter === "no_access") {
+        matchesAccess = row.enabledRights === 0;
+      } else if (accessFilter === "admin") {
+        matchesAccess = row.user.role === "ADMIN";
+      }
+
+      return matchesSearch && matchesRole && matchesDept && matchesAccess;
     });
-  }, [matrixRows, searchQuery, roleFilter]);
+
+    return result.sort((a, b) => {
+      if (userSortKey === "name_asc") {
+        return a.user.displayName.localeCompare(b.user.displayName);
+      } else if (userSortKey === "name_desc") {
+        return b.user.displayName.localeCompare(a.user.displayName);
+      } else if (userSortKey === "rights_desc") {
+        return b.enabledRights - a.enabledRights || a.user.displayName.localeCompare(b.user.displayName);
+      } else if (userSortKey === "rights_asc") {
+        return a.enabledRights - b.enabledRights || a.user.displayName.localeCompare(b.user.displayName);
+      } else if (userSortKey === "dept_asc") {
+        return a.user.department.localeCompare(b.user.department) || a.user.displayName.localeCompare(b.user.displayName);
+      } else if (userSortKey === "role_asc") {
+        return a.user.role.localeCompare(b.user.role) || a.user.displayName.localeCompare(b.user.displayName);
+      }
+      return 0;
+    });
+  }, [matrixRows, searchQuery, roleFilter, deptFilter, accessFilter, userSortKey]);
 
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = React.useState<string>("STAFF");
@@ -532,9 +584,15 @@ export default function UserRightsControlPage() {
                     <option key={role} value={role}>{role.replace(/_/g, " ")}</option>
                   ))}
                 </select>
-                {(searchQuery || roleFilter) && (
+                {(searchQuery || roleFilter || deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") && (
                   <button
-                    onClick={() => { setSearchQuery(""); setRoleFilter(""); }}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setRoleFilter("");
+                      setDeptFilter("");
+                      setAccessFilter("all");
+                      setUserSortKey("name_asc");
+                    }}
                     style={{
                       padding: "5px 12px", fontSize: "var(--fs-xs)", fontWeight: 700,
                       borderRadius: 10, border: "1px solid rgba(220,38,38,0.22)",
@@ -553,7 +611,174 @@ export default function UserRightsControlPage() {
                 <thead>
                   <tr>
                     <th style={{ ...columnHeaderStyle, width: "4%" }}>No_</th>
-                    <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left" }}>Users</th>
+                    <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left", position: "relative" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800 }}>Users</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUserDropdownOpen((prev) => !prev);
+                          }}
+                          title="Sort & Filter Users"
+                          style={{
+                            background: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") ? "rgba(1, 105, 111, 0.15)" : "transparent",
+                            border: "1px solid",
+                            borderColor: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") ? "var(--color-primary)" : "rgba(0,0,0,0.12)",
+                            borderRadius: 4,
+                            padding: "2px 4px",
+                            cursor: "pointer",
+                            fontSize: 9,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 2,
+                            color: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") ? "var(--color-primary)" : "var(--color-text-muted)"
+                          }}
+                        >
+                          <span style={{ fontSize: 9 }}>
+                            {userSortKey === "name_asc" ? "▲" : userSortKey === "name_desc" ? "▼" : "▾"}
+                          </span>
+                          {(deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") && (
+                            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--color-primary)" }} />
+                          )}
+                        </button>
+                      </div>
+
+                      {userDropdownOpen && (
+                        <div
+                          ref={userDropdownRef}
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            marginTop: 4,
+                            width: 240,
+                            background: "#ffffff",
+                            border: "1px solid rgba(1, 105, 111, 0.25)",
+                            borderRadius: 12,
+                            boxShadow: "0 12px 28px rgba(0,0,0,0.18)",
+                            zIndex: 100,
+                            padding: "12px 14px",
+                            fontSize: 12,
+                            color: "var(--color-text)",
+                            textTransform: "none",
+                            letterSpacing: "normal",
+                            fontWeight: "normal"
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Header */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid var(--color-divider)" }}>
+                            <span style={{ fontWeight: 700, fontSize: 11, color: "var(--color-text)" }}>Sort &amp; Filter Users</span>
+                            {(deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") && (
+                              <button
+                                onClick={() => {
+                                  setUserSortKey("name_asc");
+                                  setDeptFilter("");
+                                  setAccessFilter("all");
+                                }}
+                                style={{ fontSize: 10, fontWeight: 700, color: "#b91c1c", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Sort Options */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.05em" }}>
+                              Sort Options
+                            </div>
+                            <div style={{ display: "grid", gap: 3 }}>
+                              {[
+                                { key: "name_asc", label: "🔤 Name: A → Z (Default)" },
+                                { key: "name_desc", label: "🔤 Name: Z → A" },
+                                { key: "rights_desc", label: "📊 Most Rights Granted" },
+                                { key: "rights_asc", label: "📊 Fewest Rights Granted" },
+                                { key: "dept_asc", label: "🏢 By Department (A → Z)" },
+                                { key: "role_asc", label: "💼 By Role (A → Z)" },
+                              ].map((opt) => {
+                                const selected = userSortKey === opt.key;
+                                return (
+                                  <div
+                                    key={opt.key}
+                                    onClick={() => setUserSortKey(opt.key as UserSortKey)}
+                                    style={{
+                                      padding: "5px 8px",
+                                      borderRadius: 6,
+                                      cursor: "pointer",
+                                      fontSize: 11,
+                                      fontWeight: selected ? 700 : 500,
+                                      background: selected ? "rgba(1, 105, 111, 0.1)" : "transparent",
+                                      color: selected ? "var(--color-primary)" : "var(--color-text)",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between"
+                                    }}
+                                  >
+                                    <span>{opt.label}</span>
+                                    {selected && <span style={{ fontWeight: 800 }}>✓</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Access Filter Section */}
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: 4, letterSpacing: "0.05em" }}>
+                              Filter by Access
+                            </div>
+                            <select
+                              value={accessFilter}
+                              onChange={(e) => setAccessFilter(e.target.value as any)}
+                              style={{
+                                width: "100%",
+                                padding: "4px 8px",
+                                fontSize: 11,
+                                borderRadius: 6,
+                                border: "1px solid rgba(1, 105, 111, 0.2)",
+                                background: "rgba(255,255,255,0.9)",
+                                color: "var(--color-text)",
+                                outline: "none"
+                              }}
+                            >
+                              <option value="all">All Users</option>
+                              <option value="has_access">Has Active Rights (&gt;0)</option>
+                              <option value="no_access">No Rights Assigned (0)</option>
+                              <option value="admin">System Admins Only</option>
+                            </select>
+                          </div>
+
+                          {/* Department Filter Section */}
+                          {allDepartments.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: 4, letterSpacing: "0.05em" }}>
+                                Filter by Department
+                              </div>
+                              <select
+                                value={deptFilter}
+                                onChange={(e) => setDeptFilter(e.target.value)}
+                                style={{
+                                  width: "100%",
+                                  padding: "4px 8px",
+                                  fontSize: 11,
+                                  borderRadius: 6,
+                                  border: "1px solid rgba(1, 105, 111, 0.2)",
+                                  background: "rgba(255,255,255,0.9)",
+                                  color: "var(--color-text)",
+                                  outline: "none"
+                                }}
+                              >
+                                <option value="">All Departments</option>
+                                {allDepartments.map((dept) => (
+                                  <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </th>
                     {DOMAIN_CATALOG.map((domain) => (
                       <th key={domain.slug} style={{ ...columnHeaderStyle, width: "8.3%" }}>
                         <div style={{ display: "grid", justifyItems: "center", gap: 4 }}>

@@ -1,6 +1,5 @@
 import React from "react";
 import { Outlet, Navigate, useLocation } from "react-router-dom";
-import { Topbar } from "./Topbar";
 import { Sidebar } from "./Sidebar";
 import { SecondarySidebar } from "./SecondarySidebar";
 import { useAuth } from "../auth/useAuth";
@@ -23,24 +22,21 @@ export const AppShell: React.FC = () => {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
-      <Topbar />
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Sidebar />
-        <SecondarySidebar />
-        <main
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            overflowX: "hidden",
-            background: "var(--color-bg)",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Outlet />
-        </main>
-      </div>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <Sidebar />
+      <SecondarySidebar />
+      <main
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          background: "var(--color-bg)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Outlet />
+      </main>
     </div>
   );
 };

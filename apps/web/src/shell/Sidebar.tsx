@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { useAuth } from "../auth/useAuth";
 import { hasDomainAccess, isApprovedUser } from "../auth/permissions";
+import { SidebarHeader } from "./Topbar";
 
 interface NavItem {
   label: string;
@@ -38,16 +39,19 @@ export const Sidebar: React.FC = () => {
       style={{
         width: 220,
         minWidth: 220,
+        height: "100%",
         background: "var(--color-surface)",
         borderRight: "1px solid var(--color-border)",
         display: "flex",
         flexDirection: "column",
-        overflowY: "auto",
         flexShrink: 0,
       }}
     >
-      {/* Main nav */}
-      <div style={{ padding: "10px 8px 4px" }}>
+      <SidebarHeader />
+
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {/* Main nav */}
+        <div style={{ padding: "10px 8px 4px" }}>
         <div
           style={{
             fontSize: "var(--fs-xs)",
@@ -195,6 +199,7 @@ export const Sidebar: React.FC = () => {
             </span>
           </NavLink>
         )}
+      </div>
       </div>
     </nav>
   );

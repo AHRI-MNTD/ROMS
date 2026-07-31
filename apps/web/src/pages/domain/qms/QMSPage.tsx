@@ -4,7 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
 import logoAhri from "../../../assets/logo_ahri.png";
 import logoRoms from "../../../assets/Roms.png";
-
+import { useAuth } from "../../../auth/useAuth";
+import { hasTabAccess } from "../../../auth/permissions";
 
 import QMSDashboardView from "./QMSDashboardView";
 import QMSReviewerView from "./QMSReviewerView";
@@ -112,10 +113,36 @@ const suggestNextCode = (type: string, sops: SOPItem[]): string => {
 export default function QMSPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+
+  const canAccessDashboard = useMemo(() => hasTabAccess(user?.roles, "qms", "overview", user?.permissions), [user]);
+  const canAccessAuthor = useMemo(() => hasTabAccess(user?.roles, "qms", "author", user?.permissions), [user]);
+  const canAccessQO = useMemo(() => hasTabAccess(user?.roles, "qms", "qo", user?.permissions), [user]);
+  const canAccessAuthorizer = useMemo(() => hasTabAccess(user?.roles, "qms", "review-sop", user?.permissions), [user]);
 
   // Navigation tabs: "overview" (Landing Hub), "sops" (Viewer Library), "author" (Author dashboard), "qo" (QO dashboard), "review-sop" (Reviewers), "resources" (Guides & WHO links)
   const [activeTab, setActiveTab] = useState<"overview" | "sops" | "author" | "qo" | "review-sop" | "resources">("overview");
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+
+  useEffect(() => {
+    if ((activeTab === "overview" || activeTab === "sops" || activeTab === "resources") && !canAccessDashboard) {
+      if (canAccessAuthor) setActiveTab("author");
+      else if (canAccessQO) setActiveTab("qo");
+      else if (canAccessAuthorizer) setActiveTab("review-sop");
+    } else if (activeTab === "author" && !canAccessAuthor) {
+      if (canAccessDashboard) setActiveTab("overview");
+      else if (canAccessQO) setActiveTab("qo");
+      else if (canAccessAuthorizer) setActiveTab("review-sop");
+    } else if (activeTab === "qo" && !canAccessQO) {
+      if (canAccessDashboard) setActiveTab("overview");
+      else if (canAccessAuthor) setActiveTab("author");
+      else if (canAccessAuthorizer) setActiveTab("review-sop");
+    } else if (activeTab === "review-sop" && !canAccessAuthorizer) {
+      if (canAccessDashboard) setActiveTab("overview");
+      else if (canAccessAuthor) setActiveTab("author");
+      else if (canAccessQO) setActiveTab("qo");
+    }
+  }, [activeTab, canAccessDashboard, canAccessAuthor, canAccessQO, canAccessAuthorizer]);
 
   // Filtering states
   const [searchText, setSearchText] = useState<string>("");
@@ -856,6 +883,7 @@ export default function QMSPage() {
                   {
                     id: "sops",
                     label: "Library",
+                    allowed: canAccessDashboard,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
@@ -865,6 +893,7 @@ export default function QMSPage() {
                   {
                     id: "author",
                     label: "Authoring",
+                    allowed: canAccessAuthor,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
@@ -874,6 +903,7 @@ export default function QMSPage() {
                   {
                     id: "qo",
                     label: "Controls",
+                    allowed: canAccessQO,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
@@ -883,13 +913,14 @@ export default function QMSPage() {
                   {
                     id: "review-sop",
                     label: "Approval",
+                    allowed: canAccessAuthorizer,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     )
                   }
-                ].map(tab => {
+                ].filter((t) => t.allowed).map((tab) => {
                   const isActive = activeTab === tab.id;
                   const isHovered = hoveredTab === tab.id;
                   return (
@@ -978,6 +1009,7 @@ export default function QMSPage() {
                   {
                     id: "sops",
                     title: "SOP Library and Reference",
+                    allowed: canAccessDashboard,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 20, height: 20, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
@@ -1018,6 +1050,7 @@ export default function QMSPage() {
                   {
                     id: "author",
                     title: "SOP Drafting and Authoring",
+                    allowed: canAccessAuthor,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 20, height: 20, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
@@ -1058,6 +1091,7 @@ export default function QMSPage() {
                   {
                     id: "qo",
                     title: "SOP Quality Controls",
+                    allowed: canAccessQO,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 20, height: 20, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
@@ -1091,6 +1125,7 @@ export default function QMSPage() {
                   {
                     id: "review-sop",
                     title: "SOP Approval and Sign-off",
+                    allowed: canAccessAuthorizer,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 20, height: 20, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1131,6 +1166,7 @@ export default function QMSPage() {
                   {
                     id: "resources",
                     title: "Resources Library",
+                    allowed: canAccessDashboard,
                     icon: (
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#e11d48" style={{ width: 20, height: 20, flexShrink: 0 }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -1168,60 +1204,72 @@ export default function QMSPage() {
                     ],
                     subtitle: "Guides, Templates, and Standards"
                   }
-                ].map((card) => (
-                  <div
-                    key={card.id}
-                    onClick={() => {
-                      setActiveTab(card.id as any);
-                      setCurrentPage(1);
-                    }}
-                    style={{
-                      background: "var(--color-surface)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "20px",
-                      padding: "26px 22px 22px",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      transition: "all 0.2s ease-in-out",
-                      boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
-                      minHeight: "300px",
-                      height: "340px"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-4px)";
-                      e.currentTarget.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.08)";
-                      e.currentTarget.style.borderColor = "var(--color-primary)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.04)";
-                      e.currentTarget.style.borderColor = "var(--color-border)";
-                    }}
-                  >
-                    {/* Header with Icon in front of neutral title text */}
-                    <h1
+                ].map((card) => {
+                  const isAllowed = card.allowed;
+                  return (
+                    <div
+                      key={card.id}
+                      onClick={() => {
+                        if (!isAllowed) return;
+                        setActiveTab(card.id as any);
+                        setCurrentPage(1);
+                      }}
                       style={{
-                        fontSize: "14px",
-                        fontWeight: 800,
-                        color: "var(--color-text)",
-                        margin: 0,
-                        lineHeight: "1.3",
-                        borderBottom: "1px solid var(--color-border)",
-                        paddingBottom: "10px",
-                        marginBottom: "12px",
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "20px",
+                        padding: "26px 22px 22px",
+                        cursor: isAllowed ? "pointer" : "not-allowed",
+                        opacity: isAllowed ? 1 : 0.55,
                         display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        width: "100%"
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        transition: "all 0.2s ease-in-out",
+                        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+                        minHeight: "300px",
+                        height: "340px",
+                        position: "relative"
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isAllowed) return;
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.08)";
+                        e.currentTarget.style.borderColor = "var(--color-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isAllowed) return;
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.04)";
+                        e.currentTarget.style.borderColor = "var(--color-border)";
                       }}
                     >
-                      {card.icon}
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{card.title}</span>
-                    </h1>
+                      {/* Header with Icon in front of neutral title text */}
+                      <h1
+                        style={{
+                          fontSize: "14px",
+                          fontWeight: 800,
+                          color: "var(--color-text)",
+                          margin: 0,
+                          lineHeight: "1.3",
+                          borderBottom: "1px solid var(--color-border)",
+                          paddingBottom: "10px",
+                          marginBottom: "12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          width: "100%"
+                        }}
+                      >
+                        {card.icon}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{card.title}</span>
+                        {!isAllowed && (
+                          <span style={{ fontSize: "10px", fontWeight: 700, background: "rgba(220,38,38,0.12)", color: "#b91c1c", padding: "2px 8px", borderRadius: "12px", marginLeft: "auto", flexShrink: 0 }}>
+                            🔒 Restricted
+                          </span>
+                        )}
+                      </h1>
 
                     {/* Middle area with bullets */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px", justifyContent: "flex-start", paddingLeft: "4px" }}>
@@ -1258,7 +1306,8 @@ export default function QMSPage() {
                       </h3>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
           )}

@@ -3,10 +3,10 @@ import { DOMAIN_CATALOG } from "@roms/shared";
 export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   LAB_SCIENTIST: {
     biospecimen: ["Dashboard", "Sample Collection", "Processing"],
-    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out"],
+    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s"],
     "lab-workflow": ["Dashboard", "Protocols", "Experiments"],
     "data-management": ["Dashboard"],
-    qms: ["SOP Library"],
+    qms: ["Dashboard", "Author"],
   },
   DATA_MANAGER: {
     biospecimen: ["Dashboard"],
@@ -18,8 +18,8 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory", "Inventory Manager", "Master Data"],
-    qms: ["Dashboard", "SOP Library", "Audits"],
+    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
+    qms: ["Dashboard", "Author", "Quality Officer", "Audits", "CAPA"],
     hr: ["Dashboard", "Profiles"],
     finance: ["Dashboard", "Grants", "Budgets"],
     participant: ["Dashboard"],
@@ -30,7 +30,7 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   PRINCIPAL_INVESTIGATOR: {
     biospecimen: ["Dashboard", "Retrieval"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "Audits"],
+    qms: ["Dashboard", "Authorizer", "Audits"],
     "lab-workflow": ["Dashboard", "Runs"],
     "data-management": ["Dashboard", "Studies", "Analytics"],
     hr: ["Dashboard"],
@@ -42,7 +42,7 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   QA_OFFICER: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard"],
-    qms: ["Dashboard", "SOP Library", "Audits", "CAPA"],
+    qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA"],
     "lab-workflow": ["Dashboard"],
     "data-management": ["Dashboard"],
     hr: ["Dashboard"],
@@ -76,7 +76,7 @@ export const SUBFUNCTION_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "budget-cost-allocation": "Dashboard",
   },
   qms: {
-    "sop-authoring-control": "SOP Library",
+    "sop-authoring-control": "Dashboard",
     "training-acknowledgment": "Training",
     "audits-capa": "Audits",
     "incident-deviation-reporting": "CAPA",
@@ -136,6 +136,7 @@ export const SUBFUNCTION_RIGHTS_MAP: Record<string, Record<string, string>> = {
 // Maps layout tab paths to their required right
 export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
   inventory: {
+    "overview": "Dashboard",
     "dashboard": "Dashboard",
     "current-inventory": "Current Inventory",
     "check-in": "Check In",
@@ -144,6 +145,15 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "inventory-manager": "Inventory Manager",
     "analytics": "Analytics",
     "master-data": "Master Data",
+  },
+  qms: {
+    "overview": "Dashboard",
+    "sops": "Dashboard",
+    "resources": "Dashboard",
+    "author": "Author",
+    "create-sop": "Author",
+    "qo": "Quality Officer",
+    "review-sop": "Authorizer",
   },
   hr: {
     "dashboard": "Dashboard",
@@ -169,7 +179,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
         const DOMAIN_RIGHTS: Record<string, string[]> = {
           biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
           inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
-          qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
+          qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
           "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
           "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
           infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
@@ -199,7 +209,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
     const DOMAIN_RIGHTS: Record<string, string[]> = {
       biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
       inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
-      qms: ["Dashboard", "SOP Library", "Document Control", "Audits", "CAPA", "Training", "Analytics"],
+      qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
       "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
       "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
       infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],

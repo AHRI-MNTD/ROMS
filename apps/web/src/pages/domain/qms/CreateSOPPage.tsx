@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchSOPs } from "../../../api/domains";
+import { useAuth } from "../../../auth/useAuth";
+import { hasTabAccess } from "../../../auth/permissions";
 
 // Custom Circle Option Dropdown (Single-select)
 interface CircleDropdownProps {
@@ -1503,6 +1505,33 @@ export default function CreateSOPPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editCode = searchParams.get("edit");
+
+  const { user } = useAuth();
+  const canAccessAuthor = hasTabAccess(user?.roles, "qms", "create-sop", user?.permissions);
+
+  if (!canAccessAuthor) {
+    return (
+      <div style={{ padding: "48px 28px", textAlign: "center" }}>
+        <div style={{ fontSize: 42, marginBottom: 12 }}>🔒</div>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--color-text)", marginBottom: 8 }}>
+          Access Restricted — SOP Authoring Right Required
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--color-text-muted)", maxWidth: 500, margin: "0 auto 20px" }}>
+          You do not have permission to draft or create SOPs. Please contact your system administrator or QA Officer to grant the <strong>Author</strong> right in User Rights Control.
+        </p>
+        <button
+          onClick={() => navigate("/domains/qms/sop-authoring-control")}
+          style={{
+            padding: "8px 18px", fontSize: 13, fontWeight: 600, borderRadius: 8,
+            border: "1px solid var(--color-primary)", background: "var(--color-primary)",
+            color: "#fff", cursor: "pointer"
+          }}
+        >
+          Return to QMS Dashboard
+        </button>
+      </div>
+    );
+  }
 
   const formRef = useRef<HTMLFormElement>(null);
 

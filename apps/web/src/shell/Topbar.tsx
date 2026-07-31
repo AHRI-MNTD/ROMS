@@ -522,7 +522,7 @@ const SignOutModal: React.FC<SignOutModalProps> = ({ user, onCancel, onConfirm }
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Topbar ───────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-export const Topbar: React.FC = () => {
+export const SidebarHeader: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [showSignOut, setShowSignOut] = useState(false);
@@ -540,19 +540,18 @@ export const Topbar: React.FC = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-
   return (
     <>
       <header style={{
-        height: 40, minHeight: 40,
+        height: 48, minHeight: 48,
         background: "var(--color-surface)",
         borderBottom: "1px solid var(--color-border)",
         display: "flex", alignItems: "center",
-        padding: "0 14px", gap: 10, flexShrink: 0, zIndex: 100,
+        padding: "0 12px", gap: 8, flexShrink: 0, zIndex: 100,
       }}>
-        {/* AHRI logo — perfect circle, fills edge-to-edge */}
+        {/* AHRI logo */}
         <div style={{
-          width: 28, height: 28,
+          width: 30, height: 30,
           borderRadius: "50%",
           border: "1.5px solid var(--color-primary)",
           background: "var(--color-primary-highlight)",
@@ -566,15 +565,8 @@ export const Topbar: React.FC = () => {
           />
         </div>
 
-        <span style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-md)", color: "var(--color-text)", marginRight: 4 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 800, color: "var(--color-text)", letterSpacing: "0.04em" }}>
           ROMS
-        </span>
-        <span style={{
-          fontSize: "var(--fs-xxs)", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
-          padding: "2px 7px", borderRadius: 20,
-          background: "var(--color-primary-highlight)", color: "var(--color-primary)",
-        }}>
-          v0.1
         </span>
 
         <div style={{ flex: 1 }} />
@@ -583,7 +575,8 @@ export const Topbar: React.FC = () => {
         <button
           onClick={toggleTheme} title="Toggle theme"
           style={{
-            width: 28, height: 28, borderRadius: "var(--radius-sm)",
+            width: 26, height: 26, borderRadius: "var(--radius-sm)",
+            border: "none", background: "transparent", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "var(--color-text-muted)", transition: "background 0.14s, color 0.14s",
           }}
@@ -601,7 +594,7 @@ export const Topbar: React.FC = () => {
               onClick={() => setShowDropdown((v) => !v)}
               title={user.displayName}
               style={{
-                width: 30, height: 30, borderRadius: "50%",
+                width: 26, height: 26, borderRadius: "50%",
                 background: "var(--color-primary)", color: "#fff",
                 border: `2px solid ${showDropdown ? "var(--color-primary-hover)" : "transparent"}`,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -609,14 +602,14 @@ export const Topbar: React.FC = () => {
                 transform: showDropdown ? "scale(1.08)" : "scale(1)",
               }}
             >
-              <UserPersonIcon size={16} />
+              <UserPersonIcon size={14} />
             </button>
 
             {/* Dropdown */}
             {showDropdown && (
               <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0,
-                width: 248,
+                position: "absolute", top: "calc(100% + 8px)", right: -55,
+                width: 260,
                 background: "var(--color-surface-2)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "var(--radius-lg)",
@@ -715,3 +708,5 @@ export const Topbar: React.FC = () => {
     </>
   );
 };
+
+export const Topbar = SidebarHeader;
