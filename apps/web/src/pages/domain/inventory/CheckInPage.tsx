@@ -480,20 +480,199 @@ export default function CheckInPage() {
     },
   });
 
+  const isExisting = mode === "existing";
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
+      <div
+        style={{
+          padding: 18,
+          borderRadius: "var(--radius)",
+          border: isExisting ? "1px solid var(--color-primary)" : "1px solid #6366f1",
+          background: isExisting
+            ? "linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%)"
+            : "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(99, 102, 241, 0.05) 100%)",
+          boxShadow: isExisting
+            ? "0 4px 16px rgba(1, 105, 111, 0.06)"
+            : "0 4px 16px rgba(99, 102, 241, 0.08)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        {/* Prominent Mode Switcher at the very top */}
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 4,
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 10,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 6,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMode("existing")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 7,
+              border: isExisting ? "1px solid var(--color-primary)" : "1px solid transparent",
+              background: isExisting ? "var(--color-surface-2)" : "transparent",
+              color: isExisting ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: isExisting ? 700 : 500,
+              fontSize: "var(--fs-xs)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              cursor: "pointer",
+              transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: isExisting ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: isExisting ? "var(--color-primary-soft)" : "var(--color-surface-offset)",
+                color: isExisting ? "var(--color-primary)" : "var(--color-text-muted)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 16,
+                flexShrink: 0,
+                transition: "all 0.2s ease",
+              }}
+            >
+              📦
+            </div>
+            <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontWeight: 700, fontSize: "12px" }}>Existing Item</span>
+                {isExisting && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      padding: "1px 7px",
+                      borderRadius: 10,
+                      background: "var(--color-primary-highlight)",
+                      color: "var(--color-primary)",
+                      fontWeight: 700,
+                      letterSpacing: "0.03em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Active Mode
+                  </span>
+                )}
+              </div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "var(--color-text-muted)",
+                  fontWeight: 400,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  marginTop: 2,
+                }}
+              >
+                Select item from inventory catalog & add quantity
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMode("new")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 7,
+              border: !isExisting ? "1px solid #6366f1" : "1px solid transparent",
+              background: !isExisting ? "var(--color-surface-2)" : "transparent",
+              color: !isExisting ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: !isExisting ? 700 : 500,
+              fontSize: "var(--fs-xs)",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              cursor: "pointer",
+              transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: !isExisting ? "0 2px 8px rgba(99, 102, 241, 0.15)" : "none",
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: !isExisting ? "rgba(99, 102, 241, 0.12)" : "var(--color-surface-offset)",
+                color: !isExisting ? "#6366f1" : "var(--color-text-muted)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 16,
+                flexShrink: 0,
+                transition: "all 0.2s ease",
+              }}
+            >
+              ✨
+            </div>
+            <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontWeight: 700, fontSize: "12px" }}>New Item</span>
+                {!isExisting && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      padding: "1px 7px",
+                      borderRadius: 10,
+                      background: "rgba(99, 102, 241, 0.15)",
+                      color: "#6366f1",
+                      fontWeight: 700,
+                      letterSpacing: "0.03em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Active Mode
+                  </span>
+                )}
+              </div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "var(--color-text-muted)",
+                  fontWeight: 400,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  marginTop: 2,
+                }}
+              >
+                Register a new stock item and enter opening details
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Section Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check In</div>
-          <div style={{ display: "flex", gap: 16 }}>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              <input type="radio" name="checkin-mode" checked={mode === "existing"} onChange={() => setMode("existing")} />
-              Existing item
-            </label>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
-              <input type="radio" name="checkin-mode" checked={mode === "new"} onChange={() => setMode("new")} />
-              New item
-            </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check In Form</div>
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                padding: "2px 8px",
+                borderRadius: "12px",
+                background: isExisting ? "var(--color-primary-soft)" : "rgba(99, 102, 241, 0.1)",
+                color: isExisting ? "var(--color-primary)" : "#6366f1",
+                border: isExisting ? "1px solid var(--color-primary-highlight)" : "1px solid rgba(99, 102, 241, 0.2)",
+              }}
+            >
+              {isExisting ? "Existing Item" : "New Item"}
+            </span>
           </div>
         </div>
 
@@ -514,7 +693,7 @@ export default function CheckInPage() {
         )}
 
         {mode === "existing" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+          <div key="existing-form" className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
             <InventoryItemSelect
               label="Select Item"
               items={inventoryItems}
@@ -581,7 +760,7 @@ export default function CheckInPage() {
         )}
 
         {mode === "new" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+          <div key="new-form" className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Code_No
               <input value={newSku} onChange={(e) => setNewSku(e.target.value)} style={inputStyle} />

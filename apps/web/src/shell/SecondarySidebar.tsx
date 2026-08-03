@@ -28,6 +28,13 @@ export const SecondarySidebar: React.FC = () => {
   const domainSlug = match ? match[1] : null;
   const domain = DOMAIN_CATALOG.find((d) => d.slug === domainSlug);
 
+  // Automatically expand Secondary Sidebar whenever the user navigates to a domain from Main Sidebar
+  useEffect(() => {
+    if (domainSlug) {
+      setIsCollapsed(false);
+    }
+  }, [domainSlug]);
+
   if (!domain) return null;
 
   const accessibleSubfunctions = domain.subfunctions.filter((sub) =>
@@ -48,17 +55,40 @@ export const SecondarySidebar: React.FC = () => {
         flexShrink: 0,
         transition: "width 0.2s ease, min-width 0.2s ease",
         position: "relative",
+        zIndex: 10,
       }}
     >
-      {/* ── Header Area ── */}
-      <div style={{ padding: isCollapsed ? "12px 6px 8px" : "14px 10px 8px" }}>
+      {/* ── Row 1: Topbar spacer matching 48px SidebarHeader ── */}
+      <div
+        style={{
+          height: 48,
+          minHeight: 48,
+          borderBottom: "1px solid var(--color-border)",
+          background: "var(--color-surface)",
+          flexShrink: 0,
+        }}
+      />
+
+      {/* ── Row 2: Secondary Sidebar Header with Collapse Toggle Button ── */}
+      <div
+        style={{
+          height: 40,
+          minHeight: 40,
+          boxSizing: "border-box",
+          padding: isCollapsed ? "0 6px" : "0 10px",
+          display: "flex",
+          alignItems: "center",
+          borderBottom: "1px solid var(--color-divider)",
+          flexShrink: 0,
+        }}
+      >
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: isCollapsed ? "center" : "space-between",
+            width: "100%",
             gap: 6,
-            marginBottom: 4,
           }}
         >
           {!isCollapsed && (
@@ -129,7 +159,6 @@ export const SecondarySidebar: React.FC = () => {
             </svg>
           </button>
         </div>
-        <div style={{ borderTop: "1px solid var(--color-divider)", marginTop: 8, marginBottom: 6 }} />
       </div>
 
       {/* ── Subfunctions Navigation Items ── */}

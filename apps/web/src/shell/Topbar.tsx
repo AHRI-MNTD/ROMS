@@ -522,7 +522,11 @@ const SignOutModal: React.FC<SignOutModalProps> = ({ user, onCancel, onConfirm }
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Topbar ───────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-export const SidebarHeader: React.FC = () => {
+export interface SidebarHeaderProps {
+  isCollapsed?: boolean;
+}
+
+export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ isCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [showSignOut, setShowSignOut] = useState(false);
@@ -543,21 +547,30 @@ export const SidebarHeader: React.FC = () => {
   return (
     <>
       <header style={{
-        height: 48, minHeight: 48,
+        height: 48,
+        minHeight: 48,
         background: "var(--color-surface)",
         borderBottom: "1px solid var(--color-border)",
-        display: "flex", alignItems: "center",
-        padding: "0 12px", gap: 8, flexShrink: 0, zIndex: 100,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: isCollapsed ? "center" : "flex-start",
+        padding: isCollapsed ? "0 6px" : "0 12px",
+        gap: 8,
+        flexShrink: 0, zIndex: 100,
+        boxSizing: "border-box",
       }}>
-        {/* AHRI logo */}
-        <div style={{
-          width: 30, height: 30,
-          borderRadius: "50%",
-          border: "1.5px solid var(--color-primary)",
-          background: "var(--color-primary-highlight)",
-          overflow: "hidden",
-          flexShrink: 0,
-        }}>
+        {/* AHRI logo - ALWAYS VISIBLE */}
+        <div
+          title="AHRI - ROMS"
+          style={{
+            width: 30, height: 30,
+            borderRadius: "50%",
+            border: "1.5px solid var(--color-primary)",
+            background: "var(--color-primary-highlight)",
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
           <img
             src={logoAhri}
             alt="AHRI Logo"
@@ -565,30 +578,17 @@ export const SidebarHeader: React.FC = () => {
           />
         </div>
 
-        <span style={{ fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 800, color: "var(--color-text)", letterSpacing: "0.04em" }}>
-          ROMS
-        </span>
+        {!isCollapsed && (
+          <span style={{ fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 800, color: "var(--color-text)", letterSpacing: "0.04em" }}>
+            ROMS
+          </span>
+        )}
 
-        <div style={{ flex: 1 }} />
-
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme} title="Toggle theme"
-          style={{
-            width: 26, height: 26, borderRadius: "var(--radius-sm)",
-            border: "none", background: "transparent", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "var(--color-text-muted)", transition: "background 0.14s, color 0.14s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-surface-offset)"; e.currentTarget.style.color = "var(--color-text)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "var(--color-text-muted)"; }}
-        >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-        </button>
+        {!isCollapsed && <div style={{ flex: 1 }} />}
 
         {/* User avatar + dropdown */}
-        {user && (
-          <div ref={dropdownRef} style={{ position: "relative" }}>
+        {!isCollapsed && user && (
+          <div ref={dropdownRef} style={{ position: "relative", flexShrink: 0, zIndex: 2000 }}>
             <button
               id="user-avatar-btn"
               onClick={() => setShowDropdown((v) => !v)}
@@ -608,13 +608,15 @@ export const SidebarHeader: React.FC = () => {
             {/* Dropdown */}
             {showDropdown && (
               <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: -55,
-                width: 260,
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: -55,
+                width: 265,
                 background: "var(--color-surface-2)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "var(--radius-lg)",
-                boxShadow: "0 12px 36px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)",
-                zIndex: 500, overflow: "hidden",
+                boxShadow: "0 16px 48px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12)",
+                zIndex: 9999, overflow: "hidden",
                 animation: "fadeUp 0.14s ease both",
               }}>
                 {/* User info */}
@@ -655,6 +657,35 @@ export const SidebarHeader: React.FC = () => {
 
                 {/* Menu items */}
                 <div style={{ padding: "6px" }}>
+                  {/* Theme Toggle inside Profile Menu */}
+                  <button
+                    id="theme-toggle-dropdown-btn"
+                    onClick={() => {
+                      toggleTheme();
+                    }}
+                    style={{
+                      width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
+                      border: "none", background: "transparent",
+                      color: "var(--color-text)", fontSize: "var(--fs-xs)", fontWeight: 600,
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
+                      textAlign: "left", transition: "background 0.12s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-offset)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <span style={{ color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>
+                        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                      </span>
+                      <span>Theme</span>
+                    </div>
+                    <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 700, color: "var(--color-primary)", textTransform: "capitalize" }}>
+                      {theme === "dark" ? "Dark Mode" : "Light Mode"}
+                    </span>
+                  </button>
+
+                  <div style={{ height: 1, background: "var(--color-border)", margin: "4px 6px" }} />
+
                   <button
                     id="change-password-btn"
                     onClick={() => { setShowDropdown(false); setShowChangePw(true); }}

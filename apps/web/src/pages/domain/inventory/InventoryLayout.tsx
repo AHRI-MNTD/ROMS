@@ -113,7 +113,16 @@ export default function InventoryLayout() {
       )}
 
       {/* ── Page content — fills remaining height ── */}
-      <div style={{ flex: 1, minHeight: 0, padding: isOverview ? "16px 24px 24px" : "16px 28px 24px 28px", overflowY: "auto" }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          padding: isOverview ? "12px 24px 16px" : "16px 28px 24px 28px",
+          overflowY: isOverview ? "hidden" : "auto",
+          display: isOverview ? "flex" : "block",
+          flexDirection: isOverview ? "column" : undefined,
+        }}
+      >
         {isCurrentPathAllowed ? (
           <Outlet />
         ) : (
