@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
-import { fetchSOPs } from "../../../api/domains";
+import { fetchSOPs, fetchAllUsers } from "../../../api/domains";
+import { useAuth } from "../../../auth/useAuth";
 import logoAhri from "../../../assets/logo_ahri.png";
 import logoRoms from "../../../assets/Roms.png";
-import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
 import QMSDashboardView from "./QMSDashboardView";
@@ -155,6 +155,12 @@ export default function QMSPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   // SOP lists
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAllUsers().then(setUsers).catch(console.error);
+  }, []);
+
   const [sops, setSops] = useState<SOPItem[]>([]);
   const [isSopsLoading, setIsSopsLoading] = useState<boolean>(false);
   const [sopsError, setSopsError] = useState<string | null>(null);
@@ -195,7 +201,13 @@ export default function QMSPage() {
   const [requestType, setRequestType] = useState<"Procedure SOP" | "Equipment SOP" | "Analysis SOP">("Procedure SOP");
   const [requestVerifier, setRequestVerifier] = useState("");
   const [requestAuthorizer, setRequestAuthorizer] = useState("");
-  const [requestAuthorName, setRequestAuthorName] = useState("");
+  const [requestAuthorName, setRequestAuthorName] = useState(user?.displayName || "");
+
+  useEffect(() => {
+    if (user?.displayName && !requestAuthorName) {
+      setRequestAuthorName(user.displayName);
+    }
+  }, [user, requestAuthorName]);
 
   // QO: Setup Header & Code modal states
   const [selectedSopForQOApprove, setSelectedSopForQOApprove] = useState<SOPItem | null>(null);
@@ -1393,10 +1405,11 @@ export default function QMSPage() {
                     <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author Name / Initials *</label>
                     <input
                       type="text"
+                      disabled
                       placeholder=" "
                       value={requestAuthorName}
                       onChange={(e) => setRequestAuthorName(e.target.value)}
-                      style={{ ...inputStyle, padding: "10px 12px" }}
+                      style={{ ...inputStyle, padding: "10px 12px", backgroundColor: "var(--color-surface-offset)", cursor: "not-allowed" }}
                     />
                   </div>
 
@@ -1506,10 +1519,11 @@ export default function QMSPage() {
                         <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author Name / Initials *</label>
                         <input
                           type="text"
+                          disabled
                           placeholder=" "
                           value={requestAuthorName}
                           onChange={(e) => setRequestAuthorName(e.target.value)}
-                          style={{ ...inputStyle, padding: "10px 12px" }}
+                          style={{ ...inputStyle, padding: "10px 12px", backgroundColor: "var(--color-surface-offset)", cursor: "not-allowed" }}
                         />
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: "600px", margin: "0 auto" }}>
@@ -1663,11 +1677,21 @@ export default function QMSPage() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
                     <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Verifier User Name *</label>
-                    <input type="text" placeholder="Enter verifier name" value={qoVerifier} onChange={(e) => setQoVerifier(e.target.value)} style={{ ...inputStyle, padding: "10px 12px" }} />
+                    <select value={qoVerifier} onChange={(e) => setQoVerifier(e.target.value)} style={{ ...inputStyle, padding: "10px 12px", outline: "none", backgroundColor: "var(--color-surface-2)" }}>
+                      <option value="" disabled>Select Verifier</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.displayName}>{u.displayName}</option>
+                      ))}
+                    </select>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "600px" }}>
                     <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Authorizer Name (LM) *</label>
-                    <input type="text" placeholder="Enter authorizer name" value={qoAuthorizer} onChange={(e) => setQoAuthorizer(e.target.value)} style={{ ...inputStyle, padding: "10px 12px" }} />
+                    <select value={qoAuthorizer} onChange={(e) => setQoAuthorizer(e.target.value)} style={{ ...inputStyle, padding: "10px 12px", outline: "none", backgroundColor: "var(--color-surface-2)" }}>
+                      <option value="" disabled>Select Authorizer</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.displayName}>{u.displayName}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div style={{ background: "var(--color-bg)", padding: "14px 20px", borderTop: "1px solid var(--color-border)", display: "flex", justifyContent: "flex-end", gap: "12px" }}>

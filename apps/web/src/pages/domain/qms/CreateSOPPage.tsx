@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchSOPs } from "../../../api/domains";
+import { fetchSOPs, fetchAllUsers } from "../../../api/domains";
 import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
@@ -1553,8 +1553,14 @@ export default function CreateSOPPage() {
   const [sopStatus, setSopStatus] = useState("Draft");
   const [owningSite, setOwningSite] = useState("AHRI – Addis Ababa");
   const [owningLabUnit, setOwningLabUnit] = useState("MNTD Molecular Lab");
-  const [proposedVerifier, setProposedVerifier] = useState("QA Officer");
-  const [proposedAuthorizer, setProposedAuthorizer] = useState("Laboratory Manager");
+  const [proposedVerifier, setProposedVerifier] = useState("");
+  const [proposedAuthorizer, setProposedAuthorizer] = useState("");
+
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchAllUsers().then(setUsers).catch(console.error);
+  }, []);
 
   // A. Annual Review of Document
   const [annualReviews, setAnnualReviews] = useState<{
@@ -2393,14 +2399,18 @@ export default function CreateSOPPage() {
 
                 <div style={{ width: "200px", display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Author *</label>
-                  <input
-                    type="text"
+                  <select
+                    disabled
                     required
-                    placeholder="Author initials/name"
                     value={enteredBy}
                     onChange={(e) => setEnteredBy(e.target.value)}
-                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-2)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none" }}
-                  />
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "not-allowed" }}
+                  >
+                    <option value="" disabled>Select Author</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.displayName}>{u.displayName}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -2478,24 +2488,32 @@ export default function CreateSOPPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, borderTop: "1px solid var(--color-divider)", paddingTop: 16 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed Verifier User (assigned by QO)</label>
-                  <input
-                    type="text"
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed Verifier (QO)</label>
+                  <select
                     disabled
-                    placeholder="Assigned by QO"
                     value={proposedVerifier}
-                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", cursor: "not-allowed" }}
-                  />
+                    onChange={(e) => setProposedVerifier(e.target.value)}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "not-allowed" }}
+                  >
+                    <option value="" disabled>Select Verifier</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.displayName}>{u.displayName}</option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed Authorizer (LM - assigned by QO)</label>
-                  <input
-                    type="text"
+                  <label style={{ fontSize: "var(--fs-xs)", fontWeight: 600, color: "var(--color-text-muted)" }}>Proposed Authorizer (LM)</label>
+                  <select
                     disabled
-                    placeholder="Assigned by QO"
                     value={proposedAuthorizer}
-                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text-muted)", fontSize: "var(--fs-sm)", cursor: "not-allowed" }}
-                  />
+                    onChange={(e) => setProposedAuthorizer(e.target.value)}
+                    style={{ padding: "10px 14px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface-offset)", color: "var(--color-text)", fontSize: "var(--fs-sm)", outline: "none", cursor: "not-allowed" }}
+                  >
+                    <option value="" disabled>Select Authorizer</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.displayName}>{u.displayName}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

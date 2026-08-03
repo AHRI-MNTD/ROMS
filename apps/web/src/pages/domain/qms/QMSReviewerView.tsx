@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import logoAhri from "../../../assets/logo_ahri.png";
+import { useAuth } from "../../../auth/useAuth";
 
 
 import QMSFilterStrip, { matchesSopFilters } from "./QMSFilterStrip";
@@ -784,6 +785,7 @@ const formatGridToString = (gridData: any[], type: string) => {
 };
 
 export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onShareRequest, onSopApproved, showSuccessMessage }: QMSReviewerViewProps) {
+  const user = useAuth((s) => s.user);
   // Standardized filter states & sub-tabs
   const [reviewerSubTab, setReviewerSubTab] = useState<"approved" | "review">("approved");
   const [searchText, setSearchText] = useState<string>("");
@@ -985,9 +987,31 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
       };
     }
 
-    // GATE: Authorizer (LM) can only sign off after both Verifier (User) and Verifier (QO) have signed
+    const userDisplayName = user?.displayName || "";
+    const userRoles = user?.roles || [];
+
+    // GATE 1: Verifier (User) - strictly assigned user only
+    if (role === "Verifier (User)") {
+      const assignedVerifier = updatedSop.details?.proposedVerifier || updatedSop.details?.electronicSignatures?.verifierUser?.name;
+      const isAssigned = assignedVerifier && userDisplayName && userDisplayName.trim().toLowerCase() === assignedVerifier.trim().toLowerCase();
+      if (!isAssigned) {
+        alert(`Access Denied: You are currently logged in as "${userDisplayName || "Unknown User"}". Only the assigned Verifier ("${assignedVerifier || "Verifier User"}") can sign off on this section.`);
+        return;
+      }
+    }
+
+    // GATE 2: Verifier (QO) - Quality Officer role or QA Officer name only
+    if (role === "Verifier (QO)") {
+      const isQo = userRoles.includes("QUALITY_OFFICER") || userRoles.includes("QO") || userDisplayName.trim().toLowerCase() === "qa officer";
+      if (!isQo) {
+        alert(`Access Denied: You are currently logged in as "${userDisplayName || "Unknown User"}". Only a Quality Officer (QA Officer) can sign off on the Verifier (QO) section.`);
+        return;
+      }
+    }
+
+    // GATE 3: Authorizer (LM) - requires all verifiers approved AND assigned authorizer only
     if (role === "Authorizer (LM)") {
-      const currentEs = updatedSop.details.electronicSignatures;
+      const currentEs = updatedSop.details?.electronicSignatures || {};
       const userVerified = !!currentEs.verifierUser?.signedAt;
       const qoVerified = !!currentEs.verifierQo?.signedAt;
       if (!userVerified || !qoVerified) {
@@ -995,6 +1019,13 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
         if (!userVerified) missing.push("Verifier (User)");
         if (!qoVerified) missing.push("Verifier (QO)");
         alert(`Authorizer (LM) sign-off requires both verifiers to sign first.\n\nStill awaiting: ${missing.join(" and ")}.`);
+        return;
+      }
+
+      const assignedAuthorizer = updatedSop.details?.proposedAuthorizer || currentEs.authorizerLm?.name;
+      const isAssignedAuth = assignedAuthorizer && userDisplayName && userDisplayName.trim().toLowerCase() === assignedAuthorizer.trim().toLowerCase();
+      if (!isAssignedAuth) {
+        alert(`Access Denied: You are currently logged in as "${userDisplayName || "Unknown User"}". Only the assigned Authorizer ("${assignedAuthorizer || "Laboratory Manager"}") can sign off on this section.`);
         return;
       }
     }
@@ -1831,8 +1862,32 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                               const userVerified = !!currentEs?.verifierUser?.signedAt;
                               const qoVerified = !!currentEs?.verifierQo?.signedAt;
                               const bothVerifiersSigned = userVerified && qoVerified;
-                              const isAuthorizerSelected = panelRole === "Authorizer (LM)";
-                              const authorizerBlocked = isAuthorizerSelected && !bothVerifiersSigned;
+
+                              const userDisplayName = (user?.displayName || "").trim().toLowerCase();
+                              const userRoles = user?.roles || [];
+
+                              const assignedVerifier = (selectedSopForReview.details?.proposedVerifier || currentEs?.verifierUser?.name || "").trim().toLowerCase();
+                              const isAssignedVerifier = assignedVerifier !== "" && userDisplayName === assignedVerifier;
+
+                              const isQo = userRoles.includes("QUALITY_OFFICER") || userRoles.includes("QO") || userDisplayName === "qa officer";
+
+                              const assignedAuthorizer = (selectedSopForReview.details?.proposedAuthorizer || currentEs?.authorizerLm?.name || "").trim().toLowerCase();
+                              const isAssignedAuthorizer = assignedAuthorizer !== "" && userDisplayName === assignedAuthorizer;
+
+                              let isRoleAllowed = true;
+                              let roleBlockReason = "";
+
+                              if (panelRole === "Verifier (User)") {
+                                if (userVerified) { isRoleAllowed = false; roleBlockReason = "Already verified."; }
+                                else if (!isAssignedVerifier) { isRoleAllowed = false; roleBlockReason = `Logged in as "${user?.displayName || "User"}". Only assigned Verifier (${selectedSopForReview.details?.proposedVerifier || "Verifier User"}) can sign off.`; }
+                              } else if (panelRole === "Verifier (QO)") {
+                                if (qoVerified) { isRoleAllowed = false; roleBlockReason = "Already verified by QO."; }
+                                else if (!isQo) { isRoleAllowed = false; roleBlockReason = `Logged in as "${user?.displayName || "User"}". Only Quality Officer (QA Officer) can sign off.`; }
+                              } else if (panelRole === "Authorizer (LM)") {
+                                if (currentEs?.authorizerLm?.signedAt) { isRoleAllowed = false; roleBlockReason = "Already authorized."; }
+                                else if (!bothVerifiersSigned) { isRoleAllowed = false; roleBlockReason = "Authorizer section requires both verifiers to approve first."; }
+                                else if (!isAssignedAuthorizer) { isRoleAllowed = false; roleBlockReason = `Logged in as "${user?.displayName || "User"}". Only assigned Authorizer (${selectedSopForReview.details?.proposedAuthorizer || "Laboratory Manager"}) can sign off.`; }
+                              }
 
                               return (
                                 <>
@@ -1843,40 +1898,40 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                                       onChange={(e) => setPanelRole(e.target.value)}
                                       style={{ ...selectStyle, width: "100%", padding: "6px", background: "#ffffff", borderColor: "var(--color-primary)" }}
                                     >
-                                      <option value="Verifier (User)" disabled={userVerified}>
-                                        Verifier (User) - compliance with practice{userVerified ? " ✅" : ""}
+                                      <option value="Verifier (User)" disabled={userVerified || (!isAssignedVerifier && !userVerified)}>
+                                        Verifier (User) - compliance with practice{userVerified ? " ✅" : !isAssignedVerifier ? " 🔒 (Assigned User Only)" : ""}
                                       </option>
-                                      <option value="Verifier (QO)" disabled={qoVerified}>
-                                        Verifier (QO) - compliance with standard{qoVerified ? " ✅" : ""}
+                                      <option value="Verifier (QO)" disabled={qoVerified || (!isQo && !qoVerified)}>
+                                        Verifier (QO) - compliance with standard{qoVerified ? " ✅" : !isQo ? " 🔒 (QO Role Only)" : ""}
                                       </option>
-                                      <option value="Authorizer (LM)" disabled={!bothVerifiersSigned}>
-                                        Authorizer (LM) - line manager approval{!bothVerifiersSigned ? " 🔒" : ""}
+                                      <option value="Authorizer (LM)" disabled={!bothVerifiersSigned || (!isAssignedAuthorizer && bothVerifiersSigned)}>
+                                        Authorizer (LM) - line manager approval{!bothVerifiersSigned ? " 🔒 (Awaiting Verifiers)" : !isAssignedAuthorizer ? " 🔒 (Assigned Authorizer Only)" : ""}
                                       </option>
                                     </select>
                                   </div>
 
-                                  {authorizerBlocked && (
+                                  {!isRoleAllowed && roleBlockReason && (
                                     <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px", background: "#fef3c7", border: "1px dashed #f59e0b", borderRadius: 6 }}>
                                       <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#b45309" }}>
-                                        ⏳ Awaiting Verifier Sign-offs
+                                        🔒 Sign-off Restricted
                                       </span>
                                       <span style={{ fontSize: "10px", color: "#78350f", lineHeight: 1.4 }}>
-                                        Authorizer (LM) can only sign off after both {!userVerified && <strong>Verifier (User)</strong>}{!userVerified && !qoVerified && " and "}{!qoVerified && <strong>Verifier (QO)</strong>} {!userVerified && !qoVerified ? "have" : "has"} signed.
+                                        {roleBlockReason}
                                       </span>
                                     </div>
                                   )}
 
                                   <button
                                     onClick={() => handlePanelSignoff(panelRole)}
-                                    disabled={authorizerBlocked}
+                                    disabled={!isRoleAllowed}
                                     style={{
                                       ...btnBaseStyle,
                                       width: "100%",
-                                      background: authorizerBlocked ? "#d1d5db" : "var(--color-primary)",
-                                      color: authorizerBlocked ? "#9ca3af" : "#ffffff",
+                                      background: !isRoleAllowed ? "#d1d5db" : "var(--color-primary)",
+                                      color: !isRoleAllowed ? "#9ca3af" : "#ffffff",
                                       padding: "8px",
                                       justifyContent: "center",
-                                      cursor: authorizerBlocked ? "not-allowed" : "pointer"
+                                      cursor: !isRoleAllowed ? "not-allowed" : "pointer"
                                     }}
                                   >
                                     🖋️ Sign-off & Approve
