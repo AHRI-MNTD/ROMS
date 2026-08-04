@@ -36,3 +36,8 @@ export async function fetchStudies(page = 1): Promise<PaginatedResult<Record<str
   const resp = await apiClient.get("/domains/data-management/studies", { params: { page } });
   return resp.data as PaginatedResult<Record<string, unknown>>;
 }
+
+export async function fetchAllUsers(): Promise<Array<{ id: string; name: string; email?: string }>> {
+  const resp = await apiClient.get("/users");
+  return (resp.data?.data ?? resp.data ?? []) as Array<{ id: string; name: string; email?: string }>;
+}

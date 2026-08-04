@@ -76,7 +76,7 @@
   --color-surface-2: #ffffff;
   --color-surface-offset: #f0eeea;
   --color-border: #d8d5ce;
-  --color-divider: #e2dfd9;
+  --color-divider: #b0ada6;
   --color-text: #28251d;
   --color-text-muted: #7a7974;
   --color-text-faint: #bab9b4;
@@ -539,10 +539,10 @@ a:hover {
   z-index: 10;
   background: var(--color-bg);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 28px 12px 28px;
+  padding: 12px 28px 0;
   border-bottom: 1px solid var(--color-divider);
   flex-shrink: 0;
   flex-direction: row;
@@ -552,38 +552,75 @@ a:hover {
 .inventory-nav-container,
 .domain-nav-container {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 2px;
   flex-shrink: 0;
+  margin-bottom: -1px;
 }
 
 .inventory-nav-link,
 .domain-nav-link {
-  border: 1px solid var(--color-border);
-  background: var(--color-surface-2);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--color-text-muted);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 11px;
+  border-radius: 20px 20px 0 0;
+  padding: 7px 10px 9px;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   cursor: pointer;
   white-space: nowrap;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 32px;
+  gap: 4px;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  position: relative;
 }
 
 .inventory-nav-link.active,
 .domain-nav-link.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-highlight);
+  border: 1px solid var(--color-divider);
+  border-bottom-color: transparent;
+  background: var(--color-bg);
   color: var(--color-primary);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+/* Fillet curves — smooth the junction between divider and tab sides */
+.inventory-nav-link.active::before,
+.domain-nav-link.active::before,
+.inventory-nav-link.active::after,
+.domain-nav-link.active::after {
+  content: '';
+  position: absolute;
+  /* bottom: 1px aligns fillet with the divider line
+     (nav-container has margin-bottom:-1px, so divider is 1px above tab bottom) */
+  bottom: 1px;
+  width: 14px;
+  height: 14px;
+  background: var(--color-bg);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+/* Left fillet: -15px accounts for fillet width(14px) + tab's 1px left border */
+.inventory-nav-link.active::before,
+.domain-nav-link.active::before {
+  left: -15px;
+  border-right: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+  border-bottom-right-radius: 12px;
+}
+
+/* Right fillet: -15px accounts for fillet width(14px) + tab's 1px right border */
+.inventory-nav-link.active::after,
+.domain-nav-link.active::after {
+  right: -15px;
+  border-left: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+  border-bottom-left-radius: 12px;
 }
 
 .inventory-nav-link .nav-icon,
@@ -597,27 +634,23 @@ a:hover {
 
 .inventory-nav-link .nav-text,
 .domain-nav-link .nav-text {
-  max-width: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease, margin-left 0.2s;
   display: inline-block;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inventory-nav-link:hover,
 .domain-nav-link:hover {
-  background: var(--color-surface-offset);
   color: var(--color-text);
-  border-color: var(--color-text-muted);
+  background: rgba(0, 0, 0, 0.025);
   text-decoration: none;
 }
 
-.inventory-nav-link:hover .nav-text,
-.domain-nav-link:hover .nav-text {
-  max-width: 150px;
-  opacity: 1;
-  margin-left: 6px;
+.inventory-nav-link.active:hover,
+.domain-nav-link.active:hover {
+  background: var(--color-bg);
+  color: var(--color-primary);
 }
 
 /* PC/Desktop dashboard grid: 6 columns */
@@ -630,6 +663,7 @@ a:hover {
 
 .inventory-kpi-card {
   padding: 6px 8px;
+  height: 50px;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -682,16 +716,7 @@ a:hover {
   min-height: 0;
 }
 
-/* PC screen defaults show full text for nav link above 1300px width */
-@media (min-width: 1301px) {
-
-  .inventory-nav-link .nav-text,
-  .domain-nav-link .nav-text {
-    max-width: 150px;
-    opacity: 1;
-    margin-left: 6px;
-  }
-}
+/* Nav text is now always visible by default since sidebars are collapsible */
 
 /* Responsive media queries */
 @media (max-width: 1024px) {
@@ -707,13 +732,39 @@ a:hover {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 12px !important;
-    padding: 16px 20px 12px 20px;
+    padding: 12px 20px !important;
   }
 
   .inventory-nav-container,
   .domain-nav-container {
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    align-items: center;
+  }
+
+  /* On mobile, collapse back to icon-only to save space */
+  .inventory-nav-link .nav-text,
+  .domain-nav-link .nav-text {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .inventory-nav-link,
+  .domain-nav-link {
+    padding: 5px 8px;
+    gap: 0;
+    border-radius: 6px;
+    border: 1px solid transparent;
+  }
+
+  .inventory-nav-link.active,
+  .domain-nav-link.active {
+    border-color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background: var(--color-primary-highlight);
   }
 
   .dashboard-tables-row {

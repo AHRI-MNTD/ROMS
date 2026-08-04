@@ -4,11 +4,13 @@ import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
-  { to: "overview", label: "Overview", icon: "🏠", right: "Overview" },
+  { to: "overview", label: "Home", icon: "🏠", right: "Overview" },
   { to: "dashboard", label: "Dashboard", icon: "📊", right: "Dashboard" },
   { to: "current-inventory", label: "Current Inventory", icon: "📦", right: "Current Inventory" },
   { to: "check-in", label: "Check-In", icon: "📥", right: "Check In" },
+  { to: "check-in-history", label: "Check In", icon: "➕", right: "Dashboard" },
   { to: "check-out", label: "Check-Out", icon: "📤", right: "Check Out" },
+  { to: "check-out-history", label: "Check Out", icon: "➖", right: "Dashboard" },
   { to: "requests", label: "Request", icon: "📋", right: "Request/s" },
   { to: "inventory-manager", label: "Manager", icon: "👨‍💼", right: "Inventory Manager" },
   { to: "master-data", label: "Master Data", icon: "🗂️", right: "Master Data" },
@@ -45,9 +47,15 @@ export default function InventoryLayout() {
   } else if (activePath === "check-in") {
     title = "Check-In";
     subtitle = "Log incoming supply shipments and adjust stock levels.";
+  } else if (activePath === "check-in-history") {
+    title = "Check-In History";
+    subtitle = "View check-in reference table and historical stock entries.";
   } else if (activePath === "check-out") {
     title = "Check-Out";
     subtitle = "Record stock item withdrawals and track allocations.";
+  } else if (activePath === "check-out-history") {
+    title = "Check-Out History";
+    subtitle = "View check-out reference table and item disbursement logs.";
   } else if (activePath === "requests") {
     title = "Request";
     subtitle = "Submit and track lab staff material requisitions.";
@@ -77,6 +85,8 @@ export default function InventoryLayout() {
       {/* ── Sticky header with title + nav tabs (Hidden on overview to let overview show its own hero logo header) ── */}
       {!isOverview && (
         <div className="domain-layout-header" style={{ position: "sticky", top: 0, zIndex: 10 }}>
+          {/* Title and subtitle hidden — nav tabs are self-explanatory */}
+          {/*
           <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
             <h1 style={{ fontFamily: "var(--font-display)", fontSize: "18px", color: "var(--color-text)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {title}
@@ -85,6 +95,7 @@ export default function InventoryLayout() {
               {subtitle}
             </p>
           </div>
+          */}
 
           <nav className="domain-nav-container" aria-label="Inventory sections">
             {tabs.map((tab) => {

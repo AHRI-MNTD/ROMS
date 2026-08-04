@@ -13,7 +13,9 @@ const InventoryLandingPage = lazy(() => import("./pages/domain/inventory/Invento
 const InventoryDashboardPage = lazy(() => import("./pages/domain/inventory/InventoryDashboardPage"));
 const CurrentInventoryPage = lazy(() => import("./pages/domain/inventory/CurrentInventoryPage"));
 const CheckInPage = lazy(() => import("./pages/domain/inventory/CheckInPage"));
+const CheckInHistoryPage = lazy(() => import("./pages/domain/inventory/CheckInHistoryPage"));
 const CheckOutPage = lazy(() => import("./pages/domain/inventory/CheckOutPage"));
+const CheckOutHistoryPage = lazy(() => import("./pages/domain/inventory/CheckOutHistoryPage"));
 const RequestsPage = lazy(() => import("./pages/domain/inventory/RequestsPage"));
 const InventoryManagerPage = lazy(() => import("./pages/domain/inventory/InventoryManagerPage"));
 const AnalyticsPage = lazy(() => import("./pages/domain/inventory/AnalyticsPage"));
@@ -73,7 +75,9 @@ export const routes: RouteObject[] = [
               { path: "dashboard", element: <InventoryDashboardPage /> },
               { path: "current-inventory", element: <CurrentInventoryPage /> },
               { path: "check-in", element: <CheckInPage /> },
+              { path: "check-in-history", element: <CheckInHistoryPage /> },
               { path: "check-out", element: <CheckOutPage /> },
+              { path: "check-out-history", element: <CheckOutHistoryPage /> },
               { path: "requests", element: <RequestsPage /> },
               { path: "inventory-manager", element: <InventoryManagerPage /> },
               { path: "analytics", element: <AnalyticsPage /> },

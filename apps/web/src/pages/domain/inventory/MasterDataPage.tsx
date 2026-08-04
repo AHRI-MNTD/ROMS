@@ -192,56 +192,121 @@ export default function MasterDataPage() {
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface-2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)", marginBottom: 4 }}>Master Configurations</div>
-          <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
-            Inventory master records mapping categories, units, projects, and active personnel.
+      {/* Header Card */}
+      <div
+        style={{
+          padding: 18,
+          borderRadius: 12,
+          border: "1px solid #0369a1",
+          background: "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(3, 105, 161, 0.04) 100%)",
+          boxShadow: "0 4px 16px rgba(3, 105, 161, 0.07)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        {/* Header Banner */}
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            background: "linear-gradient(135deg, rgba(3, 105, 161, 0.08) 0%, rgba(56, 189, 248, 0.05) 100%)",
+            border: "1px solid rgba(3, 105, 161, 0.18)",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "rgba(3, 105, 161, 0.12)",
+              color: "#0369a1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 20,
+              flexShrink: 0,
+            }}
+          >
+            ⚙️
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--color-text)" }}>
+                Master Configurations
+              </span>
+              <span
+                style={{
+                  fontSize: "9px",
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  background: "rgba(3, 105, 161, 0.12)",
+                  color: "#0369a1",
+                  border: "1px solid rgba(3, 105, 161, 0.22)",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Reference Data
+              </span>
+            </div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 2 }}>
+              Manage categories, units, projects, and active personnel used across all inventory forms
+            </div>
+          </div>
+          {/* Action Buttons */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+            <button
+              onClick={handleSyncGoogleSheets}
+              disabled={isSyncing}
+              style={{
+                border: "1px solid rgba(3, 105, 161, 0.3)",
+                background: "rgba(3, 105, 161, 0.08)",
+                color: "#0369a1",
+                borderRadius: "7px",
+                padding: "6px 12px",
+                fontSize: "10.5px",
+                fontWeight: 700,
+                height: 32,
+                cursor: isSyncing ? "not-allowed" : "pointer",
+                opacity: isSyncing ? 0.7 : 1,
+                transition: "all 0.2s ease",
+              }}
+            >
+              {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}
+            </button>
+            <button
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                setFormFeedback(null);
+              }}
+              style={{
+                border: showAddForm ? "1px solid rgba(3, 105, 161, 0.5)" : "1px solid rgba(3, 105, 161, 0.3)",
+                background: showAddForm ? "rgba(3, 105, 161, 0.15)" : "rgba(3, 105, 161, 0.08)",
+                color: "#0369a1",
+                borderRadius: "7px",
+                padding: "6px 12px",
+                fontSize: "10.5px",
+                fontWeight: 700,
+                height: 32,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {showAddForm ? "✕ Close Editor" : "➕ Add Master Record"}
+            </button>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            onClick={handleSyncGoogleSheets}
-            disabled={isSyncing}
-            style={{
-              border: "1px solid var(--color-border)",
-              background: "var(--color-surface)",
-              color: "var(--color-text)",
-              borderRadius: "6px",
-              padding: "5px 12px",
-              fontSize: "10.5px",
-              fontWeight: 700,
-              height: 30,
-              cursor: isSyncing ? "not-allowed" : "pointer",
-              opacity: isSyncing ? 0.7 : 1,
-            }}
-          >
-            {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}
-          </button>
-          <button
-            onClick={() => {
-              setShowAddForm(!showAddForm);
-              setFormFeedback(null);
-            }}
-            style={{
-              border: "1px solid var(--color-border)",
-              background: "var(--color-accent-soft)",
-              color: "var(--color-text)",
-              borderRadius: "6px",
-              padding: "5px 12px",
-              fontSize: "10.5px",
-              fontWeight: 700,
-              height: 30,
-              cursor: "pointer",
-            }}
-          >
-            {showAddForm ? "✕ Close Editor" : "➕ Add Master Record"}
-          </button>
-        </div>
+
       </div>
 
       {formFeedback && (
         <div style={{
+
           padding: "8px 12px",
           background: formFeedback.type === "success" ? "#f0fdf4" : "#fef2f2",
           border: formFeedback.type === "success" ? "1px solid #bbf7d0" : "1px solid #fca5a5",
@@ -258,8 +323,53 @@ export default function MasterDataPage() {
       )}
 
       {showAddForm && (
-        <form onSubmit={handleCreateSubmit} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 10 }}>
-          <div style={{ fontSize: "10px", fontWeight: 800, color: "var(--color-text-muted)", textTransform: "uppercase" }}>New Master Data Entry</div>
+        <form
+          onSubmit={handleCreateSubmit}
+          style={{
+            padding: 18,
+            borderRadius: 12,
+            border: "1px solid rgba(3, 105, 161, 0.35)",
+            background: "linear-gradient(180deg, var(--color-surface) 0%, rgba(3, 105, 161, 0.03) 100%)",
+            boxShadow: "0 2px 10px rgba(3, 105, 161, 0.06)",
+            display: "grid",
+            gap: 12,
+          }}
+          className="anim"
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 7,
+                background: "rgba(3, 105, 161, 0.1)",
+                color: "#0369a1",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+                flexShrink: 0,
+              }}
+            >
+              ➕
+            </div>
+            <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--color-text)" }}>New Master Data Entry</span>
+            <span
+              style={{
+                fontSize: "9px",
+                padding: "1px 7px",
+                borderRadius: 10,
+                background: "rgba(3, 105, 161, 0.1)",
+                color: "#0369a1",
+                border: "1px solid rgba(3, 105, 161, 0.2)",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Config Record
+            </span>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               Category
