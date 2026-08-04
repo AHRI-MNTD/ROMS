@@ -133,8 +133,71 @@ export default function InventoryManagerPage() {
       )}
 
       {/* Pending requests section */}
-      <div style={{ padding: 12, border: "1px solid var(--color-border)", borderRadius: 12, background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)", marginBottom: 10 }}>Pending requests</div>
+      <div
+        style={{
+          padding: 18,
+          border: "1px solid #b45309",
+          borderRadius: 12,
+          background: "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(180, 83, 9, 0.04) 100%)",
+          boxShadow: "0 4px 16px rgba(180, 83, 9, 0.07)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        {/* Header Banner */}
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            background: "linear-gradient(135deg, rgba(180, 83, 9, 0.08) 0%, rgba(251, 191, 36, 0.05) 100%)",
+            border: "1px solid rgba(180, 83, 9, 0.18)",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "rgba(180, 83, 9, 0.12)",
+              color: "#b45309",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 20,
+              flexShrink: 0,
+            }}
+          >
+            ⏳
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--color-text)" }}>
+                Pending Requests
+              </span>
+              <span
+                style={{
+                  fontSize: "9px",
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  background: "rgba(180, 83, 9, 0.12)",
+                  color: "#b45309",
+                  border: "1px solid rgba(180, 83, 9, 0.22)",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Awaiting Decision
+              </span>
+            </div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 2 }}>
+              Click any row to review items and accept, partially approve, or reject
+            </div>
+          </div>
+        </div>
         {(() => {
           const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
           if (pendingLogs.length === 0) return (

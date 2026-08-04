@@ -126,8 +126,71 @@ export default function RequestsPage() {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {/* Request Form & Batch Cart */}
-      <div style={{ padding: 18, borderRadius: "var(--radius)", border: "1px solid var(--color-border)", background: "var(--color-surface-2)" }}>
-        <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)", marginBottom: 12 }}>Request</div>
+      <div
+        style={{
+          padding: 18,
+          borderRadius: "var(--radius)",
+          border: "1px solid #7c3aed",
+          background: "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(124, 58, 237, 0.04) 100%)",
+          boxShadow: "0 4px 16px rgba(124, 58, 237, 0.07)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        {/* Header Banner */}
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            background: "linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(167, 139, 250, 0.05) 100%)",
+            border: "1px solid rgba(124, 58, 237, 0.18)",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "rgba(124, 58, 237, 0.12)",
+              color: "#7c3aed",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 20,
+              flexShrink: 0,
+            }}
+          >
+            📋
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--color-text)" }}>
+                Request Form
+              </span>
+              <span
+                style={{
+                  fontSize: "9px",
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  background: "rgba(124, 58, 237, 0.12)",
+                  color: "#7c3aed",
+                  border: "1px solid rgba(124, 58, 237, 0.22)",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Pending Approval
+              </span>
+            </div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 2 }}>
+              Submit an item request — it will be reviewed by the inventory manager
+            </div>
+          </div>
+        </div>
 
         {feedback && (
           <div
@@ -145,7 +208,7 @@ export default function RequestsPage() {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+        <div className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
           <InventoryItemSelect
             label="Select Item"
             items={data?.data ?? []}
