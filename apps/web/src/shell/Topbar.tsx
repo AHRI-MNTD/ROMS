@@ -527,6 +527,59 @@ export interface SidebarHeaderProps {
 }
 
 export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ isCollapsed }) => {
+  return (
+    <header style={{
+      height: "44.5px",
+      minHeight: "44.5px",
+      background: "var(--color-surface-offset)",
+      borderBottom: "1px solid var(--color-divider)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: isCollapsed ? "center" : "flex-start",
+      padding: isCollapsed ? "0 6px" : "0 12px",
+      gap: 8,
+      flexShrink: 0,
+      zIndex: 100,
+      boxSizing: "border-box",
+      width: "calc(100% + 1px)",
+      marginRight: "-1px",
+    }}>
+      {/* AHRI logo - ALWAYS VISIBLE */}
+      <div
+        title="AHRI - ROMS"
+        style={{
+          width: 30, height: 30,
+          borderRadius: "50%",
+          border: "1.5px solid var(--color-primary)",
+          background: "var(--color-primary-highlight)",
+          overflow: "hidden",
+          flexShrink: 0,
+        }}
+      >
+        <img
+          src={logoAhri}
+          alt="AHRI Logo"
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      </div>
+
+      {!isCollapsed && (
+        <span style={{ fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 800, color: "var(--color-text)", letterSpacing: "0.04em" }}>
+          ROMS
+        </span>
+      )}
+    </header>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Profile Section (bottom of main sidebar) ─────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+export interface ProfileSectionProps {
+  isCollapsed?: boolean;
+}
+
+export const ProfileSection: React.FC<ProfileSectionProps> = ({ isCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [showSignOut, setShowSignOut] = useState(false);
@@ -544,188 +597,196 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ isCollapsed }) => 
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  if (!user) return null;
+
   return (
     <>
-      <header style={{
-        height: 48,
-        minHeight: 48,
-        background: "var(--color-surface)",
-        borderBottom: "1px solid var(--color-border)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: isCollapsed ? "center" : "flex-start",
-        padding: isCollapsed ? "0 6px" : "0 12px",
-        gap: 8,
-        flexShrink: 0, zIndex: 100,
-        boxSizing: "border-box",
-      }}>
-        {/* AHRI logo - ALWAYS VISIBLE */}
-        <div
-          title="AHRI - ROMS"
-          style={{
-            width: 30, height: 30,
-            borderRadius: "50%",
-            border: "1.5px solid var(--color-primary)",
-            background: "var(--color-primary-highlight)",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-        >
-          <img
-            src={logoAhri}
-            alt="AHRI Logo"
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
-        </div>
-
-        {!isCollapsed && (
-          <span style={{ fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 800, color: "var(--color-text)", letterSpacing: "0.04em" }}>
-            ROMS
-          </span>
-        )}
-
-        {!isCollapsed && <div style={{ flex: 1 }} />}
-
-        {/* User avatar + dropdown */}
-        {!isCollapsed && user && (
-          <div ref={dropdownRef} style={{ position: "relative", flexShrink: 0, zIndex: 2000 }}>
-            <button
-              id="user-avatar-btn"
-              onClick={() => setShowDropdown((v) => !v)}
-              title={user.displayName}
+      {/* Profile row at sidebar bottom */}
+      <div
+        style={{
+          borderTop: "1px solid var(--color-divider)",
+          padding: isCollapsed ? "8px 6px" : "8px 10px",
+          flexShrink: 0,
+          position: "relative",
+        }}
+      >
+        <div ref={dropdownRef} style={{ position: "relative", zIndex: 2000 }}>
+          <button
+            id="user-avatar-btn"
+            onClick={() => setShowDropdown((v) => !v)}
+            title={user.displayName}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: isCollapsed ? 0 : 9,
+              justifyContent: isCollapsed ? "center" : "flex-start",
+              padding: isCollapsed ? "5px 0" : "6px 8px",
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              background: showDropdown ? "var(--color-primary-highlight)" : "transparent",
+              cursor: "pointer",
+              transition: "background 0.14s",
+            }}
+            onMouseEnter={(e) => { if (!showDropdown) e.currentTarget.style.background = "var(--color-surface-offset)"; }}
+            onMouseLeave={(e) => { if (!showDropdown) e.currentTarget.style.background = "transparent"; }}
+          >
+            {/* Avatar circle */}
+            <div
               style={{
-                width: 26, height: 26, borderRadius: "50%",
-                background: "var(--color-primary)", color: "#fff",
+                width: 28, height: 28,
+                borderRadius: "50%",
+                background: "var(--color-primary)",
+                color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
                 border: `2px solid ${showDropdown ? "var(--color-primary-hover)" : "transparent"}`,
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "border-color 0.15s, transform 0.15s",
-                transform: showDropdown ? "scale(1.08)" : "scale(1)",
+                transition: "border-color 0.15s",
               }}
             >
-              <UserPersonIcon size={14} />
-            </button>
-
-            {/* Dropdown */}
-            {showDropdown && (
-              <div style={{
-                position: "absolute",
-                top: "calc(100% + 8px)",
-                right: -55,
-                width: 265,
-                background: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "var(--radius-lg)",
-                boxShadow: "0 16px 48px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12)",
-                zIndex: 9999, overflow: "hidden",
-                animation: "fadeUp 0.14s ease both",
-              }}>
-                {/* User info */}
+              <UserPersonIcon size={15} />
+            </div>
+            {/* Name + role (only when expanded) */}
+            {!isCollapsed && (
+              <div style={{ minWidth: 0, textAlign: "left", flex: 1 }}>
                 <div style={{
-                  padding: "14px 16px", borderBottom: "1px solid var(--color-border)",
-                  background: "var(--color-surface)",
+                  fontSize: "var(--fs-xs)", fontWeight: 700,
+                  color: "var(--color-text)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: "50%",
-                      background: "var(--color-primary)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", flexShrink: 0,
-                    }}>
-                      <UserPersonIcon size={18} />
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {user.displayName}
-                      </div>
-                      <div style={{ fontSize: "var(--fs-xxs)", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {user.email}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
-                    {user.roles.map((r) => (
-                      <span key={r} style={{
-                        fontSize: "var(--fs-xxs)", fontWeight: 700, letterSpacing: "0.05em",
-                        textTransform: "uppercase", padding: "2px 7px", borderRadius: 99,
-                        background: "var(--color-primary-highlight)", color: "var(--color-primary)",
-                      }}>
-                        {r.replace(/_/g, " ")}
-                      </span>
-                    ))}
-                  </div>
+                  {user.displayName}
                 </div>
-
-                {/* Menu items */}
-                <div style={{ padding: "6px" }}>
-                  {/* Theme Toggle inside Profile Menu */}
-                  <button
-                    id="theme-toggle-dropdown-btn"
-                    onClick={() => {
-                      toggleTheme();
-                    }}
-                    style={{
-                      width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
-                      border: "none", background: "transparent",
-                      color: "var(--color-text)", fontSize: "var(--fs-xs)", fontWeight: 600,
-                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      textAlign: "left", transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-offset)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                      <span style={{ color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>
-                        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-                      </span>
-                      <span>Theme</span>
-                    </div>
-                    <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 700, color: "var(--color-primary)", textTransform: "capitalize" }}>
-                      {theme === "dark" ? "Dark Mode" : "Light Mode"}
-                    </span>
-                  </button>
-
-                  <div style={{ height: 1, background: "var(--color-border)", margin: "4px 6px" }} />
-
-                  <button
-                    id="change-password-btn"
-                    onClick={() => { setShowDropdown(false); setShowChangePw(true); }}
-                    style={{
-                      width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
-                      border: "none", background: "transparent",
-                      color: "var(--color-text)", fontSize: "var(--fs-xs)", fontWeight: 600,
-                      cursor: "pointer", display: "flex", alignItems: "center", gap: 9,
-                      textAlign: "left", transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-offset)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <span style={{ color: "var(--color-text-muted)" }}><KeyIcon /></span>
-                    Change Password
-                  </button>
-
-                  <div style={{ height: 1, background: "var(--color-border)", margin: "4px 6px" }} />
-
-                  <button
-                    id="sign-out-dropdown-btn"
-                    onClick={() => { setShowDropdown(false); setShowSignOut(true); }}
-                    style={{
-                      width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
-                      border: "none", background: "transparent",
-                      color: "#dc2626", fontSize: "var(--fs-xs)", fontWeight: 600,
-                      cursor: "pointer", display: "flex", alignItems: "center", gap: 9,
-                      textAlign: "left", transition: "background 0.12s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.06)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <SignOutIcon /> Sign Out
-                  </button>
+                <div style={{
+                  fontSize: "var(--fs-xxs)",
+                  color: "var(--color-text-muted)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {user.roles[0]?.replace(/_/g, " ") ?? ""}
                 </div>
               </div>
             )}
-          </div>
-        )}
-      </header>
+          </button>
+
+          {/* Dropdown — opens upward */}
+          {showDropdown && (
+            <div style={{
+              position: "absolute",
+              bottom: "calc(100% + 6px)",
+              left: 0,
+              right: 0,
+              width: isCollapsed ? 265 : "100%",
+              minWidth: 220,
+              background: "var(--color-surface-2)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-lg)",
+              boxShadow: "0 -8px 32px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.10)",
+              zIndex: 9999, overflow: "hidden",
+              animation: "fadeUp 0.14s ease both",
+            }}>
+              {/* User info */}
+              <div style={{
+                padding: "14px 16px", borderBottom: "1px solid var(--color-border)",
+                background: "var(--color-surface)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: "50%",
+                    background: "var(--color-primary)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#fff", flexShrink: 0,
+                  }}>
+                    <UserPersonIcon size={18} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {user.displayName}
+                    </div>
+                    <div style={{ fontSize: "var(--fs-xxs)", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {user.email}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {user.roles.map((r) => (
+                    <span key={r} style={{
+                      fontSize: "var(--fs-xxs)", fontWeight: 700, letterSpacing: "0.05em",
+                      textTransform: "uppercase", padding: "2px 7px", borderRadius: 99,
+                      background: "var(--color-primary-highlight)", color: "var(--color-primary)",
+                    }}>
+                      {r.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Menu items */}
+              <div style={{ padding: "6px" }}>
+                {/* Theme Toggle */}
+                <button
+                  id="theme-toggle-dropdown-btn"
+                  onClick={() => toggleTheme()}
+                  style={{
+                    width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
+                    border: "none", background: "transparent",
+                    color: "var(--color-text)", fontSize: "var(--fs-xs)", fontWeight: 600,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
+                    textAlign: "left", transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-offset)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <span style={{ color: "var(--color-text-muted)", display: "flex", alignItems: "center" }}>
+                      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                    </span>
+                    <span>Theme</span>
+                  </div>
+                  <span style={{ fontSize: "var(--fs-xxs)", fontWeight: 700, color: "var(--color-primary)", textTransform: "capitalize" }}>
+                    {theme === "dark" ? "Dark Mode" : "Light Mode"}
+                  </span>
+                </button>
+
+                <div style={{ height: 1, background: "var(--color-border)", margin: "4px 6px" }} />
+
+                <button
+                  id="change-password-btn"
+                  onClick={() => { setShowDropdown(false); setShowChangePw(true); }}
+                  style={{
+                    width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
+                    border: "none", background: "transparent",
+                    color: "var(--color-text)", fontSize: "var(--fs-xs)", fontWeight: 600,
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 9,
+                    textAlign: "left", transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-offset)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ color: "var(--color-text-muted)" }}><KeyIcon /></span>
+                  Change Password
+                </button>
+
+                <div style={{ height: 1, background: "var(--color-border)", margin: "4px 6px" }} />
+
+                <button
+                  id="sign-out-dropdown-btn"
+                  onClick={() => { setShowDropdown(false); setShowSignOut(true); }}
+                  style={{
+                    width: "100%", padding: "9px 12px", borderRadius: "var(--radius)",
+                    border: "none", background: "transparent",
+                    color: "#dc2626", fontSize: "var(--fs-xs)", fontWeight: 600,
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 9,
+                    textAlign: "left", transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.06)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <SignOutIcon /> Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Modals */}
       {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}

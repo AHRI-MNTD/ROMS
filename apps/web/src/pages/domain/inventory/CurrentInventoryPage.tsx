@@ -9,7 +9,10 @@ type StockFilter = "all" | "low" | "out" | "healthy";
 export default function CurrentInventoryPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
+  const isSuperAdmin =
+    user?.email?.toLowerCase() === "systemadmin@roms.com" ||
+    user?.email?.toLowerCase() === "admin@roms.dev" ||
+    (user?.displayName?.toLowerCase().includes("system administrator") ?? false);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [stockFilter, setStockFilter] = React.useState<StockFilter>("all");
@@ -35,6 +38,7 @@ export default function CurrentInventoryPage() {
   });
 
   const handleStartEdit = (item: any) => {
+    if (!isSuperAdmin) return;
     setFeedback(null);
     setEditingItem(item);
     setEditForm({
@@ -50,7 +54,7 @@ export default function CurrentInventoryPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingItem) return;
+    if (!isSuperAdmin || !editingItem) return;
     try {
       await apiClient.patch(`/domains/inventory/${editingItem.id}`, {
         sku: editForm.sku.trim() || undefined,
@@ -72,6 +76,7 @@ export default function CurrentInventoryPage() {
   };
 
   const handleDeleteItem = async (item: any) => {
+    if (!isSuperAdmin) return;
     if (!window.confirm("Are you sure you want to delete this stock item? All movement logs for this item will be lost.")) {
       return;
     }
@@ -87,6 +92,7 @@ export default function CurrentInventoryPage() {
   };
 
   const handleSyncGoogleSheets = async () => {
+    if (!isSuperAdmin) return;
     setFeedback(null);
     setIsSyncing(true);
     try {
@@ -138,6 +144,7 @@ export default function CurrentInventoryPage() {
   }, [searchTerm, stockFilter]);
 
   const handleExportCSV = async () => {
+    if (!isSuperAdmin) return;
     const exportResult = await exportInventoryQuery.refetch();
     const exportRows = exportResult.data?.data ?? [];
 
@@ -269,28 +276,32 @@ export default function CurrentInventoryPage() {
               <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-text)", fontWeight: 800 }}>{totalStock}</span>
             </div>
 
-            <div style={{ width: 1, height: 18, background: "rgba(1, 105, 111, 0.15)", margin: "0 2px" }} />
+            {isSuperAdmin && (
+              <>
+                <div style={{ width: 1, height: 18, background: "rgba(1, 105, 111, 0.15)", margin: "0 2px" }} />
 
-            <button
-              onClick={handleExportCSV}
-              onMouseEnter={() => setIsExportHovered(true)}
-              onMouseLeave={() => setIsExportHovered(false)}
-              style={{
-                ...quickLinkStyle,
-                cursor: "pointer",
-                border: isExportHovered ? "1px solid rgba(22, 101, 52, 0.25)" : "1px solid transparent",
-                background: isExportHovered 
-                  ? "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))"
-                  : "transparent",
-                boxShadow: isExportHovered ? "0 4px 10px rgba(16, 24, 40, 0.03)" : "none",
-                color: "#15803d",
-                transform: isExportHovered ? "translateY(-1px)" : "none",
-                transition: "all 0.2s ease",
-              }}
-            >
-              📥 Export CSV
-            </button>
-            {isAdmin && (
+                <button
+                  onClick={handleExportCSV}
+                  onMouseEnter={() => setIsExportHovered(true)}
+                  onMouseLeave={() => setIsExportHovered(false)}
+                  style={{
+                    ...quickLinkStyle,
+                    cursor: "pointer",
+                    border: isExportHovered ? "1px solid rgba(22, 101, 52, 0.25)" : "1px solid transparent",
+                    background: isExportHovered 
+                      ? "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))"
+                      : "transparent",
+                    boxShadow: isExportHovered ? "0 4px 10px rgba(16, 24, 40, 0.03)" : "none",
+                    color: "#15803d",
+                    transform: isExportHovered ? "translateY(-1px)" : "none",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  📥 Export CSV
+                </button>
+              </>
+            )}
+            {isSuperAdmin && (
               <button
                 onClick={handleSyncGoogleSheets}
                 disabled={isSyncing}
@@ -346,16 +357,16 @@ export default function CurrentInventoryPage() {
             <div className="table-responsive-container">
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: isAdmin ? "10%" : "12%" }} />
-                  <col style={{ width: isAdmin ? "25%" : "31%" }} />
-                  <col style={{ width: isAdmin ? "12%" : "12%" }} />
-                  <col style={{ width: isAdmin ? "7%" : "7%" }} />
+                  <col style={{ width: isSuperAdmin ? "10%" : "12%" }} />
+                  <col style={{ width: isSuperAdmin ? "25%" : "31%" }} />
+                  <col style={{ width: isSuperAdmin ? "12%" : "12%" }} />
+                  <col style={{ width: isSuperAdmin ? "7%" : "7%" }} />
                   <col style={{ width: "6%" }} />
                   <col style={{ width: "6%" }} />
                   <col style={{ width: "6%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: isAdmin ? "10%" : "12%" }} />
-                  {isAdmin && <col style={{ width: "10%" }} />}
+                  <col style={{ width: isSuperAdmin ? "10%" : "12%" }} />
+                  {isSuperAdmin && <col style={{ width: "10%" }} />}
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -372,7 +383,7 @@ export default function CurrentInventoryPage() {
                           <th style={thStyle} title="Balance">Bal</th>
                           <th style={thStyle} title="% Balance">% Bal</th>
                           <th style={thStyle} title="Status">Status</th>
-                          {isAdmin && <th style={{ ...thStyle, textAlign: "center" }} title="Actions">Actions</th>}
+                          {isSuperAdmin && <th style={{ ...thStyle, textAlign: "center" }} title="Actions">Actions</th>}
                         </>
                       );
                     })()}
@@ -434,7 +445,7 @@ export default function CurrentInventoryPage() {
                             {statusLabel}
                           </span>
                         </td>
-                        {isAdmin && (
+                        {isSuperAdmin && (
                           <td style={{ padding: "4px 8px", textAlign: "center" }}>
                             <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
                               <button
@@ -529,7 +540,7 @@ export default function CurrentInventoryPage() {
           No inventory records found.
         </div>
       )}
-      {editingItem && (
+      {isSuperAdmin && editingItem && (
         <div style={{
           position: "fixed",
           top: 0,

@@ -4,7 +4,7 @@ import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
 const tabs = [
-  { to: "overview", label: "Home", icon: "🏠", right: "Overview" },
+  { to: "overview", label: "Overview", icon: "🏠", right: "Overview" },
   { to: "dashboard", label: "Dashboard", icon: "📊", right: "Dashboard" },
   { to: "current-inventory", label: "Current Inventory", icon: "📦", right: "Current Inventory" },
   { to: "check-in", label: "Check-In", icon: "📥", right: "Check In" },
@@ -108,8 +108,8 @@ export default function InventoryLayout() {
                   onClick={(e) => handleTabClick(e, tab)}
                   className={({ isActive }) => `domain-nav-link${isActive ? " active" : ""}`}
                   style={{
-                    opacity: isAllowed ? 1 : 0.65,
-                    cursor: "pointer"
+                    opacity: !isAllowed ? 0.45 : undefined,
+                    cursor: isAllowed ? "pointer" : "not-allowed"
                   }}
                   title={!isAllowed ? `🔒 Restricted: Access to ${tab.label} is required` : undefined}
                 >
@@ -128,7 +128,7 @@ export default function InventoryLayout() {
         style={{
           flex: 1,
           minHeight: 0,
-          padding: isOverview ? "12px 24px 16px" : "16px 28px 24px 28px",
+          padding: isOverview ? "12px 24px 16px" : "20px 28px 24px 28px",
           overflowY: isOverview ? "hidden" : "auto",
           display: isOverview ? "flex" : "block",
           flexDirection: isOverview ? "column" : undefined,

@@ -28,6 +28,7 @@ const LabWorkflowPage = lazy(() => import("./pages/domain/LabWorkflowPage"));
 const DataManagementPage = lazy(() => import("./pages/domain/DataManagementPage"));
 const InfrastructurePage = lazy(() => import("./pages/domain/InfrastructurePage"));
 const HRLayout = lazy(() => import("./pages/domain/hr"));
+const HRLandingPage = lazy(() => import("./pages/domain/hr/HRLandingPage"));
 const HRDashboardPage = lazy(() => import("./pages/domain/hr/HRDashboardPage"));
 const TrainingRecordsPage = lazy(() => import("./pages/domain/hr/TrainingRecordsPage"));
 const ApprovedPage = lazy(() => import("./pages/domain/hr/ApprovedPage"));
@@ -145,7 +146,8 @@ export const routes: RouteObject[] = [
             path: "recruitment-onboarding",
             element: <HRLayout />,
             children: [
-              { index: true, element: <Navigate to="dashboard" replace /> },
+              { index: true, element: <HRLandingPage /> },
+              { path: "overview", element: <HRLandingPage /> },
               { path: "dashboard", element: <HRDashboardPage /> },
               { path: "training-records", element: <TrainingRecordsPage /> },
               { path: "approved", element: <ApprovedPage /> },

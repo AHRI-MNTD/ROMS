@@ -47,25 +47,28 @@ export const SecondarySidebar: React.FC = () => {
         width: isCollapsed ? 44 : 220,
         minWidth: isCollapsed ? 44 : 220,
         background: "var(--color-surface)",
-        borderRight: "1px solid var(--color-border)",
+        borderRight: "1px solid var(--color-divider)",
         display: "flex",
         flexDirection: "column",
-        overflowY: "auto",
-        overflowX: "hidden",
         flexShrink: 0,
         transition: "width 0.2s ease, min-width 0.2s ease",
         position: "relative",
         zIndex: 10,
       }}
     >
-      {/* ── Row 1: Topbar spacer matching 48px SidebarHeader ── */}
+      {/* ── Row 1: Topbar spacer matching 44.5px SidebarHeader ── */}
       <div
         style={{
-          height: 48,
-          minHeight: 48,
-          borderBottom: "1px solid var(--color-border)",
-          background: "var(--color-surface)",
+          height: "44.5px",
+          minHeight: "44.5px",
+          borderBottom: "1px solid var(--color-divider)",
+          background: "var(--color-surface-offset)",
           flexShrink: 0,
+          boxSizing: "border-box",
+          width: "calc(100% + 1px)",
+          marginRight: "-1px",
+          position: "relative",
+          zIndex: 100,
         }}
       />
 
@@ -162,7 +165,7 @@ export const SecondarySidebar: React.FC = () => {
       </div>
 
       {/* ── Subfunctions Navigation Items ── */}
-      <div style={{ padding: isCollapsed ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ padding: isCollapsed ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto", overflowX: "hidden", flex: 1, minHeight: 0 }}>
         {accessibleSubfunctions.map((sub, idx) => {
           const subSlug = slugify(sub.name);
           const path = `/domains/${domain.slug}/${subSlug}`;

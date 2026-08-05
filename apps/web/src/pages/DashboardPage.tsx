@@ -190,6 +190,8 @@ export default function DashboardPage() {
             <h1 style={{
               fontFamily: "var(--font-display)",
               fontSize: "var(--fs-xl)",
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
               color: "var(--color-text)",
               lineHeight: 1.15,
             }}>

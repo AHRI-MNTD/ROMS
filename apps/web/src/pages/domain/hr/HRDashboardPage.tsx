@@ -51,50 +51,38 @@ function formatDate(value?: string | null) {
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
+const statIcon = (tone: string): React.CSSProperties => ({
+  width: 18, height: 18, borderRadius: 6, display: "inline-flex",
+  alignItems: "center", justifyContent: "center", background: `${tone}15`, color: tone, fontSize: 10,
+});
+
 function StatCard({
-  icon, label, value, loading,
+  icon, label, value, loading, tone, badge: bdg,
 }: {
   icon: string; label: string; value: string | number;
-  loading?: boolean;
+  loading?: boolean; tone: string;
+  badge?: { text: string; bg: string; color: string } | null;
 }) {
-  // Split label into two lines at the last space
-  const parts = label.split(" ");
-  const mid = Math.ceil(parts.length / 2);
-  const line1 = parts.slice(0, mid).join(" ");
-  const line2 = parts.slice(mid).join(" ");
-
   return (
-    <div style={{
-      background: "var(--color-primary-highlight)",
-      border: "1px solid var(--color-border)",
-      borderRadius: 14,
-      padding: "8px 14px 8px 18px",
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-      flex: "1 1 160px",
-      minWidth: 140,
-      position: "relative",
-      overflow: "hidden",
-    }}>
-      <div style={{ position: "absolute", top: 0, left: 0, width: 4, height: "100%", background: "var(--color-primary)", borderRadius: "14px 0 0 14px" }} />
-      {/* Icon */}
-      <div style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }}>
-        {icon}
-      </div>
-      {/* Two-line label */}
-      <div style={{ flexShrink: 0 }}>
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-primary)", lineHeight: 1.25 }}>{line1}</div>
-        {line2 && <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-primary)", lineHeight: 1.25 }}>{line2}</div>}
-      </div>
-      {/* Number */}
-      {loading ? (
-        <div style={{ marginLeft: "auto", height: 20, width: 40, background: "var(--color-border)", borderRadius: 6 }} />
-      ) : (
-        <div style={{ marginLeft: "auto", fontSize: "22px", fontWeight: 800, color: "var(--color-primary)", lineHeight: 1, fontFamily: "var(--font-display)", flexShrink: 0 }}>
-          {value}
+    <div
+      className="inventory-kpi-card"
+      style={{
+        border: `1px solid ${tone}22`,
+        background: `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
+      }}
+    >
+      <div className="inventory-kpi-card-header">
+        <div style={statIcon(tone)}>{icon}</div>
+        <div className="inventory-kpi-card-value">
+          {loading ? "—" : value}
         </div>
-      )}
+        {bdg && (
+          <span style={{ fontSize: "8px", color: bdg.color, fontWeight: 700, background: bdg.bg, padding: "1px 3px", borderRadius: 999 }}>
+            {bdg.text}
+          </span>
+        )}
+      </div>
+      <div className="inventory-kpi-card-label" title={label}>{label}</div>
     </div>
   );
 }
@@ -244,10 +232,26 @@ export default function HRDashboardPage() {
       )}
 
       {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-        <StatCard icon="👥" label="Verified Personnel" value={isLoading ? "—" : totalVerified} loading={isLoading} />
-        <StatCard icon="📋" label="Pending Verification" value={isLoading ? "—" : totalPending} loading={isLoading} />
-        <StatCard icon="🏢" label="Departments" value={isLoading ? "—" : Object.keys(deptCounts).length} loading={isLoading} />
+      <div className="inventory-stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+        <StatCard
+          icon="👥" label="Verified Personnel"
+          value={isLoading ? "—" : totalVerified}
+          loading={isLoading}
+          tone="#01696f"
+        />
+        <StatCard
+          icon="📋" label="Pending Verification"
+          value={isLoading ? "—" : totalPending}
+          loading={isLoading}
+          tone="#b45309"
+          badge={totalPending > 0 ? { text: "Action", bg: "#fef3c7", color: "#92400e" } : null}
+        />
+        <StatCard
+          icon="🏢" label="Departments"
+          value={isLoading ? "—" : Object.keys(deptCounts).length}
+          loading={isLoading}
+          tone="#3b82f6"
+        />
       </div>
 
       {/* ── Middle Row ─────────────────────────────────────────────────────── */}

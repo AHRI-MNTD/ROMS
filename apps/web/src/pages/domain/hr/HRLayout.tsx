@@ -1,87 +1,46 @@
 import React from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
+const OVERVIEW_TAB = { to: "overview", label: "Overview", icon: "🏠", alwaysShow: true };
+
 const tabs = [
-  { to: "dashboard", label: "Dashboard", icon: "📊" },
-  { to: "training-records", label: "Personnel Registration", icon: "📋" },
-  { to: "approved", label: "Personnel Database", icon: "🗂️" },
-  { to: "approve-employee", label: "Personnel Verification", icon: "✅" },
+  { to: "dashboard", label: "Dashboard", icon: "📊", alwaysShow: false },
+  { to: "training-records", label: "Personnel Registration", icon: "📋", alwaysShow: false },
+  { to: "approved", label: "Personnel Database", icon: "🗂️", alwaysShow: false },
+  { to: "approve-employee", label: "Personnel Verification", icon: "✅", alwaysShow: false },
 ];
 
-type PageMeta = { icon: string; title: string; description: string };
-
-const PAGE_META: Record<string, PageMeta> = {
-  dashboard: {
-    icon: "📊",
-    title: "Dashboard",
-    description: "Overview of personnel metrics, headcount, and recent activity.",
-  },
-  "training-records": {
-    icon: "📋",
-    title: "Personnel Registration",
-    description: "Complete all required fields to submit your personnel file registration.",
-  },
-  approved: {
-    icon: "🗂️",
-    title: "Personnel Database",
-    description: "View and manage verified personnel files, qualifications, and credentials.",
-  },
-  "approve-employee": {
-    icon: "✅",
-    title: "Personnel Verification",
-    description: "Review submitted personnel profiles and verify credentials."
-  },
-};
-
-const FALLBACK: PageMeta = {
-  icon: "👤",
-  title: "Personnel Management",
-  description: "Manage laboratory personnel files, qualifications, and appraisals.",
-};
-
-function useActiveMeta(): PageMeta {
-  const { pathname } = useLocation();
-  const segment = pathname.split("/").filter(Boolean).pop() ?? "";
-  return PAGE_META[segment] ?? FALLBACK;
-}
 
 export default function HRLayout() {
-  const meta = useActiveMeta();
   const { user } = useAuth();
 
   const visibleTabs = tabs.filter((tab) => hasTabAccess(user?.roles, "hr", tab.to, user?.permissions));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, maxWidth: 1400, width: "100%" }}>
-      {/* ── Sticky header with title + nav tabs ── */}
+      {/* ── Sticky header with nav tabs ── */}
       <div className="domain-layout-header">
+        {/* Page header (icon + title + description) — commented out
         <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "18px",
-              color: "var(--color-text)",
-              marginBottom: 2,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            <span>{meta.icon}</span>
-            <span>{meta.title}</span>
-          </h1>
-          <p style={{ fontSize: "12px", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {meta.description}
-          </p>
+          ...
         </div>
+        */}
 
         {/* Nav tabs */}
         <nav className="domain-nav-container" aria-label="Personnel sections">
+          {/* Overview — always visible */}
+          <NavLink
+            to={OVERVIEW_TAB.to}
+            end
+            className={({ isActive }) => `domain-nav-link${isActive ? " active" : ""}`}
+          >
+            <span className="nav-icon">{OVERVIEW_TAB.icon}</span>
+            <span className="nav-text">{OVERVIEW_TAB.label}</span>
+          </NavLink>
+
+          {/* Module tabs — filtered by permissions */}
           {visibleTabs.map((tab) => (
             <NavLink
               key={tab.to}

@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { useAuth } from "../auth/useAuth";
 import { hasDomainAccess, isApprovedUser } from "../auth/permissions";
-import { SidebarHeader } from "./Topbar";
+import { SidebarHeader, ProfileSection } from "./Topbar";
 
 interface NavItem {
   label: string;
@@ -44,7 +44,7 @@ export const Sidebar: React.FC = () => {
         minWidth: isCollapsed ? 48 : 220,
         height: "100%",
         background: "var(--color-surface)",
-        borderRight: "1px solid var(--color-border)",
+        borderRight: "1px solid var(--color-divider)",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
@@ -139,7 +139,7 @@ export const Sidebar: React.FC = () => {
 
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
         {/* Main nav */}
-        <div style={{ padding: isCollapsed ? "4px" : "4px 8px" }}>
+        <div style={{ padding: isCollapsed ? "2px" : "4px 8px" }}>
           {!isCollapsed && (
             <div
               style={{
@@ -170,7 +170,7 @@ export const Sidebar: React.FC = () => {
                 alignItems: "center",
                 justifyContent: isCollapsed ? "center" : "flex-start",
                 gap: isCollapsed ? 0 : 7,
-                padding: isCollapsed ? "8px 0" : "5px 9px",
+                padding: isCollapsed ? "4px 0" : "5px 9px",
                 borderRadius: "var(--radius-sm)",
                 fontSize: "12px",
                 color: isActive ? "var(--color-primary)" : "var(--color-text)",
@@ -199,10 +199,8 @@ export const Sidebar: React.FC = () => {
           ))}
         </div>
 
-        <div style={{ borderTop: "1px solid var(--color-divider)", margin: "8px 0" }} />
-
         {/* Domain navigation */}
-        <div style={{ padding: isCollapsed ? "4px" : "4px 8px 10px" }}>
+        <div style={{ padding: isCollapsed ? "2px" : "4px 8px 10px" }}>
           {!isCollapsed && (
             <div
               style={{
@@ -232,7 +230,7 @@ export const Sidebar: React.FC = () => {
                 alignItems: "center",
                 justifyContent: isCollapsed ? "center" : "flex-start",
                 gap: isCollapsed ? 0 : 7,
-                padding: isCollapsed ? "8px 0" : "5px 9px",
+                padding: isCollapsed ? "4px 0" : "5px 9px",
                 borderRadius: "var(--radius-sm)",
                 fontSize: "12px",
                 color: isActive ? "var(--color-primary)" : "var(--color-text)",
@@ -287,7 +285,7 @@ export const Sidebar: React.FC = () => {
                 alignItems: "center",
                 justifyContent: isCollapsed ? "center" : "flex-start",
                 gap: isCollapsed ? 0 : 7,
-                padding: isCollapsed ? "8px 0" : "5px 9px",
+                padding: isCollapsed ? "4px 0" : "5px 9px",
                 borderRadius: "var(--radius-sm)",
                 fontSize: "12px",
                 color: isActive ? "var(--color-primary)" : "var(--color-text)",
@@ -330,6 +328,9 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Profile section pinned to sidebar bottom */}
+      <ProfileSection isCollapsed={isCollapsed} />
     </nav>
   );
 };
