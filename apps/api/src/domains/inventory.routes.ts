@@ -129,6 +129,7 @@ router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Re
   const pageSize = parseInt(req.query.pageSize as string) || 20;
   const all = String(req.query.all ?? "").toLowerCase() === "true";
   const search = String(req.query.search ?? "").trim();
+  const category = String(req.query.category ?? "").trim();
   const stockFilter = String(req.query.stockFilter ?? "all").toLowerCase();
   const filterClauses: Prisma.Sql[] = [];
 
@@ -143,12 +144,20 @@ router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Re
     )`);
   }
 
+  if (category.length > 0 && category.toLowerCase() !== "all") {
+    filterClauses.push(Prisma.sql`category ILIKE ${category}`);
+  }
+
+  const pctCalcSql = Prisma.sql`(CASE WHEN "checkInTotal" > 0 THEN ("quantity"::float / "checkInTotal") * 100 WHEN "quantity" > 0 THEN 100 ELSE 0 END)`;
+
   if (stockFilter === "low") {
-    filterClauses.push(Prisma.sql`quantity > 0 AND quantity <= "minThreshold"`);
+    filterClauses.push(Prisma.sql`quantity > 0 AND ${pctCalcSql} > 0 AND ${pctCalcSql} < 50`);
+  } else if (stockFilter === "moderate") {
+    filterClauses.push(Prisma.sql`quantity > 0 AND ${pctCalcSql} >= 50 AND ${pctCalcSql} < 75`);
   } else if (stockFilter === "out") {
-    filterClauses.push(Prisma.sql`quantity <= 0`);
+    filterClauses.push(Prisma.sql`quantity <= 0 OR ${pctCalcSql} <= 0`);
   } else if (stockFilter === "healthy") {
-    filterClauses.push(Prisma.sql`quantity > "minThreshold"`);
+    filterClauses.push(Prisma.sql`quantity > 0 AND ${pctCalcSql} >= 75`);
   }
 
   const whereClause =
@@ -244,6 +253,38 @@ router.get("/master-data/projects", requireAuth, requirePermission("inventory:re
   res.json({ projects });
 });
 
+router.get("/master-data/options", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
+  const [masterRows, stockRows] = await Promise.all([
+    prisma.inventoryMasterData.findMany({ select: { category: true, unit: true, project: true } }),
+    prisma.stockItem.findMany({ select: { category: true, unit: true } }),
+  ]);
+
+  const defaultUnits = ["units", "pcs", "box", "pack", "vial", "bottle", "kit", "tube", "plate", "bag", "roll", "ml", "L", "g", "kg", "meter"];
+  const defaultCategories = ["Consumables", "Equipment", "Reagents", "Glassware", "Chemicals", "PPE", "General", "Office Supplies", "Diagnostic Kits"];
+
+  const unitsSet = new Set<string>(defaultUnits);
+  const categoriesSet = new Set<string>(defaultCategories);
+  const projectsSet = new Set<string>();
+
+  masterRows.forEach((r) => {
+    if (r.unit?.trim()) unitsSet.add(r.unit.trim());
+    if (r.category?.trim()) categoriesSet.add(r.category.trim());
+    if (r.project?.trim()) projectsSet.add(r.project.trim());
+  });
+
+  stockRows.forEach((r) => {
+    if (r.unit?.trim()) unitsSet.add(r.unit.trim());
+    if (r.category?.trim()) categoriesSet.add(r.category.trim());
+  });
+
+  res.json({
+    units: Array.from(unitsSet).sort(),
+    categories: Array.from(categoriesSet).sort(),
+    projects: Array.from(projectsSet).sort(),
+  });
+});
+
+
 // POST /master-data - add a new master data record
 router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
@@ -331,19 +372,24 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
 
 router.get("/movements", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const type = req.query.type as string;
+  const stockItemId = String(req.query.stockItemId ?? "").trim();
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 50;
+  const all = String(req.query.all ?? "").toLowerCase() === "true";
 
   const where: any = {};
   if (type === "CHECK_IN" || type === "CHECK_OUT") {
     where.movementType = type;
   }
+  if (stockItemId.length > 0) {
+    where.stockItemId = stockItemId;
+  }
 
   const [data, total] = await Promise.all([
     prisma.inventoryMovement.findMany({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: all ? undefined : (page - 1) * limit,
+      take: all ? undefined : limit,
       include: {
         stockItem: {
           select: { id: true, sku: true, name: true, unit: true, category: true },
@@ -627,17 +673,25 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
   const totalQuantity = stockItems.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
   const totalCheckIn = stockItems.reduce((sum, row) => sum + Number(row.checkInTotal ?? 0), 0);
   const totalCheckOut = stockItems.reduce((sum, row) => sum + Number(row.checkOutTotal ?? 0), 0);
+  const calcPercentBalance = (row: any) => {
+    const qty = Number(row.quantity ?? 0);
+    const checkOut = Number(row.checkOutTotal ?? 0);
+    const checkIn = Number(row.checkInTotal ?? (qty + checkOut));
+    if (qty <= 0) return 0;
+    if (checkIn > 0) return (qty / checkIn) * 100;
+    return 100;
+  };
+
+  const outOfStockItems = stockItems.filter((row) => calcPercentBalance(row) <= 0).length;
   const lowStockItems = stockItems.filter((row) => {
-    const quantity = Number(row.quantity ?? 0);
-    const minThreshold = Number(row.minThreshold ?? 0);
-    return quantity > 0 && quantity <= minThreshold;
+    const pct = calcPercentBalance(row);
+    return pct > 0 && pct < 50;
   }).length;
-  const outOfStockItems = stockItems.filter((row) => Number(row.quantity ?? 0) <= 0).length;
-  const healthyItems = stockItems.filter((row) => {
-    const quantity = Number(row.quantity ?? 0);
-    const minThreshold = Number(row.minThreshold ?? 0);
-    return quantity > minThreshold;
+  const moderateStockItems = stockItems.filter((row) => {
+    const pct = calcPercentBalance(row);
+    return pct >= 50 && pct < 75;
   }).length;
+  const healthyItems = stockItems.filter((row) => calcPercentBalance(row) >= 75).length;
   const atRiskItems = lowStockItems + outOfStockItems;
 
   const categoryMap = new Map<string, { category: string; count: number; quantity: number; checkOut: number }>();

@@ -304,7 +304,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
             }}
             placeholder="Type item name or Id"
             inputStyle={{ ...inputStyle, minWidth: "auto" }}
-            wrapperStyle={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
+            wrapperStyle={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
+            dropdownStyle={{ width: "100%" }}
             renderItemMeta={(item) => `Current: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
             variant="minimal"
           />
@@ -349,7 +350,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
             )}
           </label>
 
-          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+          <label style={{ gridColumn: "span 2", fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             Remark
             <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
           </label>

@@ -30,7 +30,8 @@ interface UseInventoryDataOptions {
   pageSize?: number;
   all?: boolean;
   search?: string;
-  stockFilter?: "all" | "low" | "out" | "healthy";
+  category?: string;
+  stockFilter?: "all" | "healthy" | "moderate" | "low" | "out";
   enabled?: boolean;
 }
 
@@ -39,11 +40,12 @@ export function useInventoryData(options?: UseInventoryDataOptions) {
   const pageSize = options?.pageSize ?? 20;
   const all = options?.all ?? false;
   const search = options?.search?.trim() ?? "";
+  const category = options?.category?.trim() ?? "all";
   const stockFilter = options?.stockFilter ?? "all";
   const enabled = options?.enabled ?? true;
 
   return useQuery({
-    queryKey: ["inventory-list", page, pageSize, all, search, stockFilter],
+    queryKey: ["inventory-list", page, pageSize, all, search, category, stockFilter],
     enabled,
     queryFn: async () => {
       const resp = await apiClient.get("/domains/inventory", {
@@ -52,6 +54,7 @@ export function useInventoryData(options?: UseInventoryDataOptions) {
           page,
           pageSize,
           search: search || undefined,
+          category: category !== "all" ? category : undefined,
           stockFilter: stockFilter !== "all" ? stockFilter : undefined,
         },
       });

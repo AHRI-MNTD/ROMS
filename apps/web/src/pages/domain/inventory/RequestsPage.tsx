@@ -210,7 +210,7 @@ export default function RequestsPage() {
 
         <div className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
           <InventoryItemSelect
-            label="Select Item"
+            label="Select Item *"
             items={data?.data ?? []}
             value={selectedItemQuery}
             onValueChange={(value) => {
@@ -223,18 +223,23 @@ export default function RequestsPage() {
             }}
             placeholder="Type item name or Id"
             inputStyle={{ ...inputStyle, minWidth: "auto" }}
-            wrapperStyle={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
+            wrapperStyle={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
+            dropdownStyle={{ width: "100%" }}
             renderItemMeta={(item) => `Current: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
             variant="minimal"
           />
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Quantity
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Quantity <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+            </span>
             <input type="number" min={1} value={requestQty} onChange={(e) => setRequestQty(Number(e.target.value))} style={inputStyle} />
           </label>
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Project
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Project <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+            </span>
             {projects.length > 0 ? (
               <select value={project} onChange={(e) => setProject(e.target.value)} style={inputStyle}>
                 {projects.map((p) => (
@@ -247,12 +252,16 @@ export default function RequestsPage() {
           </label>
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Request Date
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Request Date <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+            </span>
             <input type="date" value={requestDate} onChange={(e) => setRequestDate(e.target.value)} style={inputStyle} />
           </label>
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Requested By
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Requested By <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+            </span>
             {staffMembers.length > 0 ? (
               <select value={requestedBy} onChange={(e) => setRequestedBy(e.target.value)} style={inputStyle}>
                 {staffMembers.map((s) => (
@@ -265,7 +274,9 @@ export default function RequestsPage() {
           </label>
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Requested For
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Requested For <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+            </span>
             {staffMembers.length > 0 ? (
               <select value={requestedFor} onChange={(e) => setRequestedFor(e.target.value)} style={inputStyle}>
                 <option value="">(none)</option>
@@ -279,13 +290,17 @@ export default function RequestsPage() {
           </label>
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Team
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Team <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+            </span>
             <input value={team} onChange={(e) => setTeam(e.target.value)} style={inputStyle} />
           </label>
 
-          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-            Remark
-            <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
+          <label style={{ gridColumn: "span 2", fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Remark <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+            </span>
+            <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} placeholder="Optional notes" />
           </label>
         </div>
 
@@ -343,7 +358,7 @@ export default function RequestsPage() {
                   requestedBy: requestedBy.trim(),
                   requestedFor: requestedFor.trim(),
                   team: team.trim(),
-                  remark: note.trim() || "Request item",
+                  remark: note.trim(),
                 };
                 setCartItems((prev) => [...prev, newItem]);
                 setFeedback({ type: 'success', message: `Added ${requestQty} units of ${selectedItem.name} to cart.` });

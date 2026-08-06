@@ -18,6 +18,151 @@ function normalizeSearch(value: string) {
   return value.trim().toLowerCase();
 }
 
+interface MasterDataComboboxProps {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  placeholder?: string;
+  inputStyle?: React.CSSProperties;
+  maxHeight?: number;
+  dropdownWidth?: string | number;
+}
+
+function MasterDataCombobox({
+  label,
+  required,
+  value,
+  onChange,
+  options,
+  placeholder,
+  inputStyle,
+  maxHeight = 350,
+  dropdownWidth = "100%",
+}: MasterDataComboboxProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const filteredOptions = React.useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((opt) => opt.toLowerCase().includes(q));
+  }, [options, value]);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+      <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
+        <span>{label}</span>
+        {required && <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>}
+      </label>
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setIsOpen(true);
+            setActiveIndex(0);
+          }}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setIsOpen(true);
+              setActiveIndex((prev) => Math.min(prev + 1, filteredOptions.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setIsOpen(true);
+              setActiveIndex((prev) => Math.max(prev - 1, 0));
+            } else if (e.key === "Enter" && isOpen && filteredOptions[activeIndex]) {
+              e.preventDefault();
+              onChange(filteredOptions[activeIndex]);
+              setIsOpen(false);
+            } else if (e.key === "Escape") {
+              setIsOpen(false);
+            }
+          }}
+          placeholder={placeholder}
+          style={inputStyle}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setIsOpen((prev) => !prev)}
+          style={{
+            position: "absolute",
+            right: 8,
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            color: "var(--color-text-muted)",
+            fontSize: "10px",
+            cursor: "pointer",
+            padding: 2,
+          }}
+        >
+          ▼
+        </button>
+      </div>
+
+      {isOpen && filteredOptions.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            width: dropdownWidth,
+            minWidth: "100%",
+            zIndex: 50,
+            marginTop: 4,
+            maxHeight: maxHeight,
+            overflowY: "auto",
+            borderRadius: 6,
+            border: "1px solid var(--color-border)",
+            background: "var(--color-surface)",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+          }}
+        >
+          {filteredOptions.map((opt, idx) => (
+            <div
+              key={opt}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(opt);
+                setIsOpen(false);
+              }}
+              style={{
+                padding: "8px 12px",
+                fontSize: "11.5px",
+                cursor: "pointer",
+                background: idx === activeIndex ? "var(--color-primary-soft)" : "transparent",
+                color: idx === activeIndex ? "var(--color-primary)" : "var(--color-text)",
+                fontWeight: opt === value ? 700 : 400,
+                borderBottom: "1px solid var(--color-border-subtle, rgba(0,0,0,0.03))",
+              }}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CheckInPage() {
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
@@ -41,8 +186,6 @@ export default function CheckInPage() {
   const [newCategory, setNewCategory] = React.useState("");
   const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
 
-  const [newMinThreshold, setNewMinThreshold] = React.useState<number>(5);
-
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
 
   interface CartItem {
@@ -56,7 +199,6 @@ export default function CheckInPage() {
     unitDescription?: string;
     category?: string;
     quantity: number;
-    minThreshold?: number;
     projectFor: string;
     dateReceived: string;
     expiryDate?: string;
@@ -87,46 +229,38 @@ export default function CheckInPage() {
     },
   });
 
-
-
-  const itemInputRef = React.useRef<HTMLInputElement | null>(null);
-  const [itemMenuOpen, setItemMenuOpen] = React.useState(false);
-  const [itemActiveIndex, setItemActiveIndex] = React.useState(0);
-
   const inventoryItems = data?.data ?? [];
 
-  const filteredItemSuggestions = React.useMemo(() => {
-    const query = normalizeSearch(selectedItemQuery);
-    if (!query) {
-      return inventoryItems.slice(0, 20);
-    }
+  // Fetch Master Data Options (Units, Categories, Projects)
+  const { data: masterOptionsData } = useQuery({
+    queryKey: ["inventory-master-data-options"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/master-data/options");
+      return resp.data as { units: string[]; categories: string[]; projects: string[] };
+    },
+  });
 
-    return inventoryItems.filter((item) => {
-      const sku = normalizeSearch(item.sku ?? "");
-      const name = normalizeSearch(item.name ?? "");
-      return sku.includes(query) || name.includes(query) || `${sku} - ${name}`.includes(query);
-    });
-  }, [inventoryItems, selectedItemQuery]);
+  const masterUnits = React.useMemo(() => {
+    return masterOptionsData?.units ?? ["units", "pcs", "box", "pack", "vial", "bottle", "kit", "tube", "plate", "bag", "roll", "ml", "L", "g", "kg"];
+  }, [masterOptionsData]);
+
+  const masterCategories = React.useMemo(() => {
+    return masterOptionsData?.categories ?? ["Consumables", "Equipment", "Reagents", "Glassware", "Chemicals", "PPE", "General"];
+  }, [masterOptionsData]);
 
   const selectedItem = React.useMemo(() => {
     const exactById = inventoryItems.find((item) => item.id === selectedItemId);
-    if (exactById) {
-      return exactById;
-    }
+    if (exactById) return exactById;
 
     const query = normalizeSearch(selectedItemQuery);
-    if (!query) {
-      return undefined;
-    }
+    if (!query) return undefined;
 
     const exactMatches = inventoryItems.filter((item) => {
       const sku = normalizeSearch(item.sku ?? "");
       const name = normalizeSearch(item.name ?? "");
       return query === sku || query === name || query === `${sku} - ${name}`;
     });
-    if (exactMatches.length > 0) {
-      return exactMatches[0];
-    }
+    if (exactMatches.length > 0) return exactMatches[0];
 
     const partialMatches = inventoryItems.filter((item) => {
       const sku = normalizeSearch(item.sku ?? "");
@@ -137,35 +271,51 @@ export default function CheckInPage() {
   }, [inventoryItems, selectedItemId, selectedItemQuery]);
 
   const selectedItemLabel = React.useMemo(() => {
-    if (!selectedItem) {
-      return "";
-    }
+    if (!selectedItem) return "";
     return [selectedItem.sku ?? "", selectedItem.name ?? ""].filter(Boolean).join(" - ");
   }, [selectedItem]);
 
   const selectedItemQuantity = Number(selectedItem?.quantity ?? 0);
 
+  // Compute Next SKU automatically based on inventory + cart items
   const computeNextSku = React.useMemo(() => {
-    const nums = inventoryItems
-      .map((i) => {
-        const s = String(i.sku ?? "");
+    const allSkus = [
+      ...inventoryItems.map((i) => String(i.sku ?? "")),
+      ...cart.map((c) => String(c.sku ?? "")),
+    ];
+    const nums = allSkus
+      .map((s) => {
         const m = s.match(/(\d+)$/);
         return m ? Number(m[1]) : NaN;
       })
       .filter(Number.isFinite);
     const max = nums.length ? Math.max(...nums) : 0;
     return `MNTD${max + 1}`;
-  }, [inventoryItems]);
+  }, [inventoryItems, cart]);
+
+  // Code_No duplicate check against existing inventory & cart
+  const isCodeNoDuplicate = React.useMemo(() => {
+    if (mode !== "new") return false;
+    const skuTrimmed = newSku.trim().toLowerCase();
+    if (!skuTrimmed) return false;
+
+    const existsInInventory = inventoryItems.some(
+      (i) => String(i.sku ?? "").trim().toLowerCase() === skuTrimmed || String(i.sourceCode ?? "").trim().toLowerCase() === skuTrimmed
+    );
+    const existsInCart = cart.some((c) => String(c.sku ?? "").trim().toLowerCase() === skuTrimmed);
+
+    return existsInInventory || existsInCart;
+  }, [mode, newSku, inventoryItems, cart]);
 
   React.useEffect(() => {
     if (mode === "new" && !newSku) {
-      setNewSku(computeNextSku);
+      const next = computeNextSku;
+      setNewSku(next);
+      if (!newBarcode) {
+        setNewBarcode(next);
+      }
     }
-  }, [mode, computeNextSku, newSku]);
-
-  React.useEffect(() => {
-    setItemActiveIndex((prev) => Math.min(prev, Math.max(filteredItemSuggestions.length - 1, 0)));
-  }, [filteredItemSuggestions.length]);
+  }, [mode, computeNextSku, newSku, newBarcode]);
 
   React.useEffect(() => {
     if (!selectedItemQuery) {
@@ -207,72 +357,6 @@ export default function CheckInPage() {
     };
   }, []);
 
-  const chooseInventoryItem = React.useCallback((item: (typeof inventoryItems)[number]) => {
-    setSelectedItemId(item.id ?? "");
-    setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
-    setItemMenuOpen(false);
-  }, []);
-
-  const handleItemKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (filteredItemSuggestions.length === 0) {
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setItemMenuOpen(true);
-      setItemActiveIndex((prev) => Math.min(prev + 1, filteredItemSuggestions.length - 1));
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setItemMenuOpen(true);
-      setItemActiveIndex((prev) => Math.max(prev - 1, 0));
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const chosen = filteredItemSuggestions[itemActiveIndex];
-      if (chosen) {
-        chooseInventoryItem(chosen);
-      }
-    }
-
-    if (event.key === "Escape") {
-      setItemMenuOpen(false);
-    }
-  };
-
-  const inventoryReferenceRows = React.useMemo(() => {
-    return inventoryItems.map((item) => {
-      const quantity = Number(item.quantity ?? 0);
-      const minThreshold = Number(item.minThreshold ?? 0);
-      const isOutOfStock = quantity <= 0;
-      const isLowStock = quantity > 0 && quantity <= minThreshold;
-      const name = String(item.name ?? "").toLowerCase();
-      const category =
-        name.includes("tube") || name.includes("plate") || name.includes("dish")
-          ? "Consumables"
-          : name.includes("meter") || name.includes("thermo")
-            ? "Equipment"
-            : "General";
-
-      return {
-        codeNo: item.sku ?? "—",
-        barcode: item.sku ?? "—",
-        itemDescription: item.name ?? "—",
-        quantity,
-        unit: item.unit ?? "units",
-        unitDescription: `${item.unit ?? "units"} per pack`,
-        category,
-        project: "ROMS Inventory",
-        dateReceived: item.createdAt ? new Date(item.createdAt).toISOString().slice(0, 10) : "—",
-        expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString().slice(0, 10) : "—",
-        remark: isOutOfStock ? "Out of stock" : isLowStock ? "Low stock" : item.lotNumber ? `Lot: ${item.lotNumber}` : "In stock",
-      };
-    });
-  }, [inventoryItems]);
-
   const inputStyle: React.CSSProperties = {
     border: "1px solid var(--color-border)",
     borderRadius: "6px",
@@ -284,114 +368,11 @@ export default function CheckInPage() {
     height: 30,
   };
 
-  const checkInMutation = useMutation({
-    mutationFn: async () => {
-      if (mode === "existing") {
-        if (!selectedItem?.id) {
-          throw new Error("Select an item to check in.");
-        }
-        if (!Number.isFinite(checkInQty) || checkInQty <= 0) {
-          throw new Error("Check-in quantity must be greater than zero.");
-        }
-
-        await apiClient.post("/domains/inventory/bulk-checkin", {
-          items: [{
-            mode: "existing",
-            stockItemId: selectedItem.id,
-            quantity: checkInQty,
-            projectFor: projectFor.trim() || projects[0],
-            dateReceived: dateReceived || undefined,
-            expiryDate: expiryDate || undefined,
-            remark: note.trim() || undefined,
-          }],
-        });
-
-        return {
-          mode,
-          itemLabel: `${selectedItem.sku ?? ""} ${selectedItem.name ?? ""}`.trim(),
-          quantity: checkInQty,
-        };
-      }
-
-      if (!newSku.trim() || !newName.trim()) {
-        throw new Error("SKU and Item Description are required for new items.");
-      }
-      if (!Number.isFinite(newOpeningQty) || newOpeningQty <= 0) {
-        throw new Error("Quantity must be greater than zero.");
-      }
-
-      const nameLower = newName.trim().toLowerCase();
-      const category = newCategory.trim() || (nameLower.includes("tube") || nameLower.includes("plate") || nameLower.includes("dish")
-        ? "Consumables"
-        : nameLower.includes("meter") || nameLower.includes("thermo")
-          ? "Equipment"
-          : "General");
-      const barcode = newBarcode.trim() || newSku.trim();
-      const unitDescription = newUnitDescription.trim() || `${newUnit.trim() || "units"} per pack`;
-
-      await apiClient.post("/domains/inventory/bulk-checkin", {
-        items: [{
-          mode: "new",
-          sku: newSku.trim(),
-          barcode,
-          name: newName.trim(),
-          itemDescription: newName.trim(),
-          unit: newUnit.trim() || "units",
-          unitDescription,
-          quantity: Math.max(1, Math.floor(newOpeningQty)),
-          minThreshold: newMinThreshold,
-          category,
-          projectFor: projectFor.trim() || projects[0],
-          dateReceived: dateReceived || undefined,
-          expiryDate: newExpiryDate || undefined,
-          remark: note.trim() || undefined,
-        }],
-      });
-
-      return {
-        mode,
-        itemLabel: `${newSku.trim()} ${newName.trim()}`.trim(),
-        quantity: newOpeningQty,
-      };
-    },
-    onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
-
-      setFeedback({
-        type: "success",
-        message: `${result.mode === "existing" ? "Checked in" : "Created and checked in"} ${result.quantity} unit(s) for ${result.itemLabel}.`,
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ["inventory-checkin-movements"] });
-
-
-      if (result.mode === "existing") {
-        setCheckInQty(1);
-        setNote("");
-        setSelectedItemId("");
-        setSelectedItemQuery("");
-      } else {
-        // Optimistically increment from the SKU just submitted so the field
-        // shows the correct next value before the refetch completes.
-        const submittedNum = newSku.trim().match(/(\d+)$/);
-        const nextSku = submittedNum
-          ? newSku.trim().replace(/(\d+)$/, String(Number(submittedNum[1]) + 1))
-          : computeNextSku;
-        setNewSku(nextSku);
-        setNewBarcode("");
-        setNewName("");
-        setNewUnit("units");
-        setNewOpeningQty(1);
-        setNewUnitDescription("");
-        setNewCategory("");
-        setNote("");
-        // do NOT reset projectFor — keep the valid selected project
-      }
-    },
-    onError: (err) => {
-      setFeedback({ type: "error", message: getErrorMessage(err, "Check-in failed.") });
-    },
-  });
+  const inputErrorStyle: React.CSSProperties = {
+    ...inputStyle,
+    border: "1px solid #ef4444",
+    background: "#fef2f2",
+  };
 
   const isExisting = mode === "existing";
 
@@ -411,7 +392,7 @@ export default function CheckInPage() {
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
-        {/* Prominent Mode Switcher at the very top */}
+        {/* Mode Switcher */}
         <div
           style={{
             marginBottom: 16,
@@ -455,7 +436,6 @@ export default function CheckInPage() {
                 justifyContent: "center",
                 fontSize: 16,
                 flexShrink: 0,
-                transition: "all 0.2s ease",
               }}
             >
               📦
@@ -527,7 +507,6 @@ export default function CheckInPage() {
                 justifyContent: "center",
                 fontSize: 16,
                 flexShrink: 0,
-                transition: "all 0.2s ease",
               }}
             >
               ✨
@@ -599,16 +578,18 @@ export default function CheckInPage() {
               background: feedback.type === "success" ? "#f0fdf4" : "#fef2f2",
               color: feedback.type === "success" ? "#166534" : "#991b1b",
               fontSize: "var(--fs-xs)",
+              fontWeight: 600,
             }}
           >
             {feedback.message}
           </div>
         )}
 
+        {/* Existing Item Form */}
         {mode === "existing" && (
           <div key="existing-form" className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
             <InventoryItemSelect
-              label="Select Item"
+              label="Select Item *"
               items={inventoryItems}
               value={selectedItemQuery}
               onValueChange={(value) => {
@@ -619,15 +600,18 @@ export default function CheckInPage() {
                 setSelectedItemId(item.id ?? "");
                 setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
               }}
-              placeholder="Type item name or Id"
+              placeholder="Type item name or Code_No"
               inputStyle={{ ...inputStyle, minWidth: "auto" }}
-              wrapperStyle={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
+              wrapperStyle={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: 3, fontSize: "10px" }}
+              dropdownStyle={{ width: "100%" }}
               renderItemMeta={(item) => `Available: ${Number(item.quantity ?? 0)} ${item.unit ?? "units"}`}
               variant="minimal"
             />
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Quantity
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Quantity <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
               <input
                 type="number"
                 min={1}
@@ -637,13 +621,16 @@ export default function CheckInPage() {
                   setCheckInQty(Math.max(0, v));
                 }}
                 style={inputStyle}
+                required
               />
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Project For
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Project For <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
               {projects.length > 0 ? (
-                <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
+                <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} required>
                   {projects.map((p) => (
                     <option key={p} value={p}>
                       {p}
@@ -651,68 +638,144 @@ export default function CheckInPage() {
                   ))}
                 </select>
               ) : (
-                <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+                <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} required />
               )}
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Date Received
-              <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Date Received <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
+              <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} required />
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Expiry Date
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Expiry Date <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
               <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Remark
-              <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
+            {/* Remark field - Double width (gridColumn: "span 2") */}
+            <label style={{ gridColumn: "span 2", fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Remark <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
+              <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} placeholder="Optional notes" />
             </label>
           </div>
         )}
 
+        {/* New Item Form - NO Min Threshold Field */}
         {mode === "new" && (
           <div key="new-form" className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Code_No
-              <input value={newSku} onChange={(e) => setNewSku(e.target.value)} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Code_No <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
+              <input
+                value={newSku}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewSku(val);
+                  if (!newBarcode || newBarcode === newSku) {
+                    setNewBarcode(val);
+                  }
+                }}
+                style={isCodeNoDuplicate ? inputErrorStyle : inputStyle}
+                placeholder="Auto-incremented Code_No"
+                required
+              />
+              {isCodeNoDuplicate && (
+                <span style={{ fontSize: "9px", color: "#dc2626", fontWeight: 600, marginTop: 2 }}>
+                  ⚠️ Code_No '{newSku.trim()}' is already used. Please enter a unique Code_No.
+                </span>
+              )}
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Barcode
-              <input value={newBarcode} onChange={(e) => setNewBarcode(e.target.value)} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Barcode <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
+              <input
+                value={newBarcode}
+                onChange={(e) => setNewBarcode(e.target.value)}
+                style={inputStyle}
+                placeholder="Barcode or Code_No"
+                required
+              />
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Item Description
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Item Description <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                style={inputStyle}
+                placeholder="Enter full item description"
+                required
+              />
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Quantity
-              <input type="number" min={1} value={newOpeningQty} onChange={(e) => setNewOpeningQty(Number(e.target.value))} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Quantity <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={newOpeningQty}
+                onChange={(e) => setNewOpeningQty(Math.max(1, Number(e.target.value) || 1))}
+                style={inputStyle}
+                required
+              />
             </label>
 
+            {/* Master Data Dropdown with typing recommendation for Unit */}
+            <MasterDataCombobox
+              label="Unit"
+              required={true}
+              value={newUnit}
+              onChange={(val) => setNewUnit(val)}
+              options={masterUnits}
+              placeholder="Select or type unit..."
+              inputStyle={inputStyle}
+            />
+
+            {/* Unit_Description is NOT compulsory (optional) */}
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Unit
-              <input value={newUnit} onChange={(e) => setNewUnit(e.target.value)} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Unit_Description <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
+              <input
+                value={newUnitDescription}
+                onChange={(e) => setNewUnitDescription(e.target.value)}
+                style={inputStyle}
+                placeholder="e.g. 50 tests/kit (Optional)"
+              />
             </label>
 
-            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Unit_Description
-              <input value={newUnitDescription} onChange={(e) => setNewUnitDescription(e.target.value)} style={inputStyle} />
-            </label>
+            {/* Master Data Dropdown with typing recommendation for Category */}
+            <MasterDataCombobox
+              label="Category"
+              required={true}
+              value={newCategory}
+              onChange={(val) => setNewCategory(val)}
+              options={masterCategories}
+              placeholder="Select or type category..."
+              inputStyle={inputStyle}
+              maxHeight={400}
+              dropdownWidth="150%"
+            />
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Category
-              <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} style={inputStyle} />
-            </label>
-
-            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Project For
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Project For <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
               {projects.length > 0 ? (
-                <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle}>
+                <select value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} required>
                   {projects.map((p) => (
                     <option key={p} value={p}>
                       {p}
@@ -720,28 +783,30 @@ export default function CheckInPage() {
                   ))}
                 </select>
               ) : (
-                <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} />
+                <input value={projectFor} onChange={(e) => setProjectFor(e.target.value)} style={inputStyle} required />
               )}
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Date Received
-              <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} />
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Date Received <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
+              </span>
+              <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={inputStyle} required />
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Expiry Date
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Expiry Date <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
               <input type="date" value={newExpiryDate} onChange={(e) => setNewExpiryDate(e.target.value)} style={inputStyle} />
             </label>
 
-            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Min Threshold
-              <input type="number" min={0} value={newMinThreshold} onChange={(e) => setNewMinThreshold(Math.max(0, Math.floor(Number(e.target.value) || 0)))} style={inputStyle} />
-            </label>
-
-            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
-              Remark
-              <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} />
+            {/* Remark field - Double width (gridColumn: "span 2") */}
+            <label style={{ gridColumn: "span 2", fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Remark <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
+              <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} placeholder="Optional notes" />
             </label>
           </div>
         )}
@@ -767,13 +832,14 @@ export default function CheckInPage() {
           </div>
         )}
 
-        <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        {/* Action Controls */}
+        <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
             {isLoading && "Loading inventory items..."}
             {!isLoading && error && "Inventory list unavailable. You can still try creating a new item."}
             {!isLoading && !error && `Loaded ${(data?.data ?? []).length} items`}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 10 }}>
             <button
               type="button"
               onClick={() => {
@@ -785,6 +851,14 @@ export default function CheckInPage() {
                   }
                   if (!Number.isFinite(checkInQty) || checkInQty <= 0) {
                     setFeedback({ type: "error", message: "Check-in quantity must be greater than zero." });
+                    return;
+                  }
+                  if (!projectFor.trim()) {
+                    setFeedback({ type: "error", message: "Project For is required." });
+                    return;
+                  }
+                  if (!dateReceived) {
+                    setFeedback({ type: "error", message: "Date Received is required." });
                     return;
                   }
 
@@ -809,53 +883,81 @@ export default function CheckInPage() {
                   setSelectedItemId("");
                   setSelectedItemQuery("");
                 } else {
-                  if (!newSku.trim() || !newName.trim()) {
-                    setFeedback({ type: "error", message: "SKU and Item Description are required for new items." });
+                  // New Item Validation
+                  const sku = newSku.trim();
+                  const name = newName.trim();
+                  const unit = newUnit.trim();
+                  const category = newCategory.trim();
+                  const barcode = newBarcode.trim() || sku;
+
+                  if (!sku) {
+                    setFeedback({ type: "error", message: "Code_No is required for new items." });
+                    return;
+                  }
+                  if (isCodeNoDuplicate) {
+                    setFeedback({ type: "error", message: `Code_No '${sku}' is already in use. Please enter a unique Code_No.` });
+                    return;
+                  }
+                  if (!barcode) {
+                    setFeedback({ type: "error", message: "Barcode is required for new items." });
+                    return;
+                  }
+                  if (!name) {
+                    setFeedback({ type: "error", message: "Item Description is required for new items." });
                     return;
                   }
                   if (!Number.isFinite(newOpeningQty) || newOpeningQty <= 0) {
                     setFeedback({ type: "error", message: "Quantity must be greater than zero." });
                     return;
                   }
+                  if (!unit) {
+                    setFeedback({ type: "error", message: "Unit is required for new items." });
+                    return;
+                  }
+                  if (!category) {
+                    setFeedback({ type: "error", message: "Category is required for new items." });
+                    return;
+                  }
+                  if (!projectFor.trim()) {
+                    setFeedback({ type: "error", message: "Project For is required." });
+                    return;
+                  }
+                  if (!dateReceived) {
+                    setFeedback({ type: "error", message: "Date Received is required." });
+                    return;
+                  }
 
-                  const sku = newSku.trim();
-                  const nameLower = newName.trim().toLowerCase();
-                  const category = newCategory.trim() || (nameLower.includes("tube") || nameLower.includes("plate") || nameLower.includes("dish")
-                    ? "Consumables"
-                    : nameLower.includes("meter") || nameLower.includes("thermo")
-                      ? "Equipment"
-                      : "General");
-                  const barcode = newBarcode.trim() || sku;
-                  const unitDescription = newUnitDescription.trim() || `${newUnit.trim() || "units"} per pack`;
+                  const unitDescription = newUnitDescription.trim() || `${unit} per pack`;
 
                   const newItem: CartItem = {
                     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                     mode: "new",
                     sku,
                     barcode,
-                    name: newName.trim(),
+                    name,
                     quantity: newOpeningQty,
-                    minThreshold: newMinThreshold,
-                    unit: newUnit.trim() || "units",
+                    unit,
                     unitDescription,
                     category,
                     projectFor: projectFor.trim() || projects[0],
                     dateReceived,
                     expiryDate: newExpiryDate || undefined,
                     remark: note.trim() || undefined,
-                    itemLabel: `${sku} ${newName.trim()}`.trim(),
+                    itemLabel: `${sku} ${name}`.trim(),
                   };
                   setCart((prev) => [...prev, newItem]);
                   setFeedback({
                     type: "success",
                     message: `Added new item ${sku} to batch.`,
                   });
+
+                  // Optimistically increment SKU for next item
                   const submittedNum = sku.match(/(\d+)$/);
                   const nextSku = submittedNum
                     ? sku.replace(/(\d+)$/, String(Number(submittedNum[1]) + 1))
                     : computeNextSku;
                   setNewSku(nextSku);
-                  setNewBarcode("");
+                  setNewBarcode(nextSku);
                   setNewName("");
                   setNewUnit("units");
                   setNewOpeningQty(1);
@@ -870,7 +972,7 @@ export default function CheckInPage() {
                 background: "var(--color-surface)",
                 color: "var(--color-text)",
                 borderRadius: "var(--radius-sm)",
-                padding: "8px 12px",
+                padding: "8px 14px",
                 fontSize: "var(--fs-xs)",
                 fontWeight: 700,
                 cursor: "pointer",
@@ -878,12 +980,12 @@ export default function CheckInPage() {
             >
               ➕ Add to Cart
             </button>
-
           </div>
         </div>
 
+        {/* Batch Cart Table */}
         {cart.length > 0 && (
-          <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 10, marginTop: 12 }}>
+          <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--color-border)", background: "var(--color-surface)", display: "grid", gap: 10, marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>🛒 Batch Check-In Cart ({cart.length} items)</div>
               <button
@@ -978,7 +1080,6 @@ export default function CheckInPage() {
                                   setNewCategory(item.category || "");
                                   setNote(item.remark || "");
                                   setNewExpiryDate(item.expiryDate || "");
-                                  setNewMinThreshold(item.minThreshold || 5);
                                 }
                                 setProjectFor(item.projectFor);
                                 setDateReceived(item.dateReceived);
@@ -1005,59 +1106,58 @@ export default function CheckInPage() {
                 </tbody>
               </table>
             </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => {
-                setFeedback(null);
-                const payload = cart.map((i) => {
-                  if (i.mode === "existing") {
-                    return {
-                      mode: "existing" as const,
-                      stockItemId: i.stockItemId,
-                      quantity: i.quantity,
-                      projectFor: i.projectFor,
-                      dateReceived: i.dateReceived,
-                      expiryDate: i.expiryDate,
-                      remark: i.remark,
-                    };
-                  } else {
-                    return {
-                      mode: "new" as const,
-                      sku: i.sku,
-                      barcode: i.barcode,
-                      name: i.name,
-                      quantity: i.quantity,
-                      minThreshold: i.minThreshold,
-                      unit: i.unit,
-                      unitDescription: i.unitDescription,
-                      category: i.category,
-                      projectFor: i.projectFor,
-                      dateReceived: i.dateReceived,
-                      expiryDate: i.expiryDate,
-                      remark: i.remark,
-                    };
-                  }
-                });
-                bulkCheckInMutation.mutate(payload);
-              }}
-              disabled={bulkCheckInMutation.isPending}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "var(--color-primary)",
-                color: "#fff",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 16px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: bulkCheckInMutation.isPending ? "not-allowed" : "pointer",
-              }}
-            >
-              {bulkCheckInMutation.isPending ? "Submitting..." : "Submit"}
-            </button>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setFeedback(null);
+                  const payload = cart.map((i) => {
+                    if (i.mode === "existing") {
+                      return {
+                        mode: "existing" as const,
+                        stockItemId: i.stockItemId,
+                        quantity: i.quantity,
+                        projectFor: i.projectFor,
+                        dateReceived: i.dateReceived,
+                        expiryDate: i.expiryDate,
+                        remark: i.remark,
+                      };
+                    } else {
+                      return {
+                        mode: "new" as const,
+                        sku: i.sku,
+                        barcode: i.barcode,
+                        name: i.name,
+                        quantity: i.quantity,
+                        unit: i.unit,
+                        unitDescription: i.unitDescription,
+                        category: i.category,
+                        projectFor: i.projectFor,
+                        dateReceived: i.dateReceived,
+                        expiryDate: i.expiryDate,
+                        remark: i.remark,
+                      };
+                    }
+                  });
+                  bulkCheckInMutation.mutate(payload);
+                }}
+                disabled={bulkCheckInMutation.isPending}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-primary)",
+                  color: "#fff",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "8px 16px",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: bulkCheckInMutation.isPending ? "not-allowed" : "pointer",
+                }}
+              >
+                {bulkCheckInMutation.isPending ? "Submitting..." : "Submit Batch"}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       <CheckInReferenceTable />

@@ -4,6 +4,16 @@ import { apiClient, getErrorMessage } from "../../../api/client";
 import { useAuth } from "../../../auth/useAuth";
 import { RequestReferenceTable, RequestReferenceRow } from "./RequestReferenceTable";
 
+interface RequestItemState {
+  id: string;
+  movementId?: string;
+  sku?: string;
+  name?: string;
+  quantity: number;
+  status: "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL";
+  acceptedQuantity?: number;
+}
+
 interface RequestLogEntry {
   id: string;
   timestamp: string;
@@ -15,8 +25,94 @@ interface RequestLogEntry {
   team?: string;
   items?: Array<{ id: string; movementId?: string; sku?: string; name?: string; quantity: number }>;
   bulk?: boolean;
+  rawRows?: RequestReferenceRow[];
 }
 
+/* ─── Tooltip Action Icon Button ─────────────────────────────────────────── */
+function IconBtn({
+  title,
+  onClick,
+  children,
+  color,
+  hoverBg,
+}: {
+  title: string;
+  onClick: (e: React.MouseEvent) => void;
+  children: React.ReactNode;
+  color: string;
+  hoverBg: string;
+}) {
+  const [hover, setHover] = React.useState(false);
+  const [tooltipVisible, setTooltipVisible] = React.useState(false);
+
+  return (
+    <div style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        type="button"
+        title={title}
+        onClick={onClick}
+        onMouseEnter={() => { setHover(true); setTooltipVisible(true); }}
+        onMouseLeave={() => { setHover(false); setTooltipVisible(false); }}
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 7,
+          border: `1.5px solid ${color}33`,
+          background: hover ? hoverBg : "transparent",
+          color,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 14,
+          cursor: "pointer",
+          transition: "all 0.15s ease",
+          flexShrink: 0,
+          padding: 0,
+        }}
+      >
+        {children}
+      </button>
+      {tooltipVisible && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 6px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(15,23,42,0.92)",
+            color: "#fff",
+            fontSize: "9.5px",
+            padding: "4px 8px",
+            borderRadius: 6,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            zIndex: 999,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+          }}
+        >
+          {title}
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "4px solid transparent",
+              borderRight: "4px solid transparent",
+              borderTop: "4px solid rgba(15,23,42,0.92)",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Component ──────────────────────────────────────────────────────── */
 export default function InventoryManagerPage() {
   const user = useAuth((state) => state.user);
   const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? true;
@@ -32,27 +128,25 @@ export default function InventoryManagerPage() {
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
   const [logs, setLogs] = React.useState<RequestLogEntry[]>([]);
-  const [modalOpen, setModalOpen] = React.useState(false);
-  const [activeLog, setActiveLog] = React.useState<RequestLogEntry | null>(null);
-  const [modalItems, setModalItems] = React.useState<Array<{ id: string; movementId?: string; sku?: string; name?: string; quantity: number; status: "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL"; acceptedQuantity?: number }>>([]);
+  const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
+  const [rowItemDecisions, setRowItemDecisions] = React.useState<Record<string, RequestItemState[]>>({});
   const [decidedBatchIds, setDecidedBatchIds] = React.useState<Set<string>>(new Set());
   const [showAllLogs, setShowAllLogs] = React.useState(false);
 
+  /* Group pending requests by batch */
   React.useEffect(() => {
     const rows = (persistedRequests?.data ?? []).filter((r) => r.status === "PENDING");
-    if (rows.length === 0) {
-      setLogs([]);
-      return;
-    }
+    if (rows.length === 0) { setLogs([]); return; }
 
     const batches = new Map<string, RequestLogEntry>();
     for (const row of rows) {
       const batchKey = String(row.requestBatchId ?? row.rowKey);
       const existing = batches.get(batchKey);
-      const entry = existing ?? {
+      const batchRows = rows.filter((r) => String(r.requestBatchId ?? r.rowKey) === batchKey);
+      const entry: RequestLogEntry = existing ?? {
         id: batchKey,
         timestamp: new Date(row.dateRequested).toISOString(),
-        itemLabel: rows.filter((candidate) => String(candidate.requestBatchId ?? candidate.rowKey) === batchKey).length > 1 ? `${rows.filter((candidate) => String(candidate.requestBatchId ?? candidate.rowKey) === batchKey).length} item(s)` : row.itemDescription,
+        itemLabel: batchRows.length > 1 ? `${batchRows.length} item(s)` : row.itemDescription,
         quantity: 0,
         requestedBy: row.requestedBy,
         requestedFor: row.requestedFor,
@@ -60,11 +154,14 @@ export default function InventoryManagerPage() {
         team: row.team,
         items: [],
         bulk: true,
+        rawRows: [],
       };
 
       entry.quantity += Number(row.requestedQuantity ?? row.quantity ?? 0);
       entry.items = entry.items ?? [];
       entry.items.push({ id: row.rowKey, movementId: row.movementId, sku: row.codeNo, name: row.itemDescription, quantity: Number(row.requestedQuantity ?? row.quantity ?? 0) });
+      entry.rawRows = entry.rawRows ?? [];
+      entry.rawRows.push(row);
       batches.set(batchKey, entry);
     }
 
@@ -72,25 +169,82 @@ export default function InventoryManagerPage() {
     setLogs(groupedLogs);
   }, [persistedRequests?.data]);
 
-  const saveDecisionMutation = useMutation({
-    mutationFn: async () => {
-      if (!activeLog) {
-        throw new Error("No request is open.");
+  /* Toggle inline expansion of a row */
+  const toggleRowExpand = (entry: RequestLogEntry) => {
+    if (expandedRowId === entry.id) {
+      setExpandedRowId(null);
+    } else {
+      setExpandedRowId(entry.id);
+      if (!rowItemDecisions[entry.id]) {
+        const items = entry.items && entry.items.length > 0
+          ? entry.items
+          : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
+        setRowItemDecisions((prev) => ({
+          ...prev,
+          [entry.id]: items.map((it) => ({
+            id: it.id,
+            movementId: it.movementId ?? it.id,
+            sku: it.sku,
+            name: it.name,
+            quantity: it.quantity,
+            status: "PENDING" as const,
+            acceptedQuantity: it.quantity,
+          })),
+        }));
       }
+    }
+  };
 
+  /* Quick-Approve Mutation */
+  const quickApproveMutation = useMutation({
+    mutationFn: async (entry: RequestLogEntry) => {
+      const items = entry.items && entry.items.length > 0
+        ? entry.items
+        : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
+      const resp = await apiClient.post("/domains/inventory/request-decisions", {
+        requestedBy: entry.requestedBy,
+        requestedFor: entry.requestedFor,
+        project: entry.project,
+        team: entry.team,
+        timestamp: entry.timestamp,
+        items: items.map((it) => ({
+          movementId: it.movementId ?? it.id,
+          sku: it.sku,
+          name: it.name,
+          quantity: it.quantity,
+          status: "APPROVED",
+          acceptedQuantity: it.quantity,
+        })),
+      });
+      return resp.data;
+    },
+    onSuccess: (_data, entry) => {
+      setFeedback({ type: "success", message: `Approved ${entry.itemLabel} directly.` });
+      setDecidedBatchIds((prev) => new Set([...prev, entry.id]));
+      if (expandedRowId === entry.id) setExpandedRowId(null);
+      queryClient.invalidateQueries({ queryKey: ["inventory-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (err) => {
+      setFeedback({ type: "error", message: getErrorMessage(err, "Quick approval failed.") });
+    },
+  });
+
+  /* Save Decisions Mutation for inline expanded panel */
+  const saveDecisionMutation = useMutation({
+    mutationFn: async ({ entry, items }: { entry: RequestLogEntry; items: RequestItemState[] }) => {
       const toServerStatus = (status: "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL") => {
         if (status === "ACCEPT") return "APPROVED" as const;
         if (status === "REJECT") return "REJECTED" as const;
         return status as "PENDING" | "PARTIAL";
       };
-
       const resp = await apiClient.post("/domains/inventory/request-decisions", {
-        requestedBy: activeLog.requestedBy,
-        requestedFor: activeLog.requestedFor,
-        project: activeLog.project,
-        team: activeLog.team,
-        timestamp: activeLog.timestamp,
-        items: modalItems.map((item) => ({
+        requestedBy: entry.requestedBy,
+        requestedFor: entry.requestedFor,
+        project: entry.project,
+        team: entry.team,
+        timestamp: entry.timestamp,
+        items: items.map((item) => ({
           movementId: item.movementId ?? item.id,
           sku: item.sku,
           name: item.name,
@@ -99,16 +253,14 @@ export default function InventoryManagerPage() {
           acceptedQuantity: item.acceptedQuantity,
         })),
       });
-
       return resp.data;
     },
-    onSuccess: async () => {
-      setFeedback({ type: "success", message: `Saved decisions for ${modalItems.length} item(s).` });
-      if (activeLog) setDecidedBatchIds((prev) => new Set([...prev, activeLog.id]));
+    onSuccess: (_data, variables) => {
+      setFeedback({ type: "success", message: `Saved decisions for ${variables.items.length} item(s).` });
+      setDecidedBatchIds((prev) => new Set([...prev, variables.entry.id]));
+      if (expandedRowId === variables.entry.id) setExpandedRowId(null);
       queryClient.invalidateQueries({ queryKey: ["inventory-requests"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      setModalOpen(false);
-      setActiveLog(null);
     },
     onError: (err) => {
       setFeedback({ type: "error", message: getErrorMessage(err, "Saving decisions failed.") });
@@ -117,22 +269,27 @@ export default function InventoryManagerPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {/* Feedback Banner */}
       {feedback && (
         <div
           style={{
-            padding: "10px 12px",
+            padding: "10px 14px",
             borderRadius: "var(--radius-sm)",
             border: `1px solid ${feedback.type === "success" ? "#86efac" : "#fca5a5"}`,
             background: feedback.type === "success" ? "#f0fdf4" : "#fef2f2",
             color: feedback.type === "success" ? "#166534" : "#991b1b",
             fontSize: "var(--fs-xs)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          {feedback.message}
+          <span>{feedback.message}</span>
+          <button onClick={() => setFeedback(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "inherit", opacity: 0.6 }}>✕</button>
         </div>
       )}
 
-      {/* Pending requests section */}
+      {/* ── Pending Requests Section ─────────────────────────────────── */}
       <div
         style={{
           padding: 18,
@@ -174,9 +331,7 @@ export default function InventoryManagerPage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--color-text)" }}>
-                Pending Requests
-              </span>
+              <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--color-text)" }}>Pending Requests</span>
               <span
                 style={{
                   fontSize: "9px",
@@ -194,10 +349,11 @@ export default function InventoryManagerPage() {
               </span>
             </div>
             <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 2 }}>
-              Click any row to review items and accept, partially approve, or reject
+              Click any row or the details icon (👁) to expand requested items and set decisions inline.
             </div>
           </div>
         </div>
+
         {(() => {
           const pendingLogs = logs.filter((e) => !decidedBatchIds.has(e.id));
           if (pendingLogs.length === 0) return (
@@ -208,11 +364,12 @@ export default function InventoryManagerPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "20%" }} />
-                  <col style={{ width: "35%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "18%" }} />
                   <col style={{ width: "17%" }} />
+                  <col style={{ width: "28%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "15%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -225,6 +382,7 @@ export default function InventoryManagerPage() {
                           <th style={thStyle} title="Quantity">Qty</th>
                           <th style={thStyle} title="Requested By">Requested By</th>
                           <th style={thStyle} title="Requested For">Requested For</th>
+                          <th style={{ ...thStyle, textAlign: "center" }} title="Actions">Actions</th>
                         </>
                       );
                     })()}
@@ -232,38 +390,249 @@ export default function InventoryManagerPage() {
                 </thead>
                 <tbody>
                   {visibleLogs.map((entry) => {
+                    const isExpanded = expandedRowId === entry.id;
                     const cellStyle: React.CSSProperties = {
                       padding: "6px 8px",
                       fontSize: "10.5px",
                       color: "var(--color-text-muted)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
-                      textOverflow: "ellipsis"
+                      textOverflow: "ellipsis",
                     };
                     const timeStr = new Date(entry.timestamp).toLocaleString();
-                    const itemStr = entry.itemLabel;
-                    const qtyStr = String(entry.quantity);
-                    const reqBy = entry.requestedBy;
-                    const reqFor = entry.requestedFor || '—';
+                    const currentItems = rowItemDecisions[entry.id] || (entry.items || []).map((it) => ({
+                      id: it.id,
+                      movementId: it.movementId ?? it.id,
+                      sku: it.sku,
+                      name: it.name,
+                      quantity: it.quantity,
+                      status: "PENDING" as const,
+                      acceptedQuantity: it.quantity,
+                    }));
 
                     return (
-                      <tr
-                        key={entry.id}
-                        style={{ borderBottom: "1px solid var(--color-divider)", height: 32, cursor: entry.items?.length ? "pointer" : "default" }}
-                        onClick={() => {
-                          if (!entry) return;
-                          const items = entry.items && entry.items.length > 0 ? entry.items : [{ id: String(entry.id), movementId: String(entry.id), sku: undefined, name: entry.itemLabel, quantity: entry.quantity }];
-                          setActiveLog(entry);
-                          setModalItems(items.map((it) => ({ id: it.id, movementId: it.movementId ?? it.id, sku: it.sku, name: it.name, quantity: it.quantity, status: "PENDING" as const, acceptedQuantity: it.quantity })));
-                          setModalOpen(true);
-                        }}
-                      >
-                        <td style={cellStyle} title={timeStr}>{timeStr}</td>
-                        <td style={cellStyle} title={itemStr}>{itemStr}</td>
-                        <td style={cellStyle} title={qtyStr}>{qtyStr}</td>
-                        <td style={cellStyle} title={reqBy}>{reqBy}</td>
-                        <td style={cellStyle} title={reqFor}>{reqFor}</td>
-                      </tr>
+                      <React.Fragment key={entry.id}>
+                        <tr
+                          onClick={() => toggleRowExpand(entry)}
+                          style={{
+                            borderBottom: "1px solid var(--color-divider)",
+                            height: 38,
+                            cursor: "pointer",
+                            background: isExpanded ? "rgba(37,99,235,0.05)" : "transparent",
+                            transition: "background 0.15s ease",
+                          }}
+                        >
+                          <td style={cellStyle} title={timeStr}>{timeStr}</td>
+                          <td style={{ ...cellStyle, fontWeight: 700, color: "var(--color-text)" }} title={entry.itemLabel}>{entry.itemLabel}</td>
+                          <td style={cellStyle} title={String(entry.quantity)}>{entry.quantity}</td>
+                          <td style={cellStyle} title={entry.requestedBy}>{entry.requestedBy}</td>
+                          <td style={cellStyle} title={entry.requestedFor || "—"}>{entry.requestedFor || "—"}</td>
+                          <td style={{ padding: "4px 8px", verticalAlign: "middle" }}>
+                            <div style={{ display: "flex", gap: 5, justifyContent: "center", alignItems: "center" }}>
+                              {/* Eye icon to toggle expand */}
+                              <IconBtn
+                                title="See details"
+                                onClick={(e) => { e.stopPropagation(); toggleRowExpand(entry); }}
+                                color={isExpanded ? "#2563eb" : "#475569"}
+                                hoverBg="rgba(37,99,235,0.12)"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                              </IconBtn>
+                              {/* Direct Approve Icon */}
+                              {isAdmin && (
+                                <IconBtn
+                                  title="Approve directly"
+                                  onClick={(e) => { e.stopPropagation(); quickApproveMutation.mutate(entry); }}
+                                  color="#16a34a"
+                                  hoverBg="rgba(22,163,74,0.1)"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </IconBtn>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Inline Expanded Row */}
+                        {isExpanded && (
+                          <tr style={{ background: "var(--color-surface)", borderBottom: "2px solid var(--color-divider)" }}>
+                            <td colSpan={6} style={{ padding: "14px 16px" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                                {/* Title Bar */}
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <div style={{ fontSize: "11.5px", fontWeight: 800, color: "var(--color-text)" }}>
+                                    📋 Request Details
+                                  </div>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setExpandedRowId(null); }}
+                                    style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", fontSize: "11px", fontWeight: 600 }}
+                                  >
+                                    Close ▲
+                                  </button>
+                                </div>
+
+                                {/* 1. Requested Items Table (Without boxes, without *, without (optional)) */}
+                                <div style={{ border: "1px solid var(--color-divider)", borderRadius: 7, overflow: "hidden" }}>
+                                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                                    <thead>
+                                      <tr style={{ background: "var(--color-surface-2)", borderBottom: "1px solid var(--color-divider)" }}>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item Name / Code</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 60 }}>Qty</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 100 }}>Project</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 90 }}>Date</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 120 }}>Requested By</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 120 }}>Requested For</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 90 }}>Team</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 120 }}>Remark</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {currentItems.map((it, idx) => {
+                                        const rawRow = entry.rawRows?.[idx];
+                                        const projVal = rawRow?.project || entry.project || "—";
+                                        const reqByVal = rawRow?.requestedBy || entry.requestedBy || "—";
+                                        const reqForVal = rawRow?.requestedFor || entry.requestedFor || "—";
+                                        const teamVal = rawRow?.team || entry.team || "—";
+                                        const rawRemark = (rawRow?.remark ?? "").trim();
+                                        const remarkVal = rawRemark === "Request item" ? "" : rawRemark;
+                                        const dateVal = rawRow?.dateRequested ? new Date(rawRow.dateRequested).toLocaleDateString() : new Date(entry.timestamp).toLocaleDateString();
+
+                                        return (
+                                          <tr key={`req-item-${it.id}-${idx}`} style={{ borderBottom: idx < currentItems.length - 1 ? "1px solid var(--color-divider)" : "none" }}>
+                                            <td style={{ padding: "6px 8px", fontWeight: 600, color: "var(--color-text)" }}>
+                                              {it.sku ? `${it.sku} — ${it.name}` : it.name}
+                                            </td>
+                                            <td style={{ padding: "6px 8px", fontWeight: 700 }}>{it.quantity}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{projVal}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{dateVal}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{reqByVal}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{reqForVal}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{teamVal}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{remarkVal}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+
+                                {/* 2. Separate Decision Panel */}
+                                <div>
+                                  <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-faint)", marginBottom: 6 }}>
+                                    Decision Panel
+                                  </div>
+                                  <div style={{ border: "1px solid var(--color-divider)", borderRadius: 7, overflow: "hidden" }}>
+                                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                                      <thead>
+                                        <tr style={{ background: "var(--color-surface-2)", borderBottom: "1px solid var(--color-divider)" }}>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item Name / Code</th>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 80 }}>Req. Qty</th>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 170 }}>Decision</th>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 110 }}>Accepted Qty</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {currentItems.map((it, idx) => (
+                                          <tr key={`dec-item-${it.id}-${idx}`} style={{ borderBottom: idx < currentItems.length - 1 ? "1px solid var(--color-divider)" : "none" }}>
+                                            <td style={{ padding: "6px 10px", fontWeight: 600, color: "var(--color-text)" }}>
+                                              {it.sku ? `${it.sku} — ${it.name}` : it.name}
+                                            </td>
+                                            <td style={{ padding: "6px 10px", fontWeight: 700 }}>{it.quantity}</td>
+                                            <td style={{ padding: "6px 10px" }}>
+                                              <select
+                                                value={it.status}
+                                                disabled={!isAdmin}
+                                                onChange={(e) => {
+                                                  const nextStatus = e.target.value as "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL";
+                                                  const updated = [...currentItems];
+                                                  if (nextStatus === "PARTIAL") {
+                                                    updated[idx] = { ...updated[idx], status: nextStatus, acceptedQuantity: Math.min(updated[idx].quantity, updated[idx].acceptedQuantity ?? updated[idx].quantity) };
+                                                  } else if (nextStatus === "REJECT") {
+                                                    updated[idx] = { ...updated[idx], status: nextStatus, acceptedQuantity: 0 };
+                                                  } else {
+                                                    updated[idx] = { ...updated[idx], status: nextStatus, acceptedQuantity: updated[idx].quantity };
+                                                  }
+                                                  setRowItemDecisions((prev) => ({ ...prev, [entry.id]: updated }));
+                                                }}
+                                                style={{
+                                                  width: "100%",
+                                                  padding: "5px 8px",
+                                                  borderRadius: 6,
+                                                  border: "1.5px solid",
+                                                  borderColor: it.status === "ACCEPT" ? "#86efac" : it.status === "REJECT" ? "#fca5a5" : it.status === "PARTIAL" ? "#fdba74" : "var(--color-divider)",
+                                                  fontWeight: 700,
+                                                  fontSize: "11px",
+                                                  background: it.status === "ACCEPT" ? "#dcfce7" : it.status === "REJECT" ? "#fee2e2" : it.status === "PARTIAL" ? "#fff7ed" : "var(--color-surface)",
+                                                  color: it.status === "ACCEPT" ? "#166534" : it.status === "REJECT" ? "#991b1b" : it.status === "PARTIAL" ? "#9a3412" : "var(--color-text)",
+                                                  cursor: !isAdmin ? "not-allowed" : "pointer",
+                                                }}
+                                              >
+                                                <option value="PENDING">Pending</option>
+                                                <option value="ACCEPT">Approve (Accept)</option>
+                                                <option value="PARTIAL">Partially Approve</option>
+                                                <option value="REJECT">Reject</option>
+                                              </select>
+                                            </td>
+                                            <td style={{ padding: "6px 10px" }}>
+                                              {it.status === "PARTIAL" ? (
+                                                <input
+                                                  type="number"
+                                                  value={it.acceptedQuantity ?? 0}
+                                                  min={0}
+                                                  max={it.quantity}
+                                                  disabled={!isAdmin}
+                                                  onChange={(e) => {
+                                                    const updated = [...currentItems];
+                                                    updated[idx] = { ...updated[idx], acceptedQuantity: Math.max(0, Math.min(it.quantity, Number(e.target.value) || 0)) };
+                                                    setRowItemDecisions((prev) => ({ ...prev, [entry.id]: updated }));
+                                                  }}
+                                                  style={{ width: 70, padding: "4px 6px", borderRadius: 5, border: "1px solid var(--color-divider)", fontSize: "11px", background: "var(--color-surface)", color: "var(--color-text)" }}
+                                                />
+                                              ) : (
+                                                <span style={{ fontSize: "11px", fontWeight: 700, color: it.status === "REJECT" ? "#991b1b" : it.status === "ACCEPT" ? "#166534" : "var(--color-text)" }}>
+                                                  {it.acceptedQuantity ?? (it.status === "REJECT" ? 0 : it.quantity)}
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+
+                                {/* Save Button for expanded row */}
+                                {isAdmin && (
+                                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => saveDecisionMutation.mutate({ entry, items: currentItems })}
+                                      disabled={saveDecisionMutation.isPending}
+                                      style={{
+                                        padding: "6px 16px",
+                                        borderRadius: 6,
+                                        border: "none",
+                                        background: "var(--color-primary)",
+                                        color: "#fff",
+                                        fontSize: "11px",
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      {saveDecisionMutation.isPending ? "Saving..." : "Save Decisions"}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -272,99 +641,15 @@ export default function InventoryManagerPage() {
                 <button
                   type="button"
                   onClick={() => setShowAllLogs((v) => !v)}
-                  style={{ marginTop: 8, fontSize: "10.5px", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
+                  style={{ margin: "8px 10px", fontSize: "10.5px", color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
                 >
-                  {showAllLogs ? `Show less` : `Show all ${pendingLogs.length} requests`}
+                  {showAllLogs ? "Show less" : `Show all ${pendingLogs.length} requests`}
                 </button>
               )}
             </div>
           );
         })()}
       </div>
-
-      {/* Decision modal */}
-      {modalOpen && activeLog && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60 }} onClick={() => { setModalOpen(false); setActiveLog(null); }}>
-          <div style={{ width: 980, maxWidth: "96%", maxHeight: "88vh", overflow: "hidden", background: "var(--color-surface)", borderRadius: 14, padding: 18, boxShadow: "0 24px 60px rgba(0,0,0,0.28)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: "var(--fs-md)", fontWeight: 800 }}>Request details</div>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>{new Date(activeLog.timestamp).toLocaleString()}</div>
-            </div>
-
-            <div className="table-responsive-container" style={{ maxHeight: "68vh", paddingRight: 4 }}>
-              <table style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
-                    <th style={{ textAlign: "left", padding: 8 }}>Item</th>
-                    <th style={{ textAlign: "left", padding: 8, width: 90 }}>Requested</th>
-                    <th style={{ textAlign: "left", padding: 8, width: 220 }}>Decision</th>
-                    <th style={{ textAlign: "left", padding: 8, width: 140 }}>Accepted qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modalItems.map((it, idx) => (
-                    <tr key={`${it.id}-${idx}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 56 }}>
-                      <td style={{ padding: 8, verticalAlign: "middle", maxWidth: 0 }} title={it.sku ? `${it.sku} — ${it.name}` : it.name}>
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.sku ? `${it.sku} — ${it.name}` : it.name}</div>
-                      </td>
-                      <td style={{ padding: 8 }}>{it.quantity}</td>
-                      <td style={{ padding: 8 }}>
-                        <select
-                          value={it.status}
-                          disabled={!isAdmin}
-                          onChange={(e) => {
-                            const nextStatus = e.target.value as "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL";
-                            setModalItems((prev) => {
-                              const next = [...prev];
-                              if (nextStatus === "PARTIAL") {
-                                next[idx] = { ...next[idx], status: nextStatus, acceptedQuantity: Math.min(next[idx].quantity, next[idx].acceptedQuantity ?? next[idx].quantity) };
-                              } else if (nextStatus === "REJECT") {
-                                next[idx] = { ...next[idx], status: nextStatus, acceptedQuantity: 0 };
-                              } else {
-                                next[idx] = { ...next[idx], status: nextStatus, acceptedQuantity: next[idx].quantity };
-                              }
-                              return next;
-                            });
-                          }}
-                          style={{
-                            width: "100%",
-                            padding: "7px 9px",
-                            borderRadius: 8,
-                            border: "1px solid #e5e7eb",
-                            fontWeight: 700,
-                            background: it.status === "ACCEPT" ? "#dcfce7" : it.status === "REJECT" ? "#fee2e2" : it.status === "PARTIAL" ? "#fff7ed" : "#f3f4f6",
-                            color: it.status === "ACCEPT" ? "#166534" : it.status === "REJECT" ? "#991b1b" : it.status === "PARTIAL" ? "#9a3412" : "#374151",
-                            cursor: !isAdmin ? "not-allowed" : "default",
-                          }}
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="ACCEPT">Accept</option>
-                          <option value="PARTIAL">Partial</option>
-                          <option value="REJECT">Reject</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: 8 }}>
-                        {it.status === "PARTIAL" ? (
-                          <input type="number" value={it.acceptedQuantity ?? 0} min={0} max={it.quantity} disabled={!isAdmin} onChange={(e) => setModalItems((prev) => { const n = [...prev]; n[idx] = { ...n[idx], acceptedQuantity: Math.max(0, Math.min(it.quantity, Number(e.target.value) || 0)) }; return n; })} style={{ width: 100, padding: 6 }} />
-                        ) : (
-                          <div>{it.acceptedQuantity ?? (it.status === "REJECT" ? 0 : it.quantity)}</div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-              <button onClick={() => { setModalOpen(false); setActiveLog(null); }} style={{ padding: "8px 12px" }}>Close</button>
-              {isAdmin && (
-                <button onClick={() => saveDecisionMutation.mutate()} disabled={saveDecisionMutation.isPending} style={{ padding: "8px 12px", background: "var(--color-primary)", color: "#fff", borderRadius: 6, opacity: saveDecisionMutation.isPending ? 0.7 : 1 }}>Save decisions</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Shared Request/s Reference Table */}
       <RequestReferenceTable />

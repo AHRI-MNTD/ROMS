@@ -15,6 +15,7 @@ export function CheckInReferenceTable() {
 
   const [searchQuery, setSearchQuery] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("all");
+  const [projectFilter, setProjectFilter] = React.useState("all");
   const [sortBy, setSortBy] = React.useState("date-desc");
   const [historyPage, setHistoryPage] = React.useState(1);
   const historyPageSize = 15;
@@ -27,6 +28,18 @@ export function CheckInReferenceTable() {
       cats.add(cat);
     });
     return Array.from(cats).sort();
+  }, [checkInMovementsData]);
+
+  const historyProjects = React.useMemo(() => {
+    if (!checkInMovementsData?.data) return [];
+    const projs = new Set<string>();
+    checkInMovementsData.data.forEach((row) => {
+      const proj = row.projectFor;
+      if (proj && proj.trim()) {
+        projs.add(proj.trim());
+      }
+    });
+    return Array.from(projs).sort();
   }, [checkInMovementsData]);
 
   const filteredAndSortedMovements = React.useMemo(() => {
@@ -52,7 +65,11 @@ export function CheckInReferenceTable() {
         categoryFilter === "all" ||
         (row.stockItem?.category ?? "General").toLowerCase() === categoryFilter.toLowerCase();
 
-      return matchesSearch && matchesCategory;
+      const matchesProject =
+        projectFilter === "all" ||
+        (row.projectFor ?? "").toLowerCase() === projectFilter.toLowerCase();
+
+      return matchesSearch && matchesCategory && matchesProject;
     });
 
     result.sort((a, b) => {
@@ -62,23 +79,35 @@ export function CheckInReferenceTable() {
       if (sortBy === "date-asc") {
         return new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime();
       }
-      if (sortBy === "qty-desc") {
-        return Number(b.quantity ?? 0) - Number(a.quantity ?? 0);
-      }
-      if (sortBy === "qty-asc") {
-        return Number(a.quantity ?? 0) - Number(b.quantity ?? 0);
-      }
       if (sortBy === "name-asc") {
         return (a.stockItem?.name ?? "").localeCompare(b.stockItem?.name ?? "");
       }
       if (sortBy === "name-desc") {
         return (b.stockItem?.name ?? "").localeCompare(a.stockItem?.name ?? "");
       }
+      if (sortBy === "qty-desc") {
+        return Number(b.quantity ?? 0) - Number(a.quantity ?? 0);
+      }
+      if (sortBy === "qty-asc") {
+        return Number(a.quantity ?? 0) - Number(b.quantity ?? 0);
+      }
+      if (sortBy === "category-asc") {
+        return (a.stockItem?.category ?? "General").localeCompare(b.stockItem?.category ?? "General");
+      }
+      if (sortBy === "category-desc") {
+        return (b.stockItem?.category ?? "General").localeCompare(a.stockItem?.category ?? "General");
+      }
+      if (sortBy === "project-asc") {
+        return (a.projectFor ?? "").localeCompare(b.projectFor ?? "");
+      }
+      if (sortBy === "project-desc") {
+        return (b.projectFor ?? "").localeCompare(a.projectFor ?? "");
+      }
       return 0;
     });
 
     return result;
-  }, [checkInMovementsData, searchQuery, categoryFilter, sortBy]);
+  }, [checkInMovementsData, searchQuery, categoryFilter, projectFilter, sortBy]);
 
   const historyTotalPages = Math.max(1, Math.ceil(filteredAndSortedMovements.length / historyPageSize));
   const historyPagedRows = filteredAndSortedMovements.slice(
@@ -88,7 +117,7 @@ export function CheckInReferenceTable() {
 
   React.useEffect(() => {
     setHistoryPage(1);
-  }, [searchQuery, categoryFilter, sortBy]);
+  }, [searchQuery, categoryFilter, projectFilter, sortBy]);
 
   React.useEffect(() => {
     if (historyPage > historyTotalPages && historyTotalPages > 0) {
@@ -117,7 +146,7 @@ export function CheckInReferenceTable() {
           }}
         >
           <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>
-            Check-In Reference Table (History)
+            Check-In History
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <input
@@ -156,6 +185,26 @@ export function CheckInReferenceTable() {
               ))}
             </select>
             <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              style={{
+                border: "1px solid var(--color-border)",
+                borderRadius: "6px",
+                background: "var(--color-surface)",
+                color: "var(--color-text)",
+                padding: "4px 8px",
+                height: 28,
+                fontSize: "10px",
+              }}
+            >
+              <option value="all">All Projects</option>
+              {historyProjects.map((proj) => (
+                <option key={proj} value={proj}>
+                  {proj}
+                </option>
+              ))}
+            </select>
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{
@@ -170,10 +219,14 @@ export function CheckInReferenceTable() {
             >
               <option value="date-desc">Newest First</option>
               <option value="date-asc">Oldest First</option>
-              <option value="qty-desc">Quantity (High to Low)</option>
-              <option value="qty-asc">Quantity (Low to High)</option>
               <option value="name-asc">Name (A-Z)</option>
               <option value="name-desc">Name (Z-A)</option>
+              <option value="qty-desc">Quantity (High to Low)</option>
+              <option value="qty-asc">Quantity (Low to High)</option>
+              <option value="category-asc">Category (A-Z)</option>
+              <option value="category-desc">Category (Z-A)</option>
+              <option value="project-asc">Project (A-Z)</option>
+              <option value="project-desc">Project (Z-A)</option>
             </select>
           </div>
         </div>
