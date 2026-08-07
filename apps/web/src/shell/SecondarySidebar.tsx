@@ -46,7 +46,7 @@ export const SecondarySidebar: React.FC = () => {
       style={{
         width: isCollapsed ? 44 : 220,
         minWidth: isCollapsed ? 44 : 220,
-        background: "var(--color-surface)",
+        background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface)",
         borderRight: "1px solid var(--color-divider)",
         display: "flex",
         flexDirection: "column",
@@ -62,7 +62,7 @@ export const SecondarySidebar: React.FC = () => {
           height: "44.5px",
           minHeight: "44.5px",
           borderBottom: "1px solid var(--color-divider)",
-          background: "var(--color-surface-offset)",
+          background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
           flexShrink: 0,
           boxSizing: "border-box",
           width: "calc(100% + 1px)",
@@ -126,7 +126,7 @@ export const SecondarySidebar: React.FC = () => {
               height: 26,
               borderRadius: "var(--radius-sm)",
               border: "1px solid var(--color-border)",
-              background: "var(--color-surface-offset)",
+              background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
               color: "var(--color-text-muted)",
               display: "flex",
               alignItems: "center",
@@ -140,7 +140,7 @@ export const SecondarySidebar: React.FC = () => {
               e.currentTarget.style.color = "var(--color-primary)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "var(--color-surface-offset)";
+              e.currentTarget.style.background = isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)";
               e.currentTarget.style.color = "var(--color-text-muted)";
             }}
           >
@@ -205,7 +205,7 @@ export const SecondarySidebar: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "var(--color-surface-offset)",
+                    background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
                     borderRadius: "var(--radius-sm)",
                     opacity: 0.9,
                     flexShrink: 0,

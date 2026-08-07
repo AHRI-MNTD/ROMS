@@ -357,10 +357,12 @@ export default function CheckInPage() {
     };
   }, []);
 
+  const isExisting = mode === "existing";
+
   const inputStyle: React.CSSProperties = {
-    border: "1px solid var(--color-border)",
+    border: isExisting ? "1px solid var(--color-border)" : "1px solid var(--inventory-new-item-input-border)",
     borderRadius: "6px",
-    background: "var(--color-surface-2)",
+    background: isExisting ? "var(--color-surface-2)" : "var(--inventory-new-item-input-bg)",
     color: "var(--color-text)",
     padding: "5px 8px",
     fontSize: "10.5px",
@@ -374,22 +376,16 @@ export default function CheckInPage() {
     background: "#fef2f2",
   };
 
-  const isExisting = mode === "existing";
-
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div
         style={{
           padding: 18,
           borderRadius: "var(--radius)",
-          border: isExisting ? "1px solid var(--color-primary)" : "1px solid #6366f1",
-          background: isExisting
-            ? "linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%)"
-            : "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(99, 102, 241, 0.05) 100%)",
-          boxShadow: isExisting
-            ? "0 4px 16px rgba(1, 105, 111, 0.06)"
-            : "0 4px 16px rgba(99, 102, 241, 0.08)",
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          border: isExisting ? "1px solid var(--color-primary-highlight)" : "1px solid var(--inventory-new-item-border)",
+          background: isExisting ? "var(--inventory-card-bg)" : "var(--inventory-new-item-card-bg)",
+          boxShadow: isExisting ? "0 4px 16px var(--color-accent-soft)" : "0 4px 20px rgba(14, 165, 233, 0.15)",
+          transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
         {/* Mode Switcher */}
@@ -434,11 +430,14 @@ export default function CheckInPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 16,
                 flexShrink: 0,
               }}
             >
-              📦
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
             </div>
             <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -482,7 +481,7 @@ export default function CheckInPage() {
             style={{
               padding: "10px 14px",
               borderRadius: 7,
-              border: !isExisting ? "1px solid #6366f1" : "1px solid transparent",
+              border: !isExisting ? "1px solid #0284c7" : "1px solid transparent",
               background: !isExisting ? "var(--color-surface-2)" : "transparent",
               color: !isExisting ? "var(--color-text)" : "var(--color-text-muted)",
               fontWeight: !isExisting ? 700 : 500,
@@ -492,7 +491,7 @@ export default function CheckInPage() {
               gap: 10,
               cursor: "pointer",
               transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: !isExisting ? "0 2px 8px rgba(99, 102, 241, 0.15)" : "none",
+              boxShadow: !isExisting ? "0 2px 8px rgba(14, 165, 233, 0.15)" : "none",
             }}
           >
             <div
@@ -500,16 +499,19 @@ export default function CheckInPage() {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: !isExisting ? "rgba(99, 102, 241, 0.12)" : "var(--color-surface-offset)",
-                color: !isExisting ? "#6366f1" : "var(--color-text-muted)",
+                background: !isExisting ? "rgba(14, 165, 233, 0.12)" : "var(--color-surface-offset)",
+                color: !isExisting ? "#0284c7" : "var(--color-text-muted)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 16,
                 flexShrink: 0,
               }}
             >
-              ✨
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
+                <line x1="12" y1="8" x2="12" y2="16" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
             </div>
             <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -520,8 +522,8 @@ export default function CheckInPage() {
                       fontSize: "9px",
                       padding: "1px 7px",
                       borderRadius: 10,
-                      background: "rgba(99, 102, 241, 0.15)",
-                      color: "#6366f1",
+                      background: "rgba(14, 165, 233, 0.12)",
+                      color: "#0284c7",
                       fontWeight: 700,
                       letterSpacing: "0.03em",
                       textTransform: "uppercase",
@@ -551,16 +553,16 @@ export default function CheckInPage() {
         {/* Section Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check In Form</div>
+            <div style={{ fontSize: "var(--fs-sm)", fontWeight: 700, color: "var(--color-text)" }}>Check In</div>
             <span
               style={{
                 fontSize: "10px",
                 fontWeight: 600,
                 padding: "2px 8px",
                 borderRadius: "12px",
-                background: isExisting ? "var(--color-primary-soft)" : "rgba(99, 102, 241, 0.1)",
-                color: isExisting ? "var(--color-primary)" : "#6366f1",
-                border: isExisting ? "1px solid var(--color-primary-highlight)" : "1px solid rgba(99, 102, 241, 0.2)",
+                background: isExisting ? "var(--color-primary-soft)" : "rgba(14, 165, 233, 0.12)",
+                color: isExisting ? "var(--color-primary)" : "#0284c7",
+                border: isExisting ? "1px solid var(--color-primary-highlight)" : "1px solid rgba(14, 165, 233, 0.25)",
               }}
             >
               {isExisting ? "Existing Item" : "New Item"}

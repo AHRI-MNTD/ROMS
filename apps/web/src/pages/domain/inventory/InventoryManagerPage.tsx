@@ -293,10 +293,10 @@ export default function InventoryManagerPage() {
       <div
         style={{
           padding: 18,
-          border: "1px solid #b45309",
+          border: "1px solid var(--color-primary-highlight)",
           borderRadius: 12,
-          background: "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(180, 83, 9, 0.04) 100%)",
-          boxShadow: "0 4px 16px rgba(180, 83, 9, 0.07)",
+          background: "var(--inventory-card-bg)",
+          boxShadow: "0 4px 16px var(--color-accent-soft)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
@@ -305,8 +305,8 @@ export default function InventoryManagerPage() {
           style={{
             marginBottom: 16,
             padding: "12px 14px",
-            background: "linear-gradient(135deg, rgba(180, 83, 9, 0.08) 0%, rgba(251, 191, 36, 0.05) 100%)",
-            border: "1px solid rgba(180, 83, 9, 0.18)",
+            background: "var(--inventory-hero-bg)",
+            border: "1px solid var(--color-primary-highlight)",
             borderRadius: 10,
             display: "flex",
             alignItems: "center",
@@ -318,8 +318,8 @@ export default function InventoryManagerPage() {
               width: 38,
               height: 38,
               borderRadius: 10,
-              background: "rgba(180, 83, 9, 0.12)",
-              color: "#b45309",
+              background: "var(--color-primary-soft)",
+              color: "var(--color-primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -337,9 +337,9 @@ export default function InventoryManagerPage() {
                   fontSize: "9px",
                   padding: "2px 8px",
                   borderRadius: 10,
-                  background: "rgba(180, 83, 9, 0.12)",
-                  color: "#b45309",
-                  border: "1px solid rgba(180, 83, 9, 0.22)",
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  border: "1px solid var(--color-primary-highlight)",
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
@@ -364,12 +364,13 @@ export default function InventoryManagerPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "17%" }} />
-                  <col style={{ width: "28%" }} />
-                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "27%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "13%" }} />
                   <col style={{ width: "16%" }} />
                   <col style={{ width: "16%" }} />
-                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "14%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -377,9 +378,10 @@ export default function InventoryManagerPage() {
                       const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
                       return (
                         <>
-                          <th style={thStyle} title="Time">Time</th>
+                          <th style={{ ...thStyle, textAlign: "center" }} title="#">#</th>
                           <th style={thStyle} title="Item">Item</th>
-                          <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Quantity">Quantity</th>
+                          <th style={thStyle} title="Date">Date</th>
                           <th style={thStyle} title="Requested By">Requested By</th>
                           <th style={thStyle} title="Requested For">Requested For</th>
                           <th style={{ ...thStyle, textAlign: "center" }} title="Actions">Actions</th>
@@ -389,7 +391,7 @@ export default function InventoryManagerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleLogs.map((entry) => {
+                  {visibleLogs.map((entry, index) => {
                     const isExpanded = expandedRowId === entry.id;
                     const cellStyle: React.CSSProperties = {
                       padding: "6px 8px",
@@ -399,7 +401,7 @@ export default function InventoryManagerPage() {
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                     };
-                    const timeStr = new Date(entry.timestamp).toLocaleString();
+                    const dateStr = new Date(entry.timestamp).toLocaleDateString();
                     const currentItems = rowItemDecisions[entry.id] || (entry.items || []).map((it) => ({
                       id: it.id,
                       movementId: it.movementId ?? it.id,
@@ -422,9 +424,10 @@ export default function InventoryManagerPage() {
                             transition: "background 0.15s ease",
                           }}
                         >
-                          <td style={cellStyle} title={timeStr}>{timeStr}</td>
+                          <td style={{ ...cellStyle, textAlign: "center", fontWeight: 700, color: "var(--color-text-faint)" }} title={String(index + 1)}>{index + 1}</td>
                           <td style={{ ...cellStyle, fontWeight: 700, color: "var(--color-text)" }} title={entry.itemLabel}>{entry.itemLabel}</td>
                           <td style={cellStyle} title={String(entry.quantity)}>{entry.quantity}</td>
+                          <td style={cellStyle} title={dateStr}>{dateStr}</td>
                           <td style={cellStyle} title={entry.requestedBy}>{entry.requestedBy}</td>
                           <td style={cellStyle} title={entry.requestedFor || "—"}>{entry.requestedFor || "—"}</td>
                           <td style={{ padding: "4px 8px", verticalAlign: "middle" }}>
@@ -460,13 +463,25 @@ export default function InventoryManagerPage() {
 
                         {/* Inline Expanded Row */}
                         {isExpanded && (
-                          <tr style={{ background: "var(--color-surface)", borderBottom: "2px solid var(--color-divider)" }}>
-                            <td colSpan={6} style={{ padding: "14px 16px" }}>
+                          <tr style={{ background: "linear-gradient(180deg, #f1f5f9 0%, #e7e8ffff 100%)", borderTop: "2px solid #94a3b8", borderBottom: "2px solid #94a3b8" }}>
+                            <td colSpan={7} style={{ padding: "14px 16px" }}>
                               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                                 {/* Title Bar */}
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <div style={{ fontSize: "11.5px", fontWeight: 800, color: "var(--color-text)" }}>
-                                    📋 Request Details
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #b9baffff, #c5caffff)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                        <polyline points="10 9 9 9 8 9" />
+                                      </svg>
+                                    </div>
+                                    <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#1e293b", letterSpacing: "0.01em" }}>Request Details</span>
+                                    <span style={{ fontSize: "9px", padding: "1px 8px", borderRadius: 10, background: "rgba(99,102,241,0.12)", color: "#4f46e5", border: "1px solid rgba(99,102,241,0.25)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                      Pending
+                                    </span>
                                   </div>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setExpandedRowId(null); }}
@@ -476,11 +491,11 @@ export default function InventoryManagerPage() {
                                   </button>
                                 </div>
 
-                                {/* 1. Requested Items Table (Without boxes, without *, without (optional)) */}
-                                <div style={{ border: "1px solid var(--color-divider)", borderRadius: 7, overflow: "hidden" }}>
+                                {/* 1. Requested Items Table */}
+                                <div style={{ border: "1px solid #cbd5e1", borderRadius: 7, overflow: "hidden" }}>
                                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                                     <thead>
-                                      <tr style={{ background: "var(--color-surface-2)", borderBottom: "1px solid var(--color-divider)" }}>
+                                      <tr style={{ background: "linear-gradient(90deg, #e0e7ff 0%, #ede9fe 100%)", borderBottom: "1px solid #c4b5fd" }}>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item Name / Code</th>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 60 }}>Qty</th>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 100 }}>Project</th>
@@ -523,13 +538,13 @@ export default function InventoryManagerPage() {
 
                                 {/* 2. Separate Decision Panel */}
                                 <div>
-                                  <div style={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-text-faint)", marginBottom: 6 }}>
+                                  <div style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em", color: "#4f46e5", marginBottom: 6 }}>
                                     Decision Panel
                                   </div>
-                                  <div style={{ border: "1px solid var(--color-divider)", borderRadius: 7, overflow: "hidden" }}>
+                                  <div style={{ border: "1px solid #cbd5e1", borderRadius: 7, overflow: "hidden" }}>
                                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                                       <thead>
-                                        <tr style={{ background: "var(--color-surface-2)", borderBottom: "1px solid var(--color-divider)" }}>
+                                        <tr style={{ background: "linear-gradient(90deg, #ede9fe 0%, #ddd6fe 100%)", borderBottom: "1px solid #baa9ffff" }}>
                                           <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item Name / Code</th>
                                           <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 80 }}>Req. Qty</th>
                                           <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 170 }}>Decision</th>

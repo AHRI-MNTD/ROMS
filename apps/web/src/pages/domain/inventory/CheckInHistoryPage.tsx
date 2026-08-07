@@ -9,9 +9,9 @@ export default function CheckInHistoryPage() {
         style={{
           padding: "16px 20px",
           borderRadius: "var(--radius)",
-          border: "1px solid var(--color-primary)",
-          background: "linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%)",
-          boxShadow: "0 4px 16px rgba(1, 105, 111, 0.06)",
+          border: "1px solid var(--color-primary-highlight)",
+          background: "var(--inventory-card-bg)",
+          boxShadow: "0 4px 16px var(--color-accent-soft)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",

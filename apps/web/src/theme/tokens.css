@@ -87,6 +87,14 @@
   --color-accent: #01696f;
   --color-accent-soft: rgba(1, 105, 111, 0.08);
 
+  /* Inventory Domain Palette Tokens */
+  --inventory-card-bg: linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%);
+  --inventory-hero-bg: linear-gradient(135deg, rgba(1, 105, 111, 0.08) 0%, rgba(1, 105, 111, 0.03) 100%);
+  --inventory-new-item-card-bg: linear-gradient(180deg, #ffffff 0%, #f1f6fb 100%);
+  --inventory-new-item-border: #9bb9da;
+  --inventory-new-item-input-bg: #fbfdff;
+  --inventory-new-item-input-border: #bfd1ea;
+
   /* C4 HTML naming (alias to same palette) */
   --bg: var(--color-bg);
   --surface: var(--color-surface);
@@ -137,6 +145,14 @@
   --color-primary-soft: #1e2e2e;
   --color-accent: #4f98a3;
   --color-accent-soft: rgba(79, 152, 163, 0.12);
+
+  /* Inventory Domain Palette Tokens */
+  --inventory-card-bg: linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%);
+  --inventory-hero-bg: linear-gradient(135deg, rgba(79, 152, 163, 0.15) 0%, rgba(79, 152, 163, 0.05) 100%);
+  --inventory-new-item-card-bg: linear-gradient(180deg, #111827 0%, #10243a 100%);
+  --inventory-new-item-border: #375a7f;
+  --inventory-new-item-input-bg: #172233;
+  --inventory-new-item-input-border: #4f6f95;
 
   /* C4 HTML naming (aliases) */
   --bg: var(--color-bg);
@@ -541,7 +557,7 @@ a:hover {
   height: 44.5px;
   min-height: 44.5px;
   box-sizing: border-box;
-  background: var(--color-surface-offset);
+  background: var(--inventory-card-bg);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;

@@ -211,9 +211,9 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         style={{
           padding: 18,
           borderRadius: "var(--radius)",
-          border: "1px solid #d97706",
-          background: "linear-gradient(180deg, var(--color-surface-2) 0%, rgba(251, 191, 36, 0.05) 100%)",
-          boxShadow: "0 4px 16px rgba(217, 119, 6, 0.07)",
+          border: "1px solid var(--color-primary-highlight)",
+          background: "var(--inventory-card-bg)",
+          boxShadow: "0 4px 16px var(--color-accent-soft)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
@@ -222,8 +222,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           style={{
             marginBottom: 16,
             padding: "12px 14px",
-            background: "linear-gradient(135deg, rgba(217, 119, 6, 0.08) 0%, rgba(251, 191, 36, 0.05) 100%)",
-            border: "1px solid rgba(217, 119, 6, 0.18)",
+            background: "var(--inventory-hero-bg)",
+            border: "1px solid var(--color-primary-highlight)",
             borderRadius: 10,
             display: "flex",
             alignItems: "center",
@@ -235,30 +235,30 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
               width: 38,
               height: 38,
               borderRadius: 10,
-              background: "rgba(217, 119, 6, 0.12)",
-              color: "#d97706",
+              background: "var(--color-primary-soft)",
+              color: "var(--color-primary)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 20,
+              fontSize: 18,
               flexShrink: 0,
             }}
           >
-            📤
+            📦
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontWeight: 800, fontSize: "13px", color: "var(--color-text)" }}>
-                {labelOverrides?.mainTitle || "Check Out Form"}
+                {labelOverrides?.mainTitle || "Check Out"}
               </span>
               <span
                 style={{
                   fontSize: "9px",
                   padding: "2px 8px",
                   borderRadius: 10,
-                  background: "rgba(217, 119, 6, 0.12)",
-                  color: "#d97706",
-                  border: "1px solid rgba(217, 119, 6, 0.22)",
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  border: "1px solid var(--color-primary-highlight)",
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
@@ -529,36 +529,36 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 </tbody>
               </table>
             </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => {
-                const payload = cart.map((i) => ({
-                  stockItemId: i.stockItemId,
-                  quantity: i.quantity,
-                  projectFor: i.projectFor,
-                  requestedBy: i.requestedBy,
-                  remark: i.remark,
-                }));
-                bulkCheckoutMutation.mutate(payload);
-              }}
-              disabled={bulkCheckoutMutation.isPending}
-              style={{
-                border: "1px solid var(--color-border)",
-                background: "var(--color-primary)",
-                color: "#fff",
-                borderRadius: "var(--radius-sm)",
-                padding: "8px 16px",
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
-                cursor: bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
-              }}
-            >
-              {bulkCheckoutMutation.isPending ? "Submitting..." : "Submit"}
-            </button>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const payload = cart.map((i) => ({
+                    stockItemId: i.stockItemId,
+                    quantity: i.quantity,
+                    projectFor: i.projectFor,
+                    requestedBy: i.requestedBy,
+                    remark: i.remark,
+                  }));
+                  bulkCheckoutMutation.mutate(payload);
+                }}
+                disabled={bulkCheckoutMutation.isPending}
+                style={{
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-primary)",
+                  color: "#fff",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "8px 16px",
+                  fontSize: "var(--fs-xs)",
+                  fontWeight: 700,
+                  cursor: bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
+                }}
+              >
+                {bulkCheckoutMutation.isPending ? "Submitting..." : "Submit"}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       <CheckOutReferenceTable />

@@ -120,7 +120,7 @@ function ItemMovementDetailsPanel({ item }: { item: any }) {
         borderRadius: 12,
         background: "linear-gradient(135deg, rgba(240, 249, 248, 0.98) 0%, rgba(245, 247, 246, 0.96) 50%, rgba(235, 244, 244, 0.98) 100%)",
         border: "1px solid rgba(1, 105, 111, 0.22)",
-        borderLeft: "5px solid var(--color-primary)",
+        borderLeft: "1px solid rgba(1, 105, 111, 0.22);",
         boxShadow: "inset 0 2px 6px rgba(1, 105, 111, 0.04), 0 6px 16px rgba(16, 24, 40, 0.06)",
         display: "grid",
         gap: 16,
@@ -138,7 +138,7 @@ function ItemMovementDetailsPanel({ item }: { item: any }) {
             <div style={subHeaderStyle}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: "14px" }}>📥</span> <strong>Check-In History Log</strong>
-                <span style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 500 }}>(All incoming laboratory stock entries & check-ins)</span>
+
               </span>
               <span style={{ fontSize: "10px", background: "#dcfce7", color: "#166534", padding: "3px 10px", borderRadius: 999, fontWeight: 800, border: "1px solid rgba(22, 101, 52, 0.2)" }}>
                 Total Check-In: {checkInTotal} {item.unit || "units"}
@@ -212,7 +212,7 @@ function ItemMovementDetailsPanel({ item }: { item: any }) {
             <div style={subHeaderStyle}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: "14px" }}>📤</span> <strong>Check-Out History Log</strong>
-                <span style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 500 }}>(All disbursements, issues, & check-outs)</span>
+
               </span>
               <span style={{ fontSize: "10px", background: checkOutTotal > 0 ? "#fee2e2" : "rgba(0,0,0,0.05)", color: checkOutTotal > 0 ? "#991b1b" : "var(--color-text-muted)", padding: "3px 10px", borderRadius: 999, fontWeight: 800, border: `1px solid ${checkOutTotal > 0 ? "rgba(153, 27, 27, 0.2)" : "rgba(0,0,0,0.1)"}` }}>
                 Total Check-Out: {checkOutTotal} {item.unit || "units"}
@@ -220,7 +220,7 @@ function ItemMovementDetailsPanel({ item }: { item: any }) {
             </div>
             {checkOutMovements.length === 0 ? (
               <div style={{ fontSize: "11px", color: "var(--color-text-muted)", padding: "12px 14px", background: "rgba(254, 242, 242, 0.6)", borderRadius: 8, border: "1px solid rgba(239, 68, 68, 0.15)", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: "16px" }}>ℹ️</span>
+                <span style={{ fontSize: "16px" }}></span>
                 <div>
                   <strong>Check-Out History is Empty (Total Out: 0)</strong>
                   <div style={{ fontSize: "10.5px", marginTop: 2 }}>This item is checked into inventory, but has not been disbursed or checked out to any project or staff member yet.</div>
@@ -364,6 +364,27 @@ export default function CurrentInventoryPage() {
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [isExportHovered, setIsExportHovered] = React.useState(false);
   const [isSyncHovered, setIsSyncHovered] = React.useState(false);
+  const [isDarkMode, setIsDarkMode] = React.useState(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    return document.documentElement.getAttribute("data-theme") === "dark";
+  });
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = document.documentElement;
+    const updateTheme = () => setIsDarkMode(root.getAttribute("data-theme") === "dark");
+    updateTheme();
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+
+    return () => observer.disconnect();
+  }, []);
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -566,7 +587,9 @@ export default function CurrentInventoryPage() {
 
   const quickLinkStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.18)",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,246,241,0.92))",
+    background: isDarkMode
+      ? "var(--color-surface-2)"
+      : "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,246,241,0.92))",
     color: "var(--color-text)",
     borderRadius: "8px",
     padding: "5px 9px",
@@ -582,7 +605,9 @@ export default function CurrentInventoryPage() {
   const panelStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.12)",
     borderRadius: 12,
-    background: "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
+    background: isDarkMode
+      ? "var(--color-surface)"
+      : "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
     boxShadow: "0 10px 24px rgba(16, 24, 40, 0.05)",
     backdropFilter: "blur(10px)",
   };
@@ -590,7 +615,7 @@ export default function CurrentInventoryPage() {
   const toolbarButtonStyle: React.CSSProperties = {
     border: "1px solid rgba(1, 105, 111, 0.14)",
     borderRadius: 8,
-    background: "rgba(255,255,255,0.72)",
+    background: isDarkMode ? "var(--color-surface-2)" : "rgba(255,255,255,0.72)",
     color: "var(--color-text)",
     padding: "5px 8px",
     fontSize: "10px",
@@ -602,7 +627,7 @@ export default function CurrentInventoryPage() {
     minWidth: 150,
     border: "1px solid rgba(1, 105, 111, 0.14)",
     borderRadius: 8,
-    background: "rgba(255,255,255,0.74)",
+    background: isDarkMode ? "var(--color-surface-2)" : "rgba(255,255,255,0.74)",
     color: "var(--color-text)",
     padding: "5px 8px",
     fontSize: "10px",
@@ -664,7 +689,7 @@ export default function CurrentInventoryPage() {
                     ...quickLinkStyle,
                     cursor: "pointer",
                     border: isExportHovered ? "1px solid rgba(22, 101, 52, 0.25)" : "1px solid transparent",
-                    background: isExportHovered 
+                    background: isExportHovered
                       ? "linear-gradient(180deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.95))"
                       : "transparent",
                     boxShadow: isExportHovered ? "0 4px 10px rgba(16, 24, 40, 0.03)" : "none",
@@ -686,14 +711,14 @@ export default function CurrentInventoryPage() {
                 style={{
                   ...quickLinkStyle,
                   cursor: isSyncing ? "not-allowed" : "pointer",
-                  border: isSyncing 
-                    ? "1px solid rgba(59, 130, 246, 0.25)" 
-                    : isSyncHovered 
-                      ? "1px solid rgba(59, 130, 246, 0.25)" 
+                  border: isSyncing
+                    ? "1px solid rgba(59, 130, 246, 0.25)"
+                    : isSyncHovered
+                      ? "1px solid rgba(59, 130, 246, 0.25)"
                       : "1px solid transparent",
-                  background: isSyncing 
+                  background: isSyncing
                     ? "rgba(219, 234, 254, 0.95)"
-                    : isSyncHovered 
+                    : isSyncHovered
                       ? "linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.95))"
                       : "transparent",
                   boxShadow: isSyncing || isSyncHovered ? "0 4px 10px rgba(16, 24, 40, 0.03)" : "none",

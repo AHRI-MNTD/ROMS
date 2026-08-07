@@ -15,6 +15,28 @@ const rowBase: React.CSSProperties = {
 };
 
 export default function InventoryDashboardPage() {
+  const [isDarkMode, setIsDarkMode] = React.useState(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    return document.documentElement.getAttribute("data-theme") === "dark";
+  });
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = document.documentElement;
+    const updateTheme = () => setIsDarkMode(root.getAttribute("data-theme") === "dark");
+    updateTheme();
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+
+    return () => observer.disconnect();
+  }, []);
+
   const { data: analyticsData, isLoading: isAnalyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery({
     queryKey: ["inventory-analytics"],
     queryFn: async () => { const resp = await apiClient.get("/domains/inventory/analytics"); return resp.data; },
@@ -71,6 +93,14 @@ export default function InventoryDashboardPage() {
     <div style={{ flex: 1, display: "flex", alignItems: "center", padding: "0 10px", color: "var(--color-text-muted)", fontSize: "9px" }}>—</div>
   );
 
+  const surfaceCardBackground = isDarkMode ? "var(--inventory-card-bg)" : "var(--color-surface-2)";
+  const alertCardBackground = isDarkMode
+    ? "var(--inventory-card-bg)"
+    : "linear-gradient(180deg, rgba(254,242,242,0.3), rgba(255,255,255,0.98))";
+  const expiringCardBackground = isDarkMode
+    ? "var(--inventory-card-bg)"
+    : "linear-gradient(180deg, rgba(255,247,237,0.3), rgba(255,255,255,0.98))";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", flex: 1, minHeight: 0 }}>
 
@@ -98,7 +128,9 @@ export default function InventoryDashboardPage() {
                 className="inventory-kpi-card"
                 style={{
                   border: `1px solid ${tone}22`,
-                  background: `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
+                  background: isDarkMode
+                    ? surfaceCardBackground
+                    : `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
                 }}
               >
                 <div className="inventory-kpi-card-header">
@@ -156,7 +188,7 @@ export default function InventoryDashboardPage() {
             </div>
 
             {/* ⚠️ Stock Alert Register */}
-            <div style={cardStyle("1px solid rgba(239,68,68,0.18)", "linear-gradient(180deg, rgba(254,242,242,0.3), rgba(255,255,255,0.98))")}>
+            <div style={cardStyle("1px solid rgba(239,68,68,0.18)", alertCardBackground)}>
               <div style={cardHeader("#b91c1c", "rgba(239,68,68,0.1)")}>
                 <span>⚠️ Stock Alert Register</span>
                 <span style={badge("#fee2e2", "#b91c1c")}>Needs Reorder</span>
@@ -220,7 +252,7 @@ export default function InventoryDashboardPage() {
             </div>
 
             {/* ⏳ Expiring Soon Register */}
-            <div style={cardStyle("1px solid rgba(249,115,22,0.18)", "linear-gradient(180deg, rgba(255,247,237,0.3), rgba(255,255,255,0.98))")}>
+            <div style={cardStyle("1px solid rgba(249,115,22,0.18)", expiringCardBackground)}>
               <div style={cardHeader("#c2410c", "rgba(249,115,22,0.1)")}>
                 <span>⏳ Expiring Soon Register</span>
                 <span style={badge("#ffedd5", "#c2410c")}>Within 30 Days</span>

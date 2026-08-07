@@ -57,18 +57,21 @@ const statIcon = (tone: string): React.CSSProperties => ({
 });
 
 function StatCard({
-  icon, label, value, loading, tone, badge: bdg,
+  icon, label, value, loading, tone, badge: bdg, isDarkMode,
 }: {
   icon: string; label: string; value: string | number;
   loading?: boolean; tone: string;
   badge?: { text: string; bg: string; color: string } | null;
+  isDarkMode: boolean;
 }) {
   return (
     <div
       className="inventory-kpi-card"
       style={{
         border: `1px solid ${tone}22`,
-        background: `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
+        background: isDarkMode
+          ? "var(--inventory-card-bg)"
+          : `linear-gradient(135deg, ${tone}08, rgba(255,255,255,0.98))`,
       }}
     >
       <div className="inventory-kpi-card-header">
@@ -130,6 +133,28 @@ function EmploymentMix({ permanent, contract, msc }: { permanent: number; contra
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function HRDashboardPage() {
+  const [isDarkMode, setIsDarkMode] = React.useState(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    return document.documentElement.getAttribute("data-theme") === "dark";
+  });
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = document.documentElement;
+    const updateTheme = () => setIsDarkMode(root.getAttribute("data-theme") === "dark");
+    updateTheme();
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+
+    return () => observer.disconnect();
+  }, []);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["hr-employee-approvals"],
     queryFn: async () => {
@@ -232,12 +257,13 @@ export default function HRDashboardPage() {
       )}
 
       {/* ── Stat Cards ─────────────────────────────────────────────────────── */}
-      <div className="inventory-stats-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <div className="inventory-stats-grid">
         <StatCard
           icon="👥" label="Verified Personnel"
           value={isLoading ? "—" : totalVerified}
           loading={isLoading}
           tone="#01696f"
+          isDarkMode={isDarkMode}
         />
         <StatCard
           icon="📋" label="Pending Verification"
@@ -245,12 +271,14 @@ export default function HRDashboardPage() {
           loading={isLoading}
           tone="#b45309"
           badge={totalPending > 0 ? { text: "Action", bg: "#fef3c7", color: "#92400e" } : null}
+          isDarkMode={isDarkMode}
         />
         <StatCard
           icon="🏢" label="Departments"
           value={isLoading ? "—" : Object.keys(deptCounts).length}
           loading={isLoading}
           tone="#3b82f6"
+          isDarkMode={isDarkMode}
         />
       </div>
 
