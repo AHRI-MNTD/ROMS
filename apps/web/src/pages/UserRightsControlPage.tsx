@@ -395,8 +395,14 @@ export default function UserRightsControlPage() {
   };
 
   const pageStyle: React.CSSProperties = {
-    padding: "20px 28px 32px",
+    padding: "20px 28px 20px",
     maxWidth: 1600,
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    overflow: "hidden",
   };
 
   const surfaceStyle: React.CSSProperties = {
@@ -422,7 +428,7 @@ export default function UserRightsControlPage() {
   };
 
   const columnHeaderStyle: React.CSSProperties = {
-    padding: "6px 4px",
+    padding: "8px 4px",
     fontSize: "9px",
     fontWeight: 800,
     letterSpacing: "0.08em",
@@ -430,27 +436,31 @@ export default function UserRightsControlPage() {
     color: "var(--color-text-faint)",
     textAlign: "center",
     borderBottom: "1px solid var(--color-divider)",
-    background: "rgba(255,255,255,0.72)",
+    background: "#ffffff",
     whiteSpace: "normal",
     lineHeight: 1.15,
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
   };
 
   return (
     <div style={pageStyle}>
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+      <div style={{ marginBottom: 14, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: "18px", color: "var(--color-text)", margin: 0 }}>
             🔐 User Right Control
           </h1>
           <Badge label="Admin access matrix" color="primary" />
         </div>
-        <p style={{ fontSize: "12px", color: "var(--color-text-muted)", maxWidth: 920, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "12px", color: "var(--color-text-muted)", maxWidth: 920, lineHeight: 1.5, margin: 0 }}>
           Approved employees from HR Personnel Database appear here. Click a user to edit domain-level privileges, review the selected rights, and save the result.
         </p>
       </div>
 
       {statusMessage && (
-        <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 14, background: "#ecfdf5", border: "1px solid #86efac", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 600 }}>
+        <div style={{ flexShrink: 0, marginBottom: 14, padding: "10px 14px", borderRadius: 14, background: "#ecfdf5", border: "1px solid #86efac", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 600 }}>
           {statusMessage}
         </div>
       )}
@@ -472,7 +482,7 @@ export default function UserRightsControlPage() {
         // Three view states: matrix list → rights editor → review & confirm
         reviewOpen && activeUser && draftPermissions ? (
           /* ── REVIEW PAGE ─────────────────────────────────────────────── */
-          <div style={{ ...surfaceStyle, padding: "20px 24px" }}>
+          <div style={{ ...surfaceStyle, padding: "20px 24px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto" }}>
 
             {/* ⚠️ Caution banner */}
             <div style={{
@@ -480,6 +490,7 @@ export default function UserRightsControlPage() {
               padding: "12px 16px", borderRadius: 12, marginBottom: 16,
               background: "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))",
               border: "1px solid rgba(245,158,11,0.35)",
+              flexShrink: 0,
             }}>
               <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
               <div>
@@ -522,7 +533,7 @@ export default function UserRightsControlPage() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 12, borderTop: "1px solid var(--color-divider)" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 12, borderTop: "1px solid var(--color-divider)", marginTop: "auto", flexShrink: 0 }}>
               <Button variant="secondary" onClick={() => setReviewOpen(false)}>
                 No, cancel
               </Button>
@@ -532,8 +543,8 @@ export default function UserRightsControlPage() {
             </div>
           </div>
         ) : activeUser === null ? (
-          <div style={{ ...surfaceStyle, overflow: "hidden" }}>
-            <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ ...surfaceStyle, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", flexShrink: 0, background: "#ffffff" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>User matrix</div>
                 <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)", background: "rgba(1,105,111,0.08)", border: "1px solid rgba(1,105,111,0.14)", borderRadius: 999, padding: "2px 10px", letterSpacing: "0.04em" }}>
@@ -606,12 +617,12 @@ export default function UserRightsControlPage() {
               </div>
             </div>
 
-            <div className="table-responsive-container">
+            <div className="table-responsive-container" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "auto" }}>
               <table style={{ width: "100%", minWidth: "1000px", tableLayout: "fixed", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     <th style={{ ...columnHeaderStyle, width: "4%" }}>No_</th>
-                    <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left", position: "relative" }}>
+                    <th style={{ ...columnHeaderStyle, width: "13%", textAlign: "left" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
                         <span style={{ fontSize: 9, fontWeight: 800 }}>Users</span>
                         <button
@@ -849,8 +860,8 @@ export default function UserRightsControlPage() {
             </div>
           </div>
         ) : (
-          <div style={{ ...surfaceStyle, padding: "16px 20px", }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap", marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)", minWidth: 0 }}>
+          <div style={{ ...surfaceStyle, padding: "16px 20px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "nowrap", marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--color-divider)", minWidth: 0, flexShrink: 0 }}>
               {/* Left: user identity — compact sizing so it doesn't push right side to a new row */}
               <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: "0 1 auto" }}>
                 <div id="user-rights-editor-title" style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: "var(--color-text)", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -920,68 +931,70 @@ export default function UserRightsControlPage() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
-              {DOMAIN_CATALOG.map((domain) => {
-                const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
-                const enabled = activeSelection![domain.slug] ?? new Set<string>();
-                const domainLabel = `${domain.emoji} ${domain.name}`;
-                return (
-                  <Card
-                    key={domain.slug}
-                    style={editorCardStyle}
-                  >
-                    {/* Custom domain header: centered title (2-line clamped), left-aligned count */}
-                    <div style={{ marginBottom: 10 }}>
-                      <div
-                        title={domainLabel}
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "var(--color-text)",
-                          lineHeight: 1.3,
-                          textAlign: "center",
-                          ...(domain.slug === "hr"
-                            ? {}
-                            : {
-                                display: "-webkit-box",
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
-                              }),
-                          cursor: "default",
-                        }}
-                      >
-                        {domain.slug === "hr" ? (
-                          <>{domain.emoji} HR &amp; Staff<br />Operations</>
-                        ) : (
-                          domainLabel
-                        )}
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 4 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+                {DOMAIN_CATALOG.map((domain) => {
+                  const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
+                  const enabled = activeSelection![domain.slug] ?? new Set<string>();
+                  const domainLabel = `${domain.emoji} ${domain.name}`;
+                  return (
+                    <Card
+                      key={domain.slug}
+                      style={editorCardStyle}
+                    >
+                      {/* Custom domain header: centered title (2-line clamped), left-aligned count */}
+                      <div style={{ marginBottom: 10 }}>
+                        <div
+                          title={domainLabel}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "var(--color-text)",
+                            lineHeight: 1.3,
+                            textAlign: "center",
+                            ...(domain.slug === "hr"
+                              ? {}
+                              : {
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }),
+                            cursor: "default",
+                          }}
+                        >
+                          {domain.slug === "hr" ? (
+                            <>{domain.emoji} HR &amp; Staff<br />Operations</>
+                          ) : (
+                            domainLabel
+                          )}
+                        </div>
+                        <div style={{ fontSize: "var(--fs-xs, 11px)", color: "var(--color-text-muted)", marginTop: 4, textAlign: "left" }}>
+                          {enabled.size}/{rights.length} selected
+                        </div>
                       </div>
-                      <div style={{ fontSize: "var(--fs-xs, 11px)", color: "var(--color-text-muted)", marginTop: 4, textAlign: "left" }}>
-                        {enabled.size}/{rights.length} selected
+                      <div style={{ display: "grid", gap: 5 }}>
+                        {rights.map((right) => {
+                          const checked = enabled.has(right);
+                          return (
+                            <label key={right} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px", borderRadius: 8, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 24 }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleRight(domain.slug, right)}
+                                style={{ width: 13, height: 13, accentColor: "var(--color-primary)", flexShrink: 0 }}
+                              />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 10, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
+                              </div>
+                            </label>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div style={{ display: "grid", gap: 5 }}>
-                      {rights.map((right) => {
-                        const checked = enabled.has(right);
-                        return (
-                          <label key={right} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px", borderRadius: 8, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 24 }}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleRight(domain.slug, right)}
-                              style={{ width: 13, height: 13, accentColor: "var(--color-primary)", flexShrink: 0 }}
-                            />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 10, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                );
-              })}
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )

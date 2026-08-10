@@ -18,10 +18,35 @@ export interface RequestReferenceRow {
   requestedBy?: string;
   requestedFor?: string;
   project?: string;
+  approver?: string | null;
   team?: string;
   remark?: string;
   status?: string;
   acceptedQuantity?: number;
+}
+
+export function getApproverForProject(project?: string | null): string {
+  if (!project) return "Assalif Demissew";
+  const p = project.toUpperCase();
+  if (p.includes("TES")) {
+    return "Alemayehu Godana, Migbaru Kefallew";
+  }
+  if (p.includes("ANOSTEP")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("CDC")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("HAMMS")) {
+    return "Assalif Demissew, Migbaru Kefallew";
+  }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema";
+  }
+  if (p.includes("DRIVAX")) {
+    return "Wakweya Chali";
+  }
+  return "Assalif Demissew";
 }
 
 const referenceStatusStyles: Record<"ACCEPT" | "APPROVED" | "PENDING" | "REJECTED" | "PARTIAL", React.CSSProperties> = {
@@ -64,13 +89,15 @@ export function RequestReferenceTable() {
       const code = String(row.codeNo).toLowerCase();
       const reqBy = String(row.requestedBy).toLowerCase();
       const proj = String(row.project).toLowerCase();
+      const approverVal = String(row.approver || getApproverForProject(row.project)).toLowerCase();
 
       return (
         trackingId.includes(term) ||
         desc.includes(term) ||
         code.includes(term) ||
         reqBy.includes(term) ||
-        proj.includes(term)
+        proj.includes(term) ||
+        approverVal.includes(term)
       );
     });
   }, [rows, requestSearch, requestStatusFilter]);
@@ -141,21 +168,22 @@ export function RequestReferenceTable() {
       <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
         <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "7%" }} />
-            <col style={{ width: "15%" }} />
-            <col style={{ width: "4%" }} />
-            <col style={{ width: "4%" }} />
             <col style={{ width: "6%" }} />
-            <col style={{ width: "8%" }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "4%" }} />
+            <col style={{ width: "4%" }} />
+            <col style={{ width: "5%" }} />
             <col style={{ width: "7%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "8%" }} />
-            <col style={{ width: "8%" }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "10%" }} />
             <col style={{ width: "4%" }} />
             <col style={{ width: "8%" }} />
-            <col style={{ width: "9%" }} />
+            <col style={{ width: "7%" }} />
           </colgroup>
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -175,6 +203,7 @@ export function RequestReferenceTable() {
                     <th style={thStyle} title="Requested_By">By</th>
                     <th style={thStyle} title="Requested_For">For</th>
                     <th style={thStyle} title="Project">Project</th>
+                    <th style={thStyle} title="Approver">Approver</th>
                     <th style={thStyle} title="Team">Team</th>
                     <th style={thStyle} title="Remark">Remark</th>
                     <th style={thStyle} title="Status">Status</th>
@@ -186,13 +215,13 @@ export function RequestReferenceTable() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={15} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
+                <td colSpan={16} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
                   Loading request history...
                 </td>
               </tr>
             ) : paginatedRequests.length === 0 ? (
               <tr>
-                <td colSpan={15} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
+                <td colSpan={16} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
                   No matching records available.
                 </td>
               </tr>
@@ -213,6 +242,7 @@ export function RequestReferenceTable() {
                 const reqByVal = s(row.requestedBy);
                 const reqForVal = s(row.requestedFor);
                 const projVal = s(row.project);
+                const approverVal = s(row.approver || getApproverForProject(row.project));
                 const teamVal = s(row.team);
                 const remarkVal = s(row.remark);
                 const rawStatus = row.status ?? "PENDING";
@@ -232,6 +262,7 @@ export function RequestReferenceTable() {
                     <td style={cellStyle} title={reqByVal}>{reqByVal}</td>
                     <td style={cellStyle} title={reqForVal}>{reqForVal}</td>
                     <td style={cellStyle} title={projVal}>{projVal}</td>
+                    <td style={cellStyle} title={approverVal}>{approverVal}</td>
                     <td style={cellStyle} title={teamVal}>{teamVal}</td>
                     <td style={cellStyle} title={remarkVal}>{remarkVal}</td>
                     <td style={{ padding: "4px 8px", fontSize: "10px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

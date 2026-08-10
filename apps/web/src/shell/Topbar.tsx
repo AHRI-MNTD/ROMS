@@ -531,7 +531,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ isCollapsed }) => 
     <header style={{
       height: "44.5px",
       minHeight: "44.5px",
-      background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
+      background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-bg)",
       borderBottom: "1px solid var(--color-divider)",
       display: "flex",
       alignItems: "center",

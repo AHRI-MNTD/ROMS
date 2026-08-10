@@ -1088,7 +1088,14 @@ export default function ApprovedPage() {
                         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                       >
                         <td style={{ ...cellStyle, textAlign: "right", color: "var(--color-text-muted)", fontWeight: 700, width: "4%" }}>{i + 1}</td>
-                        <td style={{ ...cellStyle, fontWeight: 700, width: "20%" }} title={row.user?.displayName ?? "Unknown"}>{row.user?.displayName ?? "Unknown"}</td>
+                        <td style={{ ...cellStyle, fontWeight: 700, width: "20%" }} title={row.user?.displayName ?? "Unknown"}>
+                          <span>{row.user?.displayName ?? "Unknown"}</span>
+                          {["alemayehu", "migbaru", "assalif", "tilahun", "wakweya"].some((name) => (row.user?.displayName ?? "").toLowerCase().includes(name)) && (
+                            <span style={{ fontSize: "9px", padding: "1px 6px", borderRadius: 4, background: "var(--color-primary-soft)", color: "var(--color-primary)", border: "1px solid var(--color-primary-highlight)", marginLeft: 6, fontWeight: 700 }}>
+                              Approver
+                            </span>
+                          )}
+                        </td>
                         <td style={{ ...cellStyle, width: "19%" }} title={row.department}>{row.department}</td>
                         <td style={{ ...cellStyle, width: "18%" }} title={getPositionLabel(row.jobTitle)}>{getPositionLabel(row.jobTitle)}</td>
                         <td style={{ ...cellStyle, width: "11%" }}>{formatDate(row.startDate)}</td>

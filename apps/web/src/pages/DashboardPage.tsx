@@ -59,9 +59,9 @@ const StatCard: React.FC<{
 // ── System status pill ────────────────────────────────────────────────────────
 const StatusPill: React.FC<{ label: string; status: "ok" | "warn" | "off" }> = ({ label, status }) => {
   const cfg = {
-    ok:   { bg: "rgba(22,163,74,0.09)",   border: "rgba(22,163,74,0.22)",   color: "#16a34a", dot: "#16a34a" },
-    warn: { bg: "rgba(217,119,6,0.09)",   border: "rgba(217,119,6,0.22)",   color: "#b45309", dot: "#b45309" },
-    off:  { bg: "rgba(156,163,175,0.09)", border: "rgba(156,163,175,0.22)", color: "var(--color-text-faint)", dot: "var(--color-text-faint)" },
+    ok: { bg: "rgba(22,163,74,0.09)", border: "rgba(22,163,74,0.22)", color: "#16a34a", dot: "#16a34a" },
+    warn: { bg: "rgba(217,119,6,0.09)", border: "rgba(217,119,6,0.22)", color: "#b45309", dot: "#b45309" },
+    off: { bg: "rgba(156,163,175,0.09)", border: "rgba(156,163,175,0.22)", color: "var(--color-text-faint)", dot: "var(--color-text-faint)" },
   }[status];
   return (
     <div style={{
@@ -99,13 +99,13 @@ const OverviewRow: React.FC<{ label: string; value: string | number; color?: str
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  const isAdmin    = !!(user?.roles?.includes("ADMIN") || user?.permissions?.includes("admin:all"));
+  const isAdmin = !!(user?.roles?.includes("ADMIN") || user?.permissions?.includes("admin:all"));
   const isResAdmin = !!(user?.roles?.includes("RESEARCH_ADMIN"));
   const isAdminLike = isAdmin || isResAdmin;
 
-  const isQA      = user?.roles?.includes("QA_OFFICER");
-  const isPI      = user?.roles?.includes("PRINCIPAL_INVESTIGATOR");
-  const isLabSci  = user?.roles?.includes("LAB_SCIENTIST");
+  const isQA = user?.roles?.includes("QA_OFFICER");
+  const isPI = user?.roles?.includes("PRINCIPAL_INVESTIGATOR");
+  const isLabSci = user?.roles?.includes("LAB_SCIENTIST");
   const isDataMgr = user?.roles?.includes("DATA_MANAGER");
 
   const allRights = useMemo(
@@ -123,7 +123,7 @@ export default function DashboardPage() {
     })),
   });
 
-  const totalTasks        = domains.reduce((a, d) => a + d.taskCount, 0);
+  const totalTasks = domains.reduce((a, d) => a + d.taskCount, 0);
   const totalSubfunctions = domains.reduce((a, d) => a + d.subfunctionCount, 0);
   const accessibleDomains = useMemo(
     () => domains.filter(d => hasDomainAccess(user?.roles, d.slug, user?.permissions)),
@@ -158,22 +158,22 @@ export default function DashboardPage() {
   });
 
   // Derived admin stats
-  const invSummary       = invAnalytics?.summary ?? { totalItems: 0, lowStockItems: 0, outOfStockItems: 0 };
-  const allSops          = (sopsRes?.data ?? []) as any[];
-  const reviewSops       = allSops.filter((s: any) => s.status === "REVIEW").length;
-  const approvedSops     = allSops.filter((s: any) => s.status === "APPROVED").length;
-  const allRequests      = (requestsRes?.data ?? []) as any[];
-  const pendingRequests  = allRequests.filter((r: any) => r.status === "PENDING").length;
-  const hrPending        = ((hrRes?.data ?? []) as any[]).length;
+  const invSummary = invAnalytics?.summary ?? { totalItems: 0, lowStockItems: 0, outOfStockItems: 0 };
+  const allSops = (sopsRes?.data ?? []) as any[];
+  const reviewSops = allSops.filter((s: any) => s.status === "REVIEW").length;
+  const approvedSops = allSops.filter((s: any) => s.status === "APPROVED").length;
+  const allRequests = (requestsRes?.data ?? []) as any[];
+  const pendingRequests = allRequests.filter((r: any) => r.status === "PENDING").length;
+  const hrPending = ((hrRes?.data ?? []) as any[]).length;
 
-  const dateStr   = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
-  const roleLabel = isAdmin    ? "System Administrator"
-                  : isResAdmin ? "Research Administrator"
-                  : isQA      ? "QA Officer"
-                  : isPI      ? "Principal Investigator"
-                  : isLabSci  ? "Lab Scientist"
-                  : isDataMgr ? "Data Manager"
-                  : (user?.roles?.map(r => r.replace(/_/g, " ")).join(", ") ?? "Staff");
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  const roleLabel = isAdmin ? "System Administrator"
+    : isResAdmin ? "Research Administrator"
+      : isQA ? "QA Officer"
+        : isPI ? "Principal Investigator"
+          : isLabSci ? "Lab Scientist"
+            : isDataMgr ? "Data Manager"
+              : (user?.roles?.map(r => r.replace(/_/g, " ")).join(", ") ?? "Staff");
 
   return (
     <div style={{
@@ -184,7 +184,7 @@ export default function DashboardPage() {
     }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginTop: 25 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <h1 style={{
@@ -259,12 +259,12 @@ export default function DashboardPage() {
 
       {/* ── KPI cards ──────────────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
-        <StatCard icon="🏗️" label="Domains"           value={domains.length}           sub="Research areas"       accent="#01696f" />
-        <StatCard icon="📋" label="Sub-functions"      value={totalSubfunctions}        sub="5 per domain"         accent="#0d6f89" />
-        <StatCard icon="✅" label="Operational Tasks"  value={totalTasks}               sub="5 per sub-function"   accent="#6b46c1" />
-        <StatCard icon="🔓" label="My Access"          value={accessibleDomains.length} sub={`${totalRights} rights granted`} accent="#16a34a" />
-        <StatCard icon="🧱" label="Containers"         value={8}                        sub="C2 layer (C4 model)"  accent="#0284c7" />
-        <StatCard icon="🔗" label="Integrations"       value={8}                        sub="External systems"     accent="#d97706" />
+        <StatCard icon="🏗️" label="Domains" value={domains.length} sub="Research areas" accent="#01696f" />
+        <StatCard icon="📋" label="Sub-functions" value={totalSubfunctions} sub="5 per domain" accent="#0d6f89" />
+        <StatCard icon="✅" label="Operational Tasks" value={totalTasks} sub="5 per sub-function" accent="#6b46c1" />
+        <StatCard icon="🔓" label="My Access" value={accessibleDomains.length} sub={`${totalRights} rights granted`} accent="#16a34a" />
+        <StatCard icon="🧱" label="Containers" value={8} sub="C2 layer (C4 model)" accent="#0284c7" />
+        <StatCard icon="🔗" label="Integrations" value={8} sub="External systems" accent="#d97706" />
       </div>
 
       {/* ── Admin-only section ─────────────────────────────────────────────── */}
@@ -296,15 +296,15 @@ export default function DashboardPage() {
             </div>
             {/* rows */}
             <div style={{ padding: "4px 0" }}>
-              <OverviewRow label="Total Domains"         value={domains.length}                                                                    color="#01696f" />
-              <OverviewRow label="Users with Access"     value={accessibleDomains.length}                                                          color="#0d6f89" />
-              <OverviewRow label="Total SOPs"            value={sopsLoading ? "…" : allSops.length}                                               color="#6b46c1" />
-              <OverviewRow label="SOPs — Approved"       value={sopsLoading ? "…" : approvedSops}                                                  color="#16a34a" />
-              <OverviewRow label="SOPs — In Review"      value={sopsLoading ? "…" : reviewSops}         color={reviewSops > 0 ? "#b45309" : "var(--color-text)"} />
-              <OverviewRow label="Inventory Items"       value={invLoading ? "…" : invSummary.totalItems}                                          color="#0284c7" />
-              <OverviewRow label="Low / Out of Stock"    value={invLoading ? "…" : `${invSummary.lowStockItems} / ${invSummary.outOfStockItems}`}  color={invSummary.outOfStockItems > 0 ? "#dc2626" : invSummary.lowStockItems > 0 ? "#b45309" : "var(--color-text)"} />
-              <OverviewRow label="Pending HR Approvals"  value={hrLoading ? "…" : hrPending}             color={hrPending > 0 ? "#b45309" : "var(--color-text)"} />
-              <OverviewRow label="Pending Inv. Requests" value={reqLoading ? "…" : pendingRequests}      color={pendingRequests > 0 ? "#b45309" : "var(--color-text)"} last />
+              <OverviewRow label="Total Domains" value={domains.length} color="#01696f" />
+              <OverviewRow label="Users with Access" value={accessibleDomains.length} color="#0d6f89" />
+              <OverviewRow label="Total SOPs" value={sopsLoading ? "…" : allSops.length} color="#6b46c1" />
+              <OverviewRow label="SOPs — Approved" value={sopsLoading ? "…" : approvedSops} color="#16a34a" />
+              <OverviewRow label="SOPs — In Review" value={sopsLoading ? "…" : reviewSops} color={reviewSops > 0 ? "#b45309" : "var(--color-text)"} />
+              <OverviewRow label="Inventory Items" value={invLoading ? "…" : invSummary.totalItems} color="#0284c7" />
+              <OverviewRow label="Low / Out of Stock" value={invLoading ? "…" : `${invSummary.lowStockItems} / ${invSummary.outOfStockItems}`} color={invSummary.outOfStockItems > 0 ? "#dc2626" : invSummary.lowStockItems > 0 ? "#b45309" : "var(--color-text)"} />
+              <OverviewRow label="Pending HR Approvals" value={hrLoading ? "…" : hrPending} color={hrPending > 0 ? "#b45309" : "var(--color-text)"} />
+              <OverviewRow label="Pending Inv. Requests" value={reqLoading ? "…" : pendingRequests} color={pendingRequests > 0 ? "#b45309" : "var(--color-text)"} last />
             </div>
           </div>
 
@@ -333,11 +333,11 @@ export default function DashboardPage() {
             </div>
             {/* pills */}
             <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <StatusPill label="API Gateway — Online"        status="ok" />
-              <StatusPill label="Database — Connected"        status="ok" />
-              <StatusPill label="Auth Service — Active"       status="ok" />
+              <StatusPill label="API Gateway — Online" status="ok" />
+              <StatusPill label="Database — Connected" status="ok" />
+              <StatusPill label="Auth Service — Active" status="ok" />
               <StatusPill label="Cold Chain Monitor — Online" status="ok" />
-              <StatusPill label="Document Store — Active"     status="ok" />
+              <StatusPill label="Document Store — Active" status="ok" />
             </div>
           </div>
         </div>

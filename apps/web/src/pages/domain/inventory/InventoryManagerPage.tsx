@@ -4,6 +4,60 @@ import { apiClient, getErrorMessage } from "../../../api/client";
 import { useAuth } from "../../../auth/useAuth";
 import { RequestReferenceTable, RequestReferenceRow } from "./RequestReferenceTable";
 
+export function getApproverForProject(project?: string | null): string {
+  if (!project) return "Assalif Demissew";
+  const p = project.toUpperCase();
+  if (p.includes("TES")) {
+    return "Alemayehu Godana, Migbaru Kefallew";
+  }
+  if (p.includes("ANOSTEP")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("CDC")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("HAMMS")) {
+    return "Assalif Demissew, Migbaru Kefallew";
+  }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema";
+  }
+  if (p.includes("DRIVAX")) {
+    return "Wakweya Chali";
+  }
+  return "Assalif Demissew";
+}
+
+export function isUserAssignedApprover(
+  user: { displayName?: string | null; email?: string | null; roles?: string[] } | null,
+  project?: string | null,
+  approverField?: string | null
+): boolean {
+  if (!user) return false;
+
+  const userDisplayName = (user.displayName ?? "").toLowerCase().trim();
+  const userEmail = (user.email ?? "").toLowerCase().trim();
+  const assignedStr = approverField || getApproverForProject(project);
+  const assignedLower = assignedStr.toLowerCase();
+
+  const names = assignedLower.split(/[,/]| and /).map((n) => n.trim()).filter(Boolean);
+
+  for (const name of names) {
+    if (name.includes("alemayehu") && (userDisplayName.includes("alemayehu") || userEmail.includes("alexbiology"))) return true;
+    if (name.includes("migbaru") && (userDisplayName.includes("migbaru") || userEmail.includes("migbaru"))) return true;
+    if (name.includes("assalif") && (userDisplayName.includes("assalif") || userEmail.includes("ashifera"))) return true;
+    if (name.includes("tilahun") && (userDisplayName.includes("tilahun") || userEmail.includes("tilahun"))) return true;
+    if (name.includes("wakweya") && (userDisplayName.includes("wakweya") || userEmail.includes("wakeya"))) return true;
+
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length > 0 && parts.every((p) => userDisplayName.includes(p))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 interface RequestItemState {
   id: string;
   movementId?: string;
@@ -22,6 +76,7 @@ interface RequestLogEntry {
   requestedBy?: string;
   requestedFor?: string;
   project?: string;
+  approver?: string;
   team?: string;
   items?: Array<{ id: string; movementId?: string; sku?: string; name?: string; quantity: number }>;
   bulk?: boolean;
@@ -364,23 +419,27 @@ export default function InventoryManagerPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "5%" }} />
-                  <col style={{ width: "27%" }} />
+                  <col style={{ width: "4%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "17%" }} />
                   <col style={{ width: "9%" }} />
-                  <col style={{ width: "13%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "11%" }} />
                 </colgroup>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
+                  <tr style={{ borderBottom: "1px solid var(--color-border)", background: "var(--color-surface-offset)" }}>
                     {(() => {
-                      const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-faint)", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+                      const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontSize: "10.5px", color: "var(--color-text-muted)", fontWeight: 700, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
                       return (
                         <>
                           <th style={{ ...thStyle, textAlign: "center" }} title="#">#</th>
                           <th style={thStyle} title="Item">Item</th>
-                          <th style={thStyle} title="Quantity">Quantity</th>
+                          <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Project">Project</th>
+                          <th style={thStyle} title="Assigned Approver">Approver</th>
                           <th style={thStyle} title="Date">Date</th>
                           <th style={thStyle} title="Requested By">Requested By</th>
                           <th style={thStyle} title="Requested For">Requested For</th>
@@ -412,6 +471,9 @@ export default function InventoryManagerPage() {
                       acceptedQuantity: it.quantity,
                     }));
 
+                    const entryApprover = entry.approver || entry.rawRows?.[0]?.approver || getApproverForProject(entry.project);
+                    const canUserApprove = isUserAssignedApprover(user, entry.project, entryApprover);
+
                     return (
                       <React.Fragment key={entry.id}>
                         <tr
@@ -420,13 +482,15 @@ export default function InventoryManagerPage() {
                             borderBottom: "1px solid var(--color-divider)",
                             height: 38,
                             cursor: "pointer",
-                            background: isExpanded ? "rgba(37,99,235,0.05)" : "transparent",
+                            background: isExpanded ? "var(--color-primary-soft)" : "transparent",
                             transition: "background 0.15s ease",
                           }}
                         >
                           <td style={{ ...cellStyle, textAlign: "center", fontWeight: 700, color: "var(--color-text-faint)" }} title={String(index + 1)}>{index + 1}</td>
                           <td style={{ ...cellStyle, fontWeight: 700, color: "var(--color-text)" }} title={entry.itemLabel}>{entry.itemLabel}</td>
                           <td style={cellStyle} title={String(entry.quantity)}>{entry.quantity}</td>
+                          <td style={cellStyle} title={entry.project || "—"}>{entry.project || "—"}</td>
+                          <td style={cellStyle} title={entryApprover}>{entryApprover}</td>
                           <td style={cellStyle} title={dateStr}>{dateStr}</td>
                           <td style={cellStyle} title={entry.requestedBy}>{entry.requestedBy}</td>
                           <td style={cellStyle} title={entry.requestedFor || "—"}>{entry.requestedFor || "—"}</td>
@@ -436,8 +500,8 @@ export default function InventoryManagerPage() {
                               <IconBtn
                                 title="See details"
                                 onClick={(e) => { e.stopPropagation(); toggleRowExpand(entry); }}
-                                color={isExpanded ? "#2563eb" : "#475569"}
-                                hoverBg="rgba(37,99,235,0.12)"
+                                color={isExpanded ? "var(--color-primary)" : "#475569"}
+                                hoverBg="var(--color-primary-soft)"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -445,32 +509,37 @@ export default function InventoryManagerPage() {
                                 </svg>
                               </IconBtn>
                               {/* Direct Approve Icon */}
-                              {isAdmin && (
-                                <IconBtn
-                                  title="Approve directly"
-                                  onClick={(e) => { e.stopPropagation(); quickApproveMutation.mutate(entry); }}
-                                  color="#16a34a"
-                                  hoverBg="rgba(22,163,74,0.1)"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                </IconBtn>
-                              )}
+                              <IconBtn
+                                title={canUserApprove ? "Approve directly" : `Only assigned approver (${entryApprover}) can approve`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!canUserApprove) {
+                                    setFeedback({ type: "error", message: `Authorization required: Only assigned approver (${entryApprover}) can approve this request.` });
+                                    return;
+                                  }
+                                  quickApproveMutation.mutate(entry);
+                                }}
+                                color={canUserApprove ? "#16a34a" : "#94a3b8"}
+                                hoverBg={canUserApprove ? "rgba(22,163,74,0.1)" : "rgba(148,163,184,0.1)"}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </IconBtn>
                             </div>
                           </td>
                         </tr>
 
                         {/* Inline Expanded Row */}
                         {isExpanded && (
-                          <tr style={{ background: "linear-gradient(180deg, #f1f5f9 0%, #e7e8ffff 100%)", borderTop: "2px solid #94a3b8", borderBottom: "2px solid #94a3b8" }}>
-                            <td colSpan={7} style={{ padding: "14px 16px" }}>
+                          <tr style={{ background: "var(--color-surface)", borderTop: "1px solid var(--color-border)", borderBottom: "1px solid var(--color-border)" }}>
+                            <td colSpan={9} style={{ padding: "14px 16px" }}>
                               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                                 {/* Title Bar */}
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #b9baffff, #c5caffff)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--color-primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                         <polyline points="14 2 14 8 20 8" />
                                         <line x1="16" y1="13" x2="8" y2="13" />
@@ -478,8 +547,8 @@ export default function InventoryManagerPage() {
                                         <polyline points="10 9 9 9 8 9" />
                                       </svg>
                                     </div>
-                                    <span style={{ fontSize: "11.5px", fontWeight: 800, color: "#1e293b", letterSpacing: "0.01em" }}>Request Details</span>
-                                    <span style={{ fontSize: "9px", padding: "1px 8px", borderRadius: 10, background: "rgba(99,102,241,0.12)", color: "#4f46e5", border: "1px solid rgba(99,102,241,0.25)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                    <span style={{ fontSize: "11.5px", fontWeight: 800, color: "var(--color-text)", letterSpacing: "0.01em" }}>Request Details</span>
+                                    <span style={{ fontSize: "9px", padding: "1px 8px", borderRadius: 10, background: "var(--color-primary-soft)", color: "var(--color-primary)", border: "1px solid var(--color-primary-highlight)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                                       Pending
                                     </span>
                                   </div>
@@ -492,18 +561,19 @@ export default function InventoryManagerPage() {
                                 </div>
 
                                 {/* 1. Requested Items Table */}
-                                <div style={{ border: "1px solid #cbd5e1", borderRadius: 7, overflow: "hidden" }}>
+                                <div style={{ border: "1px solid var(--color-border)", borderRadius: 7, overflow: "hidden" }}>
                                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                                     <thead>
-                                      <tr style={{ background: "linear-gradient(90deg, #e0e7ff 0%, #ede9fe 100%)", borderBottom: "1px solid #c4b5fd" }}>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item Name / Code</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 60 }}>Qty</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 100 }}>Project</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 90 }}>Date</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 120 }}>Requested By</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 120 }}>Requested For</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 90 }}>Team</th>
-                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 120 }}>Remark</th>
+                                      <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase" }}>Item Name / Code</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 60 }}>Qty</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 100 }}>Project</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 140 }}>Approver</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 90 }}>Date</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 120 }}>Requested By</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 120 }}>Requested For</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 90 }}>Team</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 120 }}>Remark</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -524,6 +594,7 @@ export default function InventoryManagerPage() {
                                             </td>
                                             <td style={{ padding: "6px 8px", fontWeight: 700 }}>{it.quantity}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{projVal}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{entryApprover}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{dateVal}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{reqByVal}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{reqForVal}</td>
@@ -538,17 +609,22 @@ export default function InventoryManagerPage() {
 
                                 {/* 2. Separate Decision Panel */}
                                 <div>
-                                  <div style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em", color: "#4f46e5", marginBottom: 6 }}>
+                                  <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--color-primary)", marginBottom: 6 }}>
                                     Decision Panel
                                   </div>
-                                  <div style={{ border: "1px solid #cbd5e1", borderRadius: 7, overflow: "hidden" }}>
+                                  {!canUserApprove && (
+                                    <div style={{ padding: "8px 12px", background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 6, color: "#9a3412", fontSize: "10.5px", fontWeight: 700, marginBottom: 8 }}>
+                                      🔒 Approver Authorization Required: Only assigned approver <u>{entryApprover}</u> is authorized to approve requests for project {entry.project}.
+                                    </div>
+                                  )}
+                                  <div style={{ border: "1px solid var(--color-border)", borderRadius: 7, overflow: "hidden" }}>
                                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                                       <thead>
-                                        <tr style={{ background: "linear-gradient(90deg, #ede9fe 0%, #ddd6fe 100%)", borderBottom: "1px solid #baa9ffff" }}>
-                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase" }}>Item Name / Code</th>
-                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 80 }}>Req. Qty</th>
-                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 170 }}>Decision</th>
-                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text-faint)", textTransform: "uppercase", width: 110 }}>Accepted Qty</th>
+                                        <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase" }}>Item Name / Code</th>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 80 }}>Req. Qty</th>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 170 }}>Decision</th>
+                                          <th style={{ textAlign: "left", padding: "6px 10px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 110 }}>Accepted Qty</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -561,7 +637,7 @@ export default function InventoryManagerPage() {
                                             <td style={{ padding: "6px 10px" }}>
                                               <select
                                                 value={it.status}
-                                                disabled={!isAdmin}
+                                                disabled={!canUserApprove}
                                                 onChange={(e) => {
                                                   const nextStatus = e.target.value as "PENDING" | "ACCEPT" | "REJECT" | "PARTIAL";
                                                   const updated = [...currentItems];
@@ -584,7 +660,7 @@ export default function InventoryManagerPage() {
                                                   fontSize: "11px",
                                                   background: it.status === "ACCEPT" ? "#dcfce7" : it.status === "REJECT" ? "#fee2e2" : it.status === "PARTIAL" ? "#fff7ed" : "var(--color-surface)",
                                                   color: it.status === "ACCEPT" ? "#166534" : it.status === "REJECT" ? "#991b1b" : it.status === "PARTIAL" ? "#9a3412" : "var(--color-text)",
-                                                  cursor: !isAdmin ? "not-allowed" : "pointer",
+                                                  cursor: !canUserApprove ? "not-allowed" : "pointer",
                                                 }}
                                               >
                                                 <option value="PENDING">Pending</option>
@@ -600,7 +676,7 @@ export default function InventoryManagerPage() {
                                                   value={it.acceptedQuantity ?? 0}
                                                   min={0}
                                                   max={it.quantity}
-                                                  disabled={!isAdmin}
+                                                  disabled={!canUserApprove}
                                                   onChange={(e) => {
                                                     const updated = [...currentItems];
                                                     updated[idx] = { ...updated[idx], acceptedQuantity: Math.max(0, Math.min(it.quantity, Number(e.target.value) || 0)) };
@@ -622,27 +698,31 @@ export default function InventoryManagerPage() {
                                 </div>
 
                                 {/* Save Button for expanded row */}
-                                {isAdmin && (
-                                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => saveDecisionMutation.mutate({ entry, items: currentItems })}
-                                      disabled={saveDecisionMutation.isPending}
-                                      style={{
-                                        padding: "6px 16px",
-                                        borderRadius: 6,
-                                        border: "none",
-                                        background: "var(--color-primary)",
-                                        color: "#fff",
-                                        fontSize: "11px",
-                                        fontWeight: 700,
-                                        cursor: "pointer",
-                                      }}
-                                    >
-                                      {saveDecisionMutation.isPending ? "Saving..." : "Save Decisions"}
-                                    </button>
-                                  </div>
-                                )}
+                                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!canUserApprove) {
+                                        setFeedback({ type: "error", message: `Authorization required: Only assigned approver (${entryApprover}) can approve this request.` });
+                                        return;
+                                      }
+                                      saveDecisionMutation.mutate({ entry, items: currentItems });
+                                    }}
+                                    disabled={saveDecisionMutation.isPending || !canUserApprove}
+                                    style={{
+                                      padding: "6px 16px",
+                                      borderRadius: 6,
+                                      border: "none",
+                                      background: canUserApprove ? "var(--color-primary)" : "#94a3b8",
+                                      color: "#fff",
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                      cursor: canUserApprove ? "pointer" : "not-allowed",
+                                    }}
+                                  >
+                                    {saveDecisionMutation.isPending ? "Saving..." : "Save Decisions"}
+                                  </button>
+                                </div>
                               </div>
                             </td>
                           </tr>

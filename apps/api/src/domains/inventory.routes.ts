@@ -49,9 +49,34 @@ type InventoryMovementRecord = {
   requestedFor?: string | null;
   requestBatchId?: string | null;
   team?: string | null;
+  approver?: string | null;
   stockItem?: StockItemSelect | null;
   createdAt?: Date;
 };
+
+export function getApproverForProject(project?: string | null): string {
+  if (!project) return "Assalif Demissew";
+  const p = project.toUpperCase();
+  if (p.includes("TES")) {
+    return "Alemayehu Godana, Migbaru Kefallew";
+  }
+  if (p.includes("ANOSTEP")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("CDC")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("HAMMS")) {
+    return "Assalif Demissew, Migbaru Kefallew";
+  }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema";
+  }
+  if (p.includes("DRIVAX")) {
+    return "Wakweya Chali";
+  }
+  return "Assalif Demissew";
+}
 
 type InventoryMovementPrisma = typeof prisma & {
   inventoryMovement: {
@@ -99,6 +124,7 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
   const stockItem = movement.stockItem;
   const requestedQuantity = Number(movement.requestedQuantity ?? movement.quantity ?? 0);
   const acceptedQuantity = Number(movement.quantity ?? 0);
+  const projectFor = movement.projectFor ?? "ROMS Inventory";
 
   return {
     rowKey: movement.id ?? `${movement.requestBatchId ?? "batch"}-${movement.stockItemId}`,
@@ -114,8 +140,9 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
     dateRequested: movement.occurredAt.toISOString().slice(0, 10),
     requestedBy: movement.requestedBy ?? "Unknown User",
     requestedFor: movement.requestedFor ?? "",
-    project: movement.projectFor ?? "ROMS Inventory",
+    project: projectFor,
     team: movement.team ?? "",
+    approver: movement.approver || getApproverForProject(projectFor),
     remark: movement.remark ?? "",
     status: movement.status ?? "PENDING",
     acceptedQuantity,
@@ -413,6 +440,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
   const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
   const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
   const team = toStringOrUndefined(req.body?.team) ?? null;
+  const approver = toStringOrUndefined(req.body?.approver) ?? getApproverForProject(projectFor);
   const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
   const batchId = randomUUID();
 
@@ -441,6 +469,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
               destination: projectFor,
               projectFor,
               team,
+              approver,
               status: "PENDING",
               remark: toStringOrUndefined(rawItem?.remark) ?? "Requested by user",
               occurredAt,
@@ -475,7 +504,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
   }
 });
 
-router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+router.post("/request-decisions", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   if (items.length === 0) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
@@ -553,6 +582,8 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
               });
             }
 
+          const approver = toStringOrUndefined(req.body?.approver) ?? getApproverForProject(projectFor);
+
           if (movementId) {
               const movement = await movementTx.inventoryMovement.update({
               where: { id: movementId },
@@ -565,6 +596,7 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
                 destination: projectFor,
                 projectFor,
                 team,
+                approver,
                 status,
                 remark: [summary, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
                 occurredAt,
@@ -591,6 +623,7 @@ router.post("/request-decisions", requireAuth, requireRole(Role.ADMIN, Role.RESE
               destination: projectFor,
               projectFor,
               team,
+              approver,
               status,
               remark: [summary, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
               occurredAt,

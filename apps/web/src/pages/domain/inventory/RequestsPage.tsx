@@ -6,6 +6,30 @@ import { useAuth } from "../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { RequestReferenceTable } from "./RequestReferenceTable";
 
+export function getApproverForProject(project?: string | null): string {
+  if (!project) return "Assalif Demissew";
+  const p = project.toUpperCase();
+  if (p.includes("TES")) {
+    return "Alemayehu Godana, Migbaru Kefallew";
+  }
+  if (p.includes("ANOSTEP")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("CDC")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("HAMMS")) {
+    return "Assalif Demissew, Migbaru Kefallew";
+  }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema";
+  }
+  if (p.includes("DRIVAX")) {
+    return "Wakweya Chali";
+  }
+  return "Assalif Demissew";
+}
+
 export default function RequestsPage() {
   const user = useAuth((state) => state.user);
   const queryClient = useQueryClient();
@@ -20,6 +44,7 @@ export default function RequestsPage() {
   const [requestedFor, setRequestedFor] = React.useState("");
   const [requestDate, setRequestDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [project, setProject] = React.useState("ROMS Inventory");
+  const [approver, setApprover] = React.useState(() => getApproverForProject("ROMS Inventory"));
   const [team, setTeam] = React.useState("");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -32,12 +57,17 @@ export default function RequestsPage() {
     itemLabel: string;
     quantity: number;
     project: string;
+    approver: string;
     requestedBy: string;
     requestedFor: string;
     team: string;
     remark: string;
   }
   const [cartItems, setCartItems] = React.useState<CartItem[]>([]);
+
+  React.useEffect(() => {
+    setApprover(getApproverForProject(project));
+  }, [project]);
 
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
   const currentQty = Number(selectedItem?.quantity ?? 0);
@@ -101,6 +131,7 @@ export default function RequestsPage() {
         requestedBy: firstItem.requestedBy,
         requestedFor: firstItem.requestedFor || undefined,
         project: firstItem.project,
+        approver: firstItem.approver || undefined,
         team: firstItem.team || undefined,
         timestamp: new Date().toISOString(),
         items: items.map((it) => ({ id: it.stockItemId, quantity: it.quantity, remark: it.remark || undefined })),
@@ -253,6 +284,18 @@ export default function RequestsPage() {
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Approver <span style={{ fontSize: "9px", color: "#166534", fontWeight: 600 }}>(Auto-assigned)</span>
+            </span>
+            <input
+              value={approver}
+              readOnly
+              style={{ ...inputStyle, background: "var(--color-primary-soft)", fontWeight: 700, color: "var(--color-primary)" }}
+              title="Automatically assigned based on project"
+            />
+          </label>
+
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
               Request Date <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
             </span>
             <input type="date" value={requestDate} onChange={(e) => setRequestDate(e.target.value)} style={inputStyle} />
@@ -355,6 +398,7 @@ export default function RequestsPage() {
                   itemLabel: `${selectedItem.sku ?? ""} - ${selectedItem.name ?? ""}`.trim(),
                   quantity: requestQty,
                   project: project.trim(),
+                  approver: approver.trim() || getApproverForProject(project),
                   requestedBy: requestedBy.trim(),
                   requestedFor: requestedFor.trim(),
                   team: team.trim(),
@@ -400,13 +444,14 @@ export default function RequestsPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "24%" }} />
-                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "6%" }} />
                   <col style={{ width: "12%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "10%" }} />
                   <col style={{ width: "16%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "10%" }} />
                   <col style={{ width: "6%" }} />
                 </colgroup>
                 <thead>
@@ -418,6 +463,7 @@ export default function RequestsPage() {
                           <th style={thStyle} title="Item Label">Item</th>
                           <th style={thStyle} title="Quantity">Qty</th>
                           <th style={thStyle} title="Project">Project</th>
+                          <th style={thStyle} title="Approver">Approver</th>
                           <th style={thStyle} title="Requested By">By</th>
                           <th style={thStyle} title="Requested For">For</th>
                           <th style={thStyle} title="Team">Team</th>
@@ -443,6 +489,7 @@ export default function RequestsPage() {
                         <td style={cellStyle} title={item.itemLabel}>{item.itemLabel}</td>
                         <td style={cellStyle}>{item.quantity}</td>
                         <td style={cellStyle} title={item.project}>{item.project}</td>
+                        <td style={{ ...cellStyle, fontWeight: 700, color: "var(--color-primary)" }} title={item.approver}>{item.approver}</td>
                         <td style={cellStyle} title={item.requestedBy}>{item.requestedBy}</td>
                         <td style={cellStyle} title={item.requestedFor || "—"}>{item.requestedFor || "—"}</td>
                         <td style={cellStyle} title={item.team || "—"}>{item.team || "—"}</td>

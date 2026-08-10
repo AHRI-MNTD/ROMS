@@ -592,7 +592,7 @@ a:hover {
 .domain-nav-link {
   border: 1px solid transparent;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   border-radius: 12px 12px 0 0;
   padding: 7px 11px 9px;
   font-size: 12.5px;
@@ -606,7 +606,7 @@ a:hover {
   gap: 4px;
   transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
   position: relative;
-  opacity: 0.75;
+  opacity: 0.92;
   flex-shrink: 0;
 }
 
@@ -677,7 +677,7 @@ a:hover {
 
 .inventory-nav-link:hover,
 .domain-nav-link:hover {
-  color: var(--color-text);
+  color: var(--color-text-muted);
   background: rgba(0, 0, 0, 0.04);
   opacity: 1;
   text-decoration: none;

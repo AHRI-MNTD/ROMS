@@ -247,6 +247,7 @@ model InventoryMovement {
   requestedBy  String?
   projectFor   String?
   team         String?
+  approver     String?
   status       InventoryMovementStatus @default(APPROVED)
   remark       String?
   occurredAt   DateTime                @default(now())
