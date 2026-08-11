@@ -18,9 +18,25 @@ type ControlUser = {
 
 type PermissionState = Record<string, Set<string>>;
 
+type RightOption = {
+  label: string;
+  rights: string[];
+};
+
+const INVENTORY_RIGHT_OPTIONS: RightOption[] = [
+  { label: "Dashboard", rights: ["Dashboard"] },
+  { label: "Current Inventory", rights: ["Current Inventory"] },
+  { label: "Check In / Check Out", rights: ["Check In", "Check Out"] },
+  { label: "Check In / Out History", rights: ["Check In History", "Check Out History"] },
+  { label: "Request/s", rights: ["Request/s"] },
+  { label: "Inventory Manager", rights: ["Inventory Manager"] },
+  { label: "Analytics", rights: ["Analytics"] },
+  { label: "Master Data", rights: ["Master Data"] },
+];
+
 const DOMAIN_RIGHTS: Record<string, string[]> = {
   biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
+  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Check In History", "Check Out History", "Request/s", "Inventory Manager", "Analytics", "Master Data"],
   qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
   "lab-workflow": ["Dashboard", "Protocols", "Instruments", "Experiments", "Runs", "Reports", "Analytics"],
   "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -167,6 +183,23 @@ function selectedRightsByDomain(selection: PermissionState) {
     domain,
     rights: Array.from(selection[domain.slug] ?? []),
   })).filter((entry) => entry.rights.length > 0);
+}
+
+function getDomainRightOptions(domainSlug: string): RightOption[] {
+  if (domainSlug === "inventory") {
+    return INVENTORY_RIGHT_OPTIONS;
+  }
+
+  return (DOMAIN_RIGHTS[domainSlug] ?? []).map((right) => ({
+    label: right,
+    rights: [right],
+  }));
+}
+
+function countSelectedRightOptions(selection: PermissionState, domainSlug: string): number {
+  const options = getDomainRightOptions(domainSlug);
+  const enabledRights = selection[domainSlug] ?? new Set<string>();
+  return options.filter((option) => option.rights.every((right) => enabledRights.has(right))).length;
 }
 
 export default function UserRightsControlPage() {
@@ -338,17 +371,18 @@ export default function UserRightsControlPage() {
     setReviewOpen(false);
   };
 
-  const toggleRight = (slug: string, right: string) => {
+  const toggleRight = (slug: string, rightsToToggle: string[]) => {
     setDraftPermissions((current) => {
       if (!current) {
         return current;
       }
       const next = clonePermissions(current);
       const rights = next[slug] ?? new Set<string>();
-      if (rights.has(right)) {
-        rights.delete(right);
+      const shouldRemove = rightsToToggle.every((right) => rights.has(right));
+      if (shouldRemove) {
+        rightsToToggle.forEach((right) => rights.delete(right));
       } else {
-        rights.add(right);
+        rightsToToggle.forEach((right) => rights.add(right));
       }
       next[slug] = rights;
       return next;
@@ -934,9 +968,10 @@ export default function UserRightsControlPage() {
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 4 }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
                 {DOMAIN_CATALOG.map((domain) => {
-                  const rights = DOMAIN_RIGHTS[domain.slug] ?? [];
+                  const rightOptions = getDomainRightOptions(domain.slug);
                   const enabled = activeSelection![domain.slug] ?? new Set<string>();
                   const domainLabel = `${domain.emoji} ${domain.name}`;
+                  const selectedCount = countSelectedRightOptions(activeSelection!, domain.slug);
                   return (
                     <Card
                       key={domain.slug}
@@ -970,22 +1005,22 @@ export default function UserRightsControlPage() {
                           )}
                         </div>
                         <div style={{ fontSize: "var(--fs-xs, 11px)", color: "var(--color-text-muted)", marginTop: 4, textAlign: "left" }}>
-                          {enabled.size}/{rights.length} selected
+                          {selectedCount}/{rightOptions.length} selected
                         </div>
                       </div>
                       <div style={{ display: "grid", gap: 5 }}>
-                        {rights.map((right) => {
-                          const checked = enabled.has(right);
+                        {rightOptions.map((option) => {
+                          const checked = option.rights.every((right) => enabled.has(right));
                           return (
-                            <label key={right} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px", borderRadius: 8, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 24 }}>
+                            <label key={option.label} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px", borderRadius: 8, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 24 }}>
                               <input
                                 type="checkbox"
                                 checked={checked}
-                                onChange={() => toggleRight(domain.slug, right)}
+                                onChange={() => toggleRight(domain.slug, option.rights)}
                                 style={{ width: 13, height: 13, accentColor: "var(--color-primary)", flexShrink: 0 }}
                               />
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 10, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{right}</div>
+                                <div style={{ fontSize: 10, fontWeight: 500, color: "var(--color-text)", lineHeight: 1.2 }}>{option.label}</div>
                               </div>
                             </label>
                           );

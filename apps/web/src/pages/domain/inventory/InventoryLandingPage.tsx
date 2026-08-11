@@ -8,8 +8,11 @@ export interface InventoryCard {
   id: string;
   title: string;
   subtitle: string;
+  summary: string;
+  section: string;
   rightRequired: string;
   icon: string;
+  tone: string;
   bullets: Array<{
     label: string;
     icon: React.ReactNode;
@@ -28,8 +31,11 @@ export default function InventoryLandingPage() {
       id: "dashboard",
       title: "Dashboard",
       subtitle: "Real-time Telemetry & Metrics",
+      summary: "Live operational overview with risk, movement, and demand signals.",
+      section: "Operations",
       rightRequired: "Dashboard",
       icon: "📊",
+      tone: "#0f766e",
       bullets: [
         {
           label: "Real-Time Stock Telemetry",
@@ -69,8 +75,11 @@ export default function InventoryLandingPage() {
       id: "current-inventory",
       title: "Current Inventory",
       subtitle: "Reagent & Consumable Catalog",
+      summary: "Browse live stock levels, filters, and item-level inventory details.",
+      section: "Operations",
       rightRequired: "Current Inventory",
       icon: "📦",
+      tone: "#01696f",
       bullets: [
         {
           label: "Reagent & Consumable Catalog",
@@ -110,8 +119,11 @@ export default function InventoryLandingPage() {
       id: "check-in",
       title: "Check-In",
       subtitle: "Receiving, Batches, & Stock Entry",
-      rightRequired: "Check In",
+      summary: "Capture incoming stock, batch details, and replenishment activity.",
+      section: "Operations",
+      rightRequired: "Check In / Check Out",
       icon: "📥",
+      tone: "#0d6f89",
       bullets: [
         {
           label: "Receive Reagents & Shipments",
@@ -148,11 +160,50 @@ export default function InventoryLandingPage() {
       ]
     },
     {
+      id: "check-in-history",
+      title: "Check-In History",
+      subtitle: "Audit Trail & Reference Log",
+      summary: "Review incoming stock entries and reference movements for audit work.",
+      section: "Audit & Reporting",
+      rightRequired: "Check In / Out History",
+      icon: "📥",
+      tone: "#0f766e",
+      bullets: [
+        {
+          label: "Historical check-in audit trail",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Reference log for incoming items",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Trace incoming stock activity",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
       id: "check-out",
       title: "Check-Out",
       subtitle: "Disbursement & Usage Tracking",
-      rightRequired: "Check Out",
+      summary: "Issue items, monitor consumption, and keep outgoing movement visible.",
+      section: "Operations",
+      rightRequired: "Check In / Check Out",
       icon: "📤",
+      tone: "#b45309",
       bullets: [
         {
           label: "Disperse Consumed Supplies",
@@ -189,11 +240,86 @@ export default function InventoryLandingPage() {
       ]
     },
     {
+      id: "check-out-history",
+      title: "Check-Out History",
+      subtitle: "Disbursement Log & Reference Table",
+      summary: "Inspect past stock withdrawals, allocations, and outgoing movement logs.",
+      section: "Audit & Reporting",
+      rightRequired: "Check In / Out History",
+      icon: "📤",
+      tone: "#92400e",
+      bullets: [
+        {
+          label: "Historical disbursement log",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25V9m12 0a2.25 2.25 0 0 1 2.25 2.25v6.75a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V11.25A2.25 2.25 0 0 1 3.75 9h16.5Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Project and lab allocations",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0A2.25 2.25 0 0 0 4.5 15h15a2.25 2.25 0 0 0 2.25-2.25m-19.5 0v.243a2.25 2.25 0 0 0 1.07 1.916l7.5 4.615a2.25 2.25 0 0 0 2.36 0l7.5-4.615a2.25 2.25 0 0 0 1.07-1.916V12.75" />
+            </svg>
+          )
+        },
+        {
+          label: "Outgoing stock traceability",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "analytics",
+      title: "Analytics",
+      subtitle: "Trends, Risk, & Consumption Insights",
+      summary: "Review movement patterns, stock risk, and item demand trends in one place.",
+      section: "Audit & Reporting",
+      rightRequired: "Analytics",
+      icon: "📈",
+      tone: "#991b1b",
+      bullets: [
+        {
+          label: "Usage and demand trends",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 0 5.814-5.518l2.74-1.22m0 0-3.94-1.22m3.94 1.22-1.22 3.94" />
+            </svg>
+          )
+        },
+        {
+          label: "Stock risk and shortage signals",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          )
+        },
+        {
+          label: "Monthly movement reporting",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
       id: "requests",
       title: "Request",
       subtitle: "Requisitions, Forms, & Submissions",
+      summary: "Submit and track material requests from staff and project teams.",
+      section: "Administration",
       rightRequired: "Request/s",
       icon: "📋",
+      tone: "#7c3aed",
       bullets: [
         {
           label: "Submit Material Requisitions",
@@ -233,8 +359,11 @@ export default function InventoryLandingPage() {
       id: "inventory-manager",
       title: "Manager",
       subtitle: "Approvals, Adjustments, & Thresholds",
+      summary: "Approve requests, tune thresholds, and manage replenishment decisions.",
+      section: "Administration",
       rightRequired: "Inventory Manager",
       icon: "👨‍💼",
+      tone: "#92400e",
       bullets: [
         {
           label: "Approve Pending Requisitions",
@@ -274,8 +403,11 @@ export default function InventoryLandingPage() {
       id: "master-data",
       title: "Master Data",
       subtitle: "Catalogs, Freezers, & Bins",
+      summary: "Maintain shared catalog structures and inventory lookup references.",
+      section: "Administration",
       rightRequired: "Master Data",
       icon: "🗂️",
+      tone: "#6b7280",
       bullets: [
         {
           label: "Item Master Catalogs",
@@ -312,6 +444,28 @@ export default function InventoryLandingPage() {
       ]
     }
   ];
+
+  const groupedCards = React.useMemo(() => {
+    return cards.reduce<Record<string, InventoryCard[]>>((groups, card) => {
+      (groups[card.section] ??= []).push(card);
+      return groups;
+    }, {});
+  }, [cards]);
+
+  const orderedSections = ["Operations", "Audit & Reporting", "Administration"];
+
+  const statusBadgeStyle: React.CSSProperties = {
+    fontSize: 9.5,
+    fontWeight: 700,
+    padding: "3px 7px",
+    borderRadius: 999,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    border: "1px solid transparent",
+  };
 
   const handleCardClick = (card: InventoryCard) => {
     const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions);
@@ -385,179 +539,185 @@ export default function InventoryLandingPage() {
           paddingRight: 4
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            rowGap: "22px",
-            columnGap: "20px",
-            width: "100%",
-            marginTop: "15px"
-          }}
-        >
-          {cards.map((card) => {
-            const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions);
+        <div style={{ display: "grid", gap: 30, marginTop: 20 }}>
+          {orderedSections.map((sectionName) => {
+            const sectionCards = groupedCards[sectionName] ?? [];
+
+            if (sectionCards.length === 0) {
+              return null;
+            }
 
             return (
-              <div
-                key={card.id}
-                onClick={() => handleCardClick(card)}
-                style={{
-                  background: "var(--color-surface)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "14px",
-                  padding: "16px 14px 12px",
-                  cursor: isAllowed ? "pointer" : "default",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: "0 3px 12px rgba(0, 0, 0, 0.04)",
-                  minHeight: "210px",
-                  position: "relative",
-                }}
-                onMouseEnter={(e) => {
-                  if (isAllowed) {
-                    e.currentTarget.style.transform = "translateY(-3px)";
-                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(0, 0, 0, 0.08)";
-                    e.currentTarget.style.borderColor = "var(--color-primary, #0d9488)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (isAllowed) {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 0, 0, 0.04)";
-                    e.currentTarget.style.borderColor = "var(--color-border)";
-                  }
-                }}
-              >
-                {/* Header Title with Nav Icon & Rights Indicator */}
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "6px",
-                      borderBottom: "1px solid var(--color-border)",
-                      paddingBottom: "8px",
-                      marginBottom: "10px",
-                      width: "100%"
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
-                      <span style={{ fontSize: "18px", lineHeight: 1, flexShrink: 0 }}>
-                        {card.icon}
-                      </span>
-                      <h2
-                        style={{
-                          fontSize: "13.5px",
-                          fontWeight: 800,
-                          color: "var(--color-text)",
-                          margin: 0,
-                          lineHeight: "1.2",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis"
-                        }}
-                      >
-                        {card.title}
-                      </h2>
+              <section key={sectionName} style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-primary, #0d9488)" }}>
+                      {sectionName}
                     </div>
-
-                    {!isAllowed ? (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setRestrictedModalCard(card);
-                        }}
-                        style={{
-                          fontSize: "9.5px",
-                          fontWeight: 700,
-                          background: "#fee2e2",
-                          color: "#991b1b",
-                          border: "1px solid #fca5a5",
-                          padding: "2px 6px",
-                          borderRadius: "10px",
-                          whiteSpace: "nowrap",
-                          flexShrink: 0,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "2px",
-                          cursor: "pointer"
-                        }}
-                        title="Click to view permission details"
-                      >
-                        🔒 Restricted
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: "9.5px",
-                          fontWeight: 700,
-                          background: "var(--color-primary-highlight, #dcfce7)",
-                          color: "var(--color-primary, #0d9488)",
-                          padding: "2px 6px",
-                          borderRadius: "8px",
-                          whiteSpace: "nowrap",
-                          flexShrink: 0
-                        }}
-                      >
-                        ✓ Accessible
-                      </span>
-                    )}
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: 4 }}>
+                      {sectionName === "Operations" && "Everyday workflows for stock movement and live inventory work."}
+                      {sectionName === "Audit & Reporting" && "Reference pages for review, audit, and reporting activities."}
+                      {sectionName === "Administration" && "Governance, approvals, and supporting master data tools."}
+                    </div>
                   </div>
-
-                  {/* Bullets List */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "7px", paddingLeft: "1px" }}>
-                    {card.bullets.map((bullet, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          fontSize: "11.5px",
-                          color: "var(--color-text)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          lineHeight: "1.3"
-                        }}
-                      >
-                        {bullet.icon}
-                        <span style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {bullet.label}
-                        </span>
-                      </div>
-                    ))}
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+                    {sectionCards.length} page{sectionCards.length === 1 ? "" : "s"}
                   </div>
                 </div>
 
-                {/* Action Footer */}
                 <div
                   style={{
-                    marginTop: "12px",
-                    fontSize: "10.5px",
-                    fontWeight: 600,
-                    color: isAllowed ? "var(--color-primary, #0d9488)" : "#b91c1c",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-end"
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                    gap: 16,
+                    width: "100%"
                   }}
                 >
-                  <span
-                    onClick={(e) => {
-                      if (!isAllowed) {
-                        e.stopPropagation();
-                        setRestrictedModalCard(card);
-                      }
-                    }}
-                    style={{
-                      cursor: "pointer"
-                    }}
-                  >
-                    {isAllowed ? "Open →" : "Permission Info 🔒"}
-                  </span>
+                  {sectionCards.map((card) => {
+                    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions);
+
+                    return (
+                      <div
+                        key={card.id}
+                        onClick={() => handleCardClick(card)}
+                        style={{
+                          background: "var(--color-surface)",
+                          border: `1px solid ${card.tone}22`,
+                          borderRadius: "18px",
+                          padding: "16px 15px 14px",
+                          cursor: isAllowed ? "pointer" : "not-allowed",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                          boxShadow: "0 6px 18px rgba(0, 0, 0, 0.05)",
+                          minHeight: "232px",
+                          position: "relative",
+                          overflow: "hidden"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-3px)";
+                          e.currentTarget.style.boxShadow = "0 12px 26px rgba(0, 0, 0, 0.09)";
+                          e.currentTarget.style.borderColor = card.tone;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = "0 6px 18px rgba(0, 0, 0, 0.05)";
+                          e.currentTarget.style.borderColor = `${card.tone}22`;
+                        }}
+                        title={isAllowed ? card.title : `${card.title} is restricted. Open permission details to request access.`}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: "auto -28px -30px auto",
+                            width: 96,
+                            height: 96,
+                            borderRadius: "50%",
+                            background: `radial-gradient(circle, ${card.tone}18 0%, transparent 72%)`,
+                            pointerEvents: "none"
+                          }}
+                        />
+
+                        <div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 8,
+                              marginBottom: 12,
+                              width: "100%"
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                              <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>
+                                {card.icon}
+                              </span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--color-text)", lineHeight: 1.2, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {card.title}
+                                </div>
+                              </div>
+                            </div>
+
+                            {!isAllowed ? (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRestrictedModalCard(card);
+                                }}
+                                style={{
+                                  background: "#fee2e2",
+                                  color: "#991b1b",
+                                  border: "1px solid #fca5a5",
+                                  ...statusBadgeStyle,
+                                  cursor: "pointer"
+                                }}
+                                title="Click to view permission details"
+                              >
+                                🔒 Restricted
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  background: "var(--color-primary-highlight, #dcfce7)",
+                                  color: "var(--color-primary, #0d9488)",
+                                  border: "1px solid rgba(13, 148, 136, 0.25)",
+                                  ...statusBadgeStyle
+                                }}
+                              >
+                                ✓ Accessible
+                              </span>
+                            )}
+                          </div>
+
+                          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: "var(--color-text-muted)" }}>
+                            {card.summary}
+                          </p>
+
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 1, marginTop: 14 }}>
+                            {card.bullets.slice(0, 3).map((bullet, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  fontSize: 11.5,
+                                  color: "var(--color-text)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 7,
+                                  lineHeight: 1.3
+                                }}
+                              >
+                                {bullet.icon}
+                                <span style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  {bullet.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 14,
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            color: isAllowed ? card.tone : "#b91c1c",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 10
+                          }}
+                        >
+                          <span>{isAllowed ? "Open →" : "Permission Info 🔒"}</span>
+                          <span style={{ fontSize: 10, color: "var(--color-text-muted)" }}>{card.rightRequired}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
