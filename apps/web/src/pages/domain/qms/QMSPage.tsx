@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
-import { fetchSOPs, fetchAllUsers } from "../../../api/domains";
+import { fetchSOPs, fetchAllUsers, createSOP, updateSOP, deleteSOP } from "../../../api/domains";
 import { useAuth } from "../../../auth/useAuth";
 import logoAhri from "../../../assets/logo_ahri.png";
 import logoRoms from "../../../assets/Roms.png";
@@ -121,28 +121,16 @@ export default function QMSPage() {
   const canAccessAuthorizer = useMemo(() => hasTabAccess(user?.roles, "qms", "review-sop", user?.permissions), [user]);
 
   // Navigation tabs: "overview" (Landing Hub), "sops" (Viewer Library), "author" (Author dashboard), "qo" (QO dashboard), "review-sop" (Reviewers), "resources" (Guides & WHO links)
-  const [activeTab, setActiveTab] = useState<"overview" | "sops" | "author" | "qo" | "review-sop" | "resources">("overview");
-  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+  const pathParts = location.pathname.split("/").filter(Boolean);
+  const lastPart = pathParts[pathParts.length - 1];
 
-  useEffect(() => {
-    if ((activeTab === "overview" || activeTab === "sops" || activeTab === "resources") && !canAccessDashboard) {
-      if (canAccessAuthor) setActiveTab("author");
-      else if (canAccessQO) setActiveTab("qo");
-      else if (canAccessAuthorizer) setActiveTab("review-sop");
-    } else if (activeTab === "author" && !canAccessAuthor) {
-      if (canAccessDashboard) setActiveTab("overview");
-      else if (canAccessQO) setActiveTab("qo");
-      else if (canAccessAuthorizer) setActiveTab("review-sop");
-    } else if (activeTab === "qo" && !canAccessQO) {
-      if (canAccessDashboard) setActiveTab("overview");
-      else if (canAccessAuthor) setActiveTab("author");
-      else if (canAccessAuthorizer) setActiveTab("review-sop");
-    } else if (activeTab === "review-sop" && !canAccessAuthorizer) {
-      if (canAccessDashboard) setActiveTab("overview");
-      else if (canAccessAuthor) setActiveTab("author");
-      else if (canAccessQO) setActiveTab("qo");
-    }
-  }, [activeTab, canAccessDashboard, canAccessAuthor, canAccessQO, canAccessAuthorizer]);
+  let activeTab: "overview" | "sops" | "author" | "qo" | "review-sop" | "resources" = "overview";
+  if (lastPart === "library") activeTab = "sops";
+  else if (lastPart === "authoring") activeTab = "author";
+  else if (lastPart === "controls") activeTab = "qo";
+  else if (lastPart === "approval") activeTab = "review-sop";
+  else if (lastPart === "resources") activeTab = "resources";
+  else if (lastPart === "overview") activeTab = "overview";
 
   // Filtering states
   const [searchText, setSearchText] = useState<string>("");
@@ -264,9 +252,8 @@ export default function QMSPage() {
     }
   }, [location.state, navigate, location.pathname]);
 
-  // Always reset to overview landing page when navigating via sidebar / location key
+  // Always reset modals when navigating via sidebar / location key
   useEffect(() => {
-    setActiveTab("overview");
     setSelectedSopDetails(null);
     setSelectedSopForReading(null);
     setShareSop(null);
@@ -291,22 +278,19 @@ export default function QMSPage() {
   }, [selectedSopForQOApprove, allSops]);
 
   // Action: Author requests a new SOP
-  const handleRequestSOP = () => {
+  const handleRequestSOP = async () => {
     if (!requestTitle.trim() || !requestAuthorName.trim()) {
       alert("All fields are required to request a new SOP!");
       return;
     }
 
-    const newRequest: SOPItem = {
-      id: `sop-local-${Date.now()}`,
-      code: "AWAITING_CODE",
+    const tempCode = `REQ-${Date.now()}`;
+    const payload = {
+      code: tempCode,
       title: requestTitle,
-      sopSection: requestType,
-      sopSubSection: "MNTD Molecular Lab",
       version: "1.0",
+      ownerId: user?.id || "clxyz00000000000000000000",
       status: "REQUESTED",
-      author: requestAuthorName,
-      lastUpdated: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       sopType: requestType,
       details: {
         proposedVerifier: "",
@@ -321,23 +305,21 @@ export default function QMSPage() {
     };
 
     try {
-      const list = [newRequest, ...localSops];
-      localStorage.setItem("roms_local_sops", JSON.stringify(list));
-      setLocalSops(list);
+      await createSOP(payload);
+      await loadSopsList();
       setIsRequestModalOpen(false);
       setRequestTitle("");
       setRequestAuthorName("");
       setRequestVerifier("");
       setRequestAuthorizer("");
       triggerSuccess("SOP request submitted successfully to QO!");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      triggerSuccess("Failed to request SOP.");
+      triggerSuccess("Failed to request SOP. " + (e.response?.data?.message || e.message));
     }
   };
 
-  // Action: QO approves requested SOP, sets Code, Verifiers, and Authorizer
-  const handleQOApprove = () => {
+  const handleQOApprove = async () => {
     if (!selectedSopForQOApprove || !qoAssignedCode.trim()) return;
 
     const codeExists = allSops.some(s => s.code.toUpperCase() === qoAssignedCode.toUpperCase() && s.id !== selectedSopForQOApprove.id);
@@ -349,22 +331,20 @@ export default function QMSPage() {
     const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const oneYearLater = new Date();
     oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-    const reviewDate = oneYearLater.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-    const updatedSop = {
-      ...selectedSopForQOApprove,
+    const payload = {
       code: qoAssignedCode,
-      sopSubSection: qoLabUnit,
       status: "DRAFT",
-      lastUpdated: today,
+      sopType: selectedSopForQOApprove.sopType,
+      effectiveDate: new Date(),
+      nextReviewDate: oneYearLater,
+      owningLabUnit: qoLabUnit,
       details: {
         ...(selectedSopForQOApprove.details || {}),
         owningSite: qoSite,
         owningLabUnit: qoLabUnit,
         proposedVerifier: qoVerifier,
         proposedAuthorizer: qoAuthorizer,
-        effectiveDate: today,
-        nextReviewDate: reviewDate,
         electronicSignatures: {
           author: { name: selectedSopForQOApprove.author, signedAt: today },
           verifierUser: { name: qoVerifier, signedAt: "" },
@@ -375,13 +355,11 @@ export default function QMSPage() {
     };
 
     try {
-      const filtered = localSops.filter((s: any) => s.id !== selectedSopForQOApprove.id);
-      const updatedList = [updatedSop, ...filtered];
-      localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
-      setLocalSops(updatedList);
+      await updateSOP(selectedSopForQOApprove.id, payload);
+      await loadSopsList();
       setSelectedSopForQOApprove(null);
       triggerSuccess(`SOP Code ${qoAssignedCode} assigned successfully! Template generated and sent to Author.`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       triggerSuccess("Failed to save approved SOP header.");
     }
@@ -446,15 +424,21 @@ export default function QMSPage() {
     navigate(`create-sop?edit=${code}`);
   };
 
-  const handleDelete = (code: string) => {
+  const handleDelete = async (code: string) => {
     if (window.confirm(`Are you sure you want to delete SOP: ${code}?`)) {
       try {
+        const sop = allSops.find(s => s.code === code);
+        if (sop && !sop.id.startsWith("sop-local-")) {
+          await deleteSOP(sop.id);
+        }
         const filtered = localSops.filter((s: any) => s.code !== code);
         localStorage.setItem("roms_local_sops", JSON.stringify(filtered));
         setLocalSops(filtered);
+        await loadSopsList();
         triggerSuccess(`SOP ${code} deleted.`);
       } catch (e) {
         console.error(e);
+        triggerSuccess("Failed to delete SOP from database.");
       }
     }
   };
@@ -491,20 +475,17 @@ export default function QMSPage() {
     }, 400);
   };
 
-  const handleSubmitForReview = (sop: SOPItem) => {
-    try {
-      const updatedList = localSops.map((s: any) => {
-        if (s.code === sop.code) {
-          return { ...s, status: "UNDER REVIEW" };
-        }
-        return s;
-      });
-      localStorage.setItem("roms_local_sops", JSON.stringify(updatedList));
-      setLocalSops(updatedList);
-      setSelectedSopDetails(prev => prev ? { ...prev, status: "UNDER REVIEW" } : null);
-      triggerSuccess(`SOP ${sop.code} has been successfully submitted for review.`);
-    } catch (e) {
-      console.error(e);
+  const handleSubmitForReview = async (sop: SOPItem) => {
+    if (window.confirm(`Are you sure you want to submit SOP ${sop.code} for review?`)) {
+      try {
+        await updateSOP(sop.id, { status: "UNDER REVIEW" });
+        await loadSopsList();
+        setSelectedSopDetails(prev => prev ? { ...prev, status: "UNDER REVIEW" } : null);
+        triggerSuccess(`SOP ${sop.code} has been successfully submitted for review.`);
+      } catch (e) {
+        console.error(e);
+        triggerSuccess("Failed to submit SOP for review.");
+      }
     }
   };
 
@@ -813,165 +794,40 @@ export default function QMSPage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "clip" }}>
 
         {/* Active Title Block — Inventory-style header */}
-        <div
-          style={{
-            padding: activeTab === "overview" ? "36px 34px 26px" : "28px 34px 24px",
-            borderBottom: "1px solid var(--color-divider)",
-            background: "var(--color-surface)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: activeTab === "overview" ? "center" : "space-between",
-            textAlign: activeTab === "overview" ? "center" : "left",
-            flexWrap: "wrap",
-            gap: 16,
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-          }}
-        >
-          {/* Left side: Title + Back Button */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: activeTab === "overview" ? "center" : "flex-start", width: activeTab === "overview" ? "100%" : "auto", textAlign: activeTab === "overview" ? "center" : "left", gap: 12, flexShrink: 0 }}>
-            {activeTab === "overview" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", textAlign: "center" }}>
-                <img src={logoAhri} alt="AHRI Logo" style={{ height: "64px", width: "64px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px", border: "1px solid var(--color-border, #cbd5e1)", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)" }} />
-                <span style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "0.04em", color: "var(--color-primary)", textTransform: "uppercase" }}>
-                  Research Operation management system(ROMS)
-                </span>
-                <div style={{ width: "calc(100% + 68px)", height: "1px", backgroundColor: "var(--color-divider)", margin: "16px -34px" }} />
-                <h1 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
-                  Standard Operating Procedure (SOP)
-                </h1>
-                {dynamicSubtitle && (
-                  <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "4px 0 0 0", maxWidth: "820px" }}>
-                    {dynamicSubtitle}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div style={{ textAlign: "left" }}>
-                <h1 style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-xl)", color: "var(--color-text)", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
-                  {activeTab === "sops" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 24, height: 24, flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                    </svg>
-                  )}
-                  {activeTab === "author" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 24, height: 24, flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-                    </svg>
-                  )}
-                  {activeTab === "qo" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 24, height: 24, flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-                    </svg>
-                  )}
-                  {activeTab === "review-sop" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 24, height: 24, flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  )}
-                  {activeTab === "resources" && (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#e11d48" style={{ width: 24, height: 24, flexShrink: 0 }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                    </svg>
-                  )}
-                  <span>{dynamicTitle}</span>
-                </h1>
-                {dynamicSubtitle && (
-                  <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "4px 0 0 0" }}>
-                    {dynamicSubtitle}
-                  </p>
-                )}
-              </div>
-            )}
+        {activeTab === "overview" && (
+          <div
+            style={{
+              padding: "36px 34px 26px",
+              borderBottom: "1px solid var(--color-divider)",
+              background: "var(--color-surface)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              flexWrap: "wrap",
+              gap: 16,
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", textAlign: "center" }}>
+              <img src={logoAhri} alt="AHRI Logo" style={{ height: "64px", width: "64px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px", border: "1px solid var(--color-border, #cbd5e1)", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)" }} />
+              <span style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "0.04em", color: "var(--color-primary)", textTransform: "uppercase" }}>
+                Research Operation management system(ROMS)
+              </span>
+              <div style={{ width: "calc(100% + 68px)", height: "1px", backgroundColor: "var(--color-divider)", margin: "16px -34px" }} />
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
+                Standard Operating Procedure (SOP)
+              </h1>
+              {dynamicSubtitle && (
+                <p style={{ fontSize: "var(--fs-sm)", color: "var(--color-text-muted)", margin: "4px 0 0 0", maxWidth: "820px" }}>
+                  {dynamicSubtitle}
+                </p>
+              )}
+            </div>
           </div>
-
-          {/* Right side: Nav Tabs + Action button */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {/* Role Tab selection — pill style (shown on sub-pages: SOPs, Author, Quality Officer, Authorizer) */}
-            {["sops", "author", "qo", "review-sop"].includes(activeTab) && (
-              <nav style={{ display: "flex", flexWrap: "wrap", gap: 8 }} aria-label="SOP sections">
-                {[
-                  {
-                    id: "sops",
-                    label: "Library",
-                    allowed: canAccessDashboard,
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                      </svg>
-                    )
-                  },
-                  {
-                    id: "author",
-                    label: "Authoring",
-                    allowed: canAccessAuthor,
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dd6b20" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-                      </svg>
-                    )
-                  },
-                  {
-                    id: "qo",
-                    label: "Controls",
-                    allowed: canAccessQO,
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7b1fa2" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-                      </svg>
-                    )
-                  },
-                  {
-                    id: "review-sop",
-                    label: "Approval",
-                    allowed: canAccessAuthorizer,
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 14, height: 14, marginRight: 5, flexShrink: 0 }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15L15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    )
-                  }
-                ].filter((t) => t.allowed).map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  const isHovered = hoveredTab === tab.id;
-                  return (
-                    <div
-                      key={tab.id}
-                      onClick={() => {
-                        setActiveTab(tab.id as any);
-                        setCurrentPage(1);
-                      }}
-                      onMouseEnter={() => setHoveredTab(tab.id)}
-                      onMouseLeave={() => setHoveredTab(null)}
-                      style={{
-                        border: "1px solid",
-                        borderColor: isActive ? "var(--color-primary)" : "var(--color-border)",
-                        background: isActive
-                          ? "var(--color-primary-highlight)"
-                          : (isHovered ? "var(--color-surface-offset)" : "var(--color-surface-2)"),
-                        color: isActive ? "var(--color-primary)" : "var(--color-text-muted)",
-                        borderRadius: "999px",
-                        padding: "8px 14px",
-                        fontSize: "var(--fs-xs)",
-                        fontWeight: 700,
-                        letterSpacing: "0.02em",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      {tab.icon}
-                      {tab.label}
-                    </div>
-                  );
-                })}
-              </nav>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Inner Scroll Pane */}
         <div style={{ flex: 1, padding: "12px 16px", overflowY: "auto" }}>
@@ -1223,7 +1079,8 @@ export default function QMSPage() {
                       key={card.id}
                       onClick={() => {
                         if (!isAllowed) return;
-                        setActiveTab(card.id as any);
+                        const routeMap: Record<string, string> = { sops: "library", author: "authoring", qo: "controls", "review-sop": "approval", resources: "resources" };
+                        navigate(`/domains/qms/sop-authoring-control/${routeMap[card.id] || card.id}`);
                         setCurrentPage(1);
                       }}
                       style={{
@@ -1877,7 +1734,7 @@ export default function QMSPage() {
                 onPrintRequest={handlePrintPDF}
                 onShareRequest={handleShare}
                 onSopApproved={(sop) => {
-                  setActiveTab("sops");
+                  navigate("/domains/qms/sop-authoring-control/library");
                   setSelectedSopForReading(sop);
                   handlePrintPDF(sop);
                 }}
