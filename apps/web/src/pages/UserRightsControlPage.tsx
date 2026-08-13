@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { Badge, Button, Card } from "@roms/ui";
 import { apiClient } from "../api/client";
+import { useTheme } from "../theme/useTheme";
 
 type ControlUser = {
   id: string;
@@ -203,6 +204,8 @@ function countSelectedRightOptions(selection: PermissionState, domainSlug: strin
 }
 
 export default function UserRightsControlPage() {
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
   const sidebarWidth = 220;
 
   // Fetch approved employees from the HR API
@@ -440,25 +443,33 @@ export default function UserRightsControlPage() {
   };
 
   const surfaceStyle: React.CSSProperties = {
-    border: "1px solid rgba(1, 105, 111, 0.12)",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,248,245,0.92))",
-    boxShadow: "0 20px 48px rgba(16, 24, 40, 0.08)",
+    border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.25)" : "1px solid rgba(1, 105, 111, 0.12)",
+    background: isDarkMode
+      ? "linear-gradient(180deg, rgba(31, 30, 28, 0.96), rgba(22, 21, 19, 0.92))"
+      : "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,248,245,0.92))",
+    boxShadow: isDarkMode
+      ? "0 20px 48px rgba(0, 0, 0, 0.45)"
+      : "0 20px 48px rgba(16, 24, 40, 0.08)",
   };
 
   const summaryCard = (tone: string): React.CSSProperties => ({
     padding: "10px 20px",
-
     borderRadius: 12,
     border: `1px solid ${tone}22`,
-    background: `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
-    boxShadow: "0 14px 30px rgba(16, 24, 40, 0.06)",
+    background: isDarkMode
+      ? `linear-gradient(180deg, ${tone}20, rgba(31, 30, 28, 0.95))`
+      : `linear-gradient(180deg, ${tone}10, rgba(255,255,255,0.95))`,
+    boxShadow: isDarkMode ? "0 14px 30px rgba(0, 0, 0, 0.3)" : "0 14px 30px rgba(16, 24, 40, 0.06)",
     minWidth: 60,
     maxWidth: 160,
   });
+
   const editorCardStyle: React.CSSProperties = {
     padding: "10px 12px",
     borderRadius: 14,
-    boxShadow: "0 4px 12px rgba(16, 24, 40, 0.04)",
+    boxShadow: isDarkMode ? "0 4px 12px rgba(0, 0, 0, 0.25)" : "0 4px 12px rgba(16, 24, 40, 0.04)",
+    background: isDarkMode ? "var(--color-surface-2)" : "#ffffff",
+    border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.2)" : "1px solid var(--color-border)",
   };
 
   const columnHeaderStyle: React.CSSProperties = {
@@ -470,13 +481,13 @@ export default function UserRightsControlPage() {
     color: "var(--color-text-faint)",
     textAlign: "center",
     borderBottom: "1px solid var(--color-divider)",
-    background: "#ffffff",
+    background: isDarkMode ? "#1d1c1a" : "#ffffff",
     whiteSpace: "normal",
     lineHeight: 1.15,
     position: "sticky",
     top: 0,
     zIndex: 20,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+    boxShadow: isDarkMode ? "0 1px 3px rgba(0,0,0,0.3)" : "0 1px 2px rgba(0,0,0,0.04)",
   };
 
   return (
@@ -494,7 +505,13 @@ export default function UserRightsControlPage() {
       </div>
 
       {statusMessage && (
-        <div style={{ flexShrink: 0, marginBottom: 14, padding: "10px 14px", borderRadius: 14, background: "#ecfdf5", border: "1px solid #86efac", color: "#166534", fontSize: "var(--fs-sm)", fontWeight: 600 }}>
+        <div style={{
+          flexShrink: 0, marginBottom: 14, padding: "10px 14px", borderRadius: 14,
+          background: isDarkMode ? "rgba(16, 185, 129, 0.15)" : "#ecfdf5",
+          border: isDarkMode ? "1px solid rgba(16, 185, 129, 0.35)" : "1px solid #86efac",
+          color: isDarkMode ? "#34d399" : "#166534",
+          fontSize: "var(--fs-sm)", fontWeight: 600
+        }}>
           {statusMessage}
         </div>
       )}
@@ -507,7 +524,13 @@ export default function UserRightsControlPage() {
       )}
 
       {isError && (
-        <div style={{ padding: "20px", borderRadius: 14, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)", color: "#991b1b", fontSize: "var(--fs-sm)", fontWeight: 600, marginBottom: 16 }}>
+        <div style={{
+          padding: "20px", borderRadius: 14,
+          background: isDarkMode ? "rgba(239, 68, 68, 0.15)" : "rgba(239,68,68,0.06)",
+          border: isDarkMode ? "1px solid rgba(239, 68, 68, 0.35)" : "1px solid rgba(239,68,68,0.18)",
+          color: isDarkMode ? "#f87171" : "#991b1b",
+          fontSize: "var(--fs-sm)", fontWeight: 600, marginBottom: 16
+        }}>
           ⚠️ Failed to load employees. Please check your connection and try again.
         </div>
       )}
@@ -522,18 +545,30 @@ export default function UserRightsControlPage() {
             <div style={{
               display: "flex", alignItems: "flex-start", gap: 12,
               padding: "12px 16px", borderRadius: 12, marginBottom: 16,
-              background: "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))",
-              border: "1px solid rgba(245,158,11,0.35)",
+              background: isDarkMode
+                ? "linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(180, 83, 9, 0.12))"
+                : "linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))",
+              border: isDarkMode
+                ? "1px solid rgba(245, 158, 11, 0.4)"
+                : "1px solid rgba(245,158,11,0.35)",
               flexShrink: 0,
             }}>
               <span style={{ fontSize: 20, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", lineHeight: 1.35, marginBottom: 3 }}>
+                <div style={{
+                  fontSize: 13, fontWeight: 700,
+                  color: isDarkMode ? "#fbbf24" : "#92400e",
+                  lineHeight: 1.35, marginBottom: 3
+                }}>
                   You are about to grant access rights to {activeUser.displayName}
                 </div>
-                <div style={{ fontSize: 12, color: "#a16207", lineHeight: 1.5 }}>
+                <div style={{
+                  fontSize: 12,
+                  color: isDarkMode ? "#fcd34d" : "#a16207",
+                  lineHeight: 1.5
+                }}>
                   This will assign the{" "}
-                  <strong style={{ color: "#78350f" }}>{selectedRole.replace(/_/g, " ")}</strong>{" "}
+                  <strong style={{ color: isDarkMode ? "#fef08a" : "#78350f" }}>{selectedRole.replace(/_/g, " ")}</strong>{" "}
                   role with {listSelectedRights(draftPermissions).length} privilege{listSelectedRights(draftPermissions).length === 1 ? "" : "s"}. Please review carefully before confirming.
                 </div>
               </div>
@@ -547,8 +582,8 @@ export default function UserRightsControlPage() {
                     <div key={domain.slug} style={{
                       display: "flex", alignItems: "center", flexWrap: "wrap",
                       gap: 8, padding: "8px 12px", borderRadius: 10,
-                      background: "rgba(1, 105, 111, 0.04)",
-                      border: "1px solid rgba(1, 105, 111, 0.10)",
+                      background: isDarkMode ? "rgba(79, 152, 163, 0.12)" : "rgba(1, 105, 111, 0.04)",
+                      border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.25)" : "1px solid rgba(1, 105, 111, 0.10)",
                     }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-text)", whiteSpace: "nowrap", minWidth: 220 }}>
                         {domain.emoji} {domain.name}
@@ -578,10 +613,16 @@ export default function UserRightsControlPage() {
           </div>
         ) : activeUser === null ? (
           <div style={{ ...surfaceStyle, overflow: "hidden", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-            <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", flexShrink: 0, background: "#ffffff" }}>
+            <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--color-divider)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", flexShrink: 0, background: isDarkMode ? "#1d1c1a" : "#ffffff" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--color-text)" }}>User matrix</div>
-                <span style={{ fontSize: "var(--fs-xs)", fontWeight: 700, color: "var(--color-text-muted)", background: "rgba(1,105,111,0.08)", border: "1px solid rgba(1,105,111,0.14)", borderRadius: 999, padding: "2px 10px", letterSpacing: "0.04em" }}>
+                <span style={{
+                  fontSize: "var(--fs-xs)", fontWeight: 700,
+                  color: isDarkMode ? "var(--color-primary)" : "var(--color-text-muted)",
+                  background: isDarkMode ? "rgba(79, 152, 163, 0.15)" : "rgba(1,105,111,0.08)",
+                  border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1,105,111,0.14)",
+                  borderRadius: 999, padding: "2px 10px", letterSpacing: "0.04em"
+                }}>
                   {filteredRows.length === matrixRows.length ? `${matrixRows.length} users` : `${filteredRows.length} / ${matrixRows.length} users`}
                 </span>
               </div>
@@ -597,14 +638,14 @@ export default function UserRightsControlPage() {
                     style={{
                       paddingLeft: 30, paddingRight: 10, paddingTop: 6, paddingBottom: 6,
                       fontSize: "var(--fs-xs)", borderRadius: 10,
-                      border: "1px solid rgba(1,105,111,0.18)",
-                      background: "rgba(255,255,255,0.85)",
+                      border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1,105,111,0.18)",
+                      background: isDarkMode ? "rgba(20, 19, 18, 0.85)" : "rgba(255,255,255,0.85)",
                       color: "var(--color-text)",
                       outline: "none", width: 180,
                       transition: "border-color 0.15s",
                     }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.5)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(1,105,111,0.18)"; }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = isDarkMode ? "rgba(79, 152, 163, 0.7)" : "rgba(1,105,111,0.5)"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = isDarkMode ? "rgba(79, 152, 163, 0.3)" : "rgba(1,105,111,0.18)"; }}
                   />
                 </div>
                 <select
@@ -614,12 +655,14 @@ export default function UserRightsControlPage() {
                   style={{
                     padding: "6px 28px 6px 10px",
                     fontSize: "var(--fs-xs)", borderRadius: 10,
-                    border: "1px solid rgba(1,105,111,0.18)",
-                    background: "rgba(255,255,255,0.85)",
+                    border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1,105,111,0.18)",
+                    background: isDarkMode ? "rgba(20, 19, 18, 0.85)" : "rgba(255,255,255,0.85)",
                     color: roleFilter ? "var(--color-text)" : "var(--color-text-muted)",
                     outline: "none", cursor: "pointer",
                     appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                    backgroundImage: isDarkMode
+                      ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234F98A3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`
+                      : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "right 8px center",
                   }}
@@ -640,8 +683,10 @@ export default function UserRightsControlPage() {
                     }}
                     style={{
                       padding: "5px 12px", fontSize: "var(--fs-xs)", fontWeight: 700,
-                      borderRadius: 10, border: "1px solid rgba(220,38,38,0.22)",
-                      background: "rgba(220,38,38,0.06)", color: "#b91c1c",
+                      borderRadius: 10,
+                      border: isDarkMode ? "1px solid rgba(239, 68, 68, 0.35)" : "1px solid rgba(220,38,38,0.22)",
+                      background: isDarkMode ? "rgba(239, 68, 68, 0.15)" : "rgba(220,38,38,0.06)",
+                      color: isDarkMode ? "#f87171" : "#b91c1c",
                       cursor: "pointer",
                     }}
                   >
@@ -666,9 +711,13 @@ export default function UserRightsControlPage() {
                           }}
                           title="Sort & Filter Users"
                           style={{
-                            background: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") ? "rgba(1, 105, 111, 0.15)" : "transparent",
+                            background: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc")
+                              ? (isDarkMode ? "rgba(79, 152, 163, 0.25)" : "rgba(1, 105, 111, 0.15)")
+                              : "transparent",
                             border: "1px solid",
-                            borderColor: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") ? "var(--color-primary)" : "rgba(0,0,0,0.12)",
+                            borderColor: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc")
+                              ? "var(--color-primary)"
+                              : (isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)"),
                             borderRadius: 4,
                             padding: "2px 4px",
                             cursor: "pointer",
@@ -676,7 +725,9 @@ export default function UserRightsControlPage() {
                             display: "flex",
                             alignItems: "center",
                             gap: 2,
-                            color: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc") ? "var(--color-primary)" : "var(--color-text-muted)"
+                            color: (deptFilter || accessFilter !== "all" || userSortKey !== "name_asc")
+                              ? "var(--color-primary)"
+                              : "var(--color-text-muted)"
                           }}
                         >
                           <span style={{ fontSize: 9 }}>
@@ -697,10 +748,10 @@ export default function UserRightsControlPage() {
                             left: 0,
                             marginTop: 4,
                             width: 240,
-                            background: "#ffffff",
-                            border: "1px solid rgba(1, 105, 111, 0.25)",
+                            background: isDarkMode ? "#1f1e1c" : "#ffffff",
+                            border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1, 105, 111, 0.25)",
                             borderRadius: 12,
-                            boxShadow: "0 12px 28px rgba(0,0,0,0.18)",
+                            boxShadow: isDarkMode ? "0 12px 28px rgba(0,0,0,0.6)" : "0 12px 28px rgba(0,0,0,0.18)",
                             zIndex: 100,
                             padding: "12px 14px",
                             fontSize: 12,
@@ -721,7 +772,7 @@ export default function UserRightsControlPage() {
                                   setDeptFilter("");
                                   setAccessFilter("all");
                                 }}
-                                style={{ fontSize: 10, fontWeight: 700, color: "#b91c1c", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                                style={{ fontSize: 10, fontWeight: 700, color: isDarkMode ? "#f87171" : "#b91c1c", background: "none", border: "none", cursor: "pointer", padding: 0 }}
                               >
                                 Reset
                               </button>
@@ -753,7 +804,9 @@ export default function UserRightsControlPage() {
                                       cursor: "pointer",
                                       fontSize: 11,
                                       fontWeight: selected ? 700 : 500,
-                                      background: selected ? "rgba(1, 105, 111, 0.1)" : "transparent",
+                                      background: selected
+                                        ? (isDarkMode ? "rgba(79, 152, 163, 0.22)" : "rgba(1, 105, 111, 0.1)")
+                                        : "transparent",
                                       color: selected ? "var(--color-primary)" : "var(--color-text)",
                                       display: "flex",
                                       alignItems: "center",
@@ -781,8 +834,8 @@ export default function UserRightsControlPage() {
                                 padding: "4px 8px",
                                 fontSize: 11,
                                 borderRadius: 6,
-                                border: "1px solid rgba(1, 105, 111, 0.2)",
-                                background: "rgba(255,255,255,0.9)",
+                                border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1, 105, 111, 0.2)",
+                                background: isDarkMode ? "#141312" : "rgba(255,255,255,0.9)",
                                 color: "var(--color-text)",
                                 outline: "none"
                               }}
@@ -808,8 +861,8 @@ export default function UserRightsControlPage() {
                                   padding: "4px 8px",
                                   fontSize: 11,
                                   borderRadius: 6,
-                                  border: "1px solid rgba(1, 105, 111, 0.2)",
-                                  background: "rgba(255,255,255,0.9)",
+                                  border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1, 105, 111, 0.2)",
+                                  background: isDarkMode ? "#141312" : "rgba(255,255,255,0.9)",
                                   color: "var(--color-text)",
                                   outline: "none"
                                 }}
@@ -849,9 +902,14 @@ export default function UserRightsControlPage() {
                       <tr
                         key={row.user.id}
                         onClick={() => openEditor(row.user)}
-                        style={{ height: "32px", cursor: "pointer", borderBottom: "1px solid rgba(1, 105, 111, 0.08)", transition: "background 0.12s" }}
+                        style={{
+                          height: "32px",
+                          cursor: "pointer",
+                          borderBottom: isDarkMode ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(1, 105, 111, 0.08)",
+                          transition: "background 0.12s"
+                        }}
                         onMouseEnter={(event) => {
-                          (event.currentTarget as HTMLTableRowElement).style.background = "rgba(1, 105, 111, 0.03)";
+                          (event.currentTarget as HTMLTableRowElement).style.background = isDarkMode ? "rgba(79, 152, 163, 0.12)" : "rgba(1, 105, 111, 0.03)";
                         }}
                         onMouseLeave={(event) => {
                           (event.currentTarget as HTMLTableRowElement).style.background = "transparent";
@@ -879,7 +937,23 @@ export default function UserRightsControlPage() {
                           const active = count > 0;
                           return (
                             <td key={domain.slug} style={{ padding: "6px 4px", verticalAlign: "middle", textAlign: "center" }}>
-                              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 6px", borderRadius: 999, background: active ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.10)", color: active ? "#047857" : "#991b1b", fontWeight: 800, fontSize: "9px", minWidth: 36, justifyContent: "center" }}>
+                              <div style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "3px 6px",
+                                borderRadius: 999,
+                                background: active
+                                  ? (isDarkMode ? "rgba(16, 185, 129, 0.22)" : "rgba(16, 185, 129, 0.12)")
+                                  : (isDarkMode ? "rgba(239, 68, 68, 0.18)" : "rgba(239, 68, 68, 0.10)"),
+                                color: active
+                                  ? (isDarkMode ? "#34d399" : "#047857")
+                                  : (isDarkMode ? "#f87171" : "#991b1b"),
+                                fontWeight: 800,
+                                fontSize: "9px",
+                                minWidth: 36,
+                                justifyContent: "center"
+                              }}>
                                 <span aria-hidden="true">{active ? "✓" : "✕"}</span>
                                 <span>{count}</span>
                               </div>
@@ -934,13 +1008,15 @@ export default function UserRightsControlPage() {
                   style={{
                     padding: "4px 22px 4px 8px",
                     fontSize: "11px", borderRadius: 8,
-                    border: "1px solid rgba(1,105,111,0.18)",
-                    background: "rgba(255,255,255,0.85)",
+                    border: isDarkMode ? "1px solid rgba(79, 152, 163, 0.3)" : "1px solid rgba(1,105,111,0.18)",
+                    background: isDarkMode ? "rgba(20, 19, 18, 0.85)" : "rgba(255,255,255,0.85)",
                     color: "var(--color-text)",
                     outline: "none", cursor: "pointer",
                     appearance: "none",
                     maxWidth: 160,
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                    backgroundImage: isDarkMode
+                      ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234F98A3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`
+                      : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2301696F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "right 6px center",
                   }}
@@ -1012,7 +1088,25 @@ export default function UserRightsControlPage() {
                         {rightOptions.map((option) => {
                           const checked = option.rights.every((right) => enabled.has(right));
                           return (
-                            <label key={option.label} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 6px", borderRadius: 8, border: checked ? "1px solid rgba(1, 105, 111, 0.22)" : "1px solid rgba(148, 163, 184, 0.22)", background: checked ? "rgba(1, 105, 111, 0.06)" : "rgba(255,255,255,0.7)", cursor: "pointer", minHeight: 24 }}>
+                            <label
+                              key={option.label}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "3px 7px",
+                                borderRadius: 8,
+                                border: checked
+                                  ? (isDarkMode ? "1px solid rgba(79, 152, 163, 0.45)" : "1px solid rgba(1, 105, 111, 0.22)")
+                                  : (isDarkMode ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(148, 163, 184, 0.22)"),
+                                background: checked
+                                  ? (isDarkMode ? "rgba(79, 152, 163, 0.18)" : "rgba(1, 105, 111, 0.06)")
+                                  : (isDarkMode ? "rgba(255, 255, 255, 0.03)" : "rgba(255,255,255,0.7)"),
+                                cursor: "pointer",
+                                minHeight: 24,
+                                transition: "all 0.15s ease",
+                              }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={checked}

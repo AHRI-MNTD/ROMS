@@ -498,6 +498,7 @@ export default function InventoryLandingPage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          borderBottom: "1px solid var(--color-divider)",
           width: "100%",
           textAlign: "center",
           paddingTop: 4,
@@ -520,7 +521,7 @@ export default function InventoryLandingPage() {
         <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.05em", color: "var(--color-primary, #0d9488)", textTransform: "uppercase" }}>
           Research Operation management system(ROMS)
         </span>
-        <div style={{ width: "100%", maxWidth: "800px", height: "1px", backgroundColor: "var(--color-divider)", margin: "12px 0" }} />
+        <div style={{ margin: "4px 0" }} />
         <h1 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
           Lab Inventory & Supply Chain
         </h1>

@@ -103,7 +103,7 @@ export default function HRLandingPage() {
           HR &amp; Staff Operations
         </h1>
         <p style={{ fontSize: "12.5px", color: "var(--color-text-muted)", margin: "4px 0 0 0", maxWidth: "820px", lineHeight: "1.4" }}>
-          Centralized personnel management — from staff registration and credential verification to department analytics, employment records, and approval workflows.
+          Centralized personnel management — from staff registration and verification to department analytics and employment records workflows.
         </p>
       </div>
 

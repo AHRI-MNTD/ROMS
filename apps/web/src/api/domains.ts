@@ -27,6 +27,21 @@ export async function syncSOPs(): Promise<{ ok: boolean; count: number }> {
   return resp.data as { ok: boolean; count: number };
 }
 
+export async function createSOP(data: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const resp = await apiClient.post("/domains/qms/sops", data);
+  return resp.data as Record<string, unknown>;
+}
+
+export async function updateSOP(id: string, data: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const resp = await apiClient.patch(`/domains/qms/sops/${id}`, data);
+  return resp.data as Record<string, unknown>;
+}
+
+export async function deleteSOP(id: string): Promise<{ ok: boolean }> {
+  const resp = await apiClient.delete(`/domains/qms/sops/${id}`);
+  return resp.data as { ok: boolean };
+}
+
 export async function fetchParticipants(page = 1): Promise<PaginatedResult<Record<string, unknown>>> {
   const resp = await apiClient.get("/domains/participant", { params: { page } });
   return resp.data as PaginatedResult<Record<string, unknown>>;
