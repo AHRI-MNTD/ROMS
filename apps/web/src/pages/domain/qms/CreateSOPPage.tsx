@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchSOPs, fetchAllUsers } from "../../../api/domains";
+import { fetchSOPs, fetchAllUsers, createSOP, updateSOP } from "../../../api/domains";
 import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
 
@@ -1538,6 +1538,7 @@ export default function CreateSOPPage() {
   // Dynamic navigation section
   const [activeSection, setActiveSection] = useState("ID");
   const [sopType, setSopType] = useState<"Procedure SOP" | "Equipment SOP" | "Analysis SOP">("Procedure SOP");
+  const [sopId, setSopId] = useState("");
 
   // Assay Category & Method Family (Now for all SOP types)
   const [assayCategory, setAssayCategory] = useState("");
@@ -1673,6 +1674,7 @@ export default function CreateSOPPage() {
   // Loading SOP data if editing
   useEffect(() => {
     const populateFromItem = (item: any) => {
+      if (item.id && !item.id.startsWith("sop-local-")) setSopId(item.id);
       setSopCode(item.code || "");
       setSopTitle(item.title || "");
       setSopVersion(item.version || "1.0");
@@ -1917,7 +1919,7 @@ export default function CreateSOPPage() {
     }
   };
 
-  const saveSOPToLocalStorage = (statusToSave: string) => {
+  const saveSOPToLocalStorage = async (statusToSave: string) => {
     if (!sopCode || !sopTitle) {
       alert("SOP Code and Title are required to save draft or submit!");
       return false;
@@ -1928,23 +1930,12 @@ export default function CreateSOPPage() {
       return false;
     }
 
-    const saved = localStorage.getItem("roms_local_sops");
-    const list = saved ? JSON.parse(saved) : [];
-    const item = list.find((s: any) => s.code === (editCode || sopCode)) || {};
-
-    const updatedSopItem = {
-      id: item.id || `sop-local-${Date.now()}`,
-      code: sopCode,
-      title: sopTitle,
+    const descriptionObj = {
       sopSection: sopType,
       sopSubSection: owningLabUnit,
-      version: sopVersion,
-      status: statusToSave,
-      author: enteredBy || item.author || "Author",
+      author: enteredBy || "Author",
       lastUpdated: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      sopType: sopType,
       details: {
-        ...(item.details || {}),
         effectiveDate,
         nextReviewDate,
         owningSite,
@@ -1954,18 +1945,15 @@ export default function CreateSOPPage() {
         assayCategory,
         methodFamily,
 
-        // Revision & Amendment tables
         annualReviews,
         versionHistory,
         amendmentLog,
 
-        // Common sections
         purpose,
         scope,
         background,
         abbreviationsDefinitions,
 
-        // Roles
         responsibilityAccountability,
         tasksGrid,
 
@@ -1975,7 +1963,6 @@ export default function CreateSOPPage() {
         references,
         attachments,
 
-        // Equipment specifics
         equipmentDescription,
         calibration,
         controls,
@@ -1983,10 +1970,8 @@ export default function CreateSOPPage() {
         operation,
         problemSolving,
 
-        // Analysis specifics
         principleMethodologicalBasis,
 
-        // Samples
         sampleMatrices,
         sampleMatricesOther,
         inputMaterialTypes,
@@ -1995,16 +1980,13 @@ export default function CreateSOPPage() {
         sampleAcceptance,
         sampleRejection,
 
-        // Reagents
         reagentsNarrative,
         reagentsOnePerLine,
 
-        // Equipment & Instruments
         primaryEquipment,
         primaryEquipmentOther,
         equipmentOnePerLine,
 
-        // Environmental & Safety Controls
         ppeRequired,
         ppeRequiredOther,
         bslRequired,
@@ -2013,7 +1995,6 @@ export default function CreateSOPPage() {
         wasteHandling,
         additionalSafety,
 
-        // Quality Control
         controlsIncluded,
         controlsIncludedOther,
         qcMethods,
@@ -2021,22 +2002,18 @@ export default function CreateSOPPage() {
         acceptanceRejectionCriteria,
         qcNarrative,
 
-        // Stepwise Procedure
         procedureNarrative,
         procedureOnePerLine,
 
-        // Calculation / Data Analysis
         calculationsFormulas,
         softwareAnalysisTools,
         interpretationThresholds,
 
-        // Result Reporting & Interpretation
         reportingFormat,
         cutOffsThresholds,
         limsDatabaseMapping,
         resultReportingNarrative,
 
-        // Storage & Transport Requirements
         storageSampleTypes,
         storageSampleTypesOther,
         storageTemperature,
@@ -2045,33 +2022,50 @@ export default function CreateSOPPage() {
         acceptableTransportModesOther,
         storageTransportNarrative,
 
-        // Dynamic Filename
         filenameSuggestion
       }
     };
 
+    const payload = {
+      code: sopCode,
+      title: sopTitle,
+      version: sopVersion,
+      ownerId: (user?.id && user.id !== "mock-admin-id") ? user.id : (users?.[0]?.id || "clxyz00000000000000000000"),
+      status: statusToSave === "DRAFT" ? "DRAFT" : "REVIEW",
+      sopType: sopType,
+      effectiveDate: effectiveDate ? new Date(effectiveDate) : undefined,
+      nextReviewDate: nextReviewDate ? new Date(nextReviewDate) : undefined,
+      owningLabUnit: owningLabUnit,
+      assayCategory: assayCategory,
+      methodFamily: methodFamily,
+      details: descriptionObj.details
+    };
+
     try {
-      const codeToFilter = editCode || sopCode;
-      const filtered = list.filter((s: any) => s.code !== codeToFilter);
-      localStorage.setItem("roms_local_sops", JSON.stringify([updatedSopItem, ...filtered]));
+      if (sopId) {
+        await updateSOP(sopId, payload);
+      } else {
+        await createSOP(payload);
+      }
       return true;
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to save SOP data to storage.");
+      const errDetail = e.response?.data?.message || JSON.stringify(e.response?.data?.errors) || e.message || "";
+      alert(`Failed to save SOP data to the database. ${errDetail}`);
       return false;
     }
   };
 
-  const handleSaveDraft = () => {
-    const success = saveSOPToLocalStorage("DRAFT");
+  const handleSaveDraft = async () => {
+    const success = await saveSOPToLocalStorage("DRAFT");
     if (success) {
       navigate("/domains/qms", { state: { successMessage: "SOP Draft saved successfully!" } });
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = saveSOPToLocalStorage("UNDER REVIEW");
+    const success = await saveSOPToLocalStorage("REVIEW");
     if (success) {
       navigate("/domains/qms", { state: { successMessage: "SOP submitted for review and approval!" } });
     }

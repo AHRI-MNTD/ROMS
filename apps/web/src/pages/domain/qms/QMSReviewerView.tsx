@@ -811,7 +811,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
   const pendingReviewCount = useMemo(() => {
     return sops.filter(sop => {
       const st = sop.status.toUpperCase();
-      return st !== "APPROVED" && st !== "ACTIVE / APPROVED" && st !== "ACTIVE";
+      return st !== "APPROVED" && st !== "ACTIVE / APPROVED" && st !== "ACTIVE" && st !== "REQUESTED" && st !== "DRAFT";
     }).length;
   }, [sops]);
 
@@ -847,7 +847,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
       if (reviewerSubTab === "approved") {
         return st === "APPROVED" || st === "ACTIVE / APPROVED" || st === "ACTIVE";
       } else {
-        return st !== "APPROVED" && st !== "ACTIVE / APPROVED" && st !== "ACTIVE";
+        return st !== "APPROVED" && st !== "ACTIVE / APPROVED" && st !== "ACTIVE" && st !== "REQUESTED" && st !== "DRAFT";
       }
     });
   }, [sops, sopType, sopStatus, selectedTitles, searchText, reviewerSubTab]);
@@ -1002,7 +1002,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
 
     // GATE 2: Verifier (QO) - Quality Officer role or QA Officer name only
     if (role === "Verifier (QO)") {
-      const isQo = userRoles.includes("QUALITY_OFFICER") || userRoles.includes("QO") || userDisplayName.trim().toLowerCase() === "qa officer";
+      const isQo = userRoles.includes("QUALITY_OFFICER") || userRoles.includes("QO") || userRoles.includes("ADMIN") || (user?.permissions || []).includes("admin:all") || (user?.permissions || []).includes("qms:Quality Officer") || userDisplayName.trim().toLowerCase() === "qa officer";
       if (!isQo) {
         alert(`Access Denied: You are currently logged in as "${userDisplayName || "Unknown User"}". Only a Quality Officer (QA Officer) can sign off on the Verifier (QO) section.`);
         return;
@@ -1869,7 +1869,7 @@ export default function QMSReviewerView({ sops, onSopUpdate, onPrintRequest, onS
                               const assignedVerifier = (selectedSopForReview.details?.proposedVerifier || currentEs?.verifierUser?.name || "").trim().toLowerCase();
                               const isAssignedVerifier = assignedVerifier !== "" && userDisplayName === assignedVerifier;
 
-                              const isQo = userRoles.includes("QUALITY_OFFICER") || userRoles.includes("QO") || userDisplayName === "qa officer";
+                              const isQo = userRoles.includes("QUALITY_OFFICER") || userRoles.includes("QO") || userRoles.includes("ADMIN") || (user?.permissions || []).includes("admin:all") || (user?.permissions || []).includes("qms:Quality Officer") || userDisplayName === "qa officer";
 
                               const assignedAuthorizer = (selectedSopForReview.details?.proposedAuthorizer || currentEs?.authorizerLm?.name || "").trim().toLowerCase();
                               const isAssignedAuthorizer = assignedAuthorizer !== "" && userDisplayName === assignedAuthorizer;
