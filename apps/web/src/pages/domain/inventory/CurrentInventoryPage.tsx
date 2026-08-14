@@ -337,9 +337,8 @@ export default function CurrentInventoryPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isSuperAdmin =
-    user?.email?.toLowerCase() === "systemadmin@roms.com" ||
-    user?.email?.toLowerCase() === "admin@roms.dev" ||
-    (user?.displayName?.toLowerCase().includes("system administrator") ?? false);
+    (user?.roles?.some((r) => ["ADMIN", "RESEARCH_ADMIN"].includes(r)) ?? false) ||
+    (user?.permissions?.includes("admin:all") ?? false);
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all");

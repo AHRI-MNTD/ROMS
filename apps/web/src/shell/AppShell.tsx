@@ -15,7 +15,7 @@ export const AppShell: React.FC = () => {
 
   if (!hasPathAccess(user?.roles, location.pathname, user?.permissions)) {
     if (!isApprovedUser(user?.roles, user?.permissions)) {
-      return <Navigate to="/domains/hr/recruitment-onboarding/training-records" replace />;
+      return <Navigate to="/domains/hr/recruitment-onboarding/personnel-registration" replace />;
     } else {
       return <Navigate to="/" replace />;
     }

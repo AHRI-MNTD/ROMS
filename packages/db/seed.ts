@@ -533,6 +533,11 @@ function buildMovementSeedRows(
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_SEED !== "true") {
+    console.log("⚠️ Skipping database seed in production environment (ENABLE_SEED is not true).");
+    return;
+  }
+
   console.log("🌱 Starting ROMS database seed...\n");
 
   // ─── Users ─────────────────────────────────────────────────────────────────

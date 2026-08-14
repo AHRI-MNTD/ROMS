@@ -313,7 +313,7 @@ export default function LoginPage() {
       const resp = await apiClient.post<LoginResponse>("/auth/google", { credential });
       const { accessToken, refreshToken, user } = resp.data;
       login(user, accessToken, refreshToken);
-      navigate(isApprovedUser(user.roles, user.permissions) ? "/" : "/domains/hr/recruitment-onboarding/training-records");
+      navigate(isApprovedUser(user.roles, user.permissions) ? "/" : "/domains/hr/recruitment-onboarding/personnel-registration");
     } catch (err: any) {
       setError(err.response?.data?.message || "Google authentication failed.");
     } finally { setLoading(false); }
@@ -335,13 +335,13 @@ export default function LoginPage() {
         } else {
           const { accessToken, refreshToken, user } = resp.data;
           login(user, accessToken, refreshToken);
-          navigate("/domains/hr/recruitment-onboarding/training-records");
+          navigate("/domains/hr/recruitment-onboarding/personnel-registration");
         }
       } else {
         const resp = await apiClient.post<LoginResponse>("/auth/login", { email, password });
         const { accessToken, refreshToken, user } = resp.data;
         login(user, accessToken, refreshToken);
-        navigate(isApprovedUser(user.roles, user.permissions) ? "/" : "/domains/hr/recruitment-onboarding/training-records");
+        navigate(isApprovedUser(user.roles, user.permissions) ? "/" : "/domains/hr/recruitment-onboarding/personnel-registration");
       }
     } catch (err: any) {
       const d = err.response?.data;
@@ -361,7 +361,7 @@ export default function LoginPage() {
       const resp = await apiClient.post<LoginResponse>("/auth/verify-email", { email: verificationEmail, code: verificationCode });
       const { accessToken, refreshToken, user } = resp.data;
       login(user, accessToken, refreshToken);
-      navigate(isApprovedUser(user.roles, user.permissions) ? "/" : "/domains/hr/recruitment-onboarding/training-records");
+      navigate(isApprovedUser(user.roles, user.permissions) ? "/" : "/domains/hr/recruitment-onboarding/personnel-registration");
     } catch (err: any) {
       setError(err.response?.data?.message || "Verification failed. Please check your code.");
     } finally { setLoading(false); }

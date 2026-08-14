@@ -170,7 +170,7 @@ function IconBtn({
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 export default function InventoryManagerPage() {
   const user = useAuth((state) => state.user);
-  const isAdmin = user?.roles.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? true;
+  const isAdmin = user?.roles?.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
   const queryClient = useQueryClient();
 
   const { data: persistedRequests } = useQuery({

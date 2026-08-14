@@ -249,6 +249,43 @@ export class GoogleSheetsSyncService {
   }
 
   /**
+   * Syncs deletion of a master data record from Google Sheet tabs.
+   */
+  public static async deleteMasterData(data: SyncMasterDataPayload) {
+    if (!this.init()) return;
+
+    try {
+      const clearMatchingValue = async (sheetName: string, value: string | null | undefined) => {
+        if (!value) return;
+        const readRes = await this.sheets.spreadsheets.values.get({
+          spreadsheetId: this.spreadsheetId,
+          range: `'${sheetName}'!A:A`,
+        });
+        const rows = readRes.data.values || [];
+        const normalizedTarget = value.trim().toLowerCase();
+        for (let i = 0; i < rows.length; i++) {
+          const rowVal = (rows[i][0] || "").trim().toLowerCase();
+          if (rowVal === normalizedTarget) {
+            const rowIndex = i + 1;
+            await this.sheets.spreadsheets.values.clear({
+              spreadsheetId: this.spreadsheetId,
+              range: `'${sheetName}'!A${rowIndex}:A${rowIndex}`,
+            });
+            log.info(`[GoogleSheetsSync] Cleared '${value}' from '${sheetName}' (row ${rowIndex}) in Google Sheets.`);
+          }
+        }
+      };
+
+      if (data.category) await clearMatchingValue("Category", data.category);
+      if (data.unit) await clearMatchingValue("Unit of Measure (UOM)", data.unit);
+      if (data.project) await clearMatchingValue("Project", data.project);
+      if (data.staff) await clearMatchingValue("Staff", data.staff);
+    } catch (error: any) {
+      log.error(error, "[GoogleSheetsSync] Master data deletion sync failed");
+    }
+  }
+
+  /**
    * Alias for pullAll, returning imported stock item count.
    */
   public static async pullStockItems(prismaClient: any): Promise<{ imported: number; source: "google" | "local_csv" }> {
@@ -262,6 +299,10 @@ export class GoogleSheetsSyncService {
   public static async pullAll(prismaClient: any): Promise<SyncPullResult> {
     const hasCreds = this.init();
     if (!hasCreds) {
+      if (process.env.NODE_ENV === "production") {
+        log.error(new Error("Google Sheets credentials absent in production"), "[GoogleSheetsSync] Cannot pull data: Google Sheets credentials are missing in production mode.");
+        throw new Error("Google Sheets sync credentials are not configured in production mode.");
+      }
       log.info("[GoogleSheetsSync] Credentials not configured. Running local CSV fallback sync.");
       return await this.syncFromLocalCsvs(prismaClient);
     }

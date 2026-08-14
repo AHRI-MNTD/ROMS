@@ -358,12 +358,26 @@ router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESE
   const { id } = req.params;
 
   try {
+    const existing = await prisma.inventoryMasterData.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: "Master data record not found." });
+      return;
+    }
+
     await prisma.inventoryMasterData.delete({
       where: { id },
     });
+
+    GoogleSheetsSyncService.deleteMasterData({
+      category: existing.category,
+      unit: existing.unit,
+      project: existing.project,
+      staff: existing.staff,
+    });
+
     res.json({ success: true, message: "Record deleted successfully." });
   } catch (error) {
-    res.status(404).json({ error: "Master data record not found." });
+    res.status(500).json({ error: "Failed to delete master data record." });
   }
 });
 
@@ -511,11 +525,50 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
     return;
   }
 
+  const user = req.user;
+  const isAdminOrResearchAdmin = user?.roles?.some((r) => r === Role.ADMIN || r === Role.RESEARCH_ADMIN) ?? false;
+
   const requestedBy = toStringOrUndefined(req.body?.requestedBy) ?? req.user?.email ?? null;
   const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
   const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
   const team = toStringOrUndefined(req.body?.team) ?? null;
   const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
+
+  if (!isAdminOrResearchAdmin) {
+    const userIdentifier = ((user as any)?.displayName || user?.email || "").toLowerCase();
+    const defaultApprover = getApproverForProject(projectFor).toLowerCase();
+    let isAuthorized = defaultApprover.split(",").some((app) => {
+      const trimmed = app.trim().toLowerCase();
+      return trimmed.length > 0 && (userIdentifier.includes(trimmed) || trimmed.includes(userIdentifier));
+    });
+
+    if (!isAuthorized) {
+      for (const item of items) {
+        const movId = toStringOrUndefined(item?.movementId);
+        if (movId) {
+          const mov = await prisma.inventoryMovement.findUnique({ where: { id: movId }, select: { approver: true, projectFor: true } });
+          if (mov) {
+            const appStr = (mov.approver || getApproverForProject(mov.projectFor)).toLowerCase();
+            if (appStr.split(",").some((app) => {
+              const trimmed = app.trim().toLowerCase();
+              return trimmed.length > 0 && (userIdentifier.includes(trimmed) || trimmed.includes(userIdentifier));
+            })) {
+              isAuthorized = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      res.status(403).json({
+        code: "FORBIDDEN",
+        message: "You are not authorized to make request decisions. Only assigned project approvers or Administrators may approve or reject inventory requests.",
+      });
+      return;
+    }
+  }
 
   try {
     const created = await prisma.$transaction(async (tx) => {
@@ -1412,6 +1465,18 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
 });
 
 router.delete("/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), auditMutation("StockItem", "DELETE"), async (req, res) => {
+  const movementCount = await prisma.inventoryMovement.count({
+    where: { stockItemId: req.params.id },
+  });
+
+  if (movementCount > 0) {
+    res.status(400).json({
+      code: "HAS_MOVEMENT_HISTORY",
+      message: `Cannot delete stock item because it has ${movementCount} historical movement record(s). Preserving audit history is required for inventory governance.`,
+    });
+    return;
+  }
+
   await prisma.stockItem.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
 });

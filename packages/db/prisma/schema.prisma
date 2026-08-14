@@ -237,7 +237,7 @@ model InventoryMovement {
   id           String                  @id @default(cuid())
   requestBatchId String?
   stockItemId  String
-  stockItem    StockItem               @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  stockItem    StockItem               @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
   movementType InventoryMovementType
   quantity     Int
   requestedQuantity Int                @default(0)

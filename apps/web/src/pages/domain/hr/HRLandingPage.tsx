@@ -35,7 +35,7 @@ const CARDS: HRCard[] = [
     ],
   },
   {
-    id: "training-records",
+    id: "personnel-registration",
     title: "Personnel Registration",
     subtitle: "Staff File Submission & Onboarding",
     rightRequired: "Personnel Registration",

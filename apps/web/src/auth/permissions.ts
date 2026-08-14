@@ -159,6 +159,7 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
   },
   hr: {
     "dashboard": "Dashboard",
+    "personnel-registration": "Personnel Registration",
     "training-records": "Personnel Registration",
     "approved": "Profiles",
     "approve-employee": "Onboarding",
@@ -294,7 +295,10 @@ export function hasPathAccess(roles: string[] | undefined, pathname: string, per
 
   // If new user (unapproved): they only have access to Personnel Registration
   if (!isApprovedUser(roles, permissions)) {
-    return cleanPath === "/domains/hr/recruitment-onboarding/training-records";
+    return (
+      cleanPath === "/domains/hr/recruitment-onboarding/personnel-registration" ||
+      cleanPath === "/domains/hr/recruitment-onboarding/training-records"
+    );
   }
 
   // 1. Root / Dashboard page

@@ -7,7 +7,7 @@ const OVERVIEW_TAB = { to: "overview", label: "Overview", icon: "🏠", alwaysSh
 
 const tabs = [
   { to: "dashboard", label: "Dashboard", icon: "📊", alwaysShow: false },
-  { to: "training-records", label: "Personnel Registration", icon: "📋", alwaysShow: false },
+  { to: "personnel-registration", label: "Personnel Registration", icon: "📋", alwaysShow: false },
   { to: "approved", label: "Personnel Database", icon: "🗂️", alwaysShow: false },
   { to: "approve-employee", label: "Personnel Verification", icon: "✅", alwaysShow: false },
 ];
