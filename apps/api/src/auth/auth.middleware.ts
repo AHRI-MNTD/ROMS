@@ -16,6 +16,49 @@ declare global {
   }
 }
 
+interface RateLimitOptions {
+  windowMs: number;
+  max: number;
+  message?: string;
+}
+
+export function createRateLimiter(options: RateLimitOptions) {
+  const { windowMs, max, message = "Too many requests, please try again later." } = options;
+  const requests = new Map<string, { count: number; resetTime: number }>();
+
+  // Periodically clean up expired entries
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, data] of requests.entries()) {
+      if (now > data.resetTime) {
+        requests.delete(ip);
+      }
+    }
+  }, windowMs).unref?.();
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const rawIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "unknown";
+    const ip = rawIp.split(",")[0].trim();
+    const now = Date.now();
+    const record = requests.get(ip);
+
+    if (!record || now > record.resetTime) {
+      requests.set(ip, { count: 1, resetTime: now + windowMs });
+      next();
+      return;
+    }
+
+    if (record.count >= max) {
+      res.status(429).json({ code: "TOO_MANY_REQUESTS", message });
+      return;
+    }
+
+    record.count += 1;
+    next();
+  };
+}
+
+
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {

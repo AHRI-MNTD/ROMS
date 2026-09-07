@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
+import { randomInt } from "crypto";
 import prisma from "@roms/db";
 import { LoginSchema, Role } from "@roms/shared";
 import { signAccessToken, signRefreshToken, verifyToken } from "./jwt";
-import { requireAuth } from "./auth.middleware";
+import { requireAuth, createRateLimiter } from "./auth.middleware";
 import { logger } from "../utils/logger";
 import { OAuth2Client } from "google-auth-library";
 import { env } from "../env";
@@ -12,8 +13,15 @@ import { sendVerificationEmail } from "./email";
 const router = Router();
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
+// 10 requests per 1 minute per IP for authentication endpoints
+const authRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: "Too many authentication requests. Please try again in 1 minute.",
+});
+
 // POST /auth/register
-router.post("/register", async (req: Request, res: Response) => {
+router.post("/register", authRateLimiter, async (req: Request, res: Response) => {
   const { email, password, displayName } = req.body;
   if (!email || !password || !displayName) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "Email, password, and display name are required" });
@@ -27,8 +35,8 @@ router.post("/register", async (req: Request, res: Response) => {
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const verificationCode = randomInt(100000, 1000000).toString();
 
     const user = await prisma.user.create({
       data: {
@@ -50,8 +58,9 @@ router.post("/register", async (req: Request, res: Response) => {
     }
 
     const smtpConfigured = Boolean(env.SMTP_USER && env.SMTP_PASS && !env.SMTP_PASS.includes("your-gmail-app-password"));
+    const isDev = env.NODE_ENV !== "production";
 
-    logger.info({ userId: user.id, email: user.email, verificationCode }, "User registered; email verification code generated");
+    logger.info({ userId: user.id, email: user.email }, "User registered; email verification code generated");
 
     res.status(201).json({
       status: "VERIFICATION_REQUIRED",
@@ -59,8 +68,9 @@ router.post("/register", async (req: Request, res: Response) => {
       message: emailSent
         ? "Verification code sent to your email."
         : "Registration successful. Please verify your email code.",
-      devVerificationCode: !smtpConfigured ? verificationCode : undefined,
+      devVerificationCode: isDev && !smtpConfigured ? verificationCode : undefined,
     });
+
   } catch (err) {
     logger.error(err, "Register error");
     res.status(500).json({ code: "INTERNAL_ERROR", message: "Registration failed" });
@@ -68,7 +78,7 @@ router.post("/register", async (req: Request, res: Response) => {
 });
 
 // POST /auth/verify-email
-router.post("/verify-email", async (req: Request, res: Response) => {
+router.post("/verify-email", authRateLimiter, async (req: Request, res: Response) => {
   const { email, code } = req.body;
   if (!email || !code) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "Email and code are required" });
@@ -123,7 +133,7 @@ router.post("/verify-email", async (req: Request, res: Response) => {
 });
 
 // POST /auth/login
-router.post("/login", async (req: Request, res: Response) => {
+router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() });
@@ -153,7 +163,7 @@ router.post("/login", async (req: Request, res: Response) => {
     if (!user.emailVerified) {
       let code = user.verificationCode;
       if (!code) {
-        code = Math.floor(100000 + Math.random() * 900000).toString();
+        code = randomInt(100000, 1000000).toString();
         await prisma.user.update({
           where: { id: user.id },
           data: { verificationCode: code }
@@ -173,17 +183,18 @@ router.post("/login", async (req: Request, res: Response) => {
         logger.error(emailErr, "Failed to send email during login");
       }
 
-
       const smtpConfigured = Boolean(env.SMTP_USER && env.SMTP_PASS && !env.SMTP_PASS.includes("your-gmail-app-password"));
+      const isDev = env.NODE_ENV !== "production";
 
       res.status(401).json({
         code: "EMAIL_UNVERIFIED",
         message: "Email is not verified. Please verify your email first.",
         email: user.email,
-        devVerificationCode: !smtpConfigured ? code : undefined,
+        devVerificationCode: isDev && !smtpConfigured ? code : undefined,
       });
       return;
     }
+
 
     // Update lastLoginAt
     await prisma.user.update({
@@ -219,7 +230,7 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 // POST /auth/google
-router.post("/google", async (req: Request, res: Response) => {
+router.post("/google", authRateLimiter, async (req: Request, res: Response) => {
   const { credential } = req.body;
   if (!credential) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "Credential token is required" });

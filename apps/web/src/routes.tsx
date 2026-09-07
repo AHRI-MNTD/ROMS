@@ -99,6 +99,12 @@ export const routes: RouteObject[] = [
             element: <QMSLayout />,
             children: [
               { index: true, element: <QMSPage /> },
+              { path: "overview", element: <QMSPage /> },
+              { path: "library", element: <QMSPage /> },
+              { path: "authoring", element: <QMSPage /> },
+              { path: "controls", element: <QMSPage /> },
+              { path: "approval", element: <QMSPage /> },
+              { path: "resources", element: <QMSPage /> },
               { path: "create-sop", element: <CreateSOPPage /> },
               { path: "guidelines", element: <SOPGuidelinesPage /> },
             ],

@@ -231,6 +231,7 @@ model StockItem {
   @@index([sourceCode])
   @@index([name])
   @@index([sku])
+  @@index([category])
 }
 
 model InventoryMovement {
@@ -558,6 +559,7 @@ model StaffProfile {
   updatedAt           DateTime            @updatedAt
 
   @@index([approvalStatus])
+  @@index([department])
 }
 
 model TrainingRecord {
