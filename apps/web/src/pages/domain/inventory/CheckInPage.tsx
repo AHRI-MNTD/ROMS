@@ -48,7 +48,8 @@ function MasterDataCombobox({
   const filteredOptions = React.useMemo(() => {
     const q = value.trim().toLowerCase();
     if (!q) return options;
-    return options.filter((opt) => opt.toLowerCase().includes(q));
+    const matches = options.filter((opt) => opt.toLowerCase().includes(q));
+    return matches.length > 0 ? matches : options;
   }, [options, value]);
 
   React.useEffect(() => {
@@ -171,6 +172,7 @@ export default function CheckInPage() {
   const [selectedItemId, setSelectedItemId] = React.useState("");
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkInQty, setCheckInQty] = React.useState(1);
+  const [unitPrice, setUnitPrice] = React.useState<number | "">(0);
   const [note, setNote] = React.useState("");
   const [projectFor, setProjectFor] = React.useState("");
   const [dateReceived, setDateReceived] = React.useState(() => toDateInputValue());
@@ -182,9 +184,22 @@ export default function CheckInPage() {
   const [newName, setNewName] = React.useState("");
   const [newUnit, setNewUnit] = React.useState("units");
   const [newOpeningQty, setNewOpeningQty] = React.useState(1);
+  const [newUnitPrice, setNewUnitPrice] = React.useState<number | "">(0);
   const [newUnitDescription, setNewUnitDescription] = React.useState("");
   const [newCategory, setNewCategory] = React.useState("");
   const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
+
+  const existingTotalPrice = React.useMemo(() => {
+    const qty = Number(checkInQty) || 0;
+    const price = Number(unitPrice) || 0;
+    return qty * price;
+  }, [checkInQty, unitPrice]);
+
+  const newTotalPrice = React.useMemo(() => {
+    const qty = Number(newOpeningQty) || 0;
+    const price = Number(newUnitPrice) || 0;
+    return qty * price;
+  }, [newOpeningQty, newUnitPrice]);
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -199,6 +214,8 @@ export default function CheckInPage() {
     unitDescription?: string;
     category?: string;
     quantity: number;
+    unitPrice?: number;
+    totalPrice?: number;
     projectFor: string;
     dateReceived: string;
     expiryDate?: string;
@@ -629,6 +646,42 @@ export default function CheckInPage() {
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Unit Price <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={unitPrice}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setUnitPrice(val === "" ? "" : Math.max(0, Number(val)));
+                }}
+                placeholder="0.00"
+                style={inputStyle}
+              />
+            </label>
+
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Total Price <span style={{ fontSize: "9px", color: "var(--color-primary)", fontWeight: 600 }}>(Auto)</span>
+              </span>
+              <input
+                type="text"
+                readOnly
+                value={existingTotalPrice > 0 ? existingTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                style={{
+                  ...inputStyle,
+                  background: "var(--color-surface-offset, rgba(0,0,0,0.04))",
+                  fontWeight: 700,
+                  color: existingTotalPrice > 0 ? "var(--color-primary)" : "var(--color-text-muted)",
+                  cursor: "not-allowed",
+                }}
+              />
+            </label>
+
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 Project For <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>
               </span>
               {projects.length > 0 ? (
@@ -745,6 +798,42 @@ export default function CheckInPage() {
               placeholder="Select or type unit..."
               inputStyle={inputStyle}
             />
+
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Unit Price <span style={{ fontSize: "9px", color: "var(--color-text-muted)", fontWeight: 400 }}>(Optional)</span>
+              </span>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                value={newUnitPrice}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewUnitPrice(val === "" ? "" : Math.max(0, Number(val)));
+                }}
+                placeholder="0.00"
+                style={inputStyle}
+              />
+            </label>
+
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                Total Price <span style={{ fontSize: "9px", color: "#0284c7", fontWeight: 600 }}>(Auto)</span>
+              </span>
+              <input
+                type="text"
+                readOnly
+                value={newTotalPrice > 0 ? newTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                style={{
+                  ...inputStyle,
+                  background: "var(--color-surface-offset, rgba(0,0,0,0.04))",
+                  fontWeight: 700,
+                  color: newTotalPrice > 0 ? "#0284c7" : "var(--color-text-muted)",
+                  cursor: "not-allowed",
+                }}
+              />
+            </label>
 
             {/* Unit_Description is NOT compulsory (optional) */}
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
@@ -864,11 +953,16 @@ export default function CheckInPage() {
                     return;
                   }
 
+                  const uPrice = Number(unitPrice) || 0;
+                  const tPrice = existingTotalPrice;
+
                   const newItem: CartItem = {
                     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                     mode: "existing",
                     stockItemId: selectedItem.id,
                     quantity: checkInQty,
+                    unitPrice: uPrice,
+                    totalPrice: tPrice,
                     projectFor: projectFor.trim() || projects[0],
                     dateReceived,
                     expiryDate: expiryDate || undefined,
@@ -881,6 +975,7 @@ export default function CheckInPage() {
                     message: `Added ${checkInQty} units of ${selectedItem.name} to batch.`,
                   });
                   setCheckInQty(1);
+                  setUnitPrice(0);
                   setNote("");
                   setSelectedItemId("");
                   setSelectedItemQuery("");
@@ -930,6 +1025,8 @@ export default function CheckInPage() {
                   }
 
                   const unitDescription = newUnitDescription.trim() || `${unit} per pack`;
+                  const uPrice = Number(newUnitPrice) || 0;
+                  const tPrice = newTotalPrice;
 
                   const newItem: CartItem = {
                     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -939,6 +1036,8 @@ export default function CheckInPage() {
                     name,
                     quantity: newOpeningQty,
                     unit,
+                    unitPrice: uPrice,
+                    totalPrice: tPrice,
                     unitDescription,
                     category,
                     projectFor: projectFor.trim() || projects[0],
@@ -963,6 +1062,7 @@ export default function CheckInPage() {
                   setNewName("");
                   setNewUnit("units");
                   setNewOpeningQty(1);
+                  setNewUnitPrice(0);
                   setNewUnitDescription("");
                   setNewCategory("");
                   setNote("");
@@ -1001,13 +1101,15 @@ export default function CheckInPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "26%" }} />
-                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "20%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "9%" }} />
                   <col style={{ width: "12%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
                   <col style={{ width: "6%" }} />
                 </colgroup>
                 <thead>
@@ -1019,6 +1121,8 @@ export default function CheckInPage() {
                           <th style={thStyle} title="Item Label">Item</th>
                           <th style={thStyle} title="Check-in Mode">Type</th>
                           <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Unit Price">Unit Price</th>
+                          <th style={thStyle} title="Total Price">Total Price</th>
                           <th style={thStyle} title="Project For">Project</th>
                           <th style={thStyle} title="Date Received">Received</th>
                           <th style={thStyle} title="Expiry Date">Expiry</th>
@@ -1056,6 +1160,12 @@ export default function CheckInPage() {
                           </span>
                         </td>
                         <td style={cellStyle}>{item.quantity}</td>
+                        <td style={cellStyle} title={item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : "—"}>
+                          {item.unitPrice ? `$${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                        </td>
+                        <td style={cellStyle} title={item.totalPrice ? `$${item.totalPrice.toFixed(2)}` : "—"}>
+                          {item.totalPrice ? `$${item.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                        </td>
                         <td style={cellStyle} title={item.projectFor}>{item.projectFor}</td>
                         <td style={cellStyle} title={item.dateReceived}>{item.dateReceived}</td>
                         <td style={cellStyle} title={item.expiryDate || "—"}>{item.expiryDate || "—"}</td>
@@ -1070,6 +1180,7 @@ export default function CheckInPage() {
                                   setSelectedItemId(item.stockItemId || "");
                                   setSelectedItemQuery(item.itemLabel);
                                   setCheckInQty(item.quantity);
+                                  setUnitPrice(item.unitPrice ?? 0);
                                   setNote(item.remark || "");
                                   setExpiryDate(item.expiryDate || "");
                                 } else {
@@ -1078,6 +1189,7 @@ export default function CheckInPage() {
                                   setNewName(item.name || "");
                                   setNewUnit(item.unit || "units");
                                   setNewOpeningQty(item.quantity);
+                                  setNewUnitPrice(item.unitPrice ?? 0);
                                   setNewUnitDescription(item.unitDescription || "");
                                   setNewCategory(item.category || "");
                                   setNote(item.remark || "");
@@ -1119,6 +1231,8 @@ export default function CheckInPage() {
                         mode: "existing" as const,
                         stockItemId: i.stockItemId,
                         quantity: i.quantity,
+                        unitPrice: i.unitPrice,
+                        totalPrice: i.totalPrice,
                         projectFor: i.projectFor,
                         dateReceived: i.dateReceived,
                         expiryDate: i.expiryDate,
@@ -1132,6 +1246,8 @@ export default function CheckInPage() {
                         name: i.name,
                         quantity: i.quantity,
                         unit: i.unit,
+                        unitPrice: i.unitPrice,
+                        totalPrice: i.totalPrice,
                         unitDescription: i.unitDescription,
                         category: i.category,
                         projectFor: i.projectFor,

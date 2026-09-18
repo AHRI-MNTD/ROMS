@@ -189,6 +189,8 @@ export const BulkCheckInItemSchema = z.object({
   expiryDate: z.coerce.date().optional().nullable(),
   remark: z.string().optional().nullable(),
   note: z.string().optional().nullable(),
+  unitPrice: z.number().optional().nullable(),
+  totalPrice: z.number().optional().nullable(),
 });
 
 export const BulkCheckInSchema = z.object({
