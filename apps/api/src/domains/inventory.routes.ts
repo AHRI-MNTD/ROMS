@@ -126,6 +126,14 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
   const acceptedQuantity = Number(movement.quantity ?? 0);
   const projectFor = movement.projectFor ?? "ROMS Inventory";
 
+  let itemUnit = stockItem?.unit ?? "units";
+  if (movement.remark && movement.remark.includes("[Unit: ")) {
+    const match = movement.remark.match(/\[Unit:\s*([^\]]+)\]/);
+    if (match && match[1]) {
+      itemUnit = match[1].trim();
+    }
+  }
+
   return {
     rowKey: movement.id ?? `${movement.requestBatchId ?? "batch"}-${movement.stockItemId}`,
     requestBatchId: movement.requestBatchId ?? null,
@@ -134,8 +142,8 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
     itemDescription: stockItem?.name ?? "—",
     quantity: acceptedQuantity,
     requestedQuantity,
-    unit: stockItem?.unit ?? "units",
-    unitDescription: `${stockItem?.unit ?? "units"} per pack`,
+    unit: itemUnit,
+    unitDescription: `${itemUnit} per pack`,
     category: stockItem?.category ?? "General",
     dateRequested: movement.occurredAt.toISOString().slice(0, 10),
     requestedBy: movement.requestedBy ?? "Unknown User",
@@ -469,6 +477,11 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
           }
 
           const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
+          const requestedUnit = toStringOrUndefined(rawItem?.unit) ?? stockItem.unit ?? "units";
+          const userRemark = toStringOrUndefined(rawItem?.remark) ?? "Requested by user";
+          const finalRemark = requestedUnit !== (stockItem.unit ?? "units")
+            ? (userRemark ? `${userRemark} [Unit: ${requestedUnit}]` : `[Unit: ${requestedUnit}]`)
+            : userRemark;
 
           return tx.inventoryMovement.create({
             data: {
@@ -485,7 +498,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
               team,
               approver,
               status: "PENDING",
-              remark: toStringOrUndefined(rawItem?.remark) ?? "Requested by user",
+              remark: finalRemark,
               occurredAt,
             },
             include: {

@@ -567,6 +567,7 @@ export default function InventoryManagerPage() {
                                       <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase" }}>Item Name / Code</th>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 60 }}>Qty</th>
+                                        <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 60 }}>Unit</th>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 100 }}>Project</th>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 140 }}>Approver</th>
                                         <th style={{ textAlign: "left", padding: "6px 8px", fontSize: "10px", color: "var(--color-text)", fontWeight: 700, textTransform: "uppercase", width: 90 }}>Date</th>
@@ -593,6 +594,7 @@ export default function InventoryManagerPage() {
                                               {it.sku ? `${it.sku} — ${it.name}` : it.name}
                                             </td>
                                             <td style={{ padding: "6px 8px", fontWeight: 700 }}>{it.quantity}</td>
+                                            <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{rawRow?.unit || "units"}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{projVal}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{entryApprover}</td>
                                             <td style={{ padding: "6px 8px", color: "var(--color-text-muted)" }}>{dateVal}</td>

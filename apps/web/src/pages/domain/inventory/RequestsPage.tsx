@@ -1,10 +1,158 @@
 import React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getErrorMessage } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { RequestReferenceTable } from "./RequestReferenceTable";
+
+interface MasterDataComboboxProps {
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  placeholder?: string;
+  inputStyle?: React.CSSProperties;
+  maxHeight?: number;
+  dropdownWidth?: string | number;
+}
+
+function MasterDataCombobox({
+  label,
+  required,
+  value,
+  onChange,
+  options,
+  placeholder,
+  inputStyle,
+  maxHeight = 350,
+  dropdownWidth = "100%",
+}: MasterDataComboboxProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const filteredOptions = React.useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q || options.some((opt) => opt.toLowerCase() === q)) {
+      return options;
+    }
+    const matches = options.filter((opt) => opt.toLowerCase().includes(q));
+    return matches.length > 0 ? matches : options;
+  }, [options, value]);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: 4, position: "relative" }}>
+      <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: 3 }}>
+        <span>{label}</span>
+        {required && <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>}
+      </label>
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setIsOpen(true);
+            setActiveIndex(0);
+          }}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setIsOpen(true);
+              setActiveIndex((prev) => Math.min(prev + 1, filteredOptions.length - 1));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setIsOpen(true);
+              setActiveIndex((prev) => Math.max(prev - 1, 0));
+            } else if (e.key === "Enter" && isOpen && filteredOptions[activeIndex]) {
+              e.preventDefault();
+              onChange(filteredOptions[activeIndex]);
+              setIsOpen(false);
+            } else if (e.key === "Escape") {
+              setIsOpen(false);
+            }
+          }}
+          placeholder={placeholder}
+          style={inputStyle}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setIsOpen((prev) => !prev)}
+          style={{
+            position: "absolute",
+            right: 8,
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            color: "var(--color-text-muted)",
+            fontSize: "10px",
+            cursor: "pointer",
+            padding: 2,
+          }}
+        >
+          ▼
+        </button>
+      </div>
+
+      {isOpen && filteredOptions.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            width: dropdownWidth,
+            minWidth: "100%",
+            zIndex: 50,
+            marginTop: 4,
+            maxHeight: maxHeight,
+            overflowY: "auto",
+            borderRadius: 6,
+            border: "1px solid var(--color-border)",
+            background: "var(--color-surface)",
+            boxShadow: "0 6px 18px rgba(0,0,0,0.18)",
+          }}
+        >
+          {filteredOptions.map((opt, idx) => (
+            <div
+              key={opt}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(opt);
+                setIsOpen(false);
+              }}
+              style={{
+                padding: "8px 12px",
+                fontSize: "11.5px",
+                cursor: "pointer",
+                background: idx === activeIndex ? "var(--color-primary-soft)" : "transparent",
+                color: idx === activeIndex ? "var(--color-primary)" : "var(--color-text)",
+                fontWeight: opt === value ? 700 : 400,
+                borderBottom: "1px solid var(--color-border-subtle, rgba(0,0,0,0.03))",
+              }}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function getApproverForProject(project?: string | null): string {
   if (!project) return "Assalif Demissew";
@@ -35,9 +183,23 @@ export default function RequestsPage() {
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
+  // Fetch Master Data Options for Units
+  const { data: masterOptionsData } = useQuery({
+    queryKey: ["inventory-master-data-options"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/master-data/options");
+      return resp.data as { units: string[]; categories: string[]; projects: string[] };
+    },
+  });
+
+  const masterUnits = React.useMemo(() => {
+    return masterOptionsData?.units ?? ["units", "pcs", "box", "pack", "vial", "bottle", "kit", "tube", "plate", "bag", "roll", "ml", "L", "g", "kg"];
+  }, [masterOptionsData]);
+
   const [selectedItemId, setSelectedItemId] = React.useState("");
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [requestQty, setRequestQty] = React.useState(1);
+  const [requestUnit, setRequestUnit] = React.useState("units");
   const [note, setNote] = React.useState("");
 
   const [requestedBy, setRequestedBy] = React.useState("");
@@ -56,6 +218,7 @@ export default function RequestsPage() {
     stockItemId: string;
     itemLabel: string;
     quantity: number;
+    unit: string;
     project: string;
     approver: string;
     requestedBy: string;
@@ -120,9 +283,7 @@ export default function RequestsPage() {
     fontSize: "10.5px",
     width: "100%",
     height: 30,
-  };
-
-  const bulkRequestMutation = useMutation({
+  };  const bulkRequestMutation = useMutation({
     mutationFn: async (items: CartItem[]) => {
       if (items.length === 0) throw new Error("Cart is empty.");
       const firstItem = items[0];
@@ -134,7 +295,12 @@ export default function RequestsPage() {
         approver: firstItem.approver || undefined,
         team: firstItem.team || undefined,
         timestamp: new Date().toISOString(),
-        items: items.map((it) => ({ id: it.stockItemId, quantity: it.quantity, remark: it.remark || undefined })),
+        items: items.map((it) => ({
+          id: it.stockItemId,
+          quantity: it.quantity,
+          unit: it.unit,
+          remark: it.remark || undefined,
+        })),
       });
 
       return resp.data;
@@ -251,6 +417,9 @@ export default function RequestsPage() {
             onSelectItem={(item) => {
               setSelectedItemId(item.id ?? "");
               setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
+              if (item.unit) {
+                setRequestUnit(item.unit);
+              }
             }}
             placeholder="Type item name or Id"
             inputStyle={{ ...inputStyle, minWidth: "auto" }}
@@ -266,6 +435,17 @@ export default function RequestsPage() {
             </span>
             <input type="number" min={1} value={requestQty} onChange={(e) => setRequestQty(Number(e.target.value))} style={inputStyle} />
           </label>
+
+          {/* Master Data Dropdown for Unit */}
+          <MasterDataCombobox
+            label="Unit"
+            required={true}
+            value={requestUnit}
+            onChange={(val) => setRequestUnit(val)}
+            options={masterUnits}
+            placeholder="Select or type unit..."
+            inputStyle={inputStyle}
+          />
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -397,6 +577,7 @@ export default function RequestsPage() {
                   stockItemId: selectedItem.id!,
                   itemLabel: `${selectedItem.sku ?? ""} - ${selectedItem.name ?? ""}`.trim(),
                   quantity: requestQty,
+                  unit: requestUnit.trim() || selectedItem.unit || "units",
                   project: project.trim(),
                   approver: approver.trim() || getApproverForProject(project),
                   requestedBy: requestedBy.trim(),
@@ -405,7 +586,7 @@ export default function RequestsPage() {
                   remark: note.trim(),
                 };
                 setCartItems((prev) => [...prev, newItem]);
-                setFeedback({ type: 'success', message: `Added ${requestQty} units of ${selectedItem.name} to cart.` });
+                setFeedback({ type: 'success', message: `Added ${requestQty} ${newItem.unit} of ${selectedItem.name} to cart.` });
 
                 setSelectedItemId("");
                 setSelectedItemQuery("");
@@ -444,14 +625,15 @@ export default function RequestsPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "18%" }} />
                   <col style={{ width: "6%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "11%" }} />
                   <col style={{ width: "8%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "14%" }} />
                   <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "8%" }} />
                   <col style={{ width: "6%" }} />
                 </colgroup>
                 <thead>
@@ -462,6 +644,7 @@ export default function RequestsPage() {
                         <>
                           <th style={thStyle} title="Item Label">Item</th>
                           <th style={thStyle} title="Quantity">Qty</th>
+                          <th style={thStyle} title="Unit">Unit</th>
                           <th style={thStyle} title="Project">Project</th>
                           <th style={thStyle} title="Approver">Approver</th>
                           <th style={thStyle} title="Requested By">By</th>
@@ -488,6 +671,7 @@ export default function RequestsPage() {
                       <tr key={item.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 32 }}>
                         <td style={cellStyle} title={item.itemLabel}>{item.itemLabel}</td>
                         <td style={cellStyle}>{item.quantity}</td>
+                        <td style={cellStyle} title={item.unit}>{item.unit}</td>
                         <td style={cellStyle} title={item.project}>{item.project}</td>
                         <td style={{ ...cellStyle, fontWeight: 700, color: "var(--color-primary)" }} title={item.approver}>{item.approver}</td>
                         <td style={cellStyle} title={item.requestedBy}>{item.requestedBy}</td>
@@ -502,6 +686,7 @@ export default function RequestsPage() {
                                 setSelectedItemId(item.stockItemId);
                                 setSelectedItemQuery(item.itemLabel);
                                 setRequestQty(item.quantity);
+                                setRequestUnit(item.unit || "units");
                                 setProject(item.project);
                                 setRequestedBy(item.requestedBy);
                                 setRequestedFor(item.requestedFor);
