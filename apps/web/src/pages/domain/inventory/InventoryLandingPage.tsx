@@ -356,6 +356,42 @@ export default function InventoryLandingPage() {
       ]
     },
     {
+      id: "approved-requests",
+      title: "Approved Requests",
+      subtitle: "Manager-Approved Requisitions",
+      summary: "Inspect approved material requests, review item details, and disburse stock to requesters.",
+      section: "Operations",
+      rightRequired: "Check In / Check Out",
+      icon: "✅",
+      tone: "#166534",
+      bullets: [
+        {
+          label: "View Manager Approved Items",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Detailed Item & Requester Cards",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0A2.25 2.25 0 0 0 4.5 15h15a2.25 2.25 0 0 0 2.25-2.25" />
+            </svg>
+          )
+        },
+        {
+          label: "Item Handoff & Issue Controls",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
       id: "inventory-manager",
       title: "Manager",
       subtitle: "Approvals, Adjustments, & Thresholds",

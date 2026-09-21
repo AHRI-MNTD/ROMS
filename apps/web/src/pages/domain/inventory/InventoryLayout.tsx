@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "../../../api/client";
 import { useAuth } from "../../../auth/useAuth";
 import { hasTabAccess } from "../../../auth/permissions";
+import { RequestReferenceRow } from "./RequestReferenceTable";
 
 const tabs = [
   { to: "overview", label: "Overview", icon: "🏠", right: "Overview" },
@@ -12,6 +15,7 @@ const tabs = [
   { to: "check-out", label: "Check Out", icon: "📤", right: "Check Out" },
   { to: "check-out-history", label: "Check-Out", icon: "➖", right: "Check Out History" },
   { to: "requests", label: "Request", icon: "📋", right: "Request/s" },
+  { to: "approved-requests", label: "Approved Requests", icon: "✅", right: "Approved Requests" },
   { to: "inventory-manager", label: "Manager", icon: "👨‍💼", right: "Inventory Manager" },
   { to: "master-data", label: "Master Data", icon: "🗂️", right: "Master Data" },
   { to: "analytics", label: "Analytics", icon: "📈", right: "Analytics" },
@@ -21,6 +25,30 @@ export default function InventoryLayout() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Fetch requests to calculate unseen approved request badge
+  const { data: persistedRequests } = useQuery({
+    queryKey: ["inventory-requests"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/requests");
+      return resp.data as { data: RequestReferenceRow[]; total: number };
+    },
+    refetchInterval: 30000,
+  });
+
+  const unseenApprovedCount = useMemo(() => {
+    const rows = persistedRequests?.data ?? [];
+    const approved = rows.filter((r) => {
+      const status = (r.status ?? "").toUpperCase();
+      return status === "APPROVED" || status === "ACCEPT" || status === "PARTIAL";
+    });
+    let seenMap: Record<string, boolean> = {};
+    try {
+      const saved = localStorage.getItem("roms_seen_approved_requests");
+      if (saved) seenMap = JSON.parse(saved);
+    } catch {}
+    return approved.filter((r) => !seenMap[r.rowKey]).length;
+  }, [persistedRequests?.data]);
 
   // Determine active sub-path (e.g., "", "overview", "dashboard", "current-inventory")
   const pathParts = location.pathname.split("/").filter(Boolean);
@@ -60,6 +88,9 @@ export default function InventoryLayout() {
   } else if (activePath === "requests") {
     title = "Request";
     subtitle = "Submit and track lab staff material requisitions.";
+  } else if (activePath === "approved-requests") {
+    title = "Approved Requests";
+    subtitle = "Inspect approved requisitions, review item details, and disburse supplies to lab staff.";
   } else if (activePath === "inventory-manager") {
     title = "Manager";
     subtitle = "Review pending material requests, approve or adjust quantities.";
@@ -76,18 +107,6 @@ export default function InventoryLayout() {
       {/* ── Sticky header with title + nav tabs (Hidden on overview to let overview show its own hero logo header) ── */}
       {!isOverview && (
         <div className="domain-layout-header" style={{ position: "sticky", top: 0, zIndex: 10 }}>
-          {/* Title and subtitle hidden — nav tabs are self-explanatory */}
-          {/*
-          <div style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "18px", color: "var(--color-text)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {title}
-            </h1>
-            <p style={{ fontSize: "12px", color: "var(--color-text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {subtitle}
-            </p>
-          </div>
-          */}
-
           <nav className="domain-nav-container" aria-label="Inventory sections">
             {visibleTabs.map((tab) => (
               <NavLink
@@ -98,6 +117,24 @@ export default function InventoryLayout() {
               >
                 <span className="nav-icon">{tab.icon}</span>
                 <span className="nav-text">{tab.label}</span>
+                {tab.to === "approved-requests" && unseenApprovedCount > 0 && (
+                  <span
+                    title={`${unseenApprovedCount} unseen approved request(s)`}
+                    style={{
+                      background: "#ef4444",
+                      color: "#ffffff",
+                      borderRadius: "999px",
+                      fontSize: "9.5px",
+                      fontWeight: 800,
+                      padding: "2px 6px",
+                      marginLeft: 5,
+                      lineHeight: 1,
+                      boxShadow: "0 0 8px rgba(239, 68, 68, 0.4)",
+                    }}
+                  >
+                    {unseenApprovedCount}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

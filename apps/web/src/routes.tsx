@@ -17,6 +17,7 @@ const CheckInHistoryPage = lazy(() => import("./pages/domain/inventory/CheckInHi
 const CheckOutPage = lazy(() => import("./pages/domain/inventory/CheckOutPage"));
 const CheckOutHistoryPage = lazy(() => import("./pages/domain/inventory/CheckOutHistoryPage"));
 const RequestsPage = lazy(() => import("./pages/domain/inventory/RequestsPage"));
+const ApprovedRequestsPage = lazy(() => import("./pages/domain/inventory/ApprovedRequestsPage"));
 const InventoryManagerPage = lazy(() => import("./pages/domain/inventory/InventoryManagerPage"));
 const AnalyticsPage = lazy(() => import("./pages/domain/inventory/AnalyticsPage"));
 const MasterDataPage = lazy(() => import("./pages/domain/inventory/MasterDataPage"));
@@ -80,6 +81,7 @@ export const routes: RouteObject[] = [
               { path: "check-out", element: <CheckOutPage /> },
               { path: "check-out-history", element: <CheckOutHistoryPage /> },
               { path: "requests", element: <RequestsPage /> },
+              { path: "approved-requests", element: <ApprovedRequestsPage /> },
               { path: "inventory-manager", element: <InventoryManagerPage /> },
               { path: "analytics", element: <AnalyticsPage /> },
               { path: "master-data", element: <MasterDataPage /> },

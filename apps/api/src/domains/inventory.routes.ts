@@ -8,6 +8,7 @@ import { CreateStockItemSchema, BulkCheckoutSchema, BulkCheckInSchema, Role } fr
 import { logger } from "../utils/logger";
 import { GoogleSheetsSyncService } from "../services/googleSheets.service";
 import { getInventoryDecisionDelta, getSettledRequestQuantity } from "./inventory.settlement";
+import { sendApprovedRequestsNotificationEmail } from "../auth/email";
 
 type InventoryMasterDataRecord = {
   category: string;
@@ -706,8 +707,43 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
       return createdRows;
     });
 
+    // Asynchronously send email notification to inventory worker (Betelihem) and requester for approved items
+    const approvedMovements = created.filter(
+      (m: any) => m.status === "APPROVED" || m.status === "PARTIAL" || m.status === "ACCEPT"
+    );
+    if (approvedMovements.length > 0) {
+      const managerName = (user as any)?.displayName || user?.email || "Inventory Manager";
+      const inventoryWorkerEmail = "betelihemashagrie21@gmail.com";
+      const requesterEmail = requestedBy && requestedBy.includes("@") ? requestedBy.trim() : null;
+
+      const emailPayload = {
+        managerName,
+        project: projectFor,
+        requestedBy: requestedBy || "Staff Member",
+        requestedFor: requestedFor || undefined,
+        items: approvedMovements.map((m: any) => ({
+          name: m.stockItem?.name || "Inventory Item",
+          quantity: Number(m.quantity ?? 0),
+          unit: m.stockItem?.unit || "units",
+          status: m.status,
+        })),
+      };
+
+      // 1. Send email notification to Inventory Worker (Betelihem)
+      sendApprovedRequestsNotificationEmail(inventoryWorkerEmail, emailPayload).catch((err) =>
+        logger.error(err, "Error dispatching approved request email notification to Inventory Worker (Betelihem)")
+      );
+
+      // 2. Send email notification to Requester (if valid email & different from inventory worker)
+      if (requesterEmail && requesterEmail.toLowerCase() !== inventoryWorkerEmail.toLowerCase()) {
+        sendApprovedRequestsNotificationEmail(requesterEmail, emailPayload).catch((err) =>
+          logger.error(err, "Error dispatching approved request email notification to Requester")
+        );
+      }
+    }
+
     res.status(201).json({
-      data: created.map((movement) =>
+      data: created.map((movement: any) =>
         mapMovementToRequestRow({
           ...movement,
           stockItem: movement.stockItem,

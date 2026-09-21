@@ -3,7 +3,7 @@ import { DOMAIN_CATALOG } from "@roms/shared";
 export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   LAB_SCIENTIST: {
     biospecimen: ["Dashboard", "Sample Collection", "Processing"],
-    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s"],
+    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests"],
     "lab-workflow": ["Dashboard", "Protocols", "Experiments"],
     "data-management": ["Dashboard"],
     qms: ["Dashboard", "Author"],
@@ -18,7 +18,7 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
-    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
+    inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data"],
     qms: ["Dashboard", "Author", "Quality Officer", "Audits", "CAPA"],
     hr: ["Dashboard", "Profiles"],
     finance: ["Dashboard", "Grants", "Budgets"],
@@ -34,7 +34,7 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
     "lab-workflow": ["Dashboard", "Runs"],
     "data-management": ["Dashboard", "Studies", "Analytics"],
     hr: ["Dashboard"],
-    finance: ["Dashboard", "Grants"],
+    finance: ["Dashboard"],
     participant: ["Dashboard", "Participants"],
     regulatory: ["Dashboard", "Approvals"],
     infrastructure: ["Dashboard"],
@@ -144,6 +144,7 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "check-out": "Check Out",
     "check-out-history": "Check Out History",
     "requests": "Request/s",
+    "approved-requests": "Approved Requests",
     "inventory-manager": "Inventory Manager",
     "analytics": "Analytics",
     "master-data": "Master Data",
@@ -181,7 +182,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
       if (perm === "admin:all") {
         const DOMAIN_RIGHTS: Record<string, string[]> = {
           biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-          inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
+          inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data"],
           qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
           "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
           "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -211,7 +212,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
     // Admin has all rights
     const DOMAIN_RIGHTS: Record<string, string[]> = {
       biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-      inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
+      inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data"],
       qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
       "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
       "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -276,6 +277,23 @@ export function hasTabAccess(roles: string[] | undefined, domainSlug: string, ta
 
   // If we have a specific tab slug, check the exact right required for that tab
   if (tabSlug && TAB_RIGHTS_MAP[domainSlug]) {
+    // Special access check for approved-requests tab: allow if user has "Check In", "Check Out", "Request/s", "Approved Requests", or "Inventory Manager"
+    if (domainSlug === "inventory" && tabSlug === "approved-requests") {
+      const rights = getUserRights(roles, permissions);
+      const invRights = rights["inventory"];
+      if (invRights) {
+        if (
+          invRights.has("Check In") ||
+          invRights.has("Check Out") ||
+          invRights.has("Request/s") ||
+          invRights.has("Approved Requests") ||
+          invRights.has("Inventory Manager")
+        ) {
+          return true;
+        }
+      }
+    }
+
     const requiredRight = TAB_RIGHTS_MAP[domainSlug][tabSlug];
     if (requiredRight) {
       const rights = getUserRights(roles, permissions);
