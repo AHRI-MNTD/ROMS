@@ -47,7 +47,9 @@ function MasterDataCombobox({
 
   const filteredOptions = React.useMemo(() => {
     const q = value.trim().toLowerCase();
-    if (!q) return options;
+    if (!q || options.some((opt) => opt.toLowerCase() === q)) {
+      return options;
+    }
     const matches = options.filter((opt) => opt.toLowerCase().includes(q));
     return matches.length > 0 ? matches : options;
   }, [options, value]);
