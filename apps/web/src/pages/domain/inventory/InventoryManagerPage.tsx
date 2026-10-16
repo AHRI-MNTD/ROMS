@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getErrorMessage } from "../../../api/client";
 import { useAuth } from "../../../auth/useAuth";
 import { RequestReferenceTable, RequestReferenceRow } from "./RequestReferenceTable";
+import { isInventoryViewOnly } from "../../../auth/permissions";
+import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 export function getApproverForProject(project?: string | null): string {
   if (!project) return "Assalif Demissew";
@@ -170,6 +172,7 @@ function IconBtn({
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 export default function InventoryManagerPage() {
   const user = useAuth((state) => state.user);
+  const isViewOnly = isInventoryViewOnly(user?.roles, user?.permissions);
   const isAdmin = user?.roles?.some((role) => ["ADMIN", "RESEARCH_ADMIN"].includes(role)) ?? false;
   const queryClient = useQueryClient();
 
@@ -324,6 +327,12 @@ export default function InventoryManagerPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {isViewOnly && (
+        <ViewOnlyBanner
+          pageName="Inventory Manager"
+          description="You are reviewing the Manager Approval Queue in study mode. Approval actions and quantity adjustments are restricted to assigned project PIs."
+        />
+      )}
       {/* Feedback Banner */}
       {feedback && (
         <div
@@ -508,24 +517,26 @@ export default function InventoryManagerPage() {
                                   <circle cx="12" cy="12" r="3" />
                                 </svg>
                               </IconBtn>
-                              {/* Direct Approve Icon */}
-                              <IconBtn
-                                title={canUserApprove ? "Approve directly" : `Only assigned approver (${entryApprover}) can approve`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!canUserApprove) {
-                                    setFeedback({ type: "error", message: `Authorization required: Only assigned approver (${entryApprover}) can approve this request.` });
-                                    return;
-                                  }
-                                  quickApproveMutation.mutate(entry);
-                                }}
-                                color={canUserApprove ? "#16a34a" : "#94a3b8"}
-                                hoverBg={canUserApprove ? "rgba(22,163,74,0.1)" : "rgba(148,163,184,0.1)"}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              </IconBtn>
+                              {/* Direct Approve Icon (Hidden for View-Only users) */}
+                              {!isViewOnly && (
+                                <IconBtn
+                                  title={canUserApprove ? "Approve directly" : `Only assigned approver (${entryApprover}) can approve`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!canUserApprove) {
+                                      setFeedback({ type: "error", message: `Authorization required: Only assigned approver (${entryApprover}) can approve this request.` });
+                                      return;
+                                    }
+                                    quickApproveMutation.mutate(entry);
+                                  }}
+                                  color={canUserApprove ? "#16a34a" : "#94a3b8"}
+                                  hoverBg={canUserApprove ? "rgba(22,163,74,0.1)" : "rgba(148,163,184,0.1)"}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </IconBtn>
+                              )}
                             </div>
                           </td>
                         </tr>

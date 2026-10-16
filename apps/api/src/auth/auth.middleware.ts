@@ -104,6 +104,10 @@ export function requirePermission(action: DomainAction) {
     }
     const hasRolePermission = req.user.roles.some((r) => hasPermission(r as Role, action));
     
+    const isInventoryViewOnly = (req.user.permissions || []).some(
+      (p) => p.toLowerCase() === "inventory:view-only"
+    );
+
     // Map custom domain-level right names (e.g. "inventory:Check In") to backend read/write permissions
     const expandedPermissions = (req.user.permissions || []).flatMap((perm) => {
       if (perm === "admin:all") return ["admin:all"];
@@ -121,7 +125,7 @@ export function requirePermission(action: DomainAction) {
       const writeRights: Record<string, string[]> = {
         biospecimen: ["Sample Collection", "Processing", "Storage", "Retrieval", "Disposal"],
         inventory: ["Check In", "Check Out", "Request/s"],
-        qms: ["Document Control", "Audits", "CAPA", "Training"],
+        qms: ["Document Control", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
         "lab-workflow": ["Protocols", "Experiments", "Runs", "Instruments", "Reports"],
         "data-management": ["Studies", "Metadata", "Data Dictionary", "Exports", "Integrations"],
         infrastructure: ["Services", "Servers", "Monitoring", "Incidents", "Integrations"],
@@ -131,7 +135,10 @@ export function requirePermission(action: DomainAction) {
         regulatory: ["Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting"],
       };
       
-      if (writeRights[domain]?.includes(right)) {
+      // If user has View-Only flag on inventory, block inventory:write
+      if (domain === "inventory" && isInventoryViewOnly) {
+        // Only read access permitted
+      } else if (writeRights[domain]?.includes(right)) {
         mapped.push(`${domain}:write`);
       }
       

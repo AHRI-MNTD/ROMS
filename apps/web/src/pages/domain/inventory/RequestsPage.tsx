@@ -5,6 +5,8 @@ import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { RequestReferenceTable } from "./RequestReferenceTable";
+import { isInventoryViewOnly } from "../../../auth/permissions";
+import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 interface MasterDataComboboxProps {
   label: string;
@@ -180,6 +182,7 @@ export function getApproverForProject(project?: string | null): string {
 
 export default function RequestsPage() {
   const user = useAuth((state) => state.user);
+  const isViewOnly = isInventoryViewOnly(user?.roles, user?.permissions);
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
@@ -322,6 +325,12 @@ export default function RequestsPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {isViewOnly && (
+        <ViewOnlyBanner
+          pageName="Material Request"
+          description="You have view-only access to observe the Material Requisition workflow and audit request history. Requisition submissions are disabled."
+        />
+      )}
       {/* Request Form & Batch Cart */}
       <div
         style={{
@@ -593,6 +602,8 @@ export default function RequestsPage() {
                 setRequestQty(1);
                 setNote("");
               }}
+              disabled={isViewOnly}
+              title={isViewOnly ? "Requisition entry is disabled in View-Only mode" : undefined}
               style={{
                 border: "1px solid var(--color-border)",
                 background: "var(--color-surface)",
@@ -601,7 +612,8 @@ export default function RequestsPage() {
                 padding: "8px 12px",
                 fontSize: "var(--fs-xs)",
                 fontWeight: 700,
-                cursor: 'pointer',
+                cursor: isViewOnly ? "not-allowed" : "pointer",
+                opacity: isViewOnly ? 0.5 : 1,
               }}
             >
               ➕ Add to Cart
@@ -722,7 +734,8 @@ export default function RequestsPage() {
                   setFeedback(null);
                   bulkRequestMutation.mutate(cartItems);
                 }}
-                disabled={bulkRequestMutation.isPending}
+                disabled={isViewOnly || bulkRequestMutation.isPending}
+                title={isViewOnly ? "Requisition submission is disabled in View-Only mode" : undefined}
                 style={{
                   border: "1px solid var(--color-border)",
                   background: "var(--color-primary)",
@@ -731,7 +744,8 @@ export default function RequestsPage() {
                   padding: "8px 12px",
                   fontSize: "var(--fs-xs)",
                   fontWeight: 700,
-                  cursor: bulkRequestMutation.isPending ? "not-allowed" : "pointer",
+                  cursor: isViewOnly || bulkRequestMutation.isPending ? "not-allowed" : "pointer",
+                  opacity: isViewOnly ? 0.5 : 1,
                 }}
               >
                 {bulkRequestMutation.isPending ? "Submitting..." : "Submit"}

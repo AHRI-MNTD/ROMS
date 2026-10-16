@@ -33,11 +33,12 @@ const INVENTORY_RIGHT_OPTIONS: RightOption[] = [
   { label: "Inventory Manager", rights: ["Inventory Manager"] },
   { label: "Analytics", rights: ["Analytics"] },
   { label: "Master Data", rights: ["Master Data"] },
+  { label: "View-Only Mode (Read-Only)", rights: ["View-Only"] },
 ];
 
 const DOMAIN_RIGHTS: Record<string, string[]> = {
   biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Check In History", "Check Out History", "Request/s", "Inventory Manager", "Analytics", "Master Data"],
+  inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Check In History", "Check Out History", "Request/s", "Inventory Manager", "Analytics", "Master Data", "View-Only"],
   qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
   "lab-workflow": ["Dashboard", "Protocols", "Instruments", "Experiments", "Runs", "Reports", "Analytics"],
   "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],

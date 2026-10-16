@@ -4,6 +4,9 @@ import { apiClient, getErrorMessage } from "../../../api/client";
 import { useInventoryData } from "./useInventoryData";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { CheckInReferenceTable } from "./CheckInReferenceTable";
+import { useAuth } from "../../../auth/useAuth";
+import { isInventoryViewOnly } from "../../../auth/permissions";
+import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 type CheckInMode = "existing" | "new";
 
@@ -167,6 +170,8 @@ function MasterDataCombobox({
 }
 
 export default function CheckInPage() {
+  const user = useAuth((state) => state.user);
+  const isViewOnly = isInventoryViewOnly(user?.roles, user?.permissions);
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
@@ -397,6 +402,12 @@ export default function CheckInPage() {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {isViewOnly && (
+        <ViewOnlyBanner
+          pageName="Check-In"
+          description="You have view-only access to inspect the Check-In workflow and audit reference history. Creating new stock entries is disabled."
+        />
+      )}
       <div
         style={{
           padding: 18,
@@ -1071,6 +1082,8 @@ export default function CheckInPage() {
                   setNewExpiryDate("");
                 }
               }}
+              disabled={isViewOnly}
+              title={isViewOnly ? "Check-in entry is disabled in View-Only mode" : undefined}
               style={{
                 border: "1px solid var(--color-border)",
                 background: "var(--color-surface)",
@@ -1079,7 +1092,8 @@ export default function CheckInPage() {
                 padding: "8px 14px",
                 fontSize: "var(--fs-xs)",
                 fontWeight: 700,
-                cursor: "pointer",
+                cursor: isViewOnly ? "not-allowed" : "pointer",
+                opacity: isViewOnly ? 0.5 : 1,
               }}
             >
               ➕ Add to Cart
@@ -1261,7 +1275,8 @@ export default function CheckInPage() {
                   });
                   bulkCheckInMutation.mutate(payload);
                 }}
-                disabled={bulkCheckInMutation.isPending}
+                disabled={isViewOnly || bulkCheckInMutation.isPending}
+                title={isViewOnly ? "Check-in submission is disabled in View-Only mode" : undefined}
                 style={{
                   border: "1px solid var(--color-border)",
                   background: "var(--color-primary)",
@@ -1270,7 +1285,8 @@ export default function CheckInPage() {
                   padding: "8px 16px",
                   fontSize: "var(--fs-xs)",
                   fontWeight: 700,
-                  cursor: bulkCheckInMutation.isPending ? "not-allowed" : "pointer",
+                  cursor: isViewOnly || bulkCheckInMutation.isPending ? "not-allowed" : "pointer",
+                  opacity: isViewOnly ? 0.5 : 1,
                 }}
               >
                 {bulkCheckInMutation.isPending ? "Submitting..." : "Submit Batch"}

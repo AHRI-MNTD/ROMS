@@ -5,6 +5,8 @@ import { useInventoryData } from "./useInventoryData";
 import { useAuth } from "../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { CheckOutReferenceTable } from "./CheckOutReferenceTable";
+import { isInventoryViewOnly } from "../../../auth/permissions";
+import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 interface LabelOverrides {
   mainTitle?: string;
@@ -19,6 +21,7 @@ interface CheckOutPageProps {
 
 export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps = {}) {
   const user = useAuth((state) => state.user);
+  const isViewOnly = isInventoryViewOnly(user?.roles, user?.permissions);
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
@@ -207,6 +210,12 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {isViewOnly && (
+        <ViewOnlyBanner
+          pageName="Check-Out"
+          description="You have view-only access to inspect the Check-Out workflow and disbursement history. Submitting checkout requests is disabled."
+        />
+      )}
       <div
         style={{
           padding: 18,
@@ -422,6 +431,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 setCheckOutQty(1);
                 setNote("");
               }}
+              disabled={isViewOnly}
+              title={isViewOnly ? "Checkout entry is disabled in View-Only mode" : undefined}
               style={{
                 border: "1px solid var(--color-border)",
                 background: "var(--color-surface)",
@@ -430,7 +441,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                 padding: "8px 12px",
                 fontSize: "var(--fs-xs)",
                 fontWeight: 700,
-                cursor: "pointer",
+                cursor: isViewOnly ? "not-allowed" : "pointer",
+                opacity: isViewOnly ? 0.5 : 1,
               }}
             >
               ➕ Add to Cart
@@ -542,7 +554,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                   }));
                   bulkCheckoutMutation.mutate(payload);
                 }}
-                disabled={bulkCheckoutMutation.isPending}
+                disabled={isViewOnly || bulkCheckoutMutation.isPending}
+                title={isViewOnly ? "Checkout submission is disabled in View-Only mode" : undefined}
                 style={{
                   border: "1px solid var(--color-border)",
                   background: "var(--color-primary)",
@@ -551,7 +564,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                   padding: "8px 16px",
                   fontSize: "var(--fs-xs)",
                   fontWeight: 700,
-                  cursor: bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
+                  cursor: isViewOnly || bulkCheckoutMutation.isPending ? "not-allowed" : "pointer",
+                  opacity: isViewOnly ? 0.5 : 1,
                 }}
               >
                 {bulkCheckoutMutation.isPending ? "Submitting..." : "Submit"}

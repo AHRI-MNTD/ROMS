@@ -152,11 +152,16 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
   qms: {
     "overview": "Dashboard",
     "sops": "Dashboard",
+    "library": "Dashboard",
     "resources": "Dashboard",
+    "guidelines": "Dashboard",
     "author": "Author",
+    "authoring": "Author",
     "create-sop": "Author",
     "qo": "Quality Officer",
+    "controls": "Quality Officer",
     "review-sop": "Authorizer",
+    "approval": "Authorizer",
   },
   hr: {
     "dashboard": "Dashboard",
@@ -182,7 +187,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
       if (perm === "admin:all") {
         const DOMAIN_RIGHTS: Record<string, string[]> = {
           biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-          inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data"],
+          inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data", "View-Only"],
           qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
           "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
           "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -212,7 +217,7 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
     // Admin has all rights
     const DOMAIN_RIGHTS: Record<string, string[]> = {
       biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
-      inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data"],
+      inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data", "View-Only"],
       qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
       "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
       "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
@@ -272,22 +277,35 @@ export function hasSubfunctionAccess(roles: string[] | undefined, domainSlug: st
   return hasDomainAccess(roles, domainSlug, permissions);
 }
 
+export function isInventoryViewOnly(roles?: string[], permissions?: string[]): boolean {
+  if (roles?.some((r) => ["ADMIN", "RESEARCH_ADMIN"].includes(r)) || permissions?.includes("admin:all")) {
+    return false;
+  }
+  return permissions?.some((p) => p.toLowerCase() === "inventory:view-only") ?? false;
+}
+
 export function hasTabAccess(roles: string[] | undefined, domainSlug: string, tabSlug?: string, permissions?: string[]): boolean {
   if (roles?.includes("ADMIN") || permissions?.includes("admin:all")) return true;
 
   // If we have a specific tab slug, check the exact right required for that tab
   if (tabSlug && TAB_RIGHTS_MAP[domainSlug]) {
-    // Special access check for approved-requests tab: allow if user has "Check In", "Check Out", "Request/s", "Approved Requests", or "Inventory Manager"
-    if (domainSlug === "inventory" && tabSlug === "approved-requests") {
+    if (domainSlug === "inventory") {
       const rights = getUserRights(roles, permissions);
       const invRights = rights["inventory"];
-      if (invRights) {
+      if (tabSlug === "check-in-history" && (invRights?.has("Check In") || invRights?.has("Check In History"))) {
+        return true;
+      }
+      if (tabSlug === "check-out-history" && (invRights?.has("Check Out") || invRights?.has("Check Out History"))) {
+        return true;
+      }
+      // Special access check for approved-requests tab: allow if user has "Check In", "Check Out", "Request/s", "Approved Requests", or "Inventory Manager"
+      if (tabSlug === "approved-requests") {
         if (
-          invRights.has("Check In") ||
-          invRights.has("Check Out") ||
-          invRights.has("Request/s") ||
-          invRights.has("Approved Requests") ||
-          invRights.has("Inventory Manager")
+          invRights?.has("Check In") ||
+          invRights?.has("Check Out") ||
+          invRights?.has("Request/s") ||
+          invRights?.has("Approved Requests") ||
+          invRights?.has("Inventory Manager")
         ) {
           return true;
         }
