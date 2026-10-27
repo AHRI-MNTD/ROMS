@@ -38,7 +38,7 @@ export default function ApprovedRequestsPage() {
   const { data: persistedRequests, isLoading, refetch } = useQuery({
     queryKey: ["inventory-requests"],
     queryFn: async () => {
-      const resp = await apiClient.get("/domains/inventory/requests");
+      const resp = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } });
       return resp.data as { data: RequestReferenceRow[]; total: number };
     },
   });
@@ -104,6 +104,15 @@ export default function ApprovedRequestsPage() {
 
   const toggleGroupIssued = async (group: ApprovedRequestGroup) => {
     const nextStatus = !group.allIssued;
+    let reversalReason = "";
+    if (!nextStatus) {
+      const reason = window.prompt("Reversing a recorded disbursement requires a documented reason for audit compliance. Please provide a reason:");
+      if (!reason || !reason.trim()) {
+        return;
+      }
+      reversalReason = reason.trim();
+    }
+
     setIssuedItemsMap((prev) => {
       const next = { ...prev };
       group.rows.forEach((row) => { next[row.rowKey] = nextStatus; });
@@ -112,11 +121,16 @@ export default function ApprovedRequestsPage() {
 
     try {
       await Promise.all(group.rows.filter((row) => row.movementId).map((row) =>
-        apiClient.patch(`/domains/inventory/requests/${row.movementId}/disburse`, { disbursed: nextStatus })
+        apiClient.patch(`/domains/inventory/requests/${row.movementId}/disburse`, {
+          disbursed: nextStatus,
+          reason: !nextStatus ? reversalReason : undefined,
+        })
       ));
       await queryClient.invalidateQueries({ queryKey: ["inventory-requests"] });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to update handoff status for request:", err);
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to update handoff status";
+      alert(errMsg);
       setIssuedItemsMap((prev) => {
         const next = { ...prev };
         group.rows.forEach((row) => { delete next[row.rowKey]; });

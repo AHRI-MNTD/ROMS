@@ -45,7 +45,7 @@ export default function InventoryDashboardPage() {
 
   const { data: requestsData, isLoading: isRequestsLoading, refetch: refetchRequests } = useQuery({
     queryKey: ["inventory-requests"],
-    queryFn: async () => { const resp = await apiClient.get("/domains/inventory/requests"); return resp.data; },
+    queryFn: async () => { const resp = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } }); return resp.data; },
     refetchInterval: 30000,
   });
 

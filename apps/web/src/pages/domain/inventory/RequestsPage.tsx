@@ -184,7 +184,7 @@ export default function RequestsPage() {
   const user = useAuth((state) => state.user);
   const isViewOnly = isInventoryViewOnly(user?.roles, user?.permissions);
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
+  const { data, isLoading, error } = useInventoryData({ all: true });
 
   // Fetch Master Data Options for Units
   const { data: masterOptionsData } = useQuery({

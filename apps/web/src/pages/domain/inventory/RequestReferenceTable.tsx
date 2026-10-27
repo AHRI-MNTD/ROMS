@@ -63,7 +63,7 @@ export function RequestReferenceTable() {
   const { data: persistedRequests, isLoading } = useQuery({
     queryKey: ["inventory-requests"],
     queryFn: async () => {
-      const resp = await apiClient.get("/domains/inventory/requests");
+      const resp = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } });
       return resp.data as { data: RequestReferenceRow[]; total: number };
     },
   });

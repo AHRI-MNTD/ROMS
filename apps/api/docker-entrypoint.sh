@@ -7,9 +7,9 @@ echo "================================================"
 
 echo "==> Step 1: Applying Database Schema & Migrations..."
 if [ "$NODE_ENV" = "production" ]; then
-  pnpm exec prisma migrate deploy --schema=packages/db/prisma/schema.prisma || pnpm exec prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss
+  pnpm exec prisma migrate deploy --schema=packages/db/prisma/schema.prisma
 else
-  pnpm exec prisma db push --schema=packages/db/prisma/schema.prisma --accept-data-loss
+  pnpm exec prisma db push --schema=packages/db/prisma/schema.prisma
 fi
 
 echo "==> Step 2: Checking Seeding Configuration..."

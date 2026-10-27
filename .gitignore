@@ -9,6 +9,7 @@ node_modules/
 dist/
 build/
 coverage/
+*.tsbuildinfo
 
 # Vite
 dist/
@@ -19,6 +20,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
+
+# TLS & SSL certificates
+infra/nginx/certs/*
+!infra/nginx/certs/.gitkeep
+*.pem
+*.key
+*.crt
+*.srl
 
 # Scratch
 scratch/

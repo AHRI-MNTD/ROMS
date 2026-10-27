@@ -37,8 +37,8 @@ export function createRateLimiter(options: RateLimitOptions) {
   }, windowMs).unref?.();
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const rawIp = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "unknown";
-    const ip = rawIp.split(",")[0].trim();
+    // Rely on req.ip (populated safely via app.set('trust proxy', 1))
+    const ip = req.ip || (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
     const now = Date.now();
     const record = requests.get(ip);
 
@@ -87,6 +87,20 @@ export function requireRole(...roles: Role[]) {
       res.status(401).json({ code: "UNAUTHORIZED", message: "Not authenticated" });
       return;
     }
+
+    const isInventoryViewOnly = (req.user.permissions || []).some(
+      (p) => p.toLowerCase() === "inventory:view-only"
+    );
+    // If request targets an inventory write/mutation route, view-only users are forbidden even with admin role
+    const isMutationMethod = req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE";
+    if (isInventoryViewOnly && isMutationMethod && (req.baseUrl.includes("/inventory") || req.originalUrl.includes("/inventory"))) {
+      res.status(403).json({
+        code: "FORBIDDEN",
+        message: "Your account is configured in View-Only mode for the Inventory module. Write operations are disabled.",
+      });
+      return;
+    }
+
     const allowed = roles.some((r) => req.user!.roles.includes(r));
     if (!allowed) {
       res.status(403).json({ code: "FORBIDDEN", message: "Insufficient role" });
@@ -108,8 +122,8 @@ export function requirePermission(action: DomainAction) {
       (p) => p.toLowerCase() === "inventory:view-only"
     );
 
-    // If the account has the inventory:view-only permission, strictly prohibit any inventory write or delete mutation regardless of base role
-    if (isInventoryViewOnly && (action === "inventory:write" || action === "inventory:delete")) {
+    // If the account has the inventory:view-only permission, strictly prohibit any inventory write or mutation
+    if (isInventoryViewOnly && action.startsWith("inventory:") && action !== "inventory:read") {
       res.status(403).json({
         code: "FORBIDDEN",
         message: "Your account is configured in View-Only mode for the Inventory module. Write operations are disabled.",
@@ -117,7 +131,7 @@ export function requirePermission(action: DomainAction) {
       return;
     }
 
-    // Map custom domain-level right names (e.g. "inventory:Check In") to backend read/write permissions
+    // Map custom domain-level right names (e.g. "inventory:Check In") to backend permissions
     const expandedPermissions = (req.user.permissions || []).flatMap((perm) => {
       if (perm === "admin:all") return ["admin:all"];
       
@@ -130,10 +144,35 @@ export function requirePermission(action: DomainAction) {
       // Having any specific right inside a domain grants read access to that domain
       mapped.push(`${domain}:read`);
       
+      // Specific inventory rights
+      if (domain === "inventory") {
+        if (!isInventoryViewOnly) {
+          if (right === "Request/s") {
+            mapped.push("inventory:request");
+          } else if (right === "Check In") {
+            mapped.push("inventory:check-in");
+          } else if (right === "Check Out") {
+            mapped.push("inventory:check-out");
+          } else if (right === "Inventory Manager") {
+            mapped.push(
+              "inventory:write",
+              "inventory:check-in",
+              "inventory:check-out",
+              "inventory:request",
+              "inventory:approve",
+              "inventory:disburse",
+              "inventory:manage"
+            );
+          } else if (right === "Master Data") {
+            mapped.push("inventory:manage");
+          }
+        }
+        return mapped;
+      }
+
       // Specific rights that involve writing or modifying data
       const writeRights: Record<string, string[]> = {
         biospecimen: ["Sample Collection", "Processing", "Storage", "Retrieval", "Disposal"],
-        inventory: ["Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
         qms: ["Document Control", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
         "lab-workflow": ["Protocols", "Experiments", "Runs", "Instruments", "Reports"],
         "data-management": ["Studies", "Metadata", "Data Dictionary", "Exports", "Integrations"],
@@ -144,10 +183,7 @@ export function requirePermission(action: DomainAction) {
         regulatory: ["Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting"],
       };
       
-      // If user has View-Only flag on inventory, block inventory:write
-      if (domain === "inventory" && isInventoryViewOnly) {
-        // Only read access permitted
-      } else if (writeRights[domain]?.includes(right)) {
+      if (writeRights[domain]?.includes(right)) {
         mapped.push(`${domain}:write`);
       }
       

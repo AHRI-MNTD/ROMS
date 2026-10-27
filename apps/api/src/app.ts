@@ -32,6 +32,9 @@ export async function buildApp() {
   const app = express();
   const httpServer = createServer(app);
 
+  // Trust first proxy (e.g. Nginx reverse proxy) for secure client IP extraction
+  app.set("trust proxy", 1);
+
   // ─── Security & middleware ──────────────────────────────────────────────────
   app.use(
     helmet({

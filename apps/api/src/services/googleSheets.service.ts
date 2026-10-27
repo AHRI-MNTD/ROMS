@@ -393,6 +393,21 @@ export class GoogleSheetsSyncService {
 
           const dateStr = row[8]?.trim();
           const occurredAt = dateStr && !isNaN(Date.parse(dateStr)) ? new Date(dateStr) : new Date();
+          const projectFor = row[7]?.trim() || "ROMS Inventory";
+          const rowRemark = row[10]?.trim() || "Synced from Google Sheets Check-in";
+          const syncIdTag = `[GSHEET_ROW:Check-in:${i}:${sku}:${quantity}:${dateStr || ""}]`;
+
+          // Deduplication: prevent duplicate insertions on repeated sync
+          const existingMovement = await prismaClient.inventoryMovement.findFirst({
+            where: {
+              stockItemId: stockItem.id,
+              movementType: "CHECK_IN",
+              remark: { contains: syncIdTag },
+            },
+          });
+          if (existingMovement) {
+            continue;
+          }
 
           await prismaClient.inventoryMovement.create({
             data: {
@@ -400,9 +415,9 @@ export class GoogleSheetsSyncService {
               movementType: "CHECK_IN",
               quantity,
               requestedBy: "Google Sheets Sync",
-              projectFor: row[7]?.trim() || "ROMS Inventory",
+              projectFor,
               status: "APPROVED",
-              remark: row[10]?.trim() || "Synced from Google Sheets Check-in",
+              remark: `${rowRemark} · ${syncIdTag}`,
               occurredAt,
             },
           });
@@ -445,16 +460,32 @@ export class GoogleSheetsSyncService {
 
           const dateStr = row[7]?.trim();
           const occurredAt = dateStr && !isNaN(Date.parse(dateStr)) ? new Date(dateStr) : new Date();
+          const requestedBy = row[8]?.trim() || "Google Sheets Sync";
+          const projectFor = row[9]?.trim() || "ROMS Inventory";
+          const rowRemark = row[10]?.trim() || "Synced from Google Sheets Check-out";
+          const syncIdTag = `[GSHEET_ROW:Check-out:${i}:${sku}:${quantity}:${dateStr || ""}]`;
+
+          // Deduplication: prevent duplicate insertions on repeated sync
+          const existingMovement = await prismaClient.inventoryMovement.findFirst({
+            where: {
+              stockItemId: stockItem.id,
+              movementType: "CHECK_OUT",
+              remark: { contains: syncIdTag },
+            },
+          });
+          if (existingMovement) {
+            continue;
+          }
 
           await prismaClient.inventoryMovement.create({
             data: {
               stockItemId: stockItem.id,
               movementType: "CHECK_OUT",
               quantity,
-              requestedBy: row[8]?.trim() || "Google Sheets Sync",
-              projectFor: row[9]?.trim() || "ROMS Inventory",
+              requestedBy,
+              projectFor,
               status: "APPROVED",
-              remark: row[10]?.trim() || "Synced from Google Sheets Check-out",
+              remark: `${rowRemark} · ${syncIdTag}`,
               occurredAt,
             },
           });

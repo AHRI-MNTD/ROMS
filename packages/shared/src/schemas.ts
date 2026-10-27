@@ -163,6 +163,7 @@ export const BulkCheckoutItemSchema = z.object({
   quantity: z.number().int().positive(),
   projectFor: z.string().optional().nullable(),
   requestedBy: z.string().optional().nullable(),
+  lotNumber: z.string().max(64).optional().nullable(),
   remark: z.string().optional().nullable(),
 });
 
@@ -185,6 +186,7 @@ export const BulkCheckInItemSchema = z.object({
   quantity: z.number().int().positive(),
   minThreshold: z.number().int().nonnegative().optional().nullable(),
   projectFor: z.string().optional().nullable(),
+  lotNumber: z.string().max(64).optional().nullable(),
   dateReceived: z.coerce.date().optional().nullable(),
   expiryDate: z.coerce.date().optional().nullable(),
   remark: z.string().optional().nullable(),
@@ -199,6 +201,40 @@ export const BulkCheckInSchema = z.object({
 });
 
 export type BulkCheckInInput = z.infer<typeof BulkCheckInSchema>;
+
+export const CreateInventoryRequestItemSchema = z.object({
+  id: z.string().min(1),
+  quantity: z.number().int().positive(),
+  unit: z.string().max(32).optional().nullable(),
+  unitDescription: z.string().max(128).optional().nullable(),
+  remark: z.string().max(500).optional().nullable(),
+  lotNumber: z.string().max(64).optional().nullable(),
+});
+
+export const CreateInventoryRequestSchema = z.object({
+  items: z.array(CreateInventoryRequestItemSchema).min(1),
+  project: z.string().max(128).optional().nullable(),
+  requestedFor: z.string().max(128).optional().nullable(),
+  team: z.string().max(128).optional().nullable(),
+  timestamp: z.coerce.date().optional().nullable(),
+});
+
+export type CreateInventoryRequestInput = z.infer<typeof CreateInventoryRequestSchema>;
+
+export const InventoryDecisionItemSchema = z.object({
+  movementId: z.string().min(1),
+  id: z.string().optional().nullable(), // Allow optional stock item id
+  status: z.enum(["APPROVED", "REJECTED", "PARTIAL"]),
+  acceptedQuantity: z.number().int().nonnegative().optional().nullable(),
+  remark: z.string().max(500).optional().nullable(),
+});
+
+export const InventoryDecisionSchema = z.object({
+  items: z.array(InventoryDecisionItemSchema).min(1),
+  timestamp: z.coerce.date().optional().nullable(),
+});
+
+export type InventoryDecisionInput = z.infer<typeof InventoryDecisionSchema>;
 
 // ─── HR ───────────────────────────────────────────────────────────────────────
 

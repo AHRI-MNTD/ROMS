@@ -146,7 +146,7 @@ export default function DashboardPage() {
   });
   const { data: requestsRes, isLoading: reqLoading } = useQuery({
     queryKey: ["dashboard/requests"],
-    queryFn: async () => { const r = await apiClient.get("/domains/inventory/requests"); return r.data; },
+    queryFn: async () => { const r = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } }); return r.data; },
     enabled: isAdminLike,
     refetchInterval: 60000,
   });

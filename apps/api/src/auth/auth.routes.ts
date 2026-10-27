@@ -170,12 +170,9 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response) => {
         });
       }
 
-      logger.info(`
-==================================================
-📬 [MOCK EMAIL] Verification Code for ${user.email}:
-👉 Code: ${code}
-==================================================
-      `);
+      if (env.NODE_ENV === "development") {
+        logger.info(`📬 [DEV ONLY] Verification Code generated for ${user.email}: ${code}`);
+      }
 
       try {
         await sendVerificationEmail(user.email, code);

@@ -250,6 +250,8 @@ model InventoryMovement {
   team         String?
   approver     String?
   status       InventoryMovementStatus @default(APPROVED)
+  lotNumber    String?
+  expiryDate   DateTime?
   decisionAt   DateTime?
   remark       String?
   occurredAt   DateTime                @default(now())
@@ -260,6 +262,8 @@ model InventoryMovement {
   @@index([stockItemId])
   @@index([movementType])
   @@index([occurredAt])
+  @@index([lotNumber])
+  @@index([expiryDate])
 }
 
 model Equipment {

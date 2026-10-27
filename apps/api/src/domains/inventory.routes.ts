@@ -4,13 +4,20 @@ import prisma, { Prisma } from "@roms/db";
 import { randomUUID } from "node:crypto";
 import { requireAuth, requirePermission, requireRole } from "../auth/auth.middleware";
 import { auditMutation } from "../audit/audit.middleware";
-import { CreateStockItemSchema, BulkCheckoutSchema, BulkCheckInSchema, Role } from "@roms/shared";
+import { 
+  CreateStockItemSchema, 
+  BulkCheckoutSchema, 
+  BulkCheckInSchema, 
+  CreateInventoryRequestSchema,
+  InventoryDecisionSchema,
+  Role 
+} from "@roms/shared";
 import { logger } from "../utils/logger";
 import { GoogleSheetsSyncService } from "../services/googleSheets.service";
 import { getInventoryDecisionDelta, getSettledRequestQuantity } from "./inventory.settlement";
 import { sendApprovedRequestsNotificationEmail } from "../auth/email";
 import { env } from "../env";
-import { createAuditEntry } from "../audit/audit.service";
+import { createAuditEntry, createAuditEntryTx } from "../audit/audit.service";
 
 type InventoryMasterDataRecord = {
   category: string;
@@ -58,51 +65,174 @@ type InventoryMovementRecord = {
   createdAt?: Date;
 };
 
-export function getApproverForProject(project?: string | null): string {
-  if (!project) return "Assalif Demissew";
-  const p = project.toUpperCase();
-  if (p.includes("TES")) {
-    return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
+export type ResolvedApprover = {
+  id: string;
+  displayName: string;
+  email: string;
+};
+
+/**
+ * Resolves authorized approvers strictly from the database for a given project.
+ * No hardcoded name fallbacks.
+ * 1. Checks Study table for assigned PI.
+ * 2. Checks StaffProfile table for users assigned to the project with approval authority.
+ * 3. Falls back strictly to active administrators queried from the database User table.
+ */
+export async function resolveApproversForProject(project?: string | null): Promise<ResolvedApprover[]> {
+  const normalizedProject = (project || "").trim();
+  const approversMap = new Map<string, ResolvedApprover>();
+
+  if (normalizedProject) {
+    // 1. Check Study table for assigned PI
+    try {
+      const study = await prisma.study.findFirst({
+        where: {
+          OR: [
+            { code: { equals: normalizedProject, mode: "insensitive" } },
+            { title: { equals: normalizedProject, mode: "insensitive" } },
+          ],
+        },
+        select: { pi: true },
+      });
+
+      if (study?.pi?.trim()) {
+        const piIdentifier = study.pi.trim();
+        const piUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: { equals: piIdentifier, mode: "insensitive" } },
+              { displayName: { equals: piIdentifier, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true, displayName: true, email: true },
+        });
+
+        if (piUser) {
+          approversMap.set(piUser.id, {
+            id: piUser.id,
+            displayName: piUser.displayName || piUser.email,
+            email: piUser.email,
+          });
+        }
+      }
+    } catch (err) {
+      logger.error(err, `Error querying study for project approver: ${normalizedProject}`);
+    }
+
+    // 2. Check StaffProfile table for exact project assignments with approval authority
+    try {
+      const staffMatches = await prisma.staffProfile.findMany({
+        where: {
+          OR: [
+            { mntdProject: { equals: normalizedProject, mode: "insensitive" } },
+            { mntdProjectsInvolved: { has: normalizedProject } },
+          ],
+          user: {
+            roles: {
+              hasSome: [Role.PRINCIPAL_INVESTIGATOR, Role.RESEARCH_ADMIN, Role.ADMIN],
+            },
+          },
+        },
+        select: {
+          user: { select: { id: true, displayName: true, email: true } },
+        },
+      });
+
+      for (const sm of staffMatches) {
+        if (sm.user?.id) {
+          approversMap.set(sm.user.id, {
+            id: sm.user.id,
+            displayName: sm.user.displayName || sm.user.email,
+            email: sm.user.email,
+          });
+        }
+      }
+    } catch (err) {
+      logger.error(err, `Error querying staff profiles for project approver: ${normalizedProject}`);
+    }
   }
-  if (p.includes("HAMMS")) {
-    return "Alemayehu Godana, Migbaru Kefallew, Assalif Demissew";
+
+  // 3. Fallback strictly to active administrators and research admins from the User database table
+  if (approversMap.size === 0) {
+    try {
+      const systemAdmins = await prisma.user.findMany({
+        where: {
+          roles: {
+            hasSome: [Role.RESEARCH_ADMIN, Role.ADMIN],
+          },
+        },
+        select: { id: true, displayName: true, email: true },
+        take: 5,
+      });
+
+      for (const admin of systemAdmins) {
+        approversMap.set(admin.id, {
+          id: admin.id,
+          displayName: admin.displayName || admin.email,
+          email: admin.email,
+        });
+      }
+    } catch (err) {
+      logger.error(err, "Error querying database system admins for fallback approvers");
+    }
   }
-  if (p.includes("ANOSTEP")) {
-    return "Assalif Demissew";
-  }
-  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
-    return "Tilahun Ketema, Tadele Emiru";
-  }
-  if (p.includes("CDC")) {
-    return "Assalif Demissew";
-  }
-  if (p.includes("DRIVAX")) {
-    return "Wakweya Chali";
-  }
-  return "Assalif Demissew";
+
+  return Array.from(approversMap.values());
+}
+
+export function formatApproversField(approvers: ResolvedApprover[]): string {
+  if (approvers.length === 0) return "ROMS Administrator";
+  const idTag = `[APPROVER_IDS:${approvers.map((a) => a.id).join(",")}]`;
+  const names = approvers.map((a) => a.displayName).join(", ");
+  return `${idTag} ${names}`;
 }
 
 export function isUserAuthorizedForApprovers(
-  user: { displayName?: string | null; email?: string | null } | undefined,
-  approversString: string
+  user: { id?: string | null; displayName?: string | null; email?: string | null; roles?: string[]; permissions?: string[] } | undefined,
+  approversString: string,
+  project?: string | null
 ): boolean {
   if (!user) return false;
-  const userDisplayName = (user.displayName ?? "").toLowerCase().trim();
-  const userEmail = (user.email ?? "").toLowerCase().trim();
-  const assignedLower = approversString.toLowerCase();
 
-  const names = assignedLower.split(/[,/]| and /).map((n) => n.trim()).filter(Boolean);
+  const roles = user.roles || [];
+  const perms = user.permissions || [];
 
-  for (const name of names) {
-    if (name.includes("alemayehu") && (userDisplayName.includes("alemayehu") || userEmail.includes("alexbiology"))) return true;
-    if (name.includes("migbaru") && (userDisplayName.includes("migbaru") || userEmail.includes("migbaru"))) return true;
-    if (name.includes("assalif") && (userDisplayName.includes("assalif") || userEmail.includes("ashifera") || userEmail.includes("assalif"))) return true;
-    if (name.includes("tilahun") && (userDisplayName.includes("tilahun") || userEmail.includes("tilahun"))) return true;
-    if (name.includes("wakweya") && (userDisplayName.includes("wakweya") || userEmail.includes("wakeya") || userEmail.includes("wakweya"))) return true;
-    if (name.includes("tadele") && (userDisplayName.includes("tadele") || userEmail.includes("tadele"))) return true;
+  // 1. Administrative or inventory management authority
+  if (roles.includes(Role.ADMIN) || roles.includes(Role.RESEARCH_ADMIN)) {
+    return true;
+  }
+  if (perms.includes("admin:all") || perms.includes("inventory:manage")) {
+    return true;
+  }
 
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length > 0 && parts.every((p) => userDisplayName.includes(p) || userEmail.includes(p))) {
+  // Approver must have approval role or explicit approval permission
+  if (!roles.includes(Role.PRINCIPAL_INVESTIGATOR) && !perms.includes("inventory:approve")) {
+    return false;
+  }
+
+  // 2. Strict ID matching from [APPROVER_IDS:id1,id2]
+  if (user.id) {
+    const idMatch = approversString.match(/\[APPROVER_IDS:([^\]]+)\]/);
+    if (idMatch && idMatch[1]) {
+      const ids = idMatch[1].split(",").map((s) => s.trim());
+      if (ids.includes(user.id)) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Exact matching on clean email or display name (no loose substring matching)
+  const cleaned = approversString.replace(/\[APPROVER_IDS:[^\]]+\]/, "").trim();
+  const tokens = cleaned.split(/[,/]| and /).map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+  const userEmail = (user.email ?? "").trim().toLowerCase();
+  const userDisplayName = (user.displayName ?? "").trim().toLowerCase();
+
+  for (const token of tokens) {
+    if (userEmail && token === userEmail) {
+      return true;
+    }
+    if (userDisplayName && token === userDisplayName) {
       return true;
     }
   }
@@ -194,7 +324,7 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
     requestedFor: movement.requestedFor ?? "",
     project: projectFor,
     team: movement.team ?? "",
-    approver: movement.approver || getApproverForProject(projectFor),
+    approver: movement.approver || "ROMS Administrator",
     remark: movement.remark ?? "",
     status: movement.status ?? "PENDING",
     decisionAt: movement.decisionAt?.toISOString() ?? null,
@@ -367,7 +497,7 @@ router.get("/master-data/options", requireAuth, requirePermission("inventory:rea
 
 
 // POST /master-data - add a new master data record
-router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+router.post("/master-data", requireAuth, requirePermission("inventory:manage"), async (req: Request, res: Response) => {
   const { category, unit, project, staff } = req.body;
 
   const record = await prisma.inventoryMasterData.create({
@@ -385,7 +515,7 @@ router.post("/master-data", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_A
 });
 
 // PUT /master-data/:id - update an existing master data record
-router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+router.put("/master-data/:id", requireAuth, requirePermission("inventory:manage"), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { category, unit, project, staff } = req.body;
   try {
@@ -408,7 +538,7 @@ router.put("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARC
 });
 
 // DELETE /master-data/:id - delete a master data record
-router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+router.delete("/master-data/:id", requireAuth, requirePermission("inventory:manage"), async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
@@ -437,23 +567,81 @@ router.delete("/master-data/:id", requireAuth, requireRole(Role.ADMIN, Role.RESE
 
 router.get("/requests", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const statusFilter = req.query.status as string | undefined;
+  const isAll = String(req.query.all ?? "").toLowerCase() === "true";
+  const hasExplicitPage = req.query.page !== undefined;
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit as string) || 20);
+
   const where: any = {
     movementType: "CHECK_OUT",
     requestBatchId: { not: null },
   };
   if (statusFilter && statusFilter !== "ALL") {
-    where.status = statusFilter;
+    if (statusFilter.includes(",")) {
+      where.status = { in: statusFilter.split(",").map((s) => s.trim()) };
+    } else {
+      where.status = statusFilter;
+    }
   }
 
-  const movements = await prisma.inventoryMovement.findMany({
-    where,
-    include: {
-      stockItem: {
-        select: { id: true, sku: true, name: true, unit: true, category: true },
+  // 1. If `all=true` (or unpaged query without page parameter), return ALL matching records with NO artificial ceiling
+  if (isAll && !hasExplicitPage) {
+    const movements = await prisma.inventoryMovement.findMany({
+      where,
+      include: {
+        stockItem: {
+          select: { id: true, sku: true, name: true, unit: true, category: true },
+        },
       },
-    },
+      orderBy: [{ createdAt: "desc" }, { occurredAt: "desc" }],
+    });
+
+    const data = movements.map((movement) =>
+      mapMovementToRequestRow({
+        ...movement,
+        stockItem: movement.stockItem,
+      })
+    );
+
+    res.json({
+      data,
+      total: data.length,
+      page: 1,
+      limit: data.length,
+      all: true,
+    });
+    return;
+  }
+
+  // 2. Batch-aware pagination:
+  // Find distinct batches matching filter, paginated by batches to prevent batch splitting across pages
+  const distinctBatches = await prisma.inventoryMovement.findMany({
+    where,
+    select: { requestBatchId: true, createdAt: true },
+    distinct: ["requestBatchId"],
     orderBy: { createdAt: "desc" },
   });
+
+  const totalBatches = distinctBatches.length;
+  const pagedBatchIds = distinctBatches
+    .slice((page - 1) * limit, page * limit)
+    .map((b) => b.requestBatchId)
+    .filter((id): id is string => Boolean(id));
+
+  const movements = pagedBatchIds.length > 0
+    ? await prisma.inventoryMovement.findMany({
+        where: {
+          requestBatchId: { in: pagedBatchIds },
+          ...(where.status ? { status: where.status } : {}),
+        },
+        include: {
+          stockItem: {
+            select: { id: true, sku: true, name: true, unit: true, category: true },
+          },
+        },
+        orderBy: [{ createdAt: "desc" }, { occurredAt: "desc" }],
+      })
+    : [];
 
   const data = movements.map((movement) =>
     mapMovementToRequestRow({
@@ -462,7 +650,14 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
     })
   );
 
-  res.json({ data, total: data.length });
+  res.json({
+    data,
+    total: totalBatches,
+    totalMovements: data.length,
+    page,
+    limit,
+    totalPages: Math.ceil(totalBatches / limit) || 1,
+  });
 });
 
 router.get("/movements", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
@@ -497,41 +692,123 @@ router.get("/movements", requireAuth, requirePermission("inventory:read"), async
   res.json({ data, total });
 });
 
-router.post("/requests", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
-  const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  if (items.length === 0) {
-    res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
+router.post("/requests", requireAuth, requirePermission("inventory:request"), async (req: Request, res: Response) => {
+  const parsed = CreateInventoryRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
     return;
   }
+  const { items, project, requestedFor, team, timestamp } = parsed.data;
 
-  const requestedBy = toStringOrUndefined(req.body?.requestedBy) ?? req.user?.email ?? null;
-  const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
-  const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
-  const team = toStringOrUndefined(req.body?.team) ?? null;
-  const approver = toStringOrUndefined(req.body?.approver) ?? getApproverForProject(projectFor);
-  const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
+  // Derive requester identity strictly from authenticated user context — never client body
+  const user = req.user!;
+  const requestedBy = user.email || (user as any)?.displayName || "authenticated_user";
+  const userDisplayName = (user as any)?.displayName || user.email || "";
+  const projectFor = toStringOrUndefined(project) ?? "ROMS Inventory";
+
+  const userRoles = (user.roles || []) as string[];
+  const userPerms = (user.permissions || []) as string[];
+  const isAdmin =
+    userRoles.includes(Role.ADMIN) ||
+    userRoles.includes(Role.RESEARCH_ADMIN) ||
+    userPerms.includes("admin:all") ||
+    userPerms.includes("inventory:manage");
+
+  // Validate requester project against trusted database assignment source
+  if (projectFor !== "ROMS Inventory") {
+    const [masterProject, studyProject] = await Promise.all([
+      prisma.inventoryMasterData.findFirst({
+        where: { project: { equals: projectFor, mode: "insensitive" } },
+      }),
+      prisma.study.findFirst({
+        where: {
+          OR: [
+            { code: { equals: projectFor, mode: "insensitive" } },
+            { title: { contains: projectFor, mode: "insensitive" } },
+          ],
+        },
+      }),
+    ]);
+
+    if (!masterProject && !studyProject) {
+      res.status(400).json({
+        code: "INVALID_PROJECT",
+        message: `Project "${projectFor}" is not recognized in system master data or active projects.`,
+      });
+      return;
+    }
+
+    // For non-administrative users, strictly verify project assignment in StaffProfile or MasterData
+    if (!isAdmin) {
+      const staffProfile = user.id
+        ? await prisma.staffProfile.findUnique({
+            where: { userId: user.id },
+            select: { mntdProject: true, mntdProjectsInvolved: true },
+          })
+        : null;
+
+      let isAssigned = false;
+      const targetLower = projectFor.trim().toLowerCase();
+
+      if (staffProfile) {
+        const primaryLower = (staffProfile.mntdProject || "").trim().toLowerCase();
+        if (primaryLower === targetLower) {
+          isAssigned = true;
+        } else if (Array.isArray(staffProfile.mntdProjectsInvolved)) {
+          isAssigned = staffProfile.mntdProjectsInvolved.some(
+            (p) => p.trim().toLowerCase() === targetLower
+          );
+        }
+      }
+
+      if (!isAssigned && masterProject && masterProject.staff) {
+        const staffTokens = masterProject.staff.split(/[,/]| and /).map((s) => s.trim().toLowerCase());
+        const userDisplayLower = userDisplayName.trim().toLowerCase();
+        const userEmailLower = (user.email || "").trim().toLowerCase();
+        if (staffTokens.includes(userDisplayLower) || staffTokens.includes(userEmailLower)) {
+          isAssigned = true;
+        }
+      }
+
+      // Strictly reject if not assigned (exact matching required)
+      if (!isAssigned) {
+        res.status(403).json({
+          code: "UNAUTHORIZED_PROJECT",
+          message: `Requester is not assigned to project "${projectFor}". Verified project assignment in Staff Profile or Master Data is required.`,
+        });
+        return;
+      }
+    }
+  }
+
+  // Approver is resolved strictly from database project assignment
+  const resolvedApprovers = await resolveApproversForProject(projectFor);
+  const approver = formatApproversField(resolvedApprovers);
+  const occurredAt = timestamp ?? new Date();
   const batchId = randomUUID();
 
   try {
     const created = await prisma.$transaction(async (tx) => {
       const createdRows = await Promise.all(
-        items.map(async (rawItem: any) => {
-          const stockItemId = toStringOrUndefined(rawItem?.id);
+        items.map(async (rawItem) => {
+          const stockItemId = toStringOrUndefined(rawItem.id);
           const stockItem = stockItemId ? await tx.stockItem.findUnique({ where: { id: stockItemId } }) : null;
           if (!stockItemId || !stockItem) {
             throw new Error("INVALID_ITEM_ID");
           }
 
-          const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
-          const requestedUnit = toStringOrUndefined(rawItem?.unit) ?? stockItem.unit ?? "units";
-          const requestedUnitDesc = toStringOrUndefined(rawItem?.unitDescription);
-          const userRemark = toStringOrUndefined(rawItem?.remark) ?? "Requested by user";
+          const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem.quantity) ?? 0));
+          const requestedUnit = toStringOrUndefined(rawItem.unit) ?? stockItem.unit ?? "units";
+          const requestedUnitDesc = toStringOrUndefined(rawItem.unitDescription);
+          const userRemark = toStringOrUndefined(rawItem.remark) ?? "Requested by user";
           let finalRemark = requestedUnit !== (stockItem.unit ?? "units")
             ? (userRemark ? `${userRemark} [Unit: ${requestedUnit}]` : `[Unit: ${requestedUnit}]`)
             : userRemark;
           if (requestedUnitDesc) {
             finalRemark = finalRemark ? `${finalRemark} [UnitDesc: ${requestedUnitDesc}]` : `[UnitDesc: ${requestedUnitDesc}]`;
           }
+
+          const lotNumber = toStringOrUndefined(rawItem.lotNumber) ?? null;
 
           return tx.inventoryMovement.create({
             data: {
@@ -541,12 +818,13 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
               quantity: requestedQuantity,
               requestedQuantity,
               requestedBy,
-              requestedFor,
-              recipient: requestedFor,
+              requestedFor: requestedFor ?? null,
+              recipient: requestedFor ?? null,
               destination: projectFor,
               projectFor,
-              team,
+              team: team ?? null,
               approver,
+              lotNumber,
               status: "PENDING",
               remark: finalRemark,
               occurredAt,
@@ -560,23 +838,24 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
         })
       );
 
-      return createdRows;
-    });
+      // Durable transaction-level audit log entry
+      await createAuditEntryTx(tx, {
+        userId: req.user?.id,
+        entityType: "InventoryRequest",
+        entityId: batchId,
+        action: "CREATE",
+        afterJson: {
+          batchId,
+          requestedBy,
+          requestedFor,
+          projectFor,
+          itemCount: createdRows.length,
+        },
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      });
 
-    createAuditEntry({
-      userId: req.user?.id,
-      entityType: "InventoryRequest",
-      entityId: batchId,
-      action: "CREATE",
-      afterJson: {
-        batchId,
-        requestedBy,
-        requestedFor,
-        projectFor,
-        itemCount: created.length,
-      },
-      ip: req.ip,
-      userAgent: req.get("user-agent"),
+      return createdRows;
     });
 
     res.status(201).json({
@@ -597,59 +876,99 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
   }
 });
 
-router.patch("/requests/:id/disburse", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+router.patch("/requests/:id/disburse", requireAuth, requirePermission("inventory:disburse"), async (req: Request, res: Response) => {
   const movementId = req.params.id;
   try {
-    const movement = await prisma.inventoryMovement.findUnique({
-      where: { id: movementId },
-      include: {
-        stockItem: {
-          select: { id: true, sku: true, name: true, unit: true, category: true },
-        },
-      },
-    });
-
-    if (!movement) {
-      res.status(404).json({ code: "NOT_FOUND", message: "Request movement record not found." });
-      return;
-    }
-
-    const user = req.user;
-    const officerName = (user as any)?.displayName || user?.email || "Inventory Officer";
-    const today = new Date().toISOString().slice(0, 10);
     const markAsDisbursed = req.body?.disbursed !== false;
+    const reversalReason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    const user = req.user!;
+    const userRoles = (user.roles || []) as string[];
+    const userPerms = (user.permissions || []) as string[];
+    const isManagerOrAdmin =
+      userRoles.includes(Role.ADMIN) ||
+      userRoles.includes(Role.RESEARCH_ADMIN) ||
+      userPerms.includes("admin:all") ||
+      userPerms.includes("inventory:manage");
 
-    const currentRemark = movement.remark || "";
-    let nextRemark = currentRemark;
-
-    if (markAsDisbursed) {
-      if (!currentRemark.includes("[DISBURSED]")) {
-        const tag = `[DISBURSED on ${today} by ${officerName}]`;
-        nextRemark = currentRemark ? `${currentRemark} · ${tag}` : tag;
+    // If reversing disbursement, enforce administrative authority and mandatory documented reason
+    if (!markAsDisbursed) {
+      if (!isManagerOrAdmin) {
+        res.status(403).json({
+          code: "FORBIDDEN",
+          message: "Only inventory managers and administrators are authorized to reverse a recorded disbursement.",
+        });
+        return;
       }
-    } else {
-      nextRemark = currentRemark.replace(/·?\s*\[DISBURSED[^\]]*\]/g, "").trim();
+      if (!reversalReason) {
+        res.status(400).json({
+          code: "REASON_REQUIRED",
+          message: "A documented reason is required to reverse a disbursement record.",
+        });
+        return;
+      }
     }
 
-    const updated = await prisma.inventoryMovement.update({
-      where: { id: movementId },
-      data: { remark: nextRemark },
-      include: {
-        stockItem: {
-          select: { id: true, sku: true, name: true, unit: true, category: true },
-        },
-      },
-    });
+    const updated = await prisma.$transaction(async (tx) => {
+      // Row lock the movement
+      const movementRows = await tx.$queryRaw<any[]>(
+        Prisma.sql`SELECT * FROM "InventoryMovement" WHERE id = ${movementId} FOR UPDATE`
+      );
+      const movement = movementRows[0];
+      if (!movement) {
+        throw new Error("NOT_FOUND");
+      }
 
-    createAuditEntry({
-      userId: req.user?.id,
-      entityType: "InventoryMovement",
-      entityId: movementId,
-      action: "UPDATE",
-      beforeJson: { remark: currentRemark },
-      afterJson: { remark: nextRemark, isDisbursed: markAsDisbursed, officer: officerName },
-      ip: req.ip,
-      userAgent: req.get("user-agent"),
+      if (movement.status !== "APPROVED" && movement.status !== "PARTIAL") {
+        throw new Error("INVALID_STATE");
+      }
+
+      const officerName = (user as any)?.displayName || user?.email || "Inventory Officer";
+      const today = new Date().toISOString().slice(0, 10);
+      const currentRemark = movement.remark || "";
+      let nextRemark = currentRemark;
+
+      if (markAsDisbursed) {
+        if (!currentRemark.includes("[DISBURSED]")) {
+          const tag = `[DISBURSED on ${today} by ${officerName}]`;
+          nextRemark = currentRemark ? `${currentRemark} · ${tag}` : tag;
+        }
+      } else {
+        // Controlled audit reversal: record reversal tag rather than silent erasure
+        if (!currentRemark.includes("[DISBURSED") && !currentRemark.includes("[ISSUED")) {
+          throw new Error("NOT_DISBURSED");
+        }
+        const reversalTag = `[DISBURSEMENT_REVERSED on ${today} by ${officerName}: ${reversalReason}]`;
+        nextRemark = currentRemark.replace(/·?\s*\[DISBURSED[^\]]*\]/g, ` · ${reversalTag}`).trim();
+      }
+
+      const updatedRecord = await tx.inventoryMovement.update({
+        where: { id: movementId },
+        data: { remark: nextRemark },
+        include: {
+          stockItem: {
+            select: { id: true, sku: true, name: true, unit: true, category: true },
+          },
+        },
+      });
+
+      // Atomic transaction-level audit log entry
+      await createAuditEntryTx(tx, {
+        userId: user.id,
+        entityType: "InventoryMovement",
+        entityId: movementId,
+        action: "UPDATE",
+        beforeJson: { remark: currentRemark },
+        afterJson: {
+          remark: nextRemark,
+          isDisbursed: markAsDisbursed,
+          officer: officerName,
+          reason: markAsDisbursed ? undefined : reversalReason,
+        },
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+
+      return updatedRecord;
     });
 
     res.json({
@@ -659,13 +978,25 @@ router.patch("/requests/:id/disburse", requireAuth, requirePermission("inventory
         stockItem: updated.stockItem,
       }),
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === "NOT_FOUND") {
+      res.status(404).json({ code: "NOT_FOUND", message: "Request movement record not found." });
+      return;
+    }
+    if (error.message === "INVALID_STATE") {
+      res.status(400).json({ code: "INVALID_STATE", message: "Only approved or partially approved requests can be marked as disbursed." });
+      return;
+    }
+    if (error.message === "NOT_DISBURSED") {
+      res.status(400).json({ code: "NOT_DISBURSED", message: "Request movement is not currently marked as disbursed." });
+      return;
+    }
     logger.error(error);
     res.status(500).json({ code: "INTERNAL_ERROR" });
   }
 });
 
-router.post("/request-decisions", requireAuth, async (req: Request, res: Response) => {
+router.post("/request-decisions", requireAuth, requirePermission("inventory:approve"), async (req: Request, res: Response) => {
   const isInventoryViewOnly = (req.user?.permissions || []).some(
     (p) => p.toLowerCase() === "inventory:view-only"
   );
@@ -677,11 +1008,12 @@ router.post("/request-decisions", requireAuth, async (req: Request, res: Respons
     return;
   }
 
-  const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  if (items.length === 0) {
-    res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
+  const parsed = InventoryDecisionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
     return;
   }
+  const { items } = parsed.data;
 
   const user = req.user;
   let userDisplayName = (user as any)?.displayName;
@@ -695,194 +1027,185 @@ router.post("/request-decisions", requireAuth, async (req: Request, res: Respons
     }
   }
   const userForAuth = { ...user, displayName: userDisplayName };
-
-  const requestedBy = toStringOrUndefined(req.body?.requestedBy) ?? req.user?.email ?? null;
-  const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
-  const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
-  const team = toStringOrUndefined(req.body?.team) ?? null;
-  const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
   const decisionTimestamp = new Date();
-
-  const defaultApprover = getApproverForProject(projectFor);
-  let isAuthorized = isUserAuthorizedForApprovers(userForAuth as any, defaultApprover);
-
-  if (!isAuthorized) {
-    for (const item of items) {
-      const movId = toStringOrUndefined(item?.movementId);
-      if (movId) {
-        const mov = await prisma.inventoryMovement.findUnique({
-          where: { id: movId },
-          select: { approver: true, projectFor: true },
-        });
-        if (mov) {
-          const appStr = mov.approver || getApproverForProject(mov.projectFor);
-          if (isUserAuthorizedForApprovers(userForAuth as any, appStr)) {
-            isAuthorized = true;
-            break;
-          }
-        }
-      }
-    }
-  }
-
-  if (!isAuthorized) {
-    res.status(403).json({
-      code: "FORBIDDEN",
-      message: `You are not authorized to make request decisions for this project. Only assigned project approvers (${defaultApprover}) may approve or reject inventory requests.`,
-    });
-    return;
-  }
 
   try {
     const created = await prisma.$transaction(async (tx) => {
       const movementTx = tx as typeof tx & InventoryMovementPrisma;
-      const createdRows = await Promise.all(
-        items.map(async (rawItem: any) => {
-          const movementId = toStringOrUndefined(rawItem?.movementId);
-          const stockItemId = toStringOrUndefined(rawItem?.id);
-          const status = toInventoryMovementStatus(rawItem?.status) ?? "PENDING";
-          const acceptedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.acceptedQuantity) ?? toNumberOrUndefined(rawItem?.quantity) ?? 0));
-          const quantity = getSettledRequestQuantity(status, acceptedQuantity);
-          const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
+      const createdRows = [];
 
-          if (!movementId && !stockItemId) {
-            throw new Error("INVALID_ITEM_ID");
+      for (const rawItem of items) {
+        const movementId = rawItem.movementId;
+        // Lock the movement row for the duration of the transaction to prevent concurrent decisions
+        const movementRows = await tx.$queryRaw<any[]>(
+          Prisma.sql`SELECT * FROM "InventoryMovement" WHERE id = ${movementId} FOR UPDATE`
+        );
+        const existingMovement = movementRows[0];
+
+        if (!existingMovement) {
+          throw new Error(`MOVEMENT_NOT_FOUND:${movementId}`);
+        }
+
+        // Invariant 1: Only pending requests can be decided
+        if (existingMovement.status !== "PENDING") {
+          throw new Error(`MOVEMENT_NOT_PENDING:${movementId}`);
+        }
+
+        // Invariant 2: Cannot modify an already disbursed or issued record
+        if (existingMovement.remark?.includes("[DISBURSED]") || existingMovement.remark?.includes("[ISSUED]")) {
+          throw new Error(`CANNOT_MODIFY_DISBURSED:${movementId}`);
+        }
+
+        // Invariant 3: Independently authorize user for THIS item's project & approver
+        const itemProject = existingMovement.projectFor || "ROMS Inventory";
+        const assignedApprover = existingMovement.approver || "ROMS Administrator";
+        const isItemAuthorized = isUserAuthorizedForApprovers(userForAuth as any, assignedApprover, itemProject);
+        if (!isItemAuthorized) {
+          throw new Error(`UNAUTHORIZED_FOR_ITEM:${movementId}`);
+        }
+
+        // Invariant 4: Enforce original requested quantity from DB — cannot be inflated by client
+        const originalRequestedQuantity = Math.max(0, existingMovement.requestedQuantity || existingMovement.quantity);
+        const targetStatus = rawItem.status;
+        let finalStatus: "APPROVED" | "REJECTED" | "PARTIAL" = targetStatus;
+        let quantity = 0;
+
+        if (targetStatus === "APPROVED") {
+          quantity = originalRequestedQuantity;
+        } else if (targetStatus === "REJECTED") {
+          quantity = 0;
+        } else if (targetStatus === "PARTIAL") {
+          const accepted = Math.max(0, Math.floor(rawItem.acceptedQuantity ?? 0));
+          if (accepted >= originalRequestedQuantity) {
+            finalStatus = "APPROVED";
+            quantity = originalRequestedQuantity;
+          } else if (accepted <= 0) {
+            finalStatus = "REJECTED";
+            quantity = 0;
+          } else {
+            finalStatus = "PARTIAL";
+            quantity = accepted;
+          }
+        }
+
+        // Deduct approved quantity from stockItem with row locking
+        const delta = quantity;
+        if (delta > 0) {
+          const stockItems = await tx.$queryRaw<any[]>(
+            Prisma.sql`SELECT * FROM "StockItem" WHERE id = ${existingMovement.stockItemId} FOR UPDATE`
+          );
+          const stockItem = stockItems[0];
+          if (!stockItem) {
+            throw new Error("ITEM_NOT_FOUND");
           }
 
-          const summary =
-            status === "REJECTED"
-              ? `Rejected by project manager${requestedQuantity > 0 ? ` (${requestedQuantity} requested)` : ""}`
-              : status === "PARTIAL"
-                ? `Partial approval: accepted ${quantity} of ${requestedQuantity}`
-                : `Approved by project manager${requestedQuantity > 0 ? ` (${requestedQuantity} requested)` : ""}`;
-          const approverRemark = toStringOrUndefined(rawItem?.remark);
-
-            const existingMovement = movementId
-              ? await tx.inventoryMovement.findUnique({
-                  where: { id: movementId },
-                  select: { id: true, quantity: true, status: true, stockItemId: true, requestBatchId: true, remark: true },
-                })
-              : null;
-
-            const delta = getInventoryDecisionDelta(existingMovement?.status ?? null, Number(existingMovement?.quantity ?? 0), status, quantity);
-            const resolvedStockItemId = existingMovement?.stockItemId ?? stockItemId;
-
-            if (!resolvedStockItemId) {
-              throw new Error("INVALID_ITEM_ID");
-            }
-
-            const stockItems = await tx.$queryRaw<any[]>(
-              Prisma.sql`SELECT * FROM "StockItem" WHERE id = ${resolvedStockItemId} FOR UPDATE`
-            );
-            const stockItem = stockItems[0];
-            if (!stockItem) {
-              throw new Error("ITEM_NOT_FOUND");
-            }
-
-            if (delta !== 0) {
-              const currentQuantity = Number(stockItem.quantity ?? 0);
-              const nextQuantity = currentQuantity - delta;
-              if (nextQuantity < 0) {
-                throw new Error(`INSUFFICIENT_STOCK:${stockItem.name}`);
-              }
-
-              const nextCheckOutTotal = Math.max(0, Number(stockItem.checkOutTotal ?? 0) + delta);
-              const nextCheckInTotal = Number(stockItem.checkInTotal ?? 0);
-
-              await tx.stockItem.update({
-                where: { id: stockItem.id },
-                data: {
-                  quantity: nextQuantity,
-                  checkOutTotal: nextCheckOutTotal,
-                  balancePercent: nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0,
-                },
-              });
-            }
-
-          const approver = toStringOrUndefined(req.body?.approver) ?? getApproverForProject(projectFor);
-
-          if (movementId) {
-            let nextRemark = [summary, approverRemark ? `Approver remark: ${approverRemark}` : null, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · ");
-            if (existingMovement?.remark) {
-              const unitMatch = existingMovement.remark.match(/\[Unit:\s*([^\]]+)\]/);
-              if (unitMatch) nextRemark += ` ${unitMatch[0]}`;
-              const unitDescMatch = existingMovement.remark.match(/\[UnitDesc:\s*([^\]]+)\]/);
-              if (unitDescMatch) nextRemark += ` ${unitDescMatch[0]}`;
-              if (existingMovement.remark.includes("[ISSUED]")) nextRemark += " [ISSUED]";
-              if (existingMovement.remark.includes("[DISBURSED]")) nextRemark += " [DISBURSED]";
-            }
-
-            const movement = await movementTx.inventoryMovement.update({
-              where: { id: movementId },
-              data: {
-                quantity,
-                requestedQuantity,
-                requestedBy,
-                requestedFor,
-                recipient: requestedFor,
-                destination: projectFor,
-                projectFor,
-                team,
-                approver,
-                status,
-                decisionAt: status === "PENDING" ? null : decisionTimestamp,
-                remark: nextRemark,
-                occurredAt,
-              } as any,
-              include: {
-                stockItem: {
-                  select: { id: true, sku: true, name: true, unit: true, category: true },
-                },
-              },
-            });
-            return movement;
+          const currentQuantity = Number(stockItem.quantity ?? 0);
+          if (currentQuantity < delta) {
+            throw new Error(`INSUFFICIENT_STOCK:${stockItem.name}`);
           }
 
-          return movementTx.inventoryMovement.create({
+          const nextQuantity = currentQuantity - delta;
+          const nextCheckOutTotal = Number(stockItem.checkOutTotal ?? 0) + delta;
+          const nextCheckInTotal = Number(stockItem.checkInTotal ?? 0);
+
+          await tx.stockItem.update({
+            where: { id: stockItem.id },
             data: {
-              requestBatchId: randomUUID(),
-              stockItemId: stockItemId!,
-              movementType: "CHECK_OUT",
-              quantity,
-              requestedQuantity,
-              requestedBy,
-              requestedFor,
-              recipient: requestedFor,
-              destination: projectFor,
-              projectFor,
-              team,
-              approver,
-              status,
-              decisionAt: status === "PENDING" ? null : decisionTimestamp,
-              remark: [summary, approverRemark ? `Approver remark: ${approverRemark}` : null, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
-              occurredAt,
-            },
-            include: {
-              stockItem: {
-                select: { id: true, sku: true, name: true, unit: true, category: true },
-              },
+              quantity: nextQuantity,
+              checkOutTotal: nextCheckOutTotal,
+              balancePercent: nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0,
             },
           });
-        })
-      );
+        }
+
+        const approverName = userDisplayName || user?.email || "Authorized Approver";
+        const approverRemark = toStringOrUndefined(rawItem.remark);
+        const summary =
+          finalStatus === "REJECTED"
+            ? `Rejected by ${approverName}${originalRequestedQuantity > 0 ? ` (${originalRequestedQuantity} requested)` : ""}`
+            : finalStatus === "PARTIAL"
+              ? `Partial approval by ${approverName}: accepted ${quantity} of ${originalRequestedQuantity}`
+              : `Approved by ${approverName}${originalRequestedQuantity > 0 ? ` (${originalRequestedQuantity} requested)` : ""}`;
+
+        let nextRemark = [summary, approverRemark ? `Approver remark: ${approverRemark}` : null].filter(Boolean).join(" · ");
+        if (existingMovement.remark) {
+          const unitMatch = existingMovement.remark.match(/\[Unit:\s*([^\]]+)\]/);
+          if (unitMatch) nextRemark += ` ${unitMatch[0]}`;
+          const unitDescMatch = existingMovement.remark.match(/\[UnitDesc:\s*([^\]]+)\]/);
+          if (unitDescMatch) nextRemark += ` ${unitDescMatch[0]}`;
+        }
+
+        // Conditional status update: strictly requires status to be PENDING
+        const updateResult = await tx.inventoryMovement.updateMany({
+          where: { id: movementId, status: "PENDING" },
+          data: {
+            quantity,
+            requestedQuantity: originalRequestedQuantity,
+            status: finalStatus,
+            approver: approverName,
+            decisionAt: decisionTimestamp,
+            remark: nextRemark,
+          },
+        });
+        if (updateResult.count === 0) {
+          throw new Error(`MOVEMENT_NOT_PENDING:${movementId}`);
+        }
+
+        const updated = await tx.inventoryMovement.findUnique({
+          where: { id: movementId },
+          include: {
+            stockItem: {
+              select: { id: true, sku: true, name: true, unit: true, category: true },
+            },
+          },
+        });
+        if (!updated) {
+          throw new Error(`MOVEMENT_NOT_FOUND:${movementId}`);
+        }
+
+        // Durable atomic audit log
+        await createAuditEntryTx(tx, {
+          userId: req.user?.id,
+          entityType: "InventoryMovement",
+          entityId: movementId,
+          action: "UPDATE",
+          beforeJson: {
+            status: existingMovement.status,
+            quantity: existingMovement.quantity,
+            requestedQuantity: existingMovement.requestedQuantity,
+          },
+          afterJson: {
+            status: finalStatus,
+            quantity,
+            requestedQuantity: originalRequestedQuantity,
+            approver: approverName,
+          },
+          ip: req.ip,
+          userAgent: req.get("user-agent"),
+        });
+
+        createdRows.push(updated);
+      }
 
       return createdRows;
     });
 
-    // Asynchronously send email notification to inventory worker (Betelihem) and requester for approved items
+    // Send email notification for approved items
     const approvedMovements = created.filter(
-      (m: any) => m.status === "APPROVED" || m.status === "PARTIAL" || m.status === "ACCEPT"
+      (m: any) => m.status === "APPROVED" || m.status === "PARTIAL"
     );
     if (approvedMovements.length > 0) {
-      const managerName = (user as any)?.displayName || user?.email || "Inventory Manager";
+      const managerName = userDisplayName || user?.email || "Inventory Manager";
       const inventoryWorkerEmail = env.INVENTORY_DISPATCH_EMAIL || "betelihemashagrie21@gmail.com";
+      const primaryProject = approvedMovements[0]?.projectFor || "ROMS Inventory";
+      const requestedBy = approvedMovements[0]?.requestedBy;
       const requesterEmail = requestedBy && requestedBy.includes("@") ? requestedBy.trim() : null;
 
       const emailPayload = {
         managerName,
-        project: projectFor,
+        project: primaryProject,
         requestedBy: requestedBy || "Staff Member",
-        requestedFor: requestedFor || undefined,
+        requestedFor: approvedMovements[0]?.requestedFor || undefined,
         items: approvedMovements.map((m: any) => ({
           name: m.stockItem?.name || "Inventory Item",
           quantity: Number(m.quantity ?? 0),
@@ -891,37 +1214,16 @@ router.post("/request-decisions", requireAuth, async (req: Request, res: Respons
         })),
       };
 
-      // 1. Send email notification to Inventory Worker
       sendApprovedRequestsNotificationEmail(inventoryWorkerEmail, emailPayload).catch((err) =>
         logger.error(err, "Error dispatching approved request email notification to Inventory Worker")
       );
 
-      // 2. Send email notification to Requester (if valid email & different from inventory worker)
       if (requesterEmail && requesterEmail.toLowerCase() !== inventoryWorkerEmail.toLowerCase()) {
         sendApprovedRequestsNotificationEmail(requesterEmail, emailPayload).catch((err) =>
           logger.error(err, "Error dispatching approved request email notification to Requester")
         );
       }
     }
-
-    createAuditEntry({
-      userId: req.user?.id,
-      entityType: "InventoryDecision",
-      entityId: (created[0] as any)?.requestBatchId || (created[0] as any)?.id || "decision",
-      action: "UPDATE",
-      afterJson: {
-        manager: (user as any)?.displayName || user?.email || "Manager",
-        project: projectFor,
-        count: created.length,
-        items: items.map((it: any) => ({
-          id: it.id || it.movementId,
-          status: it.status,
-          quantity: it.acceptedQuantity ?? it.quantity,
-        })),
-      },
-      ip: req.ip,
-      userAgent: req.get("user-agent"),
-    });
 
     res.status(201).json({
       data: created.map((movement: any) =>
@@ -931,9 +1233,26 @@ router.post("/request-decisions", requireAuth, async (req: Request, res: Respons
         })
       ),
     });
-  } catch (error) {
-    if (error instanceof Error && error.message === "INVALID_ITEM_ID") {
-      res.status(400).json({ code: "VALIDATION_ERROR", message: "Each item must include a valid id" });
+  } catch (error: any) {
+    const message = error?.message || "";
+    if (message.startsWith("MOVEMENT_NOT_PENDING:")) {
+      res.status(409).json({ code: "CONFLICT", message: "One or more requests are not pending or have already been decided." });
+      return;
+    }
+    if (message.startsWith("CANNOT_MODIFY_DISBURSED:")) {
+      res.status(409).json({ code: "CONFLICT", message: "Cannot modify a request that has already been disbursed or issued." });
+      return;
+    }
+    if (message.startsWith("UNAUTHORIZED_FOR_ITEM:")) {
+      res.status(403).json({ code: "FORBIDDEN", message: "You are not authorized to make decisions for one or more items in this batch." });
+      return;
+    }
+    if (message.startsWith("INSUFFICIENT_STOCK:")) {
+      res.status(400).json({ code: "INSUFFICIENT_STOCK", message: `Insufficient stock for ${message.split(":")[1]}.` });
+      return;
+    }
+    if (message.startsWith("MOVEMENT_NOT_FOUND:")) {
+      res.status(404).json({ code: "NOT_FOUND", message: "One or more request items could not be found." });
       return;
     }
     logger.error(error);
@@ -942,7 +1261,11 @@ router.post("/request-decisions", requireAuth, async (req: Request, res: Respons
 });
 
 router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
-  const [stockItems, movements, expiringSoonItems] = await Promise.all([
+  const now = new Date();
+  const sixtyDaysAhead = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+  const sixMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 6, 1));
+
+  const [stockItems, recentMovements, usageMovementRows, expiringSoonItems, expiredItems, expiredCount, expiringSoonCount] = await Promise.all([
     prisma.stockItem.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -958,7 +1281,11 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
         expiryDate: true,
       },
     }),
+    // Memory-bounded: only read movements for the active 6-month historical window
     prisma.inventoryMovement.findMany({
+      where: {
+        occurredAt: { gte: sixMonthsAgo },
+      },
       select: {
         stockItemId: true,
         movementType: true,
@@ -973,17 +1300,68 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
       },
       orderBy: { occurredAt: "asc" },
     }),
+    // Memory-bounded: recent usage records limited to top 100
+    prisma.inventoryMovement.findMany({
+      where: {
+        movementType: "CHECK_OUT",
+        status: { in: ["APPROVED", "PARTIAL"] },
+      },
+      select: {
+        stockItemId: true,
+        movementType: true,
+        quantity: true,
+        occurredAt: true,
+        requestedBy: true,
+        projectFor: true,
+        recipient: true,
+        destination: true,
+        status: true,
+        remark: true,
+      },
+      orderBy: { occurredAt: "desc" },
+      take: 100,
+    }),
     prisma.stockItem.findMany({
       where: {
         expiryDate: {
           not: null,
-          lte: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
+          gte: now, // Lower bound: only items expiring in the future
+          lte: sixtyDaysAhead, // Upper bound: within 60 days
         },
       },
       orderBy: { expiryDate: "asc" },
       take: 10,
     }),
+    prisma.stockItem.findMany({
+      where: {
+        expiryDate: {
+          not: null,
+          lt: now, // Already expired
+        },
+      },
+      orderBy: { expiryDate: "asc" },
+      take: 10,
+    }),
+    prisma.stockItem.count({
+      where: {
+        expiryDate: {
+          not: null,
+          lt: now,
+        },
+      },
+    }),
+    prisma.stockItem.count({
+      where: {
+        expiryDate: {
+          not: null,
+          gte: now,
+          lte: sixtyDaysAhead,
+        },
+      },
+    }),
   ]);
+
+  const movements = recentMovements;
 
   const totalItems = stockItems.length;
   const totalQuantity = stockItems.reduce((sum, row) => sum + Number(row.quantity ?? 0), 0);
@@ -1031,7 +1409,6 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
     .sort((left, right) => Number(left.quantity ?? 0) - Number(right.quantity ?? 0) || Number(right.checkOutTotal ?? 0) - Number(left.checkOutTotal ?? 0))
     .slice(0, 8);
 
-  const now = new Date();
   const months: Array<{ key: string; label: string; checkIn: number; checkOut: number; stockRisk: number }> = [];
   for (let offset = 5; offset >= 0; offset -= 1) {
     const monthDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
@@ -1041,6 +1418,11 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
   }
 
   movements.forEach((movement) => {
+    // Only completed/approved checkout movements count as consumption!
+    // Pending requests and rejected requests must NEVER count towards usage.
+    if (movement.movementType === "CHECK_OUT" && movement.status !== "APPROVED" && movement.status !== "PARTIAL") {
+      return;
+    }
     const occurredAt = new Date(movement.occurredAt);
     const key = `${occurredAt.getUTCFullYear()}-${String(occurredAt.getUTCMonth() + 1).padStart(2, "0")}`;
     const bucket = months.find((month) => month.key === key);
@@ -1067,6 +1449,10 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
     });
 
     movements.forEach((movement) => {
+      // Pending requests and rejected requests must NEVER alter historical stock reconstruction!
+      if (movement.movementType === "CHECK_OUT" && movement.status !== "APPROVED" && movement.status !== "PARTIAL") {
+        return;
+      }
       if (new Date(movement.occurredAt) <= cutoff) {
         return;
       }
@@ -1082,24 +1468,21 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
   });
 
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
-  const usageRecords = movements
-    .filter((movement) => movement.movementType === "CHECK_OUT")
-    .map((movement, index) => {
-      const stockItem = stockById.get(movement.stockItemId);
-      return {
-        id: `${movement.stockItemId}-${movement.occurredAt.toISOString()}-${index}`,
-        stockItemId: movement.stockItemId,
-        itemName: stockItem?.name ?? "Unknown item",
-        itemCode: stockItem?.sourceCode ?? stockItem?.sku ?? "",
-        category: stockItem?.category ?? "Unclassified",
-        quantity: Number(movement.quantity ?? 0),
-        requestedBy: String(movement.requestedBy ?? movement.recipient ?? "Unknown User"),
-        projectFor: String(movement.projectFor ?? movement.destination ?? "Unassigned"),
-        status: String(movement.status ?? "APPROVED"),
-        occurredAt: movement.occurredAt,
-      };
-    })
-    .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+  const usageRecords = usageMovementRows.map((movement, index) => {
+    const stockItem = stockById.get(movement.stockItemId);
+    return {
+      id: `${movement.stockItemId}-${movement.occurredAt.toISOString()}-${index}`,
+      stockItemId: movement.stockItemId,
+      itemName: stockItem?.name ?? "Unknown item",
+      itemCode: stockItem?.sourceCode ?? stockItem?.sku ?? "",
+      category: stockItem?.category ?? "Unclassified",
+      quantity: Number(movement.quantity ?? 0),
+      requestedBy: String(movement.requestedBy ?? movement.recipient ?? "Unknown User"),
+      projectFor: String(movement.projectFor ?? movement.destination ?? "Unassigned"),
+      status: String(movement.status ?? "APPROVED"),
+      occurredAt: movement.occurredAt,
+    };
+  });
 
   res.json({
     summary: {
@@ -1111,11 +1494,15 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
       outOfStockItems,
       healthyItems,
       atRiskItems,
+      expiredItems: expiredCount,
     },
     categoryBreakdown,
     topDemandItems,
     criticalItems,
     expiringSoonItems,
+    expiringSoonCount,
+    expiredItems,
+    expiredCount,
     monthlyTrends: months,
     usageRecords,
   });
@@ -1153,7 +1540,7 @@ router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req,
   res.json(item);
 });
 
-router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), auditMutation("StockItem", "CREATE"), async (req, res) => {
+router.post("/", requireAuth, requirePermission("inventory:manage"), auditMutation("StockItem", "CREATE"), async (req, res) => {
   const parsed = CreateStockItemSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ code: "VALIDATION_ERROR", errors: parsed.error.flatten() });
@@ -1187,6 +1574,8 @@ router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), audi
           quantity: createdItem.quantity,
           requestedBy: req.user?.email ?? null,
           projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
+          lotNumber: stockItemData.lotNumber ?? null,
+          expiryDate: stockItemData.expiryDate ?? null,
           status: String(req.body.status ?? "APPROVED") as "APPROVED" | "PENDING" | "REJECTED",
           remark: String(req.body.remark ?? req.body.note ?? "Opening stock"),
           occurredAt: parsedDateReceived ?? new Date(),
@@ -1227,7 +1616,7 @@ router.post("/", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), audi
   }
 });
 
-router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+router.post("/bulk-checkout", requireAuth, requirePermission("inventory:check-out"), async (req: Request, res: Response) => {
   const parsed = BulkCheckoutSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
@@ -1253,7 +1642,11 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
           throw new Error(`INVALID_ITEM_PARAMS:${stockItemId}`);
         }
 
-        const existing = await tx.stockItem.findUnique({ where: { id: stockItemId } });
+        // 1. Lock the StockItem row exclusively with FOR UPDATE to prevent concurrent checkouts
+        const stockRows = await tx.$queryRaw<any[]>(
+          Prisma.sql`SELECT * FROM "StockItem" WHERE id = ${stockItemId} FOR UPDATE`
+        );
+        const existing = stockRows[0];
         if (!existing) {
           throw new Error(`ITEM_NOT_FOUND:${stockItemId}`);
         }
@@ -1263,18 +1656,118 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
           throw new Error(`INSUFFICIENT_STOCK:${existing.name}`);
         }
 
-        const nextQuantity = currentQty - quantity;
-        const nextCheckOutTotal = Number(existing.checkOutTotal ?? 0) + quantity;
-        const nextCheckInTotal = Number(existing.checkInTotal ?? 0);
-        const nextBalancePercent = nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0;
+        // 2. Strict Lot balance verification & FEFO auto-allocation
+        const suppliedLot = toStringOrUndefined(cartItem.lotNumber) ?? null;
+        let finalLotNumber = suppliedLot;
 
-        const updated = await tx.stockItem.update({
-          where: { id: stockItemId },
+        if (suppliedLot) {
+          // Verify lot balance
+          const [lotCheckIns, lotCheckOuts] = await Promise.all([
+            tx.inventoryMovement.aggregate({
+              where: { stockItemId, lotNumber: suppliedLot, movementType: "CHECK_IN" },
+              _sum: { quantity: true },
+            }),
+            tx.inventoryMovement.aggregate({
+              where: {
+                stockItemId,
+                lotNumber: suppliedLot,
+                movementType: "CHECK_OUT",
+                status: { in: ["APPROVED", "PARTIAL"] },
+              },
+              _sum: { quantity: true },
+            }),
+          ]);
+
+          const totalLotIn = lotCheckIns._sum.quantity || 0;
+          const totalLotOut = lotCheckOuts._sum.quantity || 0;
+          const availableLotBalance = totalLotIn - totalLotOut;
+
+          // If no check-ins exist for this lot, reject!
+          if (totalLotIn === 0) {
+            throw new Error(`UNKNOWN_LOT:${existing.name} (Lot "${suppliedLot}" has no check-in records)`);
+          }
+
+          // If requested quantity exceeds remaining lot balance, reject!
+          if (quantity > availableLotBalance) {
+            throw new Error(`INSUFFICIENT_LOT_BALANCE:${existing.name} (Lot "${suppliedLot}" available: ${availableLotBalance}, requested: ${quantity})`);
+          }
+          finalLotNumber = suppliedLot;
+        } else {
+          // FEFO auto-selection: find all check-in lots with active expiry dates ordered by expiryDate ASC
+          const checkInLots = await tx.inventoryMovement.findMany({
+            where: {
+              stockItemId,
+              movementType: "CHECK_IN",
+              lotNumber: { not: null },
+            },
+            select: { lotNumber: true, expiryDate: true },
+            orderBy: [{ expiryDate: "asc" }, { occurredAt: "asc" }],
+          });
+
+          // Unique candidate lots preserving FEFO order
+          const distinctLots: Array<{ lotNumber: string; expiryDate: Date | null }> = [];
+          const seen = new Set<string>();
+          for (const item of checkInLots) {
+            if (item.lotNumber && !seen.has(item.lotNumber)) {
+              seen.add(item.lotNumber);
+              distinctLots.push({ lotNumber: item.lotNumber, expiryDate: item.expiryDate });
+            }
+          }
+
+          let fefoLotSelected: string | null = null;
+          for (const cand of distinctLots) {
+            const [candIn, candOut] = await Promise.all([
+              tx.inventoryMovement.aggregate({
+                where: { stockItemId, lotNumber: cand.lotNumber, movementType: "CHECK_IN" },
+                _sum: { quantity: true },
+              }),
+              tx.inventoryMovement.aggregate({
+                where: {
+                  stockItemId,
+                  lotNumber: cand.lotNumber,
+                  movementType: "CHECK_OUT",
+                  status: { in: ["APPROVED", "PARTIAL"] },
+                },
+                _sum: { quantity: true },
+              }),
+            ]);
+            const lotBalance = (candIn._sum.quantity || 0) - (candOut._sum.quantity || 0);
+            if (lotBalance >= quantity) {
+              fefoLotSelected = cand.lotNumber;
+              break;
+            }
+          }
+
+          if (distinctLots.length > 0 && !fefoLotSelected) {
+            throw new Error(`INSUFFICIENT_LOT_BALANCE:${existing.name} (No single lot has sufficient balance of ${quantity} units)`);
+          }
+
+          finalLotNumber = fefoLotSelected || existing.lotNumber || null;
+        }
+
+        // 3. Atomic conditional decrement on StockItem:
+        const updateResult = await tx.stockItem.updateMany({
+          where: { id: stockItemId, quantity: { gte: quantity } },
           data: {
-            quantity: nextQuantity,
-            checkOutTotal: nextCheckOutTotal,
-            balancePercent: nextBalancePercent,
+            quantity: { decrement: quantity },
+            checkOutTotal: { increment: quantity },
           },
+        });
+        if (updateResult.count === 0) {
+          throw new Error(`INSUFFICIENT_STOCK:${existing.name}`);
+        }
+
+        const updated = await tx.stockItem.findUnique({ where: { id: stockItemId } });
+        if (!updated) {
+          throw new Error(`ITEM_NOT_FOUND:${stockItemId}`);
+        }
+
+        const totalIn = Number(updated.checkInTotal ?? 0);
+        const currentBal = Number(updated.quantity ?? 0);
+        const finalBalancePercent = totalIn > 0 ? (currentBal / totalIn) * 100 : 0;
+        await tx.stockItem.update({
+          where: { id: stockItemId },
+          data: { balancePercent: finalBalancePercent },
         });
 
         const movement = await movementTx.inventoryMovement.create({
@@ -1286,6 +1779,7 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
             destination: String(projectFor ?? "ROMS Inventory"),
             recipient: String(staffName ?? "").trim() || null,
             projectFor: String(projectFor ?? "ROMS Inventory"),
+            lotNumber: finalLotNumber || existing.lotNumber || null,
             status: "APPROVED",
             remark: String(remark ?? "Bulk checkout"),
             occurredAt: new Date(),
@@ -1295,6 +1789,27 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
         updatedItems.push(updated);
         createdMovements.push({ ...movement, stockItem: updated });
       }
+
+      // Durable atomic transaction audit log
+      await createAuditEntryTx(tx, {
+        userId: req.user?.id,
+        entityType: "InventoryMovement",
+        entityId: createdMovements[0]?.id || "bulk-checkout",
+        action: "CREATE",
+        afterJson: {
+          operation: "BULK_CHECKOUT",
+          itemCount: createdMovements.length,
+          items: sortedItems.map((it) => ({
+            stockItemId: it.stockItemId,
+            quantity: it.quantity,
+            projectFor: it.projectFor,
+            recipient: it.requestedBy,
+          })),
+        },
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      });
+
       return { updatedItems, createdMovements };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
@@ -1325,29 +1840,16 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
       });
     });
 
-    createAuditEntry({
-      userId: req.user?.id,
-      entityType: "InventoryMovement",
-      entityId: results.createdMovements[0]?.id || "bulk-checkout",
-      action: "CREATE",
-      afterJson: {
-        operation: "BULK_CHECKOUT",
-        itemCount: results.createdMovements.length,
-        items: sortedItems.map((it) => ({
-          stockItemId: it.stockItemId,
-          quantity: it.quantity,
-          projectFor: it.projectFor,
-          recipient: it.requestedBy,
-        })),
-      },
-      ip: req.ip,
-      userAgent: req.get("user-agent"),
-    });
-
     res.json({ success: true, updatedItems: results.updatedItems });
   } catch (error: any) {
     logger.error(error);
     const message = error.message || "";
+    if (message.startsWith("UNKNOWN_LOT:")) {
+      return res.status(400).json({ code: "UNKNOWN_LOT", error: message.replace("UNKNOWN_LOT:", "Unknown lot: ") });
+    }
+    if (message.startsWith("INSUFFICIENT_LOT_BALANCE:")) {
+      return res.status(400).json({ code: "INSUFFICIENT_LOT_BALANCE", error: message.replace("INSUFFICIENT_LOT_BALANCE:", "Insufficient lot balance: ") });
+    }
     if (message.startsWith("INSUFFICIENT_STOCK:")) {
       return res.status(400).json({ error: `Insufficient stock for ${message.split(":")[1]}.` });
     }
@@ -1358,7 +1860,7 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
   }
 });
 
-router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req: Request, res: Response) => {
+router.post("/bulk-checkin", requireAuth, requirePermission("inventory:check-in"), async (req: Request, res: Response) => {
   const parsed = BulkCheckInSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
@@ -1387,6 +1889,8 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
 
         const dateReceived = toDateOrUndefined(cartItem.dateReceived) ?? new Date();
         const remark = toStringOrUndefined(cartItem.remark) ?? toStringOrUndefined(cartItem.note) ?? (mode === "existing" ? "Stock increased" : "Opening stock");
+        const lotNumber = toStringOrUndefined(cartItem.lotNumber) ?? null;
+        const expiryDate = toDateOrUndefined(cartItem.expiryDate);
 
         if (mode === "existing") {
           const stockItemId = toStringOrUndefined(cartItem.stockItemId);
@@ -1408,22 +1912,25 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
           const nextCheckInTotal = Number(existing.checkInTotal ?? 0) + quantity;
           const nextBalancePercent = nextCheckInTotal > 0 ? (nextQuantity / nextCheckInTotal) * 100 : 0;
 
+          // FEFO policy: do not overwrite an earlier active expiry date with a later one!
+          let nextExpiryDate = existing.expiryDate;
+          if (expiryDate) {
+            if (!existing.expiryDate || previousQuantity === 0 || expiryDate < existing.expiryDate) {
+              nextExpiryDate = expiryDate;
+            }
+          }
+          const nextLotNumber = lotNumber || existing.lotNumber;
+
           const updated = await tx.stockItem.update({
             where: { id: stockItemId },
             data: {
               quantity: nextQuantity,
               checkInTotal: nextCheckInTotal,
               balancePercent: nextBalancePercent,
+              expiryDate: nextExpiryDate,
+              lotNumber: nextLotNumber,
             },
           });
-
-          const expiryDate = toDateOrUndefined(cartItem.expiryDate);
-          if (expiryDate) {
-            await tx.stockItem.update({
-              where: { id: stockItemId },
-              data: { expiryDate },
-            });
-          }
 
           const movement = await movementTx.inventoryMovement.create({
             data: {
@@ -1436,6 +1943,8 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
               recipient: null,
               projectFor,
               status: "APPROVED",
+              lotNumber,
+              expiryDate: expiryDate ?? null,
               remark,
               occurredAt: dateReceived,
             },
@@ -1462,8 +1971,6 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
           const barcode = toStringOrUndefined(cartItem.barcode) ?? sku;
           const category = toStringOrUndefined(cartItem.category) ?? "General";
           const unit = toStringOrUndefined(cartItem.unit) ?? "units";
-          const unitDescription = toStringOrUndefined(cartItem.unitDescription) ?? `${unit} per pack`;
-          const expiryDate = toDateOrUndefined(cartItem.expiryDate);
           const minThreshold = typeof cartItem.minThreshold === "number" ? cartItem.minThreshold : 5;
 
           const createdItem = await tx.stockItem.create({
@@ -1478,6 +1985,7 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
               checkInTotal: quantity,
               checkOutTotal: 0,
               balancePercent: 100,
+              lotNumber,
               expiryDate: expiryDate ?? null,
             } as never,
           });
@@ -1493,6 +2001,8 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
               recipient: null,
               projectFor,
               status: "APPROVED",
+              lotNumber,
+              expiryDate: expiryDate ?? null,
               remark,
               occurredAt: dateReceived,
             },
@@ -1502,6 +2012,26 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
           createdMovements.push({ ...movement, stockItem: createdItem });
         }
       }
+
+      // Durable atomic transaction audit log
+      await createAuditEntryTx(tx, {
+        userId: req.user?.id,
+        entityType: "InventoryMovement",
+        entityId: createdMovements[0]?.id || "bulk-checkin",
+        action: "CREATE",
+        afterJson: {
+          operation: "BULK_CHECKIN",
+          itemCount: createdMovements.length,
+          items: createdMovements.map((m) => ({
+            stockItemId: m.stockItemId,
+            quantity: m.quantity,
+            movementType: m.movementType,
+            lotNumber: m.lotNumber,
+          })),
+        },
+        ip: req.ip,
+        userAgent: req.get("user-agent"),
+      });
 
       return { updatedItems, createdMovements };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -1582,7 +2112,7 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
   }
 });
 
-router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMutation("StockItem", "UPDATE"), async (req, res) => {
+router.patch("/:id", requireAuth, requirePermission("inventory:manage"), auditMutation("StockItem", "UPDATE"), async (req, res) => {
   // Enforce role-based access for administrative updates
   const isAdmin = req.user?.roles.some(r => r === Role.ADMIN || r === Role.RESEARCH_ADMIN) ?? false;
   if (!isAdmin) {
@@ -1734,7 +2264,7 @@ router.patch("/:id", requireAuth, requirePermission("inventory:write"), auditMut
   }
 });
 
-router.delete("/:id", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), auditMutation("StockItem", "DELETE"), async (req, res) => {
+router.delete("/:id", requireAuth, requirePermission("inventory:manage"), auditMutation("StockItem", "DELETE"), async (req, res) => {
   const movementCount = await prisma.inventoryMovement.count({
     where: { stockItemId: req.params.id },
   });
