@@ -160,19 +160,19 @@ export function getApproverForProject(project?: string | null): string {
   if (!project) return "Assalif Demissew";
   const p = project.toUpperCase();
   if (p.includes("TES")) {
-    return "Alemayehu Godana, Migbaru Kefallew";
+    return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
+  }
+  if (p.includes("HAMMS")) {
+    return "Alemayehu Godana, Migbaru Kefallew, Assalif Demissew";
   }
   if (p.includes("ANOSTEP")) {
     return "Assalif Demissew";
   }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema, Tadele Emiru";
+  }
   if (p.includes("CDC")) {
     return "Assalif Demissew";
-  }
-  if (p.includes("HAMMS")) {
-    return "Assalif Demissew, Migbaru Kefallew";
-  }
-  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
-    return "Tilahun Ketema";
   }
   if (p.includes("DRIVAX")) {
     return "Wakweya Chali";
@@ -203,6 +203,7 @@ export default function RequestsPage() {
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [requestQty, setRequestQty] = React.useState(1);
   const [requestUnit, setRequestUnit] = React.useState("units");
+  const [unitDescription, setUnitDescription] = React.useState("");
   const [note, setNote] = React.useState("");
 
   const [requestedBy, setRequestedBy] = React.useState("");
@@ -222,6 +223,7 @@ export default function RequestsPage() {
     itemLabel: string;
     quantity: number;
     unit: string;
+    unitDescription: string;
     project: string;
     approver: string;
     requestedBy: string;
@@ -286,7 +288,7 @@ export default function RequestsPage() {
     fontSize: "10.5px",
     width: "100%",
     height: 30,
-  };  const bulkRequestMutation = useMutation({
+  }; const bulkRequestMutation = useMutation({
     mutationFn: async (items: CartItem[]) => {
       if (items.length === 0) throw new Error("Cart is empty.");
       const firstItem = items[0];
@@ -302,6 +304,7 @@ export default function RequestsPage() {
           id: it.stockItemId,
           quantity: it.quantity,
           unit: it.unit,
+          unitDescription: it.unitDescription,
           remark: it.remark || undefined,
         })),
       });
@@ -314,6 +317,7 @@ export default function RequestsPage() {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       setCartItems([]);
       setRequestQty(1);
+      setUnitDescription("");
       setNote("");
       setSelectedItemId("");
       setSelectedItemQuery("");
@@ -393,7 +397,7 @@ export default function RequestsPage() {
               </span>
             </div>
             <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: 2 }}>
-              Submit an item request — it will be reviewed by the inventory manager
+              Submit an item request : it will be reviewed by the inventory manager
             </div>
           </div>
         </div>
@@ -428,6 +432,7 @@ export default function RequestsPage() {
               setSelectedItemQuery([item.sku, item.name].filter(Boolean).join(" - "));
               if (item.unit) {
                 setRequestUnit(item.unit);
+                setUnitDescription(`${item.unit} per pack`);
               }
             }}
             placeholder="Type item name or Id"
@@ -450,11 +455,29 @@ export default function RequestsPage() {
             label="Unit"
             required={true}
             value={requestUnit}
-            onChange={(val) => setRequestUnit(val)}
+            onChange={(val) => {
+              setRequestUnit(val);
+              if (!unitDescription || unitDescription.endsWith("per pack")) {
+                setUnitDescription(`${val} per pack`);
+              }
+            }}
             options={masterUnits}
             placeholder="Select or type unit..."
             inputStyle={inputStyle}
           />
+
+          <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              Unit_Description
+            </span>
+            <input
+              type="text"
+              value={unitDescription}
+              onChange={(e) => setUnitDescription(e.target.value)}
+              placeholder="e.g. 100 pcs/box, 50 tests/kit"
+              style={inputStyle}
+            />
+          </label>
 
           <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
@@ -587,6 +610,7 @@ export default function RequestsPage() {
                   itemLabel: `${selectedItem.sku ?? ""} - ${selectedItem.name ?? ""}`.trim(),
                   quantity: requestQty,
                   unit: requestUnit.trim() || selectedItem.unit || "units",
+                  unitDescription: unitDescription.trim() || `${requestUnit.trim() || selectedItem.unit || "units"} per pack`,
                   project: project.trim(),
                   approver: approver.trim() || getApproverForProject(project),
                   requestedBy: requestedBy.trim(),
@@ -600,6 +624,7 @@ export default function RequestsPage() {
                 setSelectedItemId("");
                 setSelectedItemQuery("");
                 setRequestQty(1);
+                setUnitDescription("");
                 setNote("");
               }}
               disabled={isViewOnly}
@@ -637,16 +662,17 @@ export default function RequestsPage() {
             <div className="table-responsive-container" style={{ border: "1px solid var(--color-divider)", background: "var(--color-surface-2)", overflow: "hidden", borderRadius: 8 }}>
               <table style={{ width: "100%", minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "18%" }} />
-                  <col style={{ width: "6%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "5%" }} />
+                  <col style={{ width: "7%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "7%" }} />
                   <col style={{ width: "8%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "5%" }} />
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -657,6 +683,7 @@ export default function RequestsPage() {
                           <th style={thStyle} title="Item Label">Item</th>
                           <th style={thStyle} title="Quantity">Qty</th>
                           <th style={thStyle} title="Unit">Unit</th>
+                          <th style={thStyle} title="Unit_Description">Unit_Description</th>
                           <th style={thStyle} title="Project">Project</th>
                           <th style={thStyle} title="Approver">Approver</th>
                           <th style={thStyle} title="Requested By">By</th>
@@ -684,6 +711,7 @@ export default function RequestsPage() {
                         <td style={cellStyle} title={item.itemLabel}>{item.itemLabel}</td>
                         <td style={cellStyle}>{item.quantity}</td>
                         <td style={cellStyle} title={item.unit}>{item.unit}</td>
+                        <td style={cellStyle} title={item.unitDescription}>{item.unitDescription}</td>
                         <td style={cellStyle} title={item.project}>{item.project}</td>
                         <td style={{ ...cellStyle, fontWeight: 700, color: "var(--color-primary)" }} title={item.approver}>{item.approver}</td>
                         <td style={cellStyle} title={item.requestedBy}>{item.requestedBy}</td>
@@ -699,6 +727,7 @@ export default function RequestsPage() {
                                 setSelectedItemQuery(item.itemLabel);
                                 setRequestQty(item.quantity);
                                 setRequestUnit(item.unit || "units");
+                                setUnitDescription(item.unitDescription || "");
                                 setProject(item.project);
                                 setRequestedBy(item.requestedBy);
                                 setRequestedFor(item.requestedFor);

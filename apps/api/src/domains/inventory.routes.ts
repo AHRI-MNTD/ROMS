@@ -9,6 +9,8 @@ import { logger } from "../utils/logger";
 import { GoogleSheetsSyncService } from "../services/googleSheets.service";
 import { getInventoryDecisionDelta, getSettledRequestQuantity } from "./inventory.settlement";
 import { sendApprovedRequestsNotificationEmail } from "../auth/email";
+import { env } from "../env";
+import { createAuditEntry } from "../audit/audit.service";
 
 type InventoryMasterDataRecord = {
   category: string;
@@ -45,6 +47,7 @@ type InventoryMovementRecord = {
   recipient?: string | null;
   destination?: string | null;
   status?: "APPROVED" | "PENDING" | "REJECTED" | "PARTIAL" | null;
+  decisionAt?: Date | null;
   remark?: string | null;
   requestedQuantity?: number;
   requestedFor?: string | null;
@@ -59,24 +62,52 @@ export function getApproverForProject(project?: string | null): string {
   if (!project) return "Assalif Demissew";
   const p = project.toUpperCase();
   if (p.includes("TES")) {
-    return "Alemayehu Godana, Migbaru Kefallew";
+    return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
+  }
+  if (p.includes("HAMMS")) {
+    return "Alemayehu Godana, Migbaru Kefallew, Assalif Demissew";
   }
   if (p.includes("ANOSTEP")) {
     return "Assalif Demissew";
   }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema, Tadele Emiru";
+  }
   if (p.includes("CDC")) {
     return "Assalif Demissew";
-  }
-  if (p.includes("HAMMS")) {
-    return "Assalif Demissew, Migbaru Kefallew";
-  }
-  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
-    return "Tilahun Ketema";
   }
   if (p.includes("DRIVAX")) {
     return "Wakweya Chali";
   }
   return "Assalif Demissew";
+}
+
+export function isUserAuthorizedForApprovers(
+  user: { displayName?: string | null; email?: string | null } | undefined,
+  approversString: string
+): boolean {
+  if (!user) return false;
+  const userDisplayName = (user.displayName ?? "").toLowerCase().trim();
+  const userEmail = (user.email ?? "").toLowerCase().trim();
+  const assignedLower = approversString.toLowerCase();
+
+  const names = assignedLower.split(/[,/]| and /).map((n) => n.trim()).filter(Boolean);
+
+  for (const name of names) {
+    if (name.includes("alemayehu") && (userDisplayName.includes("alemayehu") || userEmail.includes("alexbiology"))) return true;
+    if (name.includes("migbaru") && (userDisplayName.includes("migbaru") || userEmail.includes("migbaru"))) return true;
+    if (name.includes("assalif") && (userDisplayName.includes("assalif") || userEmail.includes("ashifera") || userEmail.includes("assalif"))) return true;
+    if (name.includes("tilahun") && (userDisplayName.includes("tilahun") || userEmail.includes("tilahun"))) return true;
+    if (name.includes("wakweya") && (userDisplayName.includes("wakweya") || userEmail.includes("wakeya") || userEmail.includes("wakweya"))) return true;
+    if (name.includes("tadele") && (userDisplayName.includes("tadele") || userEmail.includes("tadele"))) return true;
+
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length > 0 && parts.every((p) => userDisplayName.includes(p) || userEmail.includes(p))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 type InventoryMovementPrisma = typeof prisma & {
@@ -135,6 +166,18 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
     }
   }
 
+  let unitDescription = `${itemUnit} per pack`;
+  if (movement.remark && movement.remark.includes("[UnitDesc: ")) {
+    const match = movement.remark.match(/\[UnitDesc:\s*([^\]]+)\]/);
+    if (match && match[1]) {
+      unitDescription = match[1].trim();
+    }
+  }
+
+  const isDisbursed = Boolean(
+    movement.remark && (movement.remark.includes("[ISSUED]") || movement.remark.includes("[DISBURSED]"))
+  );
+
   return {
     rowKey: movement.id ?? `${movement.requestBatchId ?? "batch"}-${movement.stockItemId}`,
     requestBatchId: movement.requestBatchId ?? null,
@@ -144,7 +187,7 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
     quantity: acceptedQuantity,
     requestedQuantity,
     unit: itemUnit,
-    unitDescription: `${itemUnit} per pack`,
+    unitDescription,
     category: stockItem?.category ?? "General",
     dateRequested: movement.occurredAt.toISOString().slice(0, 10),
     requestedBy: movement.requestedBy ?? "Unknown User",
@@ -154,8 +197,10 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
     approver: movement.approver || getApproverForProject(projectFor),
     remark: movement.remark ?? "",
     status: movement.status ?? "PENDING",
+    decisionAt: movement.decisionAt?.toISOString() ?? null,
     acceptedQuantity,
     movementId: movement.id,
+    isDisbursed,
   };
 }
 
@@ -479,10 +524,14 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
 
           const requestedQuantity = Math.max(0, Math.floor(toNumberOrUndefined(rawItem?.quantity) ?? 0));
           const requestedUnit = toStringOrUndefined(rawItem?.unit) ?? stockItem.unit ?? "units";
+          const requestedUnitDesc = toStringOrUndefined(rawItem?.unitDescription);
           const userRemark = toStringOrUndefined(rawItem?.remark) ?? "Requested by user";
-          const finalRemark = requestedUnit !== (stockItem.unit ?? "units")
+          let finalRemark = requestedUnit !== (stockItem.unit ?? "units")
             ? (userRemark ? `${userRemark} [Unit: ${requestedUnit}]` : `[Unit: ${requestedUnit}]`)
             : userRemark;
+          if (requestedUnitDesc) {
+            finalRemark = finalRemark ? `${finalRemark} [UnitDesc: ${requestedUnitDesc}]` : `[UnitDesc: ${requestedUnitDesc}]`;
+          }
 
           return tx.inventoryMovement.create({
             data: {
@@ -514,6 +563,22 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
       return createdRows;
     });
 
+    createAuditEntry({
+      userId: req.user?.id,
+      entityType: "InventoryRequest",
+      entityId: batchId,
+      action: "CREATE",
+      afterJson: {
+        batchId,
+        requestedBy,
+        requestedFor,
+        projectFor,
+        itemCount: created.length,
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
     res.status(201).json({
       data: created.map((movement) =>
         mapMovementToRequestRow({
@@ -532,7 +597,86 @@ router.post("/requests", requireAuth, requirePermission("inventory:write"), asyn
   }
 });
 
-router.post("/request-decisions", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+router.patch("/requests/:id/disburse", requireAuth, requirePermission("inventory:write"), async (req: Request, res: Response) => {
+  const movementId = req.params.id;
+  try {
+    const movement = await prisma.inventoryMovement.findUnique({
+      where: { id: movementId },
+      include: {
+        stockItem: {
+          select: { id: true, sku: true, name: true, unit: true, category: true },
+        },
+      },
+    });
+
+    if (!movement) {
+      res.status(404).json({ code: "NOT_FOUND", message: "Request movement record not found." });
+      return;
+    }
+
+    const user = req.user;
+    const officerName = (user as any)?.displayName || user?.email || "Inventory Officer";
+    const today = new Date().toISOString().slice(0, 10);
+    const markAsDisbursed = req.body?.disbursed !== false;
+
+    const currentRemark = movement.remark || "";
+    let nextRemark = currentRemark;
+
+    if (markAsDisbursed) {
+      if (!currentRemark.includes("[DISBURSED]")) {
+        const tag = `[DISBURSED on ${today} by ${officerName}]`;
+        nextRemark = currentRemark ? `${currentRemark} · ${tag}` : tag;
+      }
+    } else {
+      nextRemark = currentRemark.replace(/·?\s*\[DISBURSED[^\]]*\]/g, "").trim();
+    }
+
+    const updated = await prisma.inventoryMovement.update({
+      where: { id: movementId },
+      data: { remark: nextRemark },
+      include: {
+        stockItem: {
+          select: { id: true, sku: true, name: true, unit: true, category: true },
+        },
+      },
+    });
+
+    createAuditEntry({
+      userId: req.user?.id,
+      entityType: "InventoryMovement",
+      entityId: movementId,
+      action: "UPDATE",
+      beforeJson: { remark: currentRemark },
+      afterJson: { remark: nextRemark, isDisbursed: markAsDisbursed, officer: officerName },
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    res.json({
+      success: true,
+      data: mapMovementToRequestRow({
+        ...updated,
+        stockItem: updated.stockItem,
+      }),
+    });
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({ code: "INTERNAL_ERROR" });
+  }
+});
+
+router.post("/request-decisions", requireAuth, async (req: Request, res: Response) => {
+  const isInventoryViewOnly = (req.user?.permissions || []).some(
+    (p) => p.toLowerCase() === "inventory:view-only"
+  );
+  if (isInventoryViewOnly) {
+    res.status(403).json({
+      code: "FORBIDDEN",
+      message: "Your account is configured in View-Only mode for the Inventory module. Write operations are disabled.",
+    });
+    return;
+  }
+
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   if (items.length === 0) {
     res.status(400).json({ code: "VALIDATION_ERROR", message: "items must be a non-empty array" });
@@ -540,48 +684,53 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
   }
 
   const user = req.user;
-  const isAdminOrResearchAdmin = user?.roles?.some((r) => r === Role.ADMIN || r === Role.RESEARCH_ADMIN) ?? false;
+  let userDisplayName = (user as any)?.displayName;
+  if (!userDisplayName && user?.id) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { displayName: true },
+    });
+    if (dbUser?.displayName) {
+      userDisplayName = dbUser.displayName;
+    }
+  }
+  const userForAuth = { ...user, displayName: userDisplayName };
 
   const requestedBy = toStringOrUndefined(req.body?.requestedBy) ?? req.user?.email ?? null;
   const requestedFor = toStringOrUndefined(req.body?.requestedFor) ?? null;
   const projectFor = toStringOrUndefined(req.body?.project) ?? "ROMS Inventory";
   const team = toStringOrUndefined(req.body?.team) ?? null;
   const occurredAt = toDateOrUndefined(req.body?.timestamp) ?? new Date();
+  const decisionTimestamp = new Date();
 
-  if (!isAdminOrResearchAdmin) {
-    const userIdentifier = ((user as any)?.displayName || user?.email || "").toLowerCase();
-    const defaultApprover = getApproverForProject(projectFor).toLowerCase();
-    let isAuthorized = defaultApprover.split(",").some((app) => {
-      const trimmed = app.trim().toLowerCase();
-      return trimmed.length > 0 && (userIdentifier.includes(trimmed) || trimmed.includes(userIdentifier));
-    });
+  const defaultApprover = getApproverForProject(projectFor);
+  let isAuthorized = isUserAuthorizedForApprovers(userForAuth as any, defaultApprover);
 
-    if (!isAuthorized) {
-      for (const item of items) {
-        const movId = toStringOrUndefined(item?.movementId);
-        if (movId) {
-          const mov = await prisma.inventoryMovement.findUnique({ where: { id: movId }, select: { approver: true, projectFor: true } });
-          if (mov) {
-            const appStr = (mov.approver || getApproverForProject(mov.projectFor)).toLowerCase();
-            if (appStr.split(",").some((app) => {
-              const trimmed = app.trim().toLowerCase();
-              return trimmed.length > 0 && (userIdentifier.includes(trimmed) || trimmed.includes(userIdentifier));
-            })) {
-              isAuthorized = true;
-              break;
-            }
+  if (!isAuthorized) {
+    for (const item of items) {
+      const movId = toStringOrUndefined(item?.movementId);
+      if (movId) {
+        const mov = await prisma.inventoryMovement.findUnique({
+          where: { id: movId },
+          select: { approver: true, projectFor: true },
+        });
+        if (mov) {
+          const appStr = mov.approver || getApproverForProject(mov.projectFor);
+          if (isUserAuthorizedForApprovers(userForAuth as any, appStr)) {
+            isAuthorized = true;
+            break;
           }
         }
       }
     }
+  }
 
-    if (!isAuthorized) {
-      res.status(403).json({
-        code: "FORBIDDEN",
-        message: "You are not authorized to make request decisions. Only assigned project approvers or Administrators may approve or reject inventory requests.",
-      });
-      return;
-    }
+  if (!isAuthorized) {
+    res.status(403).json({
+      code: "FORBIDDEN",
+      message: `You are not authorized to make request decisions for this project. Only assigned project approvers (${defaultApprover}) may approve or reject inventory requests.`,
+    });
+    return;
   }
 
   try {
@@ -606,11 +755,12 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
               : status === "PARTIAL"
                 ? `Partial approval: accepted ${quantity} of ${requestedQuantity}`
                 : `Approved by project manager${requestedQuantity > 0 ? ` (${requestedQuantity} requested)` : ""}`;
+          const approverRemark = toStringOrUndefined(rawItem?.remark);
 
             const existingMovement = movementId
               ? await tx.inventoryMovement.findUnique({
                   where: { id: movementId },
-                  select: { id: true, quantity: true, status: true, stockItemId: true, requestBatchId: true },
+                  select: { id: true, quantity: true, status: true, stockItemId: true, requestBatchId: true, remark: true },
                 })
               : null;
 
@@ -652,7 +802,17 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
           const approver = toStringOrUndefined(req.body?.approver) ?? getApproverForProject(projectFor);
 
           if (movementId) {
-              const movement = await movementTx.inventoryMovement.update({
+            let nextRemark = [summary, approverRemark ? `Approver remark: ${approverRemark}` : null, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · ");
+            if (existingMovement?.remark) {
+              const unitMatch = existingMovement.remark.match(/\[Unit:\s*([^\]]+)\]/);
+              if (unitMatch) nextRemark += ` ${unitMatch[0]}`;
+              const unitDescMatch = existingMovement.remark.match(/\[UnitDesc:\s*([^\]]+)\]/);
+              if (unitDescMatch) nextRemark += ` ${unitDescMatch[0]}`;
+              if (existingMovement.remark.includes("[ISSUED]")) nextRemark += " [ISSUED]";
+              if (existingMovement.remark.includes("[DISBURSED]")) nextRemark += " [DISBURSED]";
+            }
+
+            const movement = await movementTx.inventoryMovement.update({
               where: { id: movementId },
               data: {
                 quantity,
@@ -665,9 +825,10 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
                 team,
                 approver,
                 status,
-                remark: [summary, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
+                decisionAt: status === "PENDING" ? null : decisionTimestamp,
+                remark: nextRemark,
                 occurredAt,
-              },
+              } as any,
               include: {
                 stockItem: {
                   select: { id: true, sku: true, name: true, unit: true, category: true },
@@ -692,7 +853,8 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
               team,
               approver,
               status,
-              remark: [summary, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
+              decisionAt: status === "PENDING" ? null : decisionTimestamp,
+              remark: [summary, approverRemark ? `Approver remark: ${approverRemark}` : null, toStringOrUndefined(rawItem?.name) ? `Item: ${toStringOrUndefined(rawItem?.name)}` : null, team ? `Team: ${team}` : null].filter(Boolean).join(" · "),
               occurredAt,
             },
             include: {
@@ -713,7 +875,7 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
     );
     if (approvedMovements.length > 0) {
       const managerName = (user as any)?.displayName || user?.email || "Inventory Manager";
-      const inventoryWorkerEmail = "betelihemashagrie21@gmail.com";
+      const inventoryWorkerEmail = env.INVENTORY_DISPATCH_EMAIL || "betelihemashagrie21@gmail.com";
       const requesterEmail = requestedBy && requestedBy.includes("@") ? requestedBy.trim() : null;
 
       const emailPayload = {
@@ -729,9 +891,9 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
         })),
       };
 
-      // 1. Send email notification to Inventory Worker (Betelihem)
+      // 1. Send email notification to Inventory Worker
       sendApprovedRequestsNotificationEmail(inventoryWorkerEmail, emailPayload).catch((err) =>
-        logger.error(err, "Error dispatching approved request email notification to Inventory Worker (Betelihem)")
+        logger.error(err, "Error dispatching approved request email notification to Inventory Worker")
       );
 
       // 2. Send email notification to Requester (if valid email & different from inventory worker)
@@ -741,6 +903,25 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:writ
         );
       }
     }
+
+    createAuditEntry({
+      userId: req.user?.id,
+      entityType: "InventoryDecision",
+      entityId: (created[0] as any)?.requestBatchId || (created[0] as any)?.id || "decision",
+      action: "UPDATE",
+      afterJson: {
+        manager: (user as any)?.displayName || user?.email || "Manager",
+        project: projectFor,
+        count: created.length,
+        items: items.map((it: any) => ({
+          id: it.id || it.movementId,
+          status: it.status,
+          quantity: it.acceptedQuantity ?? it.quantity,
+        })),
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     res.status(201).json({
       data: created.map((movement: any) =>
@@ -796,7 +977,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
       where: {
         expiryDate: {
           not: null,
-          lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          lte: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
         },
       },
       orderBy: { expiryDate: "asc" },
@@ -1144,6 +1325,25 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:write"),
       });
     });
 
+    createAuditEntry({
+      userId: req.user?.id,
+      entityType: "InventoryMovement",
+      entityId: results.createdMovements[0]?.id || "bulk-checkout",
+      action: "CREATE",
+      afterJson: {
+        operation: "BULK_CHECKOUT",
+        itemCount: results.createdMovements.length,
+        items: sortedItems.map((it) => ({
+          stockItemId: it.stockItemId,
+          quantity: it.quantity,
+          projectFor: it.projectFor,
+          recipient: it.requestedBy,
+        })),
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
     res.json({ success: true, updatedItems: results.updatedItems });
   } catch (error: any) {
     logger.error(error);
@@ -1330,6 +1530,27 @@ router.post("/bulk-checkin", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_
         remark: mov.remark,
         occurredAt: mov.occurredAt,
       });
+    });
+
+    createAuditEntry({
+      userId: req.user?.id,
+      entityType: "InventoryMovement",
+      entityId: results.createdMovements[0]?.id || "bulk-checkin",
+      action: "CREATE",
+      afterJson: {
+        operation: "BULK_CHECKIN",
+        itemCount: results.createdMovements.length,
+        items: items.map((it) => ({
+          mode: it.mode,
+          stockItemId: it.stockItemId,
+          sku: it.sku,
+          name: it.name,
+          quantity: it.quantity,
+          projectFor: it.projectFor,
+        })),
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent"),
     });
 
     res.json({ success: true, updatedItems: results.updatedItems });

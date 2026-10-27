@@ -30,7 +30,7 @@ export const AppShell: React.FC = () => {
           flex: 1,
           overflowY: "auto",
           overflowX: "hidden",
-          background: "var(--color-bg)",
+          background: "var(--app-content-bg)",
           display: "flex",
           flexDirection: "column",
         }}

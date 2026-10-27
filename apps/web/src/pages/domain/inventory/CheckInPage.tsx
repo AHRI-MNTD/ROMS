@@ -9,6 +9,7 @@ import { isInventoryViewOnly } from "../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 type CheckInMode = "existing" | "new";
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", ETB: "Br", EUR: "€" };
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();
@@ -180,6 +181,7 @@ export default function CheckInPage() {
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkInQty, setCheckInQty] = React.useState(1);
   const [unitPrice, setUnitPrice] = React.useState<number | "">(0);
+  const [currency, setCurrency] = React.useState("USD");
   const [note, setNote] = React.useState("");
   const [projectFor, setProjectFor] = React.useState("");
   const [dateReceived, setDateReceived] = React.useState(() => toDateInputValue());
@@ -192,6 +194,7 @@ export default function CheckInPage() {
   const [newUnit, setNewUnit] = React.useState("units");
   const [newOpeningQty, setNewOpeningQty] = React.useState(1);
   const [newUnitPrice, setNewUnitPrice] = React.useState<number | "">(0);
+  const [newCurrency, setNewCurrency] = React.useState("USD");
   const [newUnitDescription, setNewUnitDescription] = React.useState("");
   const [newCategory, setNewCategory] = React.useState("");
   const [newExpiryDate, setNewExpiryDate] = React.useState<string>("");
@@ -222,6 +225,7 @@ export default function CheckInPage() {
     category?: string;
     quantity: number;
     unitPrice?: number;
+    currency: string;
     totalPrice?: number;
     projectFor: string;
     dateReceived: string;
@@ -676,13 +680,20 @@ export default function CheckInPage() {
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span>Currency</span>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={inputStyle}>
+                {Object.keys(CURRENCY_SYMBOLS).map((code) => <option key={code} value={code}>{code} ({CURRENCY_SYMBOLS[code]})</option>)}
+              </select>
+            </label>
+
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 Total Price <span style={{ fontSize: "9px", color: "var(--color-primary)", fontWeight: 600 }}>(Auto)</span>
               </span>
               <input
                 type="text"
                 readOnly
-                value={existingTotalPrice > 0 ? existingTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                value={`${CURRENCY_SYMBOLS[currency]} ${existingTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 style={{
                   ...inputStyle,
                   background: "var(--color-surface-offset, rgba(0,0,0,0.04))",
@@ -831,13 +842,20 @@ export default function CheckInPage() {
             </label>
 
             <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
+              <span>Currency</span>
+              <select value={newCurrency} onChange={(e) => setNewCurrency(e.target.value)} style={inputStyle}>
+                {Object.keys(CURRENCY_SYMBOLS).map((code) => <option key={code} value={code}>{code} ({CURRENCY_SYMBOLS[code]})</option>)}
+              </select>
+            </label>
+
+            <label style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "flex", flexDirection: "column", gap: 3 }}>
               <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
                 Total Price <span style={{ fontSize: "9px", color: "#0284c7", fontWeight: 600 }}>(Auto)</span>
               </span>
               <input
                 type="text"
                 readOnly
-                value={newTotalPrice > 0 ? newTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                value={`${CURRENCY_SYMBOLS[newCurrency]} ${newTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 style={{
                   ...inputStyle,
                   background: "var(--color-surface-offset, rgba(0,0,0,0.04))",
@@ -975,6 +993,7 @@ export default function CheckInPage() {
                     stockItemId: selectedItem.id,
                     quantity: checkInQty,
                     unitPrice: uPrice,
+                    currency,
                     totalPrice: tPrice,
                     projectFor: projectFor.trim() || projects[0],
                     dateReceived,
@@ -989,6 +1008,7 @@ export default function CheckInPage() {
                   });
                   setCheckInQty(1);
                   setUnitPrice(0);
+                  setCurrency("USD");
                   setNote("");
                   setSelectedItemId("");
                   setSelectedItemQuery("");
@@ -1050,6 +1070,7 @@ export default function CheckInPage() {
                     quantity: newOpeningQty,
                     unit,
                     unitPrice: uPrice,
+                    currency: newCurrency,
                     totalPrice: tPrice,
                     unitDescription,
                     category,
@@ -1076,6 +1097,7 @@ export default function CheckInPage() {
                   setNewUnit("units");
                   setNewOpeningQty(1);
                   setNewUnitPrice(0);
+                  setNewCurrency("USD");
                   setNewUnitDescription("");
                   setNewCategory("");
                   setNote("");
@@ -1176,11 +1198,11 @@ export default function CheckInPage() {
                           </span>
                         </td>
                         <td style={cellStyle}>{item.quantity}</td>
-                        <td style={cellStyle} title={item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : "—"}>
-                          {item.unitPrice ? `$${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                        <td style={cellStyle} title={item.unitPrice ? `${CURRENCY_SYMBOLS[item.currency] ?? item.currency} ${item.unitPrice.toFixed(2)}` : "—"}>
+                          {item.unitPrice ? `${CURRENCY_SYMBOLS[item.currency] ?? item.currency} ${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
                         </td>
-                        <td style={cellStyle} title={item.totalPrice ? `$${item.totalPrice.toFixed(2)}` : "—"}>
-                          {item.totalPrice ? `$${item.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                        <td style={cellStyle} title={item.totalPrice ? `${CURRENCY_SYMBOLS[item.currency] ?? item.currency} ${item.totalPrice.toFixed(2)}` : "—"}>
+                          {item.totalPrice ? `${CURRENCY_SYMBOLS[item.currency] ?? item.currency} ${item.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
                         </td>
                         <td style={cellStyle} title={item.projectFor}>{item.projectFor}</td>
                         <td style={cellStyle} title={item.dateReceived}>{item.dateReceived}</td>
@@ -1197,6 +1219,7 @@ export default function CheckInPage() {
                                   setSelectedItemQuery(item.itemLabel);
                                   setCheckInQty(item.quantity);
                                   setUnitPrice(item.unitPrice ?? 0);
+                                  setCurrency(item.currency);
                                   setNote(item.remark || "");
                                   setExpiryDate(item.expiryDate || "");
                                 } else {
@@ -1206,6 +1229,7 @@ export default function CheckInPage() {
                                   setNewUnit(item.unit || "units");
                                   setNewOpeningQty(item.quantity);
                                   setNewUnitPrice(item.unitPrice ?? 0);
+                                  setNewCurrency(item.currency);
                                   setNewUnitDescription(item.unitDescription || "");
                                   setNewCategory(item.category || "");
                                   setNote(item.remark || "");
@@ -1248,11 +1272,12 @@ export default function CheckInPage() {
                         stockItemId: i.stockItemId,
                         quantity: i.quantity,
                         unitPrice: i.unitPrice,
+                        currency: i.currency,
                         totalPrice: i.totalPrice,
                         projectFor: i.projectFor,
                         dateReceived: i.dateReceived,
                         expiryDate: i.expiryDate,
-                        remark: i.remark,
+                        remark: [i.remark, i.unitPrice ? `Unit price: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${i.unitPrice.toFixed(2)}; Total: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${(i.totalPrice ?? 0).toFixed(2)}` : null].filter(Boolean).join(" · ") || undefined,
                       };
                     } else {
                       return {
@@ -1263,13 +1288,14 @@ export default function CheckInPage() {
                         quantity: i.quantity,
                         unit: i.unit,
                         unitPrice: i.unitPrice,
+                        currency: i.currency,
                         totalPrice: i.totalPrice,
                         unitDescription: i.unitDescription,
                         category: i.category,
                         projectFor: i.projectFor,
                         dateReceived: i.dateReceived,
                         expiryDate: i.expiryDate,
-                        remark: i.remark,
+                        remark: [i.remark, i.unitPrice ? `Unit price: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${i.unitPrice.toFixed(2)}; Total: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${(i.totalPrice ?? 0).toFixed(2)}` : null].filter(Boolean).join(" · ") || undefined,
                       };
                     }
                   });

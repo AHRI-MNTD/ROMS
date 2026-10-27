@@ -71,6 +71,7 @@
 :root,
 [data-theme="light"] {
   /* Operations HTML naming */
+  --app-content-bg: #ffffff;
   --color-bg: #f7f6f2;
   --color-surface: #f9f8f5;
   --color-surface-2: #ffffff;
@@ -130,6 +131,7 @@
 /* ── Dark theme ─────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
   /* Operations HTML naming */
+  --app-content-bg: #141312;
   --color-bg: #141312;
   --color-surface: #1a1917;
   --color-surface-2: #1f1e1c;
@@ -613,8 +615,8 @@ a:hover {
 .inventory-nav-link.active,
 .domain-nav-link.active {
   border: 1px solid var(--color-divider);
-  border-bottom: 1px solid var(--color-bg);
-  background: var(--color-bg);
+  border-bottom: 1px solid var(--app-content-bg);
+  background: var(--app-content-bg);
   color: var(--color-primary);
   font-weight: 700;
   font-size: 13px;
@@ -645,7 +647,7 @@ a:hover {
   border-right: 1px solid var(--color-divider);
   border-bottom: 1px solid var(--color-divider);
   border-bottom-right-radius: 10px;
-  box-shadow: 3px 3px 0 2px var(--color-bg);
+  box-shadow: 3px 3px 0 2px var(--app-content-bg);
 }
 
 /* Right fillet arc connecting active tab right border seamlessly into divider line */
@@ -655,7 +657,7 @@ a:hover {
   border-left: 1px solid var(--color-divider);
   border-bottom: 1px solid var(--color-divider);
   border-bottom-left-radius: 10px;
-  box-shadow: -3px 3px 0 2px var(--color-bg);
+  box-shadow: -3px 3px 0 2px var(--app-content-bg);
 }
 
 .inventory-nav-link .nav-icon,
@@ -690,7 +692,7 @@ a:hover {
 
 .inventory-nav-link.active:hover,
 .domain-nav-link.active:hover {
-  background: var(--color-bg);
+  background: var(--app-content-bg);
   color: var(--color-primary);
 }
 
@@ -804,8 +806,8 @@ a:hover {
   .inventory-nav-link.active,
   .domain-nav-link.active {
     border-color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-    background: var(--color-primary-highlight);
+    border-bottom-color: var(--app-content-bg);
+    background: var(--app-content-bg);
   }
 
   .inventory-nav-link.active::before,

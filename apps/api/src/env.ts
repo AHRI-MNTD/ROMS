@@ -17,6 +17,8 @@ const EnvSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  APP_URL: z.string().default("http://192.168.70.50:8080"),
+  INVENTORY_DISPATCH_EMAIL: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

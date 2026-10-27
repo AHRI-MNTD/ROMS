@@ -108,6 +108,15 @@ export function requirePermission(action: DomainAction) {
       (p) => p.toLowerCase() === "inventory:view-only"
     );
 
+    // If the account has the inventory:view-only permission, strictly prohibit any inventory write or delete mutation regardless of base role
+    if (isInventoryViewOnly && (action === "inventory:write" || action === "inventory:delete")) {
+      res.status(403).json({
+        code: "FORBIDDEN",
+        message: "Your account is configured in View-Only mode for the Inventory module. Write operations are disabled.",
+      });
+      return;
+    }
+
     // Map custom domain-level right names (e.g. "inventory:Check In") to backend read/write permissions
     const expandedPermissions = (req.user.permissions || []).flatMap((perm) => {
       if (perm === "admin:all") return ["admin:all"];
@@ -124,12 +133,12 @@ export function requirePermission(action: DomainAction) {
       // Specific rights that involve writing or modifying data
       const writeRights: Record<string, string[]> = {
         biospecimen: ["Sample Collection", "Processing", "Storage", "Retrieval", "Disposal"],
-        inventory: ["Check In", "Check Out", "Request/s"],
+        inventory: ["Check In", "Check Out", "Request/s", "Inventory Manager", "Master Data"],
         qms: ["Document Control", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
         "lab-workflow": ["Protocols", "Experiments", "Runs", "Instruments", "Reports"],
         "data-management": ["Studies", "Metadata", "Data Dictionary", "Exports", "Integrations"],
         infrastructure: ["Services", "Servers", "Monitoring", "Incidents", "Integrations"],
-        hr: ["Profiles", "Leave", "Onboarding"],
+        hr: ["Profiles", "Leave", "Onboarding", "Personnel Registration"],
         finance: ["Grants", "Budgets", "Expenses", "Approvals", "Reports"],
         participant: ["Participants", "Consent", "Visits", "Engagement", "Follow-up"],
         regulatory: ["Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting"],

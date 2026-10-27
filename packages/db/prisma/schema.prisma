@@ -250,6 +250,7 @@ model InventoryMovement {
   team         String?
   approver     String?
   status       InventoryMovementStatus @default(APPROVED)
+  decisionAt   DateTime?
   remark       String?
   occurredAt   DateTime                @default(now())
   createdAt    DateTime                @default(now())

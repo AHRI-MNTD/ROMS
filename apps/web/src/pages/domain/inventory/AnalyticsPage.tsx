@@ -874,7 +874,7 @@ export default function AnalyticsPage() {
             </div>
 
             <div style={sectionStyle}>
-              <div style={sectionHeaderStyle}>Expiring Reagents (30 Days)</div>
+              <div style={sectionHeaderStyle}>Expiring Reagents (60 Days)</div>
               <div style={{ maxHeight: 260, overflowY: "auto" }}>
                 {expiringSoonItems.length === 0 ? (
                   <div style={{ padding: 16, fontSize: "var(--fs-sm)", color: "var(--color-text-muted)" }}>No expiring reagents found.</div>
@@ -1046,11 +1046,11 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            {/* Section 3.5: Expiring Soon Reagents (Within 30 Days) */}
+            {/* Section 3.5: Expiring Soon Reagents (Within 60 Days) */}
             <div className="section-container">
-              <div className="section-title">Section 3.5: Expiring Soon Reagents (Within 30 Days)</div>
+              <div className="section-title">Section 3.5: Expiring Soon Reagents (Within 60 Days)</div>
               {!expiringSoonItems || expiringSoonItems.length === 0 ? (
-                <p style={{ fontSize: "11px", fontStyle: "italic", color: "#64748b" }}>No reagents are currently expiring within 30 days.</p>
+                <p style={{ fontSize: "11px", fontStyle: "italic", color: "#64748b" }}>No reagents are currently expiring within 60 days.</p>
               ) : (
                 <table>
                   <thead>

@@ -190,6 +190,7 @@ export const BulkCheckInItemSchema = z.object({
   remark: z.string().optional().nullable(),
   note: z.string().optional().nullable(),
   unitPrice: z.number().optional().nullable(),
+  currency: z.string().optional().nullable(),
   totalPrice: z.number().optional().nullable(),
 });
 

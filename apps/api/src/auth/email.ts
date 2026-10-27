@@ -133,7 +133,7 @@ export async function sendApprovedRequestsNotificationEmail(
             </tbody>
           </table>
           <div style="text-align: center; margin-top: 24px;">
-            <a href="http://localhost:5173/domains/inventory/stock-management/approved-requests" style="background-color: #0d9488; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+            <a href="${env.APP_URL || "http://192.168.70.50:8080"}/domains/inventory/stock-management/approved-requests" style="background-color: #0d9488; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
               View Approved Requests Hub
             </a>
           </div>

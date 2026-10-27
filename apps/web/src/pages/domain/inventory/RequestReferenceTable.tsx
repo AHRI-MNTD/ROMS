@@ -15,6 +15,7 @@ export interface RequestReferenceRow {
   unitDescription: string;
   category: string;
   dateRequested: string;
+  decisionAt?: string | null;
   requestedBy?: string;
   requestedFor?: string;
   project?: string;
@@ -23,25 +24,26 @@ export interface RequestReferenceRow {
   remark?: string;
   status?: string;
   acceptedQuantity?: number;
+  isDisbursed?: boolean;
 }
 
 export function getApproverForProject(project?: string | null): string {
   if (!project) return "Assalif Demissew";
   const p = project.toUpperCase();
   if (p.includes("TES")) {
-    return "Alemayehu Godana, Migbaru Kefallew";
+    return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
+  }
+  if (p.includes("HAMMS")) {
+    return "Alemayehu Godana, Migbaru Kefallew, Assalif Demissew";
   }
   if (p.includes("ANOSTEP")) {
     return "Assalif Demissew";
   }
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
+    return "Tilahun Ketema, Tadele Emiru";
+  }
   if (p.includes("CDC")) {
     return "Assalif Demissew";
-  }
-  if (p.includes("HAMMS")) {
-    return "Assalif Demissew, Migbaru Kefallew";
-  }
-  if (p.includes("PVSTATEM") || p.includes("PVSERO")) {
-    return "Tilahun Ketema";
   }
   if (p.includes("DRIVAX")) {
     return "Wakweya Chali";

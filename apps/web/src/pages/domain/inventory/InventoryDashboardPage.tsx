@@ -255,11 +255,11 @@ export default function InventoryDashboardPage() {
             <div style={cardStyle("1px solid rgba(249,115,22,0.18)", expiringCardBackground)}>
               <div style={cardHeader("#c2410c", "rgba(249,115,22,0.1)")}>
                 <span>⏳ Expiring Soon Register</span>
-                <span style={badge("#ffedd5", "#c2410c")}>Within 30 Days</span>
+                <span style={badge("#ffedd5", "#c2410c")}>Within 60 Days</span>
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
                 {expiringSoonItems.length === 0
-                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", fontSize: "10px", fontWeight: 700 }}>✅ No reagents expiring within 30 days.</div>
+                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", fontSize: "10px", fontWeight: 700 }}>✅ No reagents expiring within 60 days.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
                     const item = expiringSoonItems[i];
                     if (!item) return <div key={i} style={rowBase}>{emptyCell}</div>;

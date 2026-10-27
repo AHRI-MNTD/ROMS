@@ -439,7 +439,7 @@ export default function CurrentInventoryPage() {
 
   const handleDeleteItem = async (item: any) => {
     if (!isSuperAdmin) return;
-    if (!window.confirm("Are you sure you want to delete this stock item? All movement logs for this item will be lost.")) {
+    if (!window.confirm(`Are you sure you want to delete "${item.name || item.sku}"? (Note: Items with existing movement history cannot be deleted to maintain institutional audit integrity).`)) {
       return;
     }
     setFeedback(null);

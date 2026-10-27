@@ -129,6 +129,7 @@ export const PERMISSIONS: Record<Role, DomainAction[]> = {
  */
 export function hasPermission(role: Role, action: DomainAction): boolean {
   const perms = PERMISSIONS[role];
+  if (!perms) return false;
   return perms.includes("admin:all") || perms.includes(action);
 }
 

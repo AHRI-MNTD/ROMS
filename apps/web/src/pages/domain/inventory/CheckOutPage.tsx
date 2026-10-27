@@ -216,6 +216,29 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           description="You have view-only access to inspect the Check-Out workflow and disbursement history. Submitting checkout requests is disabled."
         />
       )}
+      {/* Operational Notice: Direct Walk-in vs. Approved Requests */}
+      <div
+        style={{
+          padding: "10px 14px",
+          borderRadius: 8,
+          background: "rgba(2, 132, 199, 0.08)",
+          border: "1px solid rgba(2, 132, 199, 0.25)",
+          color: "var(--color-text)",
+          fontSize: "11px",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          lineHeight: 1.5,
+        }}
+      >
+        <span style={{ fontSize: "16px", marginTop: "-1px" }}>ℹ️</span>
+        <div>
+          <strong style={{ color: "#0284c7" }}>Operational Guidance: Direct Walk-In Disbursements Only</strong>
+          <p style={{ margin: "2px 0 0 0", color: "var(--color-text-muted)" }}>
+            This screen is reserved for immediate, over-the-counter stock withdrawals. If lab staff already submitted an institutional material request that was approved by a manager, the stock has <strong>already been deducted</strong> upon approval. Please fulfill and hand over approved requests via the <strong>Approved Requests</strong> tab to avoid double-deducting inventory balances.
+          </p>
+        </div>
+      </div>
       <div
         style={{
           padding: 18,
