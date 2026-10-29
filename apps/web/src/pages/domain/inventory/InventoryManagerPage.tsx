@@ -12,8 +12,14 @@ export function getApproverForProject(project?: string | null): string {
   if (p.includes("TES")) {
     return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
   }
+  if (p.includes("VECTOR")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("PARASITE") || p.includes("PARACITE")) {
+    return "Migbaru Kefallew, Alemayehu Godana";
+  }
   if (p.includes("HAMMS")) {
-    return "Alemayehu Godana, Migbaru Kefallew, Assalif Demissew";
+    return "Assalif Demissew";
   }
   if (p.includes("ANOSTEP")) {
     return "Assalif Demissew";
@@ -39,10 +45,11 @@ export function isUserAssignedApprover(
 
   const userDisplayName = (user.displayName ?? "").toLowerCase().trim();
   const userEmail = (user.email ?? "").toLowerCase().trim();
-  const assignedStr = approverField || getApproverForProject(project);
-  const assignedLower = assignedStr.toLowerCase();
+  const assignedStr = (approverField || "").trim();
+  const fallbackStr = getApproverForProject(project);
+  const combined = `${assignedStr}, ${fallbackStr}`.toLowerCase();
 
-  const names = assignedLower.split(/[,/]| and /).map((n) => n.trim()).filter(Boolean);
+  const names = combined.split(/[,/]| and /).map((n) => n.trim()).filter(Boolean);
 
   for (const name of names) {
     if (name.includes("alemayehu") && (userDisplayName.includes("alemayehu") || userEmail.includes("alexbiology"))) return true;

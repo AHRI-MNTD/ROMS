@@ -10,6 +10,10 @@ import {
   BulkCheckInSchema, 
   CreateInventoryRequestSchema,
   InventoryDecisionSchema,
+  CreateProjectLoanSchema,
+  CreateProjectLoanBatchSchema,
+  ProjectLoanDecisionSchema,
+  ReturnProjectLoanSchema,
   Role 
 } from "@roms/shared";
 import { logger } from "../utils/logger";
@@ -663,6 +667,7 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
 router.get("/movements", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const type = req.query.type as string;
   const stockItemId = String(req.query.stockItemId ?? "").trim();
+  const project = String(req.query.project ?? "").trim();
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 50;
   const all = String(req.query.all ?? "").toLowerCase() === "true";
@@ -673,6 +678,9 @@ router.get("/movements", requireAuth, requirePermission("inventory:read"), async
   }
   if (stockItemId.length > 0) {
     where.stockItemId = stockItemId;
+  }
+  if (project && project !== "ALL") {
+    where.projectFor = { equals: project, mode: "insensitive" };
   }
 
   const [data, total] = await Promise.all([
@@ -1260,10 +1268,227 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
   }
 });
 
-router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {
+router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const now = new Date();
   const sixtyDaysAhead = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
   const sixMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 6, 1));
+  const project = String(req.query.project ?? "").trim();
+
+  if (project && project !== "ALL" && project !== "Overall") {
+    const projectMovements = await prisma.inventoryMovement.findMany({
+      where: {
+        OR: [
+          { projectFor: { equals: project, mode: "insensitive" } },
+          { destination: { equals: project, mode: "insensitive" } },
+        ],
+      },
+      include: {
+        stockItem: true,
+      },
+      orderBy: { occurredAt: "desc" },
+    });
+
+    const [activeLoansLent, activeLoansBorrowed] = await Promise.all([
+      prisma.projectLoan.findMany({
+        where: { lenderProject: { equals: project, mode: "insensitive" }, status: "APPROVED" },
+      }),
+      prisma.projectLoan.findMany({
+        where: { borrowerProject: { equals: project, mode: "insensitive" }, status: "APPROVED" },
+      }),
+    ]);
+
+    // Aggregate by stockItemId
+    const itemMap = new Map<string, {
+      id: string;
+      sku: string;
+      name: string;
+      category: string;
+      unit: string;
+      minThreshold: number;
+      expiryDate: Date | null;
+      checkInTotal: number;
+      checkOutTotal: number;
+      lentTotal: number;
+      borrowedTotal: number;
+      quantity: number;
+    }>();
+
+    for (const m of projectMovements) {
+      if (!m.stockItem) continue;
+      const existing = itemMap.get(m.stockItemId) || {
+        id: m.stockItem.id,
+        sku: m.stockItem.sku,
+        name: m.stockItem.name,
+        category: m.stockItem.category || "General",
+        unit: m.stockItem.unit || "units",
+        minThreshold: m.stockItem.minThreshold || 5,
+        expiryDate: m.stockItem.expiryDate,
+        checkInTotal: 0,
+        checkOutTotal: 0,
+        lentTotal: 0,
+        borrowedTotal: 0,
+        quantity: 0,
+      };
+
+      if (m.movementType === "CHECK_IN" && m.status === "APPROVED") {
+        existing.checkInTotal += Number(m.quantity || 0);
+        if (m.expiryDate && (!existing.expiryDate || m.expiryDate < existing.expiryDate)) {
+          existing.expiryDate = m.expiryDate;
+        }
+      } else if (m.movementType === "CHECK_OUT" && (m.status === "APPROVED" || m.status === "PARTIAL")) {
+        existing.checkOutTotal += Number(m.quantity || 0);
+      }
+      itemMap.set(m.stockItemId, existing);
+    }
+
+    // Factor in loans
+    for (const l of activeLoansLent) {
+      const item = itemMap.get(l.stockItemId);
+      if (item) {
+        item.lentTotal += Number(l.approvedQuantity || l.requestedQuantity || 0);
+      }
+    }
+    for (const l of activeLoansBorrowed) {
+      let item = itemMap.get(l.stockItemId);
+      if (!item) {
+        const stock = await prisma.stockItem.findUnique({ where: { id: l.stockItemId } });
+        if (stock) {
+          item = {
+            id: stock.id,
+            sku: stock.sku,
+            name: stock.name,
+            category: stock.category || "General",
+            unit: stock.unit || "units",
+            minThreshold: stock.minThreshold || 5,
+            expiryDate: stock.expiryDate,
+            checkInTotal: 0,
+            checkOutTotal: 0,
+            lentTotal: 0,
+            borrowedTotal: 0,
+            quantity: 0,
+          };
+          itemMap.set(l.stockItemId, item);
+        }
+      }
+      if (item) {
+        item.borrowedTotal += Number(l.approvedQuantity || l.requestedQuantity || 0);
+      }
+    }
+
+    const projectItems = Array.from(itemMap.values()).map((item) => {
+      const qty = Math.max(0, item.checkInTotal - item.checkOutTotal - item.lentTotal + item.borrowedTotal);
+      return { ...item, quantity: qty };
+    });
+
+    const totalItems = projectItems.length;
+    const totalQuantity = projectItems.reduce((sum, r) => sum + r.quantity, 0);
+    const totalCheckIn = projectItems.reduce((sum, r) => sum + r.checkInTotal, 0);
+    const totalCheckOut = projectItems.reduce((sum, r) => sum + r.checkOutTotal, 0);
+
+    const calcProjectPercent = (r: (typeof projectItems)[0]) => {
+      if (r.quantity <= 0) return 0;
+      const baseIn = r.checkInTotal + r.borrowedTotal;
+      if (baseIn > 0) return (r.quantity / baseIn) * 100;
+      return 100;
+    };
+
+    const outOfStockItems = projectItems.filter((r) => r.quantity <= 0).length;
+    const lowStockItems = projectItems.filter((r) => {
+      const pct = calcProjectPercent(r);
+      return r.quantity > 0 && (pct < 50 || r.quantity <= r.minThreshold);
+    }).length;
+    const healthyItems = projectItems.filter((r) => r.quantity > r.minThreshold && calcProjectPercent(r) >= 75).length;
+    const atRiskItems = lowStockItems + outOfStockItems;
+
+    const categoryMap = new Map<string, { category: string; count: number; quantity: number; checkOut: number }>();
+    projectItems.forEach((row) => {
+      const category = row.category.trim() || "Unclassified";
+      const current = categoryMap.get(category) ?? { category, count: 0, quantity: 0, checkOut: 0 };
+      current.count += 1;
+      current.quantity += row.quantity;
+      current.checkOut += row.checkOutTotal;
+      categoryMap.set(category, current);
+    });
+    const categoryBreakdown = [...categoryMap.values()].sort((a, b) => b.quantity - a.quantity);
+
+    const topDemandItems = [...projectItems]
+      .sort((a, b) => b.checkOutTotal - a.checkOutTotal)
+      .slice(0, 8);
+
+    const criticalItems = [...projectItems]
+      .filter((r) => r.quantity <= r.minThreshold)
+      .sort((a, b) => a.quantity - b.quantity || b.checkOutTotal - a.checkOutTotal)
+      .slice(0, 8);
+
+    const expiringSoonItems = projectItems
+      .filter((r) => r.expiryDate && r.expiryDate >= now && r.expiryDate <= sixtyDaysAhead && r.quantity > 0)
+      .sort((a, b) => (a.expiryDate?.getTime() ?? 0) - (b.expiryDate?.getTime() ?? 0))
+      .slice(0, 10);
+    const expiringSoonCount = expiringSoonItems.length;
+
+    const expiredItems = projectItems
+      .filter((r) => r.expiryDate && r.expiryDate < now && r.quantity > 0)
+      .slice(0, 10);
+    const expiredCount = expiredItems.length;
+
+    const months: Array<{ key: string; label: string; checkIn: number; checkOut: number; stockRisk: number }> = [];
+    for (let offset = 5; offset >= 0; offset -= 1) {
+      const monthDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+      const key = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, "0")}`;
+      const label = monthDate.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+      months.push({ key, label, checkIn: 0, checkOut: 0, stockRisk: 0 });
+    }
+
+    projectMovements.forEach((m) => {
+      if (m.movementType === "CHECK_OUT" && m.status !== "APPROVED" && m.status !== "PARTIAL") return;
+      const occurredAt = new Date(m.occurredAt);
+      const key = `${occurredAt.getUTCFullYear()}-${String(occurredAt.getUTCMonth() + 1).padStart(2, "0")}`;
+      const bucket = months.find((month) => month.key === key);
+      if (!bucket) return;
+      if (m.movementType === "CHECK_IN") bucket.checkIn += Number(m.quantity || 0);
+      else bucket.checkOut += Number(m.quantity || 0);
+    });
+
+    const usageRecords = projectMovements
+      .filter((m) => m.movementType === "CHECK_OUT" && (m.status === "APPROVED" || m.status === "PARTIAL"))
+      .slice(0, 100)
+      .map((m, index) => ({
+        id: `${m.stockItemId}-${m.occurredAt.toISOString()}-${index}`,
+        stockItemId: m.stockItemId,
+        itemName: m.stockItem?.name ?? "Unknown item",
+        itemCode: m.stockItem?.sourceCode ?? m.stockItem?.sku ?? "",
+        category: m.stockItem?.category ?? "Unclassified",
+        quantity: Number(m.quantity ?? 0),
+        requestedBy: String(m.requestedBy ?? m.recipient ?? "Unknown User"),
+        projectFor: String(m.projectFor ?? m.destination ?? project),
+        status: String(m.status ?? "APPROVED"),
+        occurredAt: m.occurredAt,
+      }));
+
+    res.json({
+      summary: {
+        totalItems,
+        totalQuantity,
+        totalCheckIn,
+        totalCheckOut,
+        lowStockItems,
+        outOfStockItems,
+        healthyItems,
+        atRiskItems,
+        expiredItems: expiredCount,
+      },
+      categoryBreakdown,
+      topDemandItems,
+      criticalItems,
+      expiringSoonItems,
+      expiringSoonCount,
+      expiredItems,
+      expiredCount,
+      monthlyTrends: months,
+      usageRecords,
+    });
+    return;
+  }
 
   const [stockItems, recentMovements, usageMovementRows, expiringSoonItems, expiredItems, expiredCount, expiringSoonCount] = await Promise.all([
     prisma.stockItem.findMany({
@@ -1529,6 +1754,551 @@ router.post("/google-sheets/sync", requireAuth, requireRole(Role.ADMIN, Role.RES
       message: error.message || "Failed to sync with Google Sheets.",
     });
   }
+});
+
+// ─── Inter-Project Loans & Project Stock Ledger ──────────────────────────────
+
+export function getApproverForProjectFallback(project?: string | null): string {
+  if (!project) return "Assalif Demissew";
+  const p = project.toUpperCase();
+  if (p.includes("TES")) return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
+  if (p.includes("VECTOR")) return "Assalif Demissew";
+  if (p.includes("PARASITE") || p.includes("PARACITE")) return "Migbaru Kefallew, Alemayehu Godana";
+  if (p.includes("HAMMS")) return "Assalif Demissew";
+  if (p.includes("ANOSTEP")) return "Assalif Demissew";
+  if (p.includes("PVSTATEM") || p.includes("PVSERO")) return "Tilahun Ketema, Tadele Emiru";
+  if (p.includes("CDC")) return "Assalif Demissew";
+  if (p.includes("DRIVAX")) return "Wakweya Chali";
+  return "Assalif Demissew";
+}
+
+export function isUserApproverForProject(
+  user: { displayName?: string | null; email?: string | null; roles?: string[] } | null | undefined,
+  project?: string | null,
+  approverField?: string | null
+): boolean {
+  if (!user) return false;
+  const roles = user.roles || [];
+  if (roles.includes("ADMIN") || roles.includes("RESEARCH_ADMIN")) return true;
+
+  const userDisplayName = (user.displayName ?? "").toLowerCase().trim();
+  const userEmail = (user.email ?? "").toLowerCase().trim();
+  const assignedStr = (approverField || "").trim();
+  const fallbackStr = getApproverForProjectFallback(project);
+  const combined = `${assignedStr}, ${fallbackStr}`.toLowerCase();
+
+  const names = combined.split(/[,/]| and /).map((n) => n.trim()).filter(Boolean);
+
+  for (const name of names) {
+    if (name.includes("alemayehu") && (userDisplayName.includes("alemayehu") || userEmail.includes("alexbiology"))) return true;
+    if (name.includes("migbaru") && (userDisplayName.includes("migbaru") || userEmail.includes("migbaru"))) return true;
+    if (name.includes("assalif") && (userDisplayName.includes("assalif") || userEmail.includes("ashifera") || userEmail.includes("assalif"))) return true;
+    if (name.includes("tilahun") && (userDisplayName.includes("tilahun") || userEmail.includes("tilahun"))) return true;
+    if (name.includes("wakweya") && (userDisplayName.includes("wakweya") || userEmail.includes("wakeya") || userEmail.includes("wakweya"))) return true;
+    if (name.includes("tadele") && (userDisplayName.includes("tadele") || userEmail.includes("tadele"))) return true;
+
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length > 0 && parts.every((p) => userDisplayName.includes(p) || userEmail.includes(p))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// GET /domains/inventory/project-stock - Get real-time stock balance held by each project
+router.get("/project-stock", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
+  const project = String(req.query.project ?? "").trim();
+
+  const whereMovements: any = {};
+  if (project && project !== "ALL") {
+    whereMovements.OR = [
+      { projectFor: { equals: project, mode: "insensitive" } },
+      { destination: { equals: project, mode: "insensitive" } },
+    ];
+  }
+
+  const [movements, activeLoans] = await Promise.all([
+    prisma.inventoryMovement.findMany({
+      where: whereMovements,
+      include: {
+        stockItem: {
+          select: { id: true, sku: true, name: true, unit: true, category: true, quantity: true },
+        },
+      },
+    }),
+    prisma.projectLoan.findMany({
+      where: { status: "APPROVED" },
+    }),
+  ]);
+
+  const map = new Map<string, {
+    stockItemId: string;
+    project: string;
+    name: string;
+    sku: string;
+    unit: string;
+    category: string;
+    totalCheckIn: number;
+    totalCheckOut: number;
+    loanedOut: number;
+    loanedIn: number;
+    availableBalance: number;
+  }>();
+
+  for (const m of movements) {
+    const proj = (m.projectFor || m.destination || "ROMS Inventory").trim();
+    if (!proj || proj === "ROMS Inventory") continue;
+    if (project && project !== "ALL" && proj.toLowerCase() !== project.toLowerCase()) continue;
+
+    const key = `${m.stockItemId}__${proj}`;
+    const cur = map.get(key) || {
+      stockItemId: m.stockItemId,
+      project: proj,
+      name: m.stockItem?.name || "Unknown",
+      sku: m.stockItem?.sku || "—",
+      unit: m.stockItem?.unit || "units",
+      category: m.stockItem?.category || "General",
+      totalCheckIn: 0,
+      totalCheckOut: 0,
+      loanedOut: 0,
+      loanedIn: 0,
+      availableBalance: 0,
+    };
+
+    if (m.movementType === "CHECK_IN" && m.status === "APPROVED") {
+      cur.totalCheckIn += Number(m.quantity || 0);
+    } else if (m.movementType === "CHECK_OUT" && (m.status === "APPROVED" || m.status === "PARTIAL")) {
+      cur.totalCheckOut += Number(m.quantity || 0);
+    }
+    map.set(key, cur);
+  }
+
+  for (const l of activeLoans) {
+    const lenderKey = `${l.stockItemId}__${l.lenderProject}`;
+    if (map.has(lenderKey)) {
+      const cur = map.get(lenderKey)!;
+      cur.loanedOut += Number(l.approvedQuantity || l.requestedQuantity || 0);
+    }
+    const borrowerKey = `${l.stockItemId}__${l.borrowerProject}`;
+    if (map.has(borrowerKey)) {
+      const cur = map.get(borrowerKey)!;
+      cur.loanedIn += Number(l.approvedQuantity || l.requestedQuantity || 0);
+    }
+  }
+
+  const result = Array.from(map.values())
+    .map((row) => ({
+      ...row,
+      availableBalance: Math.max(0, row.totalCheckIn - row.totalCheckOut - row.loanedOut + row.loanedIn),
+    }))
+    .filter((row) => row.availableBalance > 0);
+
+  res.json({ data: result });
+});
+
+// GET /domains/inventory/loans - List all inter-project loan requests
+router.get("/loans", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
+  const status = String(req.query.status ?? "").trim();
+  const project = String(req.query.project ?? "").trim();
+  const search = String(req.query.search ?? "").trim();
+
+  const where: any = {};
+  if (status && status !== "ALL") {
+    where.status = status;
+  }
+  if (project && project !== "ALL") {
+    where.OR = [
+      { borrowerProject: { equals: project, mode: "insensitive" } },
+      { lenderProject: { equals: project, mode: "insensitive" } },
+    ];
+  }
+  if (search) {
+    where.AND = [
+      ...(where.AND || []),
+      {
+        OR: [
+          { loanCode: { contains: search, mode: "insensitive" } },
+          { requestedBy: { contains: search, mode: "insensitive" } },
+          { stockItem: { name: { contains: search, mode: "insensitive" } } },
+          { stockItem: { sku: { contains: search, mode: "insensitive" } } },
+          { borrowerProject: { contains: search, mode: "insensitive" } },
+          { lenderProject: { contains: search, mode: "insensitive" } },
+        ],
+      },
+    ];
+  }
+
+  const loans = await prisma.projectLoan.findMany({
+    where,
+    include: {
+      stockItem: {
+        select: { id: true, sku: true, name: true, unit: true, category: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  res.json({ data: loans, total: loans.length });
+});
+
+// GET /domains/inventory/loans/pending-count - Pending loans requiring user's decision
+router.get("/loans/pending-count", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
+  const user = req.user;
+  const userRoles = user?.roles ?? [];
+  const isAdmin = userRoles.includes(Role.ADMIN) || userRoles.includes(Role.RESEARCH_ADMIN);
+
+  const pendingLoans = await prisma.projectLoan.findMany({
+    where: { status: "PENDING" },
+    select: { id: true, lenderProject: true, requestedTo: true },
+  });
+
+  if (isAdmin) {
+    res.json({ count: pendingLoans.length });
+    return;
+  }
+
+  let userDisplayName = ((user as any)?.displayName ?? "").toLowerCase().trim();
+  const userEmail = (user?.email ?? "").toLowerCase().trim();
+  if (!userDisplayName && user?.id) {
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { displayName: true } });
+    if (dbUser?.displayName) userDisplayName = dbUser.displayName.toLowerCase().trim();
+  }
+
+  const userWithDisplayName = { ...user, displayName: userDisplayName };
+
+  const count = pendingLoans.filter((loan) => {
+    if (loan.requestedTo) {
+      const reqToLower = loan.requestedTo.toLowerCase();
+      if (userEmail && reqToLower.includes(userEmail)) return true;
+      if (userDisplayName && reqToLower.includes(userDisplayName)) return true;
+    }
+    return isUserApproverForProject(userWithDisplayName, loan.lenderProject, loan.requestedTo);
+  }).length;
+
+  res.json({ count });
+});
+
+// POST /domains/inventory/loans - Create new inter-project loan request (single or batch)
+router.post("/loans", requireAuth, requirePermission("inventory:request"), async (req: Request, res: Response) => {
+  // 1. Batch support: if body contains items array
+  if (Array.isArray(req.body.items)) {
+    const parsedBatch = CreateProjectLoanBatchSchema.safeParse(req.body);
+    if (!parsedBatch.success) {
+      res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsedBatch.error.flatten() });
+      return;
+    }
+
+    const createdLoans = [];
+    const startCount = await prisma.projectLoan.count();
+    const currentYear = new Date().getFullYear();
+
+    for (let i = 0; i < parsedBatch.data.items.length; i++) {
+      const item = parsedBatch.data.items[i];
+      if (item.borrowerProject.trim().toLowerCase() === item.lenderProject.trim().toLowerCase()) {
+        res.status(400).json({ code: "INVALID_PROJECT", message: "Borrowing project and lending project cannot be the same" });
+        return;
+      }
+
+      const stockItem = await prisma.stockItem.findUnique({ where: { id: item.stockItemId } });
+      if (!stockItem) {
+        res.status(404).json({ code: "ITEM_NOT_FOUND", message: `Stock item not found for id ${item.stockItemId}` });
+        return;
+      }
+
+      const approvers = await resolveApproversForProject(item.lenderProject);
+      const fallbackApproverName = getApproverForProjectFallback(item.lenderProject);
+      const hasSpecificApprovers = approvers.some(
+        (a) => a.displayName && !a.displayName.toLowerCase().includes("administrator")
+      );
+      const requestedToStr = hasSpecificApprovers
+        ? approvers.map((a) => a.displayName).join(", ")
+        : fallbackApproverName;
+
+      const loanCode = `LN-${currentYear}-${String(startCount + i + 1).padStart(4, "0")}`;
+
+      const loan = await prisma.projectLoan.create({
+        data: {
+          loanCode,
+          stockItemId: item.stockItemId,
+          borrowerProject: item.borrowerProject.trim(),
+          lenderProject: item.lenderProject.trim(),
+          requestedBy: (req.user as any)?.displayName || req.user?.email || "Unknown Requester",
+          requestedTo: requestedToStr,
+          requestedQuantity: item.requestedQuantity,
+          dueDate: item.dueDate ? new Date(item.dueDate) : null,
+          requestNotes: item.requestNotes ? item.requestNotes.trim() : null,
+          status: "PENDING",
+        },
+        include: {
+          stockItem: true,
+        },
+      });
+
+      for (const approver of approvers) {
+        try {
+          await prisma.notification.create({
+            data: {
+              userId: approver.id,
+              kind: "IN_APP",
+              title: `Inter-Project Loan Request: ${loan.loanCode}`,
+              body: `${loan.requestedBy} requested to loan ${item.requestedQuantity} ${stockItem.unit} of ${stockItem.name} from ${item.lenderProject} to ${item.borrowerProject}.`,
+            },
+          });
+        } catch (notifErr) {
+          logger.warn(notifErr, `Failed to deliver notification to approver ${approver.email}`);
+        }
+      }
+
+      await createAuditEntry({
+        action: "CREATE",
+        entityType: "ProjectLoan",
+        entityId: loan.id,
+        userId: req.user?.id || "system",
+        afterJson: {
+          operation: "inventory:loan:requested",
+          loanCode: loan.loanCode,
+          stockItemId: item.stockItemId,
+          borrowerProject: item.borrowerProject,
+          lenderProject: item.lenderProject,
+          requestedQuantity: item.requestedQuantity,
+          requestedBy: loan.requestedBy,
+          requestedTo: requestedToStr,
+        },
+      });
+
+      createdLoans.push(loan);
+    }
+
+    res.status(201).json({ data: createdLoans, count: createdLoans.length, message: `Successfully submitted ${createdLoans.length} inter-project loan request(s)` });
+    return;
+  }
+
+  // 2. Single item support
+  const parsed = CreateProjectLoanSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
+    return;
+  }
+  const { stockItemId, borrowerProject, lenderProject, requestedQuantity, dueDate, requestNotes } = parsed.data;
+
+  if (borrowerProject.trim().toLowerCase() === lenderProject.trim().toLowerCase()) {
+    res.status(400).json({ code: "INVALID_PROJECT", message: "Borrowing project and lending project cannot be the same" });
+    return;
+  }
+
+  const stockItem = await prisma.stockItem.findUnique({ where: { id: stockItemId } });
+  if (!stockItem) {
+    res.status(404).json({ code: "ITEM_NOT_FOUND", message: "Stock item not found" });
+    return;
+  }
+
+  const approvers = await resolveApproversForProject(lenderProject);
+  const fallbackApproverName = getApproverForProjectFallback(lenderProject);
+  const hasSpecificApprovers = approvers.some(
+    (a) => a.displayName && !a.displayName.toLowerCase().includes("administrator")
+  );
+  const requestedToStr = hasSpecificApprovers
+    ? approvers.map((a) => a.displayName).join(", ")
+    : fallbackApproverName;
+
+  const count = await prisma.projectLoan.count();
+  const loanCode = `LN-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+
+  const loan = await prisma.projectLoan.create({
+    data: {
+      loanCode,
+      stockItemId,
+      borrowerProject: borrowerProject.trim(),
+      lenderProject: lenderProject.trim(),
+      requestedBy: (req.user as any)?.displayName || req.user?.email || "Unknown Requester",
+      requestedTo: requestedToStr,
+      requestedQuantity,
+      dueDate: dueDate ? new Date(dueDate) : null,
+      requestNotes: requestNotes ? requestNotes.trim() : null,
+      status: "PENDING",
+    },
+    include: {
+      stockItem: true,
+    },
+  });
+
+  for (const approver of approvers) {
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: approver.id,
+          kind: "IN_APP",
+          title: `Inter-Project Loan Request: ${loan.loanCode}`,
+          body: `${loan.requestedBy} requested to loan ${requestedQuantity} ${stockItem.unit} of ${stockItem.name} from ${lenderProject} to ${borrowerProject}.`,
+        },
+      });
+    } catch (notifErr) {
+      logger.warn(notifErr, `Failed to deliver notification to approver ${approver.email}`);
+    }
+  }
+
+  await createAuditEntry({
+    action: "CREATE",
+    entityType: "ProjectLoan",
+    entityId: loan.id,
+    userId: req.user?.id || "system",
+    afterJson: {
+      operation: "inventory:loan:requested",
+      loanCode: loan.loanCode,
+      stockItemId,
+      borrowerProject,
+      lenderProject,
+      requestedQuantity,
+      requestedBy: loan.requestedBy,
+      requestedTo: requestedToStr,
+    },
+  });
+
+  res.status(201).json({ data: loan, message: "Inter-project loan request created successfully" });
+});
+
+// POST /domains/inventory/loans/:id/decision - Approve or Reject inter-project loan
+router.post("/loans/:id/decision", requireAuth, requirePermission("inventory:approve"), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const parsed = ProjectLoanDecisionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
+    return;
+  }
+  const { status, approvedQuantity, decisionNotes } = parsed.data;
+
+  const existing = await prisma.projectLoan.findUnique({
+    where: { id },
+    include: { stockItem: true },
+  });
+  if (!existing) {
+    res.status(404).json({ code: "NOT_FOUND", message: "Loan record not found" });
+    return;
+  }
+  if (existing.status !== "PENDING") {
+    res.status(400).json({ code: "INVALID_STATE", message: `Loan is already ${existing.status}` });
+    return;
+  }
+
+  // Verify that the user has permission to approve for this lender project
+  const user = req.user;
+  let userForAuth: any = user;
+  if (!(user as any)?.displayName && user?.id) {
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { displayName: true } });
+    if (dbUser?.displayName) userForAuth = { ...user, displayName: dbUser.displayName };
+  }
+  const isAuthorized = isUserApproverForProject(userForAuth, existing.lenderProject, existing.requestedTo);
+  if (!isAuthorized) {
+    res.status(403).json({
+      code: "FORBIDDEN",
+      message: `You are not authorized to make decisions on loan requests for project "${existing.lenderProject}". Assigned approver: ${existing.requestedTo || "Admin"}`,
+    });
+    return;
+  }
+
+  const finalApprovedQty = status === "APPROVED"
+    ? (typeof approvedQuantity === "number" && approvedQuantity > 0 ? approvedQuantity : existing.requestedQuantity)
+    : 0;
+
+  const updated = await prisma.projectLoan.update({
+    where: { id },
+    data: {
+      status,
+      approvedQuantity: finalApprovedQty,
+      decisionNotes: decisionNotes ? decisionNotes.trim() : null,
+      decisionAt: new Date(),
+    },
+    include: { stockItem: true },
+  });
+
+  await createAuditEntry({
+    action: "UPDATE",
+    entityType: "ProjectLoan",
+    entityId: updated.id,
+    userId: req.user?.id || "system",
+    afterJson: {
+      operation: `inventory:loan:${status.toLowerCase()}`,
+      loanCode: updated.loanCode,
+      status,
+      approvedQuantity: finalApprovedQty,
+      decisionNotes,
+      decidedBy: (req.user as any)?.displayName || req.user?.email,
+    },
+  });
+
+  res.json({ data: updated, message: `Loan request has been ${status.toLowerCase()}` });
+});
+
+// PATCH /domains/inventory/loans/:id/return - Lender marks loaned items as returned
+router.patch("/loans/:id/return", requireAuth, requirePermission("inventory:approve"), async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const parsed = ReturnProjectLoanSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: "VALIDATION_ERROR", message: "Validation failed", details: parsed.error.flatten() });
+    return;
+  }
+  const { returnedQuantity, returnNotes } = parsed.data;
+
+  const existing = await prisma.projectLoan.findUnique({
+    where: { id },
+    include: { stockItem: true },
+  });
+  if (!existing) {
+    res.status(404).json({ code: "NOT_FOUND", message: "Loan record not found" });
+    return;
+  }
+  if (existing.status !== "APPROVED") {
+    res.status(400).json({ code: "INVALID_STATE", message: "Only approved / active loans can be returned" });
+    return;
+  }
+
+  const user = req.user;
+  let userForAuth: any = user;
+  if (!(user as any)?.displayName && user?.id) {
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { displayName: true } });
+    if (dbUser?.displayName) userForAuth = { ...user, displayName: dbUser.displayName };
+  }
+  const isAuthorized = isUserApproverForProject(userForAuth, existing.lenderProject, existing.requestedTo);
+  if (!isAuthorized) {
+    res.status(403).json({
+      code: "FORBIDDEN",
+      message: `Only the lending project manager for "${existing.lenderProject}" or an authorized administrator can confirm the return of loaned items.`,
+    });
+    return;
+  }
+
+  const finalReturnQty = typeof returnedQuantity === "number" && returnedQuantity > 0
+    ? returnedQuantity
+    : (existing.approvedQuantity || existing.requestedQuantity);
+
+  const updated = await prisma.projectLoan.update({
+    where: { id },
+    data: {
+      status: "RETURNED",
+      returnedQuantity: finalReturnQty,
+      returnNotes: returnNotes ? returnNotes.trim() : null,
+      returnedAt: new Date(),
+      returnedBy: (req.user as any)?.displayName || req.user?.email || "Lender Manager",
+    },
+    include: { stockItem: true },
+  });
+
+  await createAuditEntry({
+    action: "UPDATE",
+    entityType: "ProjectLoan",
+    entityId: updated.id,
+    userId: req.user?.id || "system",
+    afterJson: {
+      operation: "inventory:loan:returned",
+      loanCode: updated.loanCode,
+      returnedQuantity: finalReturnQty,
+      returnedBy: updated.returnedBy,
+      returnNotes,
+    },
+  });
+
+  res.json({ data: updated, message: "Loan items successfully recorded as returned to lender" });
 });
 
 router.get("/:id", requireAuth, requirePermission("inventory:read"), async (req, res) => {

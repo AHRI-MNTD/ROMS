@@ -56,3 +56,4 @@ echo "======================================================================"
 echo "🎉 Root CA successfully trusted! Browsers will now display a green padlock"
 echo "without any security warnings."
 echo "======================================================================"
+

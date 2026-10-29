@@ -226,6 +226,7 @@ model StockItem {
   updatedAt    DateTime  @updatedAt
 
   movements    InventoryMovement[]
+  loans        ProjectLoan[]
 
   @@index([expiryDate])
   @@index([sourceCode])
@@ -264,6 +265,36 @@ model InventoryMovement {
   @@index([occurredAt])
   @@index([lotNumber])
   @@index([expiryDate])
+}
+
+model ProjectLoan {
+  id                String       @id @default(cuid())
+  loanCode          String       @unique
+  stockItemId       String
+  stockItem         StockItem    @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
+  borrowerProject   String
+  lenderProject     String
+  requestedBy       String
+  requestedTo       String?
+  requestedQuantity Int
+  approvedQuantity  Int?
+  returnedQuantity  Int?         @default(0)
+  status            String       @default("PENDING")
+  requestNotes      String?
+  decisionNotes     String?
+  returnNotes       String?
+  dueDate           DateTime?
+  decisionAt        DateTime?
+  returnedAt        DateTime?
+  returnedBy        String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([stockItemId])
+  @@index([borrowerProject])
+  @@index([lenderProject])
+  @@index([status])
+  @@index([requestedBy])
 }
 
 model Equipment {

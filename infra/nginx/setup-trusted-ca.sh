@@ -96,3 +96,4 @@ echo "======================================================================"
 echo "To trust this certificate on client machines, distribute $CERTS_DIR/roms-root-ca.crt"
 echo "and run: sudo ./infra/nginx/install-root-ca.sh"
 echo "======================================================================"
+

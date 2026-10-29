@@ -22,6 +22,8 @@ export default function InventoryDashboardPage() {
     return document.documentElement.getAttribute("data-theme") === "dark";
   });
 
+  const [selectedProject, setSelectedProject] = React.useState<string>("ALL");
+
   React.useEffect(() => {
     if (typeof document === "undefined") {
       return;
@@ -37,9 +39,23 @@ export default function InventoryDashboardPage() {
     return () => observer.disconnect();
   }, []);
 
+  const { data: masterProjectsData } = useQuery({
+    queryKey: ["inventory-master-projects"],
+    queryFn: async () => {
+      const resp = await apiClient.get<{ projects: string[] }>("/domains/inventory/master-data/projects");
+      return resp.data.projects || [];
+    },
+    staleTime: 60000,
+  });
+
   const { data: analyticsData, isLoading: isAnalyticsLoading, error: analyticsError, refetch: refetchAnalytics } = useQuery({
-    queryKey: ["inventory-analytics"],
-    queryFn: async () => { const resp = await apiClient.get("/domains/inventory/analytics"); return resp.data; },
+    queryKey: ["inventory-analytics", selectedProject],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/analytics", {
+        params: { project: selectedProject !== "ALL" ? selectedProject : undefined },
+      });
+      return resp.data;
+    },
     refetchInterval: 30000,
   });
 
@@ -50,20 +66,32 @@ export default function InventoryDashboardPage() {
   });
 
   const { data: movementsData, isLoading: isMovementsLoading, refetch: refetchMovements } = useQuery({
-    queryKey: ["inventory-recent-movements"],
-    queryFn: async () => { const resp = await apiClient.get("/domains/inventory/movements", { params: { limit: 6 } }); return resp.data; },
+    queryKey: ["inventory-recent-movements", selectedProject],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/movements", {
+        params: { limit: 6, project: selectedProject !== "ALL" ? selectedProject : undefined },
+      });
+      return resp.data;
+    },
     refetchInterval: 30000,
   });
 
   const isLoading = isAnalyticsLoading || isRequestsLoading || isMovementsLoading;
   const error = analyticsError;
 
+  const projects = masterProjectsData || [];
+
   const summary = analyticsData?.summary ?? {
     totalItems: 0, totalQuantity: 0, totalCheckIn: 0, totalCheckOut: 0,
     lowStockItems: 0, outOfStockItems: 0, healthyItems: 0, atRiskItems: 0,
   };
 
-  const pendingRequestsCount = requestsData?.data?.filter((req: any) => req.status === "PENDING").length ?? 0;
+  const pendingRequestsCount = requestsData?.data?.filter((req: any) => {
+    if (req.status !== "PENDING") return false;
+    if (selectedProject === "ALL") return true;
+    const reqProj = (req.project ?? req.projectFor ?? "").toLowerCase();
+    return reqProj === selectedProject.toLowerCase();
+  }).length ?? 0;
   const topDemandItems: any[] = analyticsData?.topDemandItems ?? [];
   const criticalItems: any[] = analyticsData?.criticalItems ?? [];
   const recentMovements: any[] = movementsData?.data ?? [];
@@ -113,15 +141,125 @@ export default function InventoryDashboardPage() {
 
       {!isLoading && !error && (
         <>
+          {/* ── Project Scope Filter Bar ── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 10,
+              padding: "8px 14px",
+              borderRadius: 10,
+              background: isDarkMode ? surfaceCardBackground : "#f8fafc",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>
+                <span>📁 Scope:</span>
+                <select
+                  value={selectedProject}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 8,
+                    border: "1.5px solid var(--color-primary)",
+                    background: isDarkMode ? "var(--color-surface)" : "#ffffff",
+                    color: "var(--color-text)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  <option value="ALL">🌐 Overall Inventory (All Projects)</option>
+                  {projects.map((p) => (
+                    <option key={p} value={p}>
+                      📁 Project: {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Quick select pills */}
+              <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProject("ALL")}
+                  style={{
+                    fontSize: "10.5px",
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: selectedProject === "ALL" ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                    background: selectedProject === "ALL" ? "var(--color-primary)" : "transparent",
+                    color: selectedProject === "ALL" ? "#ffffff" : "var(--color-text-muted)",
+                  }}
+                >
+                  All Projects
+                </button>
+                {projects.slice(0, 6).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setSelectedProject(p)}
+                    style={{
+                      fontSize: "10.5px",
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: selectedProject === p ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                      background: selectedProject === p ? "var(--color-primary)" : "transparent",
+                      color: selectedProject === p ? "#ffffff" : "var(--color-text-muted)",
+                    }}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "11px", color: "var(--color-text-muted)" }}>
+              {selectedProject !== "ALL" ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--color-primary)", fontWeight: 700 }}>
+                  <span>🎯 Showing Project Telemetry for: <strong>{selectedProject}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProject("ALL")}
+                    style={{
+                      background: "#fee2e2",
+                      border: "1px solid #fca5a5",
+                      color: "#b91c1c",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      fontSize: "10px",
+                      padding: "1px 6px",
+                      marginLeft: 4,
+                    }}
+                    title="Reset to Overall Inventory"
+                  >
+                    Reset to Overall ✕
+                  </button>
+                </span>
+              ) : (
+                <span>Aggregated live metrics across all active lab projects</span>
+              )}
+            </div>
+          </div>
+
           {/* ── KPI Stats Row ── */}
           <div className="inventory-stats-grid">
             {[
-              { tone: "#01696f", icon: "📦", value: summary.totalItems, label: "Registered Items" },
-              { tone: "#0c4e54", icon: "🧪", value: summary.totalQuantity, label: "Total Quantity" },
-              { tone: "#3b82f6", icon: "📋", value: pendingRequestsCount, label: "Pending Requests", badge: pendingRequestsCount > 0 ? { text: "Action", bg: "#dbeafe", color: "#2563eb" } : null },
-              { tone: "#b45309", icon: "⬇️", value: summary.totalCheckOut, label: "Cumulative Checkout" },
-              { tone: "#dc2626", icon: "⚠️", value: summary.lowStockItems, label: "Low Stock Items", badge: summary.lowStockItems > 0 ? { text: "Attention", bg: "#fee2e2", color: "#b91c1c" } : null },
-              { tone: "#7f1d1d", icon: "🛑", value: summary.outOfStockItems, label: "Out of Stock", badge: summary.outOfStockItems > 0 ? { text: "Empty", bg: "#fee2e2", color: "#7f1d1d" } : null },
+              { tone: "#01696f", icon: "📦", value: summary.totalItems, label: selectedProject !== "ALL" ? `Registered in ${selectedProject}` : "Registered Items" },
+              { tone: "#0c4e54", icon: "🧪", value: summary.totalQuantity, label: selectedProject !== "ALL" ? `${selectedProject} Available Stock` : "Total Quantity" },
+              { tone: "#3b82f6", icon: "📋", value: pendingRequestsCount, label: selectedProject !== "ALL" ? `Pending for ${selectedProject}` : "Pending Requests", badge: pendingRequestsCount > 0 ? { text: "Action", bg: "#dbeafe", color: "#2563eb" } : null },
+              { tone: "#b45309", icon: "⬇️", value: summary.totalCheckOut, label: selectedProject !== "ALL" ? `${selectedProject} Checkouts` : "Cumulative Checkout" },
+              { tone: "#dc2626", icon: "⚠️", value: summary.lowStockItems, label: selectedProject !== "ALL" ? `Low Stock in ${selectedProject}` : "Low Stock Items", badge: summary.lowStockItems > 0 ? { text: "Attention", bg: "#fee2e2", color: "#b91c1c" } : null },
+              { tone: "#7f1d1d", icon: "🛑", value: summary.outOfStockItems, label: selectedProject !== "ALL" ? `Out of Stock (${selectedProject})` : "Out of Stock", badge: summary.outOfStockItems > 0 ? { text: "Empty", bg: "#fee2e2", color: "#7f1d1d" } : null },
             ].map(({ tone, icon, value, label, badge: bdg }) => (
               <div
                 key={label}
@@ -160,10 +298,13 @@ export default function InventoryDashboardPage() {
           <div className="dashboard-tables-row">
             {/* 🔥 High-Demand Inventory */}
             <div style={cardStyle("1px solid var(--color-border)", "var(--color-surface)")}>
-              <div style={cardHeader("var(--color-text)", "var(--color-border)")}>🔥 High-Demand Inventory</div>
+              <div style={cardHeader("var(--color-text)", "var(--color-border)")}>
+                <span>🔥 High-Demand Inventory</span>
+                {selectedProject !== "ALL" && <span style={badge("#e0f2fe", "#0284c7")}>{selectedProject}</span>}
+              </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
                 {topDemandItems.length === 0
-                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "9px" }}>No data available.</div>
+                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "9px" }}>No data available for {selectedProject !== "ALL" ? selectedProject : "inventory"}.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
                     const item = topDemandItems[i];
                     return (
@@ -190,7 +331,7 @@ export default function InventoryDashboardPage() {
             {/* ⚠️ Stock Alert Register */}
             <div style={cardStyle("1px solid rgba(239,68,68,0.18)", alertCardBackground)}>
               <div style={cardHeader("#b91c1c", "rgba(239,68,68,0.1)")}>
-                <span>⚠️ Stock Alert Register</span>
+                <span>⚠️ Stock Alert Register {selectedProject !== "ALL" ? `(${selectedProject})` : ""}</span>
                 <span style={badge("#fee2e2", "#b91c1c")}>Needs Reorder</span>
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -222,10 +363,13 @@ export default function InventoryDashboardPage() {
           <div className="dashboard-tables-row">
             {/* ⏳ Recent Activity Feed */}
             <div style={cardStyle("1px solid var(--color-border)", "var(--color-surface)")}>
-              <div style={cardHeader("var(--color-text)", "var(--color-border)")}>⏳ Recent Activity Feed</div>
+              <div style={cardHeader("var(--color-text)", "var(--color-border)")}>
+                <span>⏳ Recent Activity Feed</span>
+                {selectedProject !== "ALL" && <span style={badge("#e0f2fe", "#0284c7")}>{selectedProject}</span>}
+              </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
                 {recentMovements.length === 0
-                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "9px" }}>No recent inventory movements recorded.</div>
+                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-text-muted)", fontSize: "9px" }}>No recent movements recorded for {selectedProject !== "ALL" ? selectedProject : "inventory"}.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
                     const m = recentMovements[i];
                     if (!m) return <div key={i} style={rowBase}>{emptyCell}</div>;
@@ -254,7 +398,7 @@ export default function InventoryDashboardPage() {
             {/* ⏳ Expiring Soon Register */}
             <div style={cardStyle("1px solid rgba(249,115,22,0.18)", expiringCardBackground)}>
               <div style={cardHeader("#c2410c", "rgba(249,115,22,0.1)")}>
-                <span>⏳ Expiring Soon Register</span>
+                <span>⏳ Expiring Soon Register {selectedProject !== "ALL" ? `(${selectedProject})` : ""}</span>
                 <span style={badge("#ffedd5", "#c2410c")}>Within 60 Days</span>
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>

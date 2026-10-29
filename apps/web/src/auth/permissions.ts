@@ -145,6 +145,7 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "check-out-history": "Check Out History",
     "requests": "Request/s",
     "approved-requests": "Approved Requests",
+    "project-loans": "Inventory Manager",
     "inventory-manager": "Inventory Manager",
     "analytics": "Analytics",
     "master-data": "Master Data",
@@ -284,8 +285,28 @@ export function isInventoryViewOnly(roles?: string[], permissions?: string[]): b
   return permissions?.some((p) => p.toLowerCase() === "inventory:view-only") ?? false;
 }
 
-export function hasTabAccess(roles: string[] | undefined, domainSlug: string, tabSlug?: string, permissions?: string[]): boolean {
+export function isInventoryWorker(userEmail?: string | null): boolean {
+  if (!userEmail) return false;
+  const email = userEmail.toLowerCase().trim();
+  return email === "betelihemashagrie21@gmail.com" || email.includes("betelihemashagrie");
+}
+
+export function hasTabAccess(
+  roles: string[] | undefined,
+  domainSlug: string,
+  tabSlug?: string,
+  permissions?: string[],
+  userEmail?: string | null
+): boolean {
   if (roles?.includes("ADMIN") || permissions?.includes("admin:all")) return true;
+
+  // Dedicated inventory worker restriction: Betelhem Ashagrie manages Check-In and Check-Out directly
+  // and has built-in reference tables inside those operational views; standalone public history pages are hidden.
+  if (domainSlug === "inventory" && userEmail && isInventoryWorker(userEmail)) {
+    if (tabSlug === "check-in-history" || tabSlug === "check-out-history") {
+      return false;
+    }
+  }
 
   // If we have a specific tab slug, check the exact right required for that tab
   if (tabSlug && TAB_RIGHTS_MAP[domainSlug]) {
@@ -309,6 +330,18 @@ export function hasTabAccess(roles: string[] | undefined, domainSlug: string, ta
         ) {
           return true;
         }
+      }
+      // Special access check for project-loans and inventory-manager: allow for project managers (PIs), research admins, admins, and inventory managers
+      if (tabSlug === "project-loans" || tabSlug === "inventory-manager") {
+        if (
+          roles?.includes("PRINCIPAL_INVESTIGATOR") ||
+          roles?.includes("RESEARCH_ADMIN") ||
+          roles?.includes("ADMIN") ||
+          invRights?.has("Inventory Manager")
+        ) {
+          return true;
+        }
+        return false;
       }
     }
 

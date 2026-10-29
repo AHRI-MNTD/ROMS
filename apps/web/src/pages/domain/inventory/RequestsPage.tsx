@@ -162,8 +162,14 @@ export function getApproverForProject(project?: string | null): string {
   if (p.includes("TES")) {
     return "Alemayehu Godana, Migbaru Kefallew, Wakweya Chali";
   }
+  if (p.includes("VECTOR")) {
+    return "Assalif Demissew";
+  }
+  if (p.includes("PARASITE") || p.includes("PARACITE")) {
+    return "Migbaru Kefallew, Alemayehu Godana";
+  }
   if (p.includes("HAMMS")) {
-    return "Alemayehu Godana, Migbaru Kefallew, Assalif Demissew";
+    return "Assalif Demissew";
   }
   if (p.includes("ANOSTEP")) {
     return "Assalif Demissew";

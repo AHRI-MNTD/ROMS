@@ -58,3 +58,4 @@ echo "✅ Let's Encrypt certificate obtained and mounted into $CERTS_DIR"
 echo "Reloading Nginx gateway..."
 docker exec roms-gateway-1 nginx -s reload || true
 echo "======================================================================"
+

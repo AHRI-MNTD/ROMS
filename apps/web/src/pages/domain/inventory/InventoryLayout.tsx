@@ -16,6 +16,7 @@ const tabs = [
   { to: "check-out-history", label: "Check-Out", icon: "➖", right: "Check Out History" },
   { to: "requests", label: "Request", icon: "📋", right: "Request/s" },
   { to: "approved-requests", label: "Approved Requests", icon: "✅", right: "Approved Requests" },
+  { to: "project-loans", label: "Project Loans", icon: "🤝", right: "Inventory Manager" },
   { to: "inventory-manager", label: "Manager", icon: "👨‍💼", right: "Inventory Manager" },
   { to: "master-data", label: "Master Data", icon: "🗂️", right: "Master Data" },
   { to: "analytics", label: "Analytics", icon: "📈", right: "Analytics" },
@@ -35,6 +36,17 @@ export default function InventoryLayout() {
     },
     refetchInterval: 30000,
   });
+
+  // Fetch pending project loans count for current approver
+  const { data: pendingLoansRes } = useQuery({
+    queryKey: ["inventory-loans-pending-count"],
+    queryFn: async () => {
+      const resp = await apiClient.get<{ count: number }>("/domains/inventory/loans/pending-count");
+      return resp.data.count;
+    },
+    refetchInterval: 30000,
+  });
+  const pendingLoansCount = pendingLoansRes ?? 0;
 
   const unseenApprovedCount = useMemo(() => {
     const rows = persistedRequests?.data ?? [];
@@ -56,10 +68,21 @@ export default function InventoryLayout() {
   const activePath = (lastPart === "stock-management" || !lastPart) ? "overview" : lastPart;
 
   const isOverview = activePath === "overview";
-  const visibleTabs = tabs.filter((tab) => tab.to === "overview" || hasTabAccess(user?.roles, "inventory", tab.to, user?.permissions));
+  const isBetelhem = (user?.email ?? "").toLowerCase().trim() === "betelihemashagrie21@gmail.com" || (user?.displayName ?? "").toLowerCase().includes("betelhem ashagrie");
+
+  const visibleTabs = tabs.filter((tab) => {
+    // Inventory worker Betelhem Ashagrie should not see standalone checkin/out history pages
+    if (isBetelhem && (tab.to === "check-in-history" || tab.to === "check-out-history")) {
+      return false;
+    }
+    return tab.to === "overview" || hasTabAccess(user?.roles, "inventory", tab.to, user?.permissions, user?.email);
+  });
 
   // Check access to current path
-  const isCurrentPathAllowed = isOverview || hasTabAccess(user?.roles, "inventory", activePath, user?.permissions);
+  const isCurrentPathAllowed =
+    isOverview ||
+    (!((activePath === "check-in-history" || activePath === "check-out-history") && isBetelhem) &&
+      hasTabAccess(user?.roles, "inventory", activePath, user?.permissions, user?.email));
 
   let title = "📦 Lab Inventory & Supply Chain";
   let subtitle = "Manage lab inventory & supply chain records. Showing live data from the ROMS API.";
@@ -91,6 +114,9 @@ export default function InventoryLayout() {
   } else if (activePath === "approved-requests") {
     title = "Approved Requests";
     subtitle = "Inspect approved requisitions, review item details, and disburse supplies to lab staff.";
+  } else if (activePath === "project-loans") {
+    title = "Project Loans";
+    subtitle = "Inter-project inventory loan requisitions, approver decisions, and return tracking.";
   } else if (activePath === "inventory-manager") {
     title = "Manager";
     subtitle = "Review pending material requests, approve or adjust quantities.";
@@ -133,6 +159,24 @@ export default function InventoryLayout() {
                     }}
                   >
                     {unseenApprovedCount}
+                  </span>
+                )}
+                {tab.to === "project-loans" && pendingLoansCount > 0 && (
+                  <span
+                    title={`${pendingLoansCount} pending loan request(s)`}
+                    style={{
+                      background: "#ef4444",
+                      color: "#ffffff",
+                      borderRadius: "999px",
+                      fontSize: "9.5px",
+                      fontWeight: 800,
+                      padding: "2px 6px",
+                      marginLeft: 5,
+                      lineHeight: 1,
+                      boxShadow: "0 0 8px rgba(239, 68, 68, 0.4)",
+                    }}
+                  >
+                    {pendingLoansCount}
                   </span>
                 )}
               </NavLink>

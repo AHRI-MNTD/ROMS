@@ -236,6 +236,38 @@ export const InventoryDecisionSchema = z.object({
 
 export type InventoryDecisionInput = z.infer<typeof InventoryDecisionSchema>;
 
+export const CreateProjectLoanSchema = z.object({
+  stockItemId: z.string().min(1, "Stock item is required"),
+  borrowerProject: z.string().min(1, "Borrowing project is required"),
+  lenderProject: z.string().min(1, "Lending project is required"),
+  requestedQuantity: z.number().int().positive("Requested quantity must be positive"),
+  dueDate: z.string().optional().nullable(),
+  requestNotes: z.string().optional().nullable(),
+});
+
+export type CreateProjectLoanInput = z.infer<typeof CreateProjectLoanSchema>;
+
+export const CreateProjectLoanBatchSchema = z.object({
+  items: z.array(CreateProjectLoanSchema).min(1, "At least one loan item is required"),
+});
+
+export type CreateProjectLoanBatchInput = z.infer<typeof CreateProjectLoanBatchSchema>;
+
+export const ProjectLoanDecisionSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  approvedQuantity: z.number().int().nonnegative().optional().nullable(),
+  decisionNotes: z.string().optional().nullable(),
+});
+
+export type ProjectLoanDecisionInput = z.infer<typeof ProjectLoanDecisionSchema>;
+
+export const ReturnProjectLoanSchema = z.object({
+  returnedQuantity: z.number().int().positive().optional().nullable(),
+  returnNotes: z.string().optional().nullable(),
+});
+
+export type ReturnProjectLoanInput = z.infer<typeof ReturnProjectLoanSchema>;
+
 // ─── HR ───────────────────────────────────────────────────────────────────────
 
 export const CreateStaffProfileSchema = z.object({

@@ -9,7 +9,7 @@ import { isInventoryViewOnly } from "../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 type CheckInMode = "existing" | "new";
-const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", ETB: "Br", EUR: "€" };
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: "$", ETB: "Br", EUR: "€", GBP: "£" };
 
 function toDateInputValue(date = new Date()) {
   const year = date.getFullYear();

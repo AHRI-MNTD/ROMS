@@ -436,6 +436,50 @@ export default function InventoryLandingPage() {
       ]
     },
     {
+      id: "project-loans",
+      title: "Project Loans",
+      subtitle: "Inter-Project Borrowing & Transfers",
+      summary: "Request temporary item loans between projects, approve peer transfers, and track returns.",
+      section: "Administration",
+      rightRequired: "Inventory Manager",
+      icon: "🤝",
+      tone: "#0d9488",
+      bullets: [
+        {
+          label: "Borrow Stock Across Projects",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Lender Approval & Notification",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          )
+        },
+        {
+          label: "Track Loan Lifecycle & Status",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Confirm Handoff & Return Log",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="var(--color-primary, #0d9488)" style={{ width: 14, height: 14, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
       id: "master-data",
       title: "Master Data",
       subtitle: "Catalogs, Freezers, & Bins",
@@ -481,12 +525,24 @@ export default function InventoryLandingPage() {
     }
   ];
 
+  const isBetelhem = (user?.email ?? "").toLowerCase().trim() === "betelihemashagrie21@gmail.com" || (user?.displayName ?? "").toLowerCase().includes("betelhem ashagrie");
+
+  const visibleCards = React.useMemo(() => {
+    return cards.filter((card) => {
+      // Dedicated inventory worker Betelhem Ashagrie should not see standalone checkin/out history pages
+      if (isBetelhem && (card.id === "check-in-history" || card.id === "check-out-history")) {
+        return false;
+      }
+      return true;
+    });
+  }, [cards, isBetelhem]);
+
   const groupedCards = React.useMemo(() => {
-    return cards.reduce<Record<string, InventoryCard[]>>((groups, card) => {
+    return visibleCards.reduce<Record<string, InventoryCard[]>>((groups, card) => {
       (groups[card.section] ??= []).push(card);
       return groups;
     }, {});
-  }, [cards]);
+  }, [visibleCards]);
 
   const orderedSections = ["Operations", "Audit & Reporting", "Administration"];
 
@@ -504,7 +560,7 @@ export default function InventoryLandingPage() {
   };
 
   const handleCardClick = (card: InventoryCard) => {
-    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions);
+    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions, user?.email);
     if (isAllowed) {
       navigate(`/domains/inventory/stock-management/${card.id}`);
     } else {
@@ -611,7 +667,7 @@ export default function InventoryLandingPage() {
                   }}
                 >
                   {sectionCards.map((card) => {
-                    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions);
+                    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions, user?.email);
 
                     return (
                       <div

@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be explicitly provided in production}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD must be explicitly provided in production}"
       POSTGRES_DB: ${POSTGRES_DB:-roms}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -42,7 +42,7 @@ services:
       - "9002:9002"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-roms}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD must be explicitly provided in production}
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?Error: MINIO_ROOT_PASSWORD must be explicitly provided in production}"
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9002"
@@ -72,7 +72,7 @@ services:
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-roms}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET:?Error: JWT_SECRET must be explicitly provided in production with strong entropy}
+      JWT_SECRET: "${JWT_SECRET:?Error: JWT_SECRET must be explicitly provided in production with strong entropy}"
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER}
