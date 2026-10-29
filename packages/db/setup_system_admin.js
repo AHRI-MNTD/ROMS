@@ -25,8 +25,11 @@ const prisma = new PrismaClient();
 // ─── Admin credentials ─────────────────────────────────────────────────────
 const ADMIN_EMAIL       = 'systemadmin@roms.com';
 const ADMIN_DISPLAY     = 'ROMS System Administrator';
-// Strong password: min 16 chars, upper+lower+digit+symbol
-const ADMIN_PASSWORD    = 'R0ms@Sys#2026!Sec';
+const ADMIN_PASSWORD    = process.env.ROMS_SYSTEM_ADMIN_PASSWORD;
+
+if (!ADMIN_PASSWORD) {
+  throw new Error('Set ROMS_SYSTEM_ADMIN_PASSWORD before running this script.');
+}
 
 // ─── Personal account to demote ────────────────────────────────────────────
 const PERSONAL_EMAIL    = 'gfikerak@yahoo.com';
@@ -100,10 +103,8 @@ async function main() {
   console.log('  Setup Complete — Summary');
   console.log('══════════════════════════════════════════════════════════════');
   console.log(`  System Admin  : ${ADMIN_EMAIL}`);
-  console.log(`  Password      : ${ADMIN_PASSWORD}`);
   console.log(`  Personal Acct : ${PERSONAL_EMAIL}  →  Role: STAFF`);
-  console.log('\n  ⚠️   IMPORTANT: Store the admin password securely and do not');
-  console.log('      leave it in this script in production environments.\n');
+  console.log('\n  Admin password was supplied through the environment and was not displayed.\n');
 }
 
 main()
