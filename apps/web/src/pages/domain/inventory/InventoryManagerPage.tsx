@@ -30,6 +30,9 @@ export function getApproverForProject(project?: string | null): string {
   if (p.includes("CDC")) {
     return "Assalif Demissew";
   }
+  if (p.includes("GOV")) {
+    return "Assalif Demissew, Tegbar Getahun, Tadele Emiru";
+  }
   if (p.includes("DRIVAX")) {
     return "Wakweya Chali";
   }
@@ -58,6 +61,7 @@ export function isUserAssignedApprover(
     if (name.includes("tilahun") && (userDisplayName.includes("tilahun") || userEmail.includes("tilahun"))) return true;
     if (name.includes("wakweya") && (userDisplayName.includes("wakweya") || userEmail.includes("wakeya") || userEmail.includes("wakweya"))) return true;
     if (name.includes("tadele") && (userDisplayName.includes("tadele") || userEmail.includes("tadele"))) return true;
+    if (name.includes("tegbar") && (userDisplayName.includes("tegbar") || userEmail.includes("tegbar"))) return true;
 
     const parts = name.split(/\s+/).filter(Boolean);
     if (parts.length > 0 && parts.every((p) => userDisplayName.includes(p) || userEmail.includes(p))) {
@@ -186,9 +190,9 @@ export default function InventoryManagerPage() {
   const queryClient = useQueryClient();
 
   const { data: persistedRequests } = useQuery({
-    queryKey: ["inventory-requests"],
+    queryKey: ["inventory-requests", "pending"],
     queryFn: async () => {
-      const resp = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } });
+      const resp = await apiClient.get("/domains/inventory/requests", { params: { status: "PENDING", all: "true" } });
       return resp.data as { data: RequestReferenceRow[]; total: number };
     },
   });
@@ -504,24 +508,37 @@ export default function InventoryManagerPage() {
 
                 <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                   <h3 style={{ margin: 0, fontSize: "12px", fontWeight: 800, color: "var(--color-text)" }}>Requested Items <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}>({currentItems.length})</span></h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 9 }}>
-                    {currentItems.map((item, idx) => {
-                      const rawRow = selectedEntry.rawRows?.[idx];
-                      const rawRemark = (rawRow?.remark ?? "").trim();
-                      return (
-                        <div key={`detail-item-${item.id}-${idx}`} style={{ ...infoCard, display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                            <div style={{ ...detailValue, fontSize: "12px" }}>{item.sku ? `${item.sku} — ${item.name}` : item.name}</div>
-                            <div style={{ flexShrink: 0, padding: "4px 8px", borderRadius: 7, background: "var(--color-primary-soft)", color: "var(--color-primary)", fontWeight: 800, fontSize: "11px" }}>Qty {item.quantity}</div>
-                          </div>
-                          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", color: "var(--color-text-muted)", fontSize: "10px" }}>
-                            <span>Unit: <strong>{rawRow?.unit || "units"}</strong></span>
-                            <span>{rawRow?.unitDescription || `${rawRow?.unit || "units"} per pack`}</span>
-                          </div>
-                          {rawRemark && rawRemark !== "Request item" && <div style={{ paddingTop: 7, borderTop: "1px solid var(--color-divider)", fontSize: "10px", color: "var(--color-text-muted)" }}>Requester note: {rawRemark}</div>}
-                        </div>
-                      );
-                    })}
+                  <div style={{ border: "1px solid var(--color-border)", borderRadius: 8, overflowX: "auto", background: "var(--color-surface-2)" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                      <thead>
+                        <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                          <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700 }}>#</th>
+                          <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700 }}>Item (SKU — Name)</th>
+                          <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 80 }}>Qty</th>
+                          <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 90 }}>Unit</th>
+                          <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700 }}>Requester Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.map((item, idx) => {
+                          const rawRow = selectedEntry.rawRows?.[idx];
+                          const rawRemark = (rawRow?.remark ?? "").trim();
+                          return (
+                            <tr key={`req-item-${item.id}-${idx}`} style={{ borderTop: idx === 0 ? "none" : "1px solid var(--color-divider)" }}>
+                              <td style={{ padding: "8px 10px", color: "var(--color-text-muted)", fontWeight: 600, fontSize: "10px" }}>{idx + 1}</td>
+                              <td style={{ padding: "8px 10px", fontWeight: 650, color: "var(--color-text)" }}>{item.sku ? `${item.sku} — ${item.name}` : item.name}</td>
+                              <td style={{ padding: "8px 10px" }}>
+                                <span style={{ padding: "3px 8px", borderRadius: 6, background: "var(--color-primary-soft)", color: "var(--color-primary)", fontWeight: 800, fontSize: "11px" }}>{item.quantity}</span>
+                              </td>
+                              <td style={{ padding: "8px 10px", color: "var(--color-text-muted)", fontSize: "10px" }}>{rawRow?.unit || "units"}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--color-text-muted)", fontSize: "10px", fontStyle: rawRemark && rawRemark !== "Request item" ? "normal" : "italic" }}>
+                                {rawRemark && rawRemark !== "Request item" ? rawRemark : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </section>
 

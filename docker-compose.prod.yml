@@ -98,6 +98,7 @@ services:
       - "${SSL_PORT:-443}:443"
     volumes:
       - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/certbot-webroot:/var/www/certbot:ro
       - ${SSL_CERT_PATH:-./infra/nginx/certs/fullchain.pem}:/etc/nginx/certs/fullchain.pem:ro
       - ${SSL_KEY_PATH:-./infra/nginx/certs/privkey.pem}:/etc/nginx/certs/privkey.pem:ro
     depends_on:

@@ -180,6 +180,9 @@ export function getApproverForProject(project?: string | null): string {
   if (p.includes("CDC")) {
     return "Assalif Demissew";
   }
+  if (p.includes("GOV")) {
+    return "Assalif Demissew, Tegbar Getahun, Tadele Emiru";
+  }
   if (p.includes("DRIVAX")) {
     return "Wakweya Chali";
   }

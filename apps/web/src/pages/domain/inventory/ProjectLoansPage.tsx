@@ -304,7 +304,7 @@ export default function ProjectLoansPage() {
       if (changed) {
         localStorage.setItem("roms_seen_loan_requests", JSON.stringify(seenMap));
       }
-    } catch {}
+    } catch { }
   }, [myPendingRequests]);
 
   // Stats calculation
@@ -765,7 +765,7 @@ export default function ProjectLoansPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: borderStyle, paddingBottom: 12, flexWrap: "wrap", gap: 10 }}>
             <div>
               <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text)", display: "flex", alignItems: "center", gap: 8 }}>
-                <span>🤝</span> Create Inter-Project Loan Request
+                <span></span> Create Inter-Project Loan Request
               </div>
               <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: 2 }}>
                 Configure items to borrow from other project stocks, queue them in your batch loan cart, and submit for project manager approval.
@@ -1288,824 +1288,658 @@ export default function ProjectLoansPage() {
               {createLoanBatchMutation.isPending
                 ? "Submitting Batch…"
                 : loanCart.length > 0
-                ? `🚀 Submit Batch Loan Request (${loanCart.length} item${loanCart.length === 1 ? "" : "s"})`
-                : "🚀 Send Loan Request"}
+                  ? `🚀 Submit Batch Loan Request (${loanCart.length} item${loanCart.length === 1 ? "" : "s"})`
+                  : "🚀 Send Loan Request"}
             </button>
           </div>
         </div>
       ) : (
         <>
 
-      {/* ── Notification Banner (For Requested Project Manager) ── */}
-      {myPendingRequests.length > 0 && (
-        <div
-          style={{
-            padding: "12px 18px",
-            background: isDarkMode ? "rgba(245, 158, 11, 0.12)" : "linear-gradient(90deg, rgb(255, 254, 249), rgb(255, 250, 230))",
-            border: "1.5px solid rgb(221, 192, 143)",
-            borderRadius: 10,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 12,
-            boxShadow: "0 2px 10px rgba(245, 158, 11, 0.15)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 22 }}>🔔</span>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: "13.5px", color: isDarkMode ? "#fde68a" : "#92400e" }}>
-                Action Required: You have {myPendingRequests.length} pending inter-project loan request(s) awaiting your review!
-              </div>
-              <div style={{ fontSize: "12px", color: isDarkMode ? "#fef08a" : "#b45309" }}>
-                Another Project Manager is requesting to borrow items held by your project(s). Please review the request and Accept or Reject below.
-              </div>
-            </div>
-          </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 800,
-                background: "#f59e0b",
-                color: "#ffffff",
-                padding: "4px 10px",
-                borderRadius: 999,
-              }}
-            >
-              {myPendingRequests.length} Awaiting Decision
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Summary KPI Bar ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
-        {[
-          { label: "Total Loan Requests", value: stats.total, color: "var(--color-primary)", icon: "📋" },
-          { label: "Pending Reviews", value: stats.pending, color: "#d97706", icon: "⏳", alert: stats.pending > 0 },
-          { label: "Active Loans", value: stats.active, color: "#0284c7", icon: "🤝" },
-          { label: "Completed Returns", value: stats.returned, color: "#16a34a", icon: "✅" },
-          { label: "Rejected Requests", value: stats.rejected, color: "#dc2626", icon: "❌" },
-        ].map((item) => (
-          <div
-            key={item.label}
-            style={{
-              padding: "10px 14px",
-              background: cardBackground,
-              borderRadius: 10,
-              border: item.alert ? `1.5px solid ${item.color}` : borderStyle,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div>
-              <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)", fontWeight: 600 }}>{item.label}</div>
-              <div style={{ fontSize: "18px", fontWeight: 800, color: item.color, marginTop: 2 }}>{item.value}</div>
-            </div>
-            <div style={{ fontSize: 20, opacity: 0.85 }}>{item.icon}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Dedicated Action Section for Pending Incoming Requests ── */}
-      {myPendingRequests.length > 0 && (
-        <div
-          style={{
-            background: cardBackground,
-            borderRadius: 12,
-            border: "1.5px solid rgb(221, 192, 143)",
-            overflow: "hidden",
-            boxShadow: "0 4px 14px rgba(245, 158, 11, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              padding: "10px 16px",
-              background: isDarkMode ? "rgba(245, 158, 11, 0.2)" : "linear-gradient(90deg, rgb(255, 254, 249), rgb(255, 250, 230))",
-              borderBottom: "1px solid rgb(252, 211, 77)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div style={{ fontSize: "12.5px", fontWeight: 800, color: isDarkMode ? "#fde68a" : "#92400e", display: "flex", alignItems: "center", gap: 6 }}>
-              <span>⚡</span> Incoming Loan Requests Requiring Your Decision
-            </div>
-            <span style={{ fontSize: "11px", color: isDarkMode ? "#fde68a" : "#b45309", fontWeight: 700 }}>
-              {myPendingRequests.length} pending
-            </span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {myPendingRequests.map((loan) => (
+          {/* ── Summary KPI Bar ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            {[
+              { label: "Total Loan Requests", value: stats.total, color: "var(--color-primary)", icon: "📋" },
+              { label: "Pending Reviews", value: stats.pending, color: "#d97706", icon: "⏳", alert: stats.pending > 0 },
+              { label: "Active Loans", value: stats.active, color: "#0284c7", icon: "🤝" },
+              { label: "Completed Returns", value: stats.returned, color: "#16a34a", icon: "✅" },
+              { label: "Rejected Requests", value: stats.rejected, color: "#dc2626", icon: "❌" },
+            ].map((item) => (
               <div
-                key={loan.id}
+                key={item.label}
                 style={{
-                  padding: "12px 16px",
+                  padding: "10px 14px",
+                  background: cardBackground,
+                  borderRadius: 10,
+                  border: item.alert ? `1.5px solid ${item.color}` : borderStyle,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  borderBottom: "1px solid var(--color-border)",
                 }}
               >
-                <div style={{ flex: 1, minWidth: 260 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--color-primary)", background: "rgba(1, 105, 111, 0.08)", padding: "1px 6px", borderRadius: 4 }}>
-                      {loan.loanCode}
-                    </span>
-                    <strong style={{ fontSize: "13px", color: "var(--color-text)" }}>
-                      {loan.stockItem?.name || "Item"}
-                    </strong>
-                    <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>({loan.stockItem?.sku})</span>
-                  </div>
-
-                  <div style={{ fontSize: "11.5px", color: "var(--color-text-muted)", marginTop: 4 }}>
-                    Borrower: <strong style={{ color: "var(--color-text)" }}>{loan.borrowerProject}</strong> ({loan.requestedBy})
-                    {" → "}
-                    Lender: <strong style={{ color: "var(--color-text)" }}>{loan.lenderProject}</strong>
-                    {" · "}
-                    Quantity: <strong style={{ color: "#d97706" }}>{loan.requestedQuantity} {loan.stockItem?.unit || "units"}</strong>
-                    {loan.dueDate && (
-                      <span> · Due: <strong>{new Date(loan.dueDate).toLocaleDateString()}</strong></span>
-                    )}
-                  </div>
-
-                  {loan.requestNotes && (
-                    <div style={{ fontSize: "11px", color: "var(--color-text)", background: isDarkMode ? "var(--color-surface)" : "#f1f5f9", padding: "4px 8px", borderRadius: 6, marginTop: 6, fontStyle: "italic" }}>
-                      "{loan.requestNotes}"
-                    </div>
-                  )}
+                <div>
+                  <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)", fontWeight: 600 }}>{item.label}</div>
+                  <div style={{ fontSize: "18px", fontWeight: 800, color: item.color, marginTop: 2 }}>{item.value}</div>
                 </div>
-
-                {!isViewOnly ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDecision(loan, "ACCEPT")}
-                      style={{
-                        background: "#16a34a",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: 6,
-                        padding: "6px 14px",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <span>✓</span> Accept Loan
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDecision(loan, "REJECT")}
-                      style={{
-                        background: "#fee2e2",
-                        color: "#b91c1c",
-                        border: "1px solid #fca5a5",
-                        borderRadius: 6,
-                        padding: "6px 12px",
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <span>✕</span> Reject
-                    </button>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: "11px", color: "var(--color-text-muted)", fontStyle: "italic" }}>
-                    View Only Mode
-                  </span>
-                )}
+                <div style={{ fontSize: 20, opacity: 0.85 }}>{item.icon}</div>
               </div>
             ))}
           </div>
-        </div>
-      )}
 
-      {/* ── Filters & Search Bar for Reference Table ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 10,
-          padding: "10px 14px",
-          background: cardBackground,
-          borderRadius: 10,
-          border: borderStyle,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 260 }}>
-          <span style={{ fontSize: "13px" }}>🔍</span>
-          <input
-            type="text"
-            placeholder="Search by Item, SKU, Loan ID, Project, or Manager..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "6px 12px",
-              borderRadius: 6,
-              border: borderStyle,
-              background: isDarkMode ? "var(--color-surface)" : "#ffffff",
-              color: "var(--color-text)",
-              fontSize: "12px",
-              outline: "none",
-            }}
-          />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {/* Project Filter */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "12px" }}>
-            <span style={{ color: "var(--color-text-muted)", fontWeight: 600 }}>Project:</span>
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
+          {/* ── Dedicated Action Section for Pending Incoming Requests ── */}
+          {myPendingRequests.length > 0 && (
+            <div
               style={{
-                padding: "5px 10px",
-                borderRadius: 6,
-                border: borderStyle,
-                background: isDarkMode ? "var(--color-surface)" : "#ffffff",
-                color: "var(--color-text)",
-                fontSize: "11.5px",
-                fontWeight: 600,
-                outline: "none",
-                cursor: "pointer",
+                background: cardBackground,
+                borderRadius: 12,
+                border: "1.5px solid rgb(1, 105, 111)",
+                overflow: "hidden",
+                boxShadow: "0 4px 14px rgba(245, 158, 11, 0.1)",
               }}
             >
-              <option value="ALL">All Projects</option>
-              {projects.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter Buttons */}
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {[
-              { id: "ALL", label: "All" },
-              { id: "PENDING", label: "Pending" },
-              { id: "APPROVED", label: "Active" },
-              { id: "RETURNED", label: "Returned" },
-              { id: "REJECTED", label: "Rejected" },
-            ].map((btn) => (
-              <button
-                key={btn.id}
-                type="button"
-                onClick={() => setStatusFilter(btn.id)}
+              <div
                 style={{
-                  padding: "4px 9px",
-                  borderRadius: 6,
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  border: statusFilter === btn.id ? "1px solid var(--color-primary)" : borderStyle,
-                  background: statusFilter === btn.id ? "var(--color-primary)" : "transparent",
-                  color: statusFilter === btn.id ? "#ffffff" : "var(--color-text-muted)",
+                  padding: "10px 16px",
+                  background: isDarkMode ? "rgba(1, 105, 111, 0.2)" : "linear-gradient(90deg, rgb(1 105 111 / 0%), #01696f4f)",
+                  borderBottom: "1px solid #01696f",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                {btn.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+                <div style={{ fontSize: "12.5px", fontWeight: 800, color: isDarkMode ? "#fde68a" : "#92400e", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span></span> Incoming Loan Requests Requiring Your Decision
+                </div>
+                <span style={{ fontSize: "11px", color: isDarkMode ? "#fde68a" : "#b45309", fontWeight: 700 }}>
+                  {myPendingRequests.length} pending
+                </span>
+              </div>
 
-      {/* ── Main Loan Reference Table ── */}
-      <div
-        style={{
-          background: cardBackground,
-          borderRadius: 12,
-          border: borderStyle,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div
-          style={{
-            padding: "10px 16px",
-            background: headerBackground,
-            borderBottom: borderStyle,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text)" }}>
-            📊 Inter-Project Loan Reference Table ({allLoans.length} entries)
-          </div>
-          <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
-            Real-time inter-project transfer and return log
-          </div>
-        </div>
-
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11.5px", textAlign: "left", tableLayout: "fixed" }}>
-            <thead>
-              <tr
-                style={{
-                  height: 38,
-                  maxHeight: 38,
-                  background: headerBackground,
-                  borderBottom: borderStyle,
-                  color: "var(--color-text-muted)",
-                  fontWeight: 700,
-                  fontSize: "10.5px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                <th style={{ padding: "0 12px", width: 110, minWidth: 105, verticalAlign: "middle" }}>Loan ID</th>
-                <th style={{ padding: "0 12px", width: 95, minWidth: 90, verticalAlign: "middle" }}>Date</th>
-                <th style={{ padding: "0 12px", width: 280, minWidth: 260, verticalAlign: "middle" }}>Item Description</th>
-                <th style={{ padding: "0 12px", width: 160, minWidth: 150, verticalAlign: "middle" }}>Borrower (Loaner)</th>
-                <th style={{ padding: "0 12px", width: 160, minWidth: 150, verticalAlign: "middle" }}>Lender (Holder)</th>
-                <th style={{ padding: "0 12px", width: 85, minWidth: 80, textAlign: "center", verticalAlign: "middle" }}>Req. Qty</th>
-                <th style={{ padding: "0 12px", width: 85, minWidth: 80, textAlign: "center", verticalAlign: "middle" }}>Appr. Qty</th>
-                <th style={{ padding: "0 12px", width: 105, minWidth: 100, verticalAlign: "middle" }}>Due Date</th>
-                <th style={{ padding: "0 12px", width: 135, minWidth: 130, verticalAlign: "middle" }}>Status</th>
-                <th style={{ padding: "0 12px", width: 200, minWidth: 180, verticalAlign: "middle" }}>Notes / Remarks</th>
-                <th style={{ padding: "0 12px", width: 165, minWidth: 160, textAlign: "center", verticalAlign: "middle" }}>Action (Return Status)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoansLoading ? (
-                <tr>
-                  <td colSpan={11} style={{ padding: "30px", textAlign: "center", color: "var(--color-text-muted)" }}>
-                    Loading loan reference table...
-                  </td>
-                </tr>
-              ) : paginatedLoans.length === 0 ? (
-                <tr>
-                  <td colSpan={11} style={{ padding: "35px", textAlign: "center", color: "var(--color-text-muted)" }}>
-                    No inter-project loan records found matching the current filters.
-                  </td>
-                </tr>
-              ) : (
-                paginatedLoans.map((loan, idx) => {
-                  const b = getStatusBadge(loan.status);
-                  const isAuthorizedLender = canUserActOnLoan(loan);
-                  const isReturned = loan.status === "RETURNED";
-                  const isApproved = loan.status === "APPROVED";
-                  const isPending = loan.status === "PENDING";
-                  const isRejected = loan.status === "REJECTED";
-
-                  const itemFullName = loan.stockItem?.name || "Unknown Item";
-                  const itemSku = loan.stockItem?.sku || "—";
-                  const itemCat = loan.stockItem?.category || "General";
-                  const fullItemTooltip = `${itemFullName} (SKU: ${itemSku} · Category: ${itemCat})`;
-
-                  const borrowerTooltip = `Borrower: ${loan.borrowerProject} | Requested by: ${loan.requestedBy}`;
-                  const approverName = loan.requestedTo || getApproverForProject(loan.lenderProject);
-                  const lenderTooltip = `Lender: ${loan.lenderProject} | Approver: ${approverName}`;
-
-                  const reqQtyTooltip = `Requested: ${loan.requestedQuantity} ${loan.stockItem?.unit || "units"}`;
-                  const apprQtyTooltip =
-                    loan.approvedQuantity !== null && loan.approvedQuantity !== undefined
-                      ? `Approved: ${loan.approvedQuantity} ${loan.stockItem?.unit || "units"}`
-                      : "Awaiting approval decision";
-
-                  const isOverdue = isApproved && loan.dueDate && new Date(loan.dueDate) < new Date();
-                  const dueDateStr = loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : "—";
-                  const dueTooltip = loan.dueDate
-                    ? `Expected return: ${dueDateStr}${isOverdue ? " (OVERDUE)" : ""}`
-                    : "No expected return date set";
-
-                  const notePieces = [
-                    loan.requestNotes && `Req: ${loan.requestNotes}`,
-                    loan.decisionNotes && `Dec: ${loan.decisionNotes}`,
-                    loan.returnNotes && `Ret: ${loan.returnNotes}`,
-                  ].filter(Boolean);
-                  const fullNotes = notePieces.length > 0 ? notePieces.join(" | ") : "No notes";
-
-                  return (
-                    <tr
-                      key={loan.id}
-                      style={{
-                        height: 44,
-                        maxHeight: 44,
-                        borderBottom: borderStyle,
-                        background: idx % 2 === 0 ? "transparent" : (isDarkMode ? "rgba(255,255,255,0.02)" : "#fafafa"),
-                        transition: "background 0.15s ease",
-                      }}
-                    >
-                      {/* 1. Loan Code */}
-                      <td
-                        title={loan.loanCode}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          fontWeight: 700,
-                          color: "var(--color-primary)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span style={{ background: "rgba(1, 105, 111, 0.08)", padding: "2px 6px", borderRadius: 4 }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {myPendingRequests.map((loan) => (
+                  <div
+                    key={loan.id}
+                    style={{
+                      padding: "12px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      borderBottom: "1px solid var(--color-border)",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 260 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--color-primary)", background: "rgba(1, 105, 111, 0.08)", padding: "1px 6px", borderRadius: 4 }}>
                           {loan.loanCode}
                         </span>
-                      </td>
+                        <strong style={{ fontSize: "13px", color: "var(--color-text)" }}>
+                          {loan.stockItem?.name || "Item"}
+                        </strong>
+                        <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>({loan.stockItem?.sku})</span>
+                      </div>
 
-                      {/* 2. Date Requested */}
-                      <td
-                        title={new Date(loan.createdAt).toLocaleDateString()}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          color: "var(--color-text-muted)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {new Date(loan.createdAt).toLocaleDateString()}
-                      </td>
+                      <div style={{ fontSize: "11.5px", color: "var(--color-text-muted)", marginTop: 4 }}>
+                        Borrower: <strong style={{ color: "var(--color-text)" }}>{loan.borrowerProject}</strong> ({loan.requestedBy})
+                        {" → "}
+                        Lender: <strong style={{ color: "var(--color-text)" }}>{loan.lenderProject}</strong>
+                        {" · "}
+                        Quantity: <strong style={{ color: "#d97706" }}>{loan.requestedQuantity} {loan.stockItem?.unit || "units"}</strong>
+                        {loan.dueDate && (
+                          <span> · Due: <strong>{new Date(loan.dueDate).toLocaleDateString()}</strong></span>
+                        )}
+                      </div>
 
-                      {/* 3. Item Description */}
-                      <td
-                        title={fullItemTooltip}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <span style={{ fontWeight: 600, color: "var(--color-text)" }}>{itemFullName}</span>
-                          <span style={{ fontSize: "10.5px", color: "var(--color-text-muted)", marginLeft: 6 }}>
-                            ({itemSku})
-                          </span>
+                      {loan.requestNotes && (
+                        <div style={{ fontSize: "11px", color: "var(--color-text)", background: isDarkMode ? "var(--color-surface)" : "#f1f5f9", padding: "4px 8px", borderRadius: 6, marginTop: 6, fontStyle: "italic" }}>
+                          "{loan.requestNotes}"
                         </div>
-                      </td>
+                      )}
+                    </div>
 
-                      {/* 4. Borrower Project & Requester */}
-                      <td
-                        title={borrowerTooltip}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <strong style={{ color: "var(--color-text)" }}>{loan.borrowerProject}</strong>
-                          <span style={{ fontSize: "10px", color: "var(--color-text-muted)", marginLeft: 4 }}>
-                            ({loan.requestedBy})
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 5. Lender Project & Approver */}
-                      <td
-                        title={lenderTooltip}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <strong style={{ color: "var(--color-text)" }}>{loan.lenderProject}</strong>
-                          <span style={{ fontSize: "10px", color: "var(--color-text-muted)", marginLeft: 4 }}>
-                            ({approverName})
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 6. Requested Qty */}
-                      <td
-                        title={reqQtyTooltip}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          textAlign: "center",
-                          fontWeight: 600,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {loan.requestedQuantity}{" "}
-                        <span style={{ fontSize: "9.5px", color: "var(--color-text-muted)" }}>{loan.stockItem?.unit}</span>
-                      </td>
-
-                      {/* 7. Approved Qty */}
-                      <td
-                        title={apprQtyTooltip}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          textAlign: "center",
-                          fontWeight: 700,
-                          color: isApproved || isReturned ? "var(--color-primary)" : "var(--color-text-muted)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {loan.approvedQuantity !== null && loan.approvedQuantity !== undefined ? loan.approvedQuantity : "—"}
-                      </td>
-
-                      {/* 8. Due Date */}
-                      <td
-                        title={dueTooltip}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <span>{dueDateStr}</span>
-                          {isOverdue && (
-                            <span style={{ fontSize: "9px", color: "#ef4444", fontWeight: 700, marginLeft: 4 }}>
-                              ⚠️ Overdue
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 9. Status Badge */}
-                      <td
-                        title={b.label}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span
+                    {!isViewOnly ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDecision(loan, "ACCEPT")}
                           style={{
-                            fontSize: "10px",
+                            background: "rgba(22, 163, 74, 0.65)",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: 6,
+                            padding: "6px 14px",
+                            fontSize: "12px",
                             fontWeight: 700,
-                            background: b.bg,
-                            color: b.color,
-                            border: `1px solid ${b.border}`,
-                            padding: "2px 8px",
-                            borderRadius: 999,
-                            display: "inline-block",
-                            whiteSpace: "nowrap",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
                           }}
                         >
-                          {b.label}
-                        </span>
-                      </td>
+                          <span>✓</span> Accept Loan
+                        </button>
 
-                      {/* 10. Notes / Audit */}
-                      <td
-                        title={fullNotes}
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "10.5px", color: "var(--color-text-muted)" }}>
-                          {fullNotes}
-                        </div>
-                      </td>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDecision(loan, "REJECT")}
+                          style={{
+                            background: "#fee2e2",
+                            color: "#b91c1c",
+                            border: "1px solid #fca5a5",
+                            borderRadius: 6,
+                            padding: "6px 12px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <span>✕</span> Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: "11px", color: "var(--color-text-muted)", fontStyle: "italic" }}>
+                        View Only Mode
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                      {/* 11. Action Column (Last Column) */}
-                      <td
-                        style={{
-                          height: 44,
-                          maxHeight: 44,
-                          padding: "0 12px",
-                          verticalAlign: "middle",
-                          textAlign: "center",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {isReturned ? (
-                          /* RETURNED: Action button is permanently GREEN */
-                          <button
-                            type="button"
-                            disabled
-                            style={{
-                              background: "#16a34a",
-                              color: "#ffffff",
-                              border: "1px solid #15803d",
-                              borderRadius: 6,
-                              padding: "4px 10px",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              cursor: "default",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                              boxShadow: "0 1px 3px rgba(22, 163, 74, 0.3)",
-                            }}
-                            title={`Returned by ${loan.returnedBy || "Manager"} on ${loan.returnedAt ? new Date(loan.returnedAt).toLocaleDateString() : ""}`}
-                          >
-                            <span>✅ Returned</span>
-                          </button>
-                        ) : isApproved ? (
-                          /* APPROVED (ACTIVE LOAN): Lender PM clicks to return items */
-                          isAuthorizedLender ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenReturn(loan)}
-                              style={{
-                                background: "linear-gradient(180deg, #059669, #047857)",
-                                color: "#ffffff",
-                                border: "1px solid #047857",
-                                borderRadius: 6,
-                                padding: "4px 10px",
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                boxShadow: "0 2px 4px rgba(4, 120, 87, 0.25)",
-                                transition: "all 0.15s ease",
-                              }}
-                              title="Mark loaned items as returned to the lender"
-                            >
-                              <span>📦 Confirm Return</span>
-                            </button>
-                          ) : (
-                            <span
-                              style={{ fontSize: "10.5px", color: "var(--color-text-muted)", fontWeight: 600 }}
-                              title="Only the Lending Project Manager can record returned items"
-                            >
-                              Active (Awaiting Return)
-                            </span>
-                          )
-                        ) : isPending ? (
-                          /* PENDING: Lender can accept/reject */
-                          isAuthorizedLender ? (
-                            <div style={{ display: "inline-flex", gap: 4 }}>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDecision(loan, "ACCEPT")}
-                                style={{
-                                  background: "#16a34a",
-                                  color: "#ffffff",
-                                  border: "none",
-                                  borderRadius: 5,
-                                  padding: "3px 8px",
-                                  fontSize: "10.5px",
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                }}
-                                title="Accept Loan Request"
-                              >
-                                ✓
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDecision(loan, "REJECT")}
-                                style={{
-                                  background: "#fee2e2",
-                                  color: "#b91c1c",
-                                  border: "1px solid #fca5a5",
-                                  borderRadius: 5,
-                                  padding: "3px 8px",
-                                  fontSize: "10.5px",
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                }}
-                                title="Reject Loan Request"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: "10.5px", color: "var(--color-text-muted)" }}>
-                              ⏳ Awaiting Lender
-                            </span>
-                          )
-                        ) : (
-                          /* REJECTED */
-                          <span style={{ fontSize: "10.5px", color: "#991b1b", fontWeight: 600 }}>
-                            ❌ Closed
-                          </span>
-                        )}
+          {/* ── Filters & Search Bar for Reference Table ── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 10,
+              padding: "10px 14px",
+              background: cardBackground,
+              borderRadius: 10,
+              border: borderStyle,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 260 }}>
+              <span style={{ fontSize: "13px" }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search by Item, SKU, Loan ID, Project, or Manager..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: borderStyle,
+                  background: isDarkMode ? "var(--color-surface)" : "#ffffff",
+                  color: "var(--color-text)",
+                  fontSize: "12px",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {/* Project Filter */}
+              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "12px" }}>
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 600 }}>Project:</span>
+                <select
+                  value={projectFilter}
+                  onChange={(e) => setProjectFilter(e.target.value)}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    border: borderStyle,
+                    background: isDarkMode ? "var(--color-surface)" : "#ffffff",
+                    color: "var(--color-text)",
+                    fontSize: "11.5px",
+                    fontWeight: 600,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="ALL">All Projects</option>
+                  {projects.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter Buttons */}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {[
+                  { id: "ALL", label: "All" },
+                  { id: "PENDING", label: "Pending" },
+                  { id: "APPROVED", label: "Active" },
+                  { id: "RETURNED", label: "Returned" },
+                  { id: "REJECTED", label: "Rejected" },
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    onClick={() => setStatusFilter(btn.id)}
+                    style={{
+                      padding: "4px 9px",
+                      borderRadius: 6,
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: statusFilter === btn.id ? "1px solid var(--color-primary)" : borderStyle,
+                      background: statusFilter === btn.id ? "var(--color-primary)" : "transparent",
+                      color: statusFilter === btn.id ? "#ffffff" : "var(--color-text-muted)",
+                    }}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Main Loan Reference Table ── */}
+          <div
+            style={{
+              background: cardBackground,
+              borderRadius: 12,
+              border: borderStyle,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 16px",
+                background: headerBackground,
+                borderBottom: borderStyle,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text)" }}>
+                Inter-Project Loan Reference Table ({allLoans.length} entries)
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+                Real-time inter-project transfer and return log
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11.5px", textAlign: "left", tableLayout: "fixed" }}>
+                <thead>
+                  <tr
+                    style={{
+                      height: 38,
+                      maxHeight: 38,
+                      background: headerBackground,
+                      borderBottom: borderStyle,
+                      color: "var(--color-text-muted)",
+                      fontWeight: 700,
+                      fontSize: "10.5px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    <th style={{ padding: "0 12px", width: 110, minWidth: 105, verticalAlign: "middle" }}>Loan ID</th>
+                    <th style={{ padding: "0 12px", width: 95, minWidth: 90, verticalAlign: "middle" }}>Date</th>
+                    <th style={{ padding: "0 12px", width: 280, minWidth: 260, verticalAlign: "middle" }}>Item Description</th>
+                    <th style={{ padding: "0 12px", width: 160, minWidth: 150, verticalAlign: "middle" }}>Borrower (Loaner)</th>
+                    <th style={{ padding: "0 12px", width: 160, minWidth: 150, verticalAlign: "middle" }}>Lender (Holder)</th>
+                    <th style={{ padding: "0 12px", width: 85, minWidth: 80, textAlign: "center", verticalAlign: "middle" }}>Req. Qty</th>
+                    <th style={{ padding: "0 12px", width: 85, minWidth: 80, textAlign: "center", verticalAlign: "middle" }}>Appr. Qty</th>
+                    <th style={{ padding: "0 12px", width: 105, minWidth: 100, verticalAlign: "middle" }}>Due Date</th>
+                    <th style={{ padding: "0 12px", width: 135, minWidth: 130, verticalAlign: "middle" }}>Status</th>
+                    <th style={{ padding: "0 12px", width: 220, minWidth: 200, verticalAlign: "middle" }}>Notes / Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoansLoading ? (
+                    <tr>
+                      <td colSpan={10} style={{ padding: "30px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                        Loading loan reference table...
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ) : paginatedLoans.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} style={{ padding: "35px", textAlign: "center", color: "var(--color-text-muted)" }}>
+                        No inter-project loan records found matching the current filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedLoans.map((loan, idx) => {
+                      const b = getStatusBadge(loan.status);
+                      const isAuthorizedLender = canUserActOnLoan(loan);
+                      const isReturned = loan.status === "RETURNED";
+                      const isApproved = loan.status === "APPROVED";
+                      const isPending = loan.status === "PENDING";
+                      const isRejected = loan.status === "REJECTED";
 
-        {/* ── Table Pagination Bar ── */}
-        <div
-          style={{
-            padding: "8px 16px",
-            background: headerBackground,
-            borderTop: borderStyle,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 8,
-            fontSize: "11.5px",
-          }}
-        >
-          <div style={{ color: "var(--color-text-muted)" }}>
-            Showing {allLoans.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
-            {Math.min(page * pageSize, allLoans.length)} of {allLoans.length} entries
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      const itemFullName = loan.stockItem?.name || "Unknown Item";
+                      const itemSku = loan.stockItem?.sku || "—";
+                      const itemCat = loan.stockItem?.category || "General";
+                      const fullItemTooltip = `${itemFullName} (SKU: ${itemSku} · Category: ${itemCat})`;
+
+                      const borrowerTooltip = `Borrower: ${loan.borrowerProject} | Requested by: ${loan.requestedBy}`;
+                      const approverName = loan.requestedTo || getApproverForProject(loan.lenderProject);
+                      const lenderTooltip = `Lender: ${loan.lenderProject} | Approver: ${approverName}`;
+
+                      const reqQtyTooltip = `Requested: ${loan.requestedQuantity} ${loan.stockItem?.unit || "units"}`;
+                      const apprQtyTooltip =
+                        loan.approvedQuantity !== null && loan.approvedQuantity !== undefined
+                          ? `Approved: ${loan.approvedQuantity} ${loan.stockItem?.unit || "units"}`
+                          : "Awaiting approval decision";
+
+                      const isOverdue = isApproved && loan.dueDate && new Date(loan.dueDate) < new Date();
+                      const dueDateStr = loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : "—";
+                      const dueTooltip = loan.dueDate
+                        ? `Expected return: ${dueDateStr}${isOverdue ? " (OVERDUE)" : ""}`
+                        : "No expected return date set";
+
+                      const notePieces = [
+                        loan.requestNotes && `Req: ${loan.requestNotes}`,
+                        loan.decisionNotes && `Dec: ${loan.decisionNotes}`,
+                        loan.returnNotes && `Ret: ${loan.returnNotes}`,
+                      ].filter(Boolean);
+                      const fullNotes = notePieces.length > 0 ? notePieces.join(" | ") : "No notes";
+
+                      return (
+                        <tr
+                          key={loan.id}
+                          style={{
+                            height: 44,
+                            maxHeight: 44,
+                            borderBottom: borderStyle,
+                            background: idx % 2 === 0 ? "transparent" : (isDarkMode ? "rgba(255,255,255,0.02)" : "#fafafa"),
+                            transition: "background 0.15s ease",
+                          }}
+                        >
+                          {/* 1. Loan Code */}
+                          <td
+                            title={loan.loanCode}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              fontWeight: 700,
+                              color: "var(--color-primary)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <span style={{ background: "rgba(1, 105, 111, 0.08)", padding: "2px 6px", borderRadius: 4 }}>
+                              {loan.loanCode}
+                            </span>
+                          </td>
+
+                          {/* 2. Date Requested */}
+                          <td
+                            title={new Date(loan.createdAt).toLocaleDateString()}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              color: "var(--color-text-muted)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {new Date(loan.createdAt).toLocaleDateString()}
+                          </td>
+
+                          {/* 3. Item Description */}
+                          <td
+                            title={fullItemTooltip}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span style={{ fontWeight: 600, color: "var(--color-text)" }}>{itemFullName}</span>
+                              <span style={{ fontSize: "10.5px", color: "var(--color-text-muted)", marginLeft: 6 }}>
+                                ({itemSku})
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 4. Borrower Project & Requester */}
+                          <td
+                            title={borrowerTooltip}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <strong style={{ color: "var(--color-text)" }}>{loan.borrowerProject}</strong>
+                              <span style={{ fontSize: "10px", color: "var(--color-text-muted)", marginLeft: 4 }}>
+                                ({loan.requestedBy})
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 5. Lender Project & Approver */}
+                          <td
+                            title={lenderTooltip}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <strong style={{ color: "var(--color-text)" }}>{loan.lenderProject}</strong>
+                              <span style={{ fontSize: "10px", color: "var(--color-text-muted)", marginLeft: 4 }}>
+                                ({approverName})
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 6. Requested Qty */}
+                          <td
+                            title={reqQtyTooltip}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              textAlign: "center",
+                              fontWeight: 600,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {loan.requestedQuantity}{" "}
+                            <span style={{ fontSize: "9.5px", color: "var(--color-text-muted)" }}>{loan.stockItem?.unit}</span>
+                          </td>
+
+                          {/* 7. Approved Qty */}
+                          <td
+                            title={apprQtyTooltip}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              textAlign: "center",
+                              fontWeight: 700,
+                              color: isApproved || isReturned ? "var(--color-primary)" : "var(--color-text-muted)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {loan.approvedQuantity !== null && loan.approvedQuantity !== undefined ? loan.approvedQuantity : "—"}
+                          </td>
+
+                          {/* 8. Due Date */}
+                          <td
+                            title={dueTooltip}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span>{dueDateStr}</span>
+                              {isOverdue && (
+                                <span style={{ fontSize: "9px", color: "#ef4444", fontWeight: 700, marginLeft: 4 }}>
+                                  ⚠️ Overdue
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 9. Status Badge */}
+                          <td
+                            title={b.label}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                background: b.bg,
+                                color: b.color,
+                                border: `1px solid ${b.border}`,
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                display: "inline-block",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {b.label}
+                            </span>
+                          </td>
+
+                          {/* 10. Notes / Audit */}
+                          <td
+                            title={fullNotes}
+                            style={{
+                              height: 44,
+                              maxHeight: 44,
+                              padding: "0 12px",
+                              verticalAlign: "middle",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "10.5px", color: "var(--color-text-muted)" }}>
+                              {fullNotes}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Table Pagination Bar ── */}
+            <div
               style={{
-                padding: "3px 9px",
-                borderRadius: 5,
-                border: borderStyle,
-                background: page <= 1 ? "transparent" : (isDarkMode ? "var(--color-surface)" : "#ffffff"),
-                color: page <= 1 ? "var(--color-text-muted)" : "var(--color-text)",
-                cursor: page <= 1 ? "not-allowed" : "pointer",
-                fontWeight: 600,
-                fontSize: "11px",
+                padding: "8px 16px",
+                background: headerBackground,
+                borderTop: borderStyle,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 8,
+                fontSize: "11.5px",
               }}
             >
-              ◀ Prev
-            </button>
-            <span style={{ fontWeight: 700, color: "var(--color-text)", padding: "0 4px" }}>
-              Page {page} of {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              style={{
-                padding: "3px 9px",
-                borderRadius: 5,
-                border: borderStyle,
-                background: page >= totalPages ? "transparent" : (isDarkMode ? "var(--color-surface)" : "#ffffff"),
-                color: page >= totalPages ? "var(--color-text-muted)" : "var(--color-text)",
-                cursor: page >= totalPages ? "not-allowed" : "pointer",
-                fontWeight: 600,
-                fontSize: "11px",
-              }}
-            >
-              Next ▶
-            </button>
+              <div style={{ color: "var(--color-text-muted)" }}>
+                Showing {allLoans.length === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
+                {Math.min(page * pageSize, allLoans.length)} of {allLoans.length} entries
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  style={{
+                    padding: "3px 9px",
+                    borderRadius: 5,
+                    border: borderStyle,
+                    background: page <= 1 ? "transparent" : (isDarkMode ? "var(--color-surface)" : "#ffffff"),
+                    color: page <= 1 ? "var(--color-text-muted)" : "var(--color-text)",
+                    cursor: page <= 1 ? "not-allowed" : "pointer",
+                    fontWeight: 600,
+                    fontSize: "11px",
+                  }}
+                >
+                  ◀ Prev
+                </button>
+                <span style={{ fontWeight: 700, color: "var(--color-text)", padding: "0 4px" }}>
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  style={{
+                    padding: "3px 9px",
+                    borderRadius: 5,
+                    border: borderStyle,
+                    background: page >= totalPages ? "transparent" : (isDarkMode ? "var(--color-surface)" : "#ffffff"),
+                    color: page >= totalPages ? "var(--color-text-muted)" : "var(--color-text)",
+                    cursor: page >= totalPages ? "not-allowed" : "pointer",
+                    fontWeight: 600,
+                    fontSize: "11px",
+                  }}
+                >
+                  Next ▶
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      </>
-    )}
+        </>
+      )}
 
       {/* ── Modal: Lender Decision (Accept / Reject) ── */}
       {decisionModalLoan && (

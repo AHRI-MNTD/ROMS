@@ -100,4 +100,28 @@ describe("Inventory Approver Authorization (Strict ID & Exact Matching)", () => 
     };
     expect(isUserAuthorizedForApprovers(labScientistWithMatchingName, "Assalif Demissew", "ANOSTEP")).toBe(false);
   });
+
+  it("strictly fails closed if [APPROVER_IDS:...] is present and caller user ID does not match, even if display name or email matches", () => {
+    const approverString = "[APPROVER_IDS:usr_pi_authorized] Dr. Fitsum Girma";
+    const imposterUser = {
+      id: "usr_imposter_evil",
+      displayName: "Dr. Fitsum Girma", // Same display name as authorized approver!
+      email: "fitsum@ahri.gov.et",     // Same email!
+      roles: [Role.PRINCIPAL_INVESTIGATOR],
+      permissions: ["inventory:approve"],
+    };
+
+    // Because [APPROVER_IDS:...] is present, authorization MUST strictly check user.id and fail closed!
+    expect(isUserAuthorizedForApprovers(imposterUser, approverString, "HAMMS")).toBe(false);
+
+    // Legitimate user with the correct ID is allowed
+    const genuineUser = {
+      id: "usr_pi_authorized",
+      displayName: "Dr. Fitsum Girma",
+      email: "fitsum@ahri.gov.et",
+      roles: [Role.PRINCIPAL_INVESTIGATOR],
+      permissions: ["inventory:approve"],
+    };
+    expect(isUserAuthorizedForApprovers(genuineUser, approverString, "HAMMS")).toBe(true);
+  });
 });

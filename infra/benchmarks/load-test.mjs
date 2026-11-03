@@ -14,9 +14,24 @@ import crypto from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Auto-load JWT_SECRET from .env.production or .env if present
+let envSecret = process.env.JWT_SECRET;
+if (!envSecret) {
+  const prodEnvPath = path.resolve(__dirname, '../../.env.production');
+  const defaultEnvPath = path.resolve(__dirname, '../../.env');
+  const envFile = fs.existsSync(prodEnvPath) ? prodEnvPath : fs.existsSync(defaultEnvPath) ? defaultEnvPath : null;
+  if (envFile) {
+    const content = fs.readFileSync(envFile, 'utf8');
+    const match = content.match(/^JWT_SECRET=(.+)$/m);
+    if (match) {
+      envSecret = match[1].trim();
+    }
+  }
+}
+
 const BASE_URL = process.env.BASE_URL || 'https://localhost';
 const CA_CERT_PATH = process.env.CA_CERT_PATH || path.resolve(__dirname, '../nginx/certs/roms-root-ca.crt');
-const JWT_SECRET = process.env.JWT_SECRET || 'roms-hpc-jwt-super-secret-production-key-change-me';
+const JWT_SECRET = envSecret || 'roms-hpc-jwt-super-secret-production-key-change-me';
 
 let caCert = null;
 if (fs.existsSync(CA_CERT_PATH)) {
@@ -67,6 +82,26 @@ const testAdminToken = generateJwt(
     email: 'systemadmin@roms.com',
     roles: ['ADMIN'],
     permissions: ['*'],
+  },
+  JWT_SECRET
+);
+
+const testResearcherToken = generateJwt(
+  {
+    sub: 'researcher-bench-01',
+    email: 'researcher@roms.internal',
+    roles: ['RESEARCHER'],
+    permissions: ['inventory:read', 'inventory:request'],
+  },
+  JWT_SECRET
+);
+
+const testManagerToken = generateJwt(
+  {
+    sub: 'manager-bench-01',
+    email: 'manager@roms.internal',
+    roles: ['PRINCIPAL_INVESTIGATOR'],
+    permissions: ['inventory:read', 'inventory:approve'],
   },
   JWT_SECRET
 );
@@ -216,25 +251,25 @@ async function main() {
     console.log(`${res.rps} req/s | p50: ${res.stats.p50}ms | p95: ${res.stats.p95}ms | Errors: ${res.failed}`);
   }
 
-  console.log('\n--- Test Suite 2: Authenticated Database-Backed Inventory Queries (PostgreSQL + JWT) ---');
+  console.log('\n--- Test Suite 2: Authenticated Database-Backed Multi-Role Queries (PostgreSQL + JWT) ---');
   const dbTiers = [
-    { concurrency: 10, total: 200, label: '10 concurrent researchers' },
-    { concurrency: 25, total: 500, label: '25 concurrent researchers' },
-    { concurrency: 50, total: 1000, label: '50 concurrent researchers' },
+    { concurrency: 10, total: 200, label: '10 concurrent client workers', token: testResearcherToken, endpoint: '/api/domains/inventory' },
+    { concurrency: 25, total: 500, label: '25 concurrent client workers', token: testManagerToken, endpoint: '/api/domains/inventory/requests?status=PENDING' },
+    { concurrency: 50, total: 1000, label: '50 concurrent client workers', token: testAdminToken, endpoint: '/api/domains/inventory' },
   ];
 
   const dbResults = [];
   for (const tier of dbTiers) {
-    process.stdout.write(`Testing Inventory API (${tier.label})... `);
-    const res = await runScenario('/api/domains/inventory', tier.concurrency, tier.total, {
-      Authorization: `Bearer ${testAdminToken}`,
+    process.stdout.write(`Testing Mixed Workload (${tier.label})... `);
+    const res = await runScenario(tier.endpoint, tier.concurrency, tier.total, {
+      Authorization: `Bearer ${tier.token}`,
     });
     dbResults.push({ ...res, label: tier.label });
     console.log(`${res.rps} req/s | p50: ${res.stats.p50}ms | p95: ${res.stats.p95}ms | Errors: ${res.failed}`);
   }
 
   console.log('\n==================================================================================');
-  console.log('📊 Verified Capacity Benchmark Results');
+  console.log('📊 Verified Capacity Benchmark Results (Preliminary Concurrency Measurements)');
   console.log('==================================================================================');
   console.log('| Workload / Endpoint | Concurrency | Total Req | Throughput | p50 Latency | p95 Latency | Error Rate |');
   console.log('| :--- | :---: | :---: | :---: | :---: | :---: | :---: |');

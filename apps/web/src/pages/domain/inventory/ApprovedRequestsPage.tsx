@@ -34,11 +34,13 @@ function getHandoffDate(rows: RequestReferenceRow[]): string {
 export default function ApprovedRequestsPage() {
   const queryClient = useQueryClient();
 
-  // Fetch requests from API
+  // Fetch approved & partial requests from API
   const { data: persistedRequests, isLoading, refetch } = useQuery({
-    queryKey: ["inventory-requests"],
+    queryKey: ["inventory-requests", "approved"],
     queryFn: async () => {
-      const resp = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } });
+      const resp = await apiClient.get("/domains/inventory/requests", {
+        params: { status: "APPROVED,PARTIAL", all: "true" },
+      });
       return resp.data as { data: RequestReferenceRow[]; total: number };
     },
   });
@@ -501,21 +503,40 @@ export default function ApprovedRequestsPage() {
             </div>
           </section>
 
-          <section>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
-              <h3 style={{ margin: 0, fontSize: "11px", fontWeight: 800, color: "var(--color-text)" }}>Items in this request</h3>
-              <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{selectedGroup.rows.length} item(s) · {selectedGroup.totalQuantity} total units</span>
+          <section style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0, fontSize: "11px", fontWeight: 800, color: "var(--color-text)" }}>Items in this request <span style={{ color: "var(--color-text-muted)", fontWeight: 500 }}>({selectedGroup.rows.length})</span></h3>
+              <span style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>{selectedGroup.totalQuantity} total units</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 9 }}>
-              {selectedGroup.rows.map((item) => (
-                <div key={item.rowKey} style={{ padding: "12px 13px", border: "1px solid var(--color-border)", borderRadius: 9, background: "var(--color-surface)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{ fontSize: "11.5px", fontWeight: 700, color: "var(--color-text)" }}>{item.itemDescription}</div>
-                    <div style={{ whiteSpace: "nowrap", padding: "3px 7px", borderRadius: 6, background: "var(--color-primary-soft)", color: "var(--color-primary)", fontSize: "10px", fontWeight: 800 }}>{item.acceptedQuantity ?? item.quantity} {item.unit}</div>
-                  </div>
-                  <div style={{ marginTop: 5, fontSize: "10px", color: "var(--color-text-muted)" }}>Code: {item.codeNo || "—"} · {item.unitDescription || `${item.unit} per pack`}</div>
-                </div>
-              ))}
+            <div style={{ border: "1px solid var(--color-border)", borderRadius: 8, overflowX: "auto", background: "var(--color-surface)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                <thead>
+                  <tr style={{ background: "var(--color-surface-offset)", borderBottom: "1px solid var(--color-border)" }}>
+                    <th style={{ textAlign: "center", padding: "8px 10px", fontSize: "9.5px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 40 }}>#</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9.5px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 110 }}>Code / SKU</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9.5px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700 }}>Item Description</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9.5px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 100 }}>Approved Qty</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9.5px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 80 }}>Unit</th>
+                    <th style={{ textAlign: "left", padding: "8px 10px", fontSize: "9.5px", textTransform: "uppercase", color: "var(--color-text-muted)", fontWeight: 700, width: 180 }}>Packaging Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedGroup.rows.map((item, idx) => (
+                    <tr key={item.rowKey} style={{ borderTop: idx === 0 ? "none" : "1px solid var(--color-divider)" }}>
+                      <td style={{ textAlign: "center", padding: "8px 10px", color: "var(--color-text-muted)", fontWeight: 600, fontSize: "10px" }}>{idx + 1}</td>
+                      <td style={{ padding: "8px 10px", color: "var(--color-text-muted)", fontWeight: 650, fontSize: "10.5px" }}>{item.codeNo || "—"}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 700, color: "var(--color-text)" }}>{item.itemDescription}</td>
+                      <td style={{ padding: "8px 10px" }}>
+                        <span style={{ padding: "3px 8px", borderRadius: 6, background: "var(--color-primary-soft)", color: "var(--color-primary)", fontWeight: 800, fontSize: "11px" }}>
+                          {item.acceptedQuantity ?? item.quantity}
+                        </span>
+                      </td>
+                      <td style={{ padding: "8px 10px", color: "var(--color-text)", fontWeight: 600 }}>{item.unit}</td>
+                      <td style={{ padding: "8px 10px", color: "var(--color-text-muted)", fontSize: "10.5px" }}>{item.unitDescription || `${item.unit} per pack`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
 

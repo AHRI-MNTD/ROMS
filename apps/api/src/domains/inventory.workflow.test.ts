@@ -153,5 +153,51 @@ describe("Inventory Granular Workflow & Route Guards", () => {
     const isLotKnown = unrecordedLotIn > 0;
     expect(isLotKnown).toBe(false);
   });
+
+  it("strictly excludes expired lots from FEFO candidate selection", () => {
+    const now = new Date("2026-11-02T12:00:00Z");
+    const candidateLots = [
+      { lotNumber: "LOT-EXPIRED-01", expiryDate: new Date("2026-10-01T00:00:00Z"), quantity: 100 }, // Expired last month
+      { lotNumber: "LOT-ACTIVE-EARLY", expiryDate: new Date("2026-12-01T00:00:00Z"), quantity: 20 }, // Valid, expires in 1 month
+      { lotNumber: "LOT-ACTIVE-LATE", expiryDate: new Date("2027-06-01T00:00:00Z"), quantity: 50 },  // Valid, expires next year
+      { lotNumber: "LOT-NO-EXPIRY", expiryDate: null, quantity: 30 },                                 // Non-perishable / no expiry
+    ];
+
+    // Filter unexpired lots
+    const unexpiredLots = candidateLots.filter(
+      (lot) => lot.expiryDate === null || lot.expiryDate > now
+    );
+
+    expect(unexpiredLots.length).toBe(3);
+    expect(unexpiredLots.some((l) => l.lotNumber === "LOT-EXPIRED-01")).toBe(false);
+
+    // FEFO sorts valid lots: earliest expiry first, non-perishable last
+    unexpiredLots.sort((a, b) => {
+      if (!a.expiryDate) return 1;
+      if (!b.expiryDate) return -1;
+      return a.expiryDate.getTime() - b.expiryDate.getTime();
+    });
+
+    expect(unexpiredLots[0].lotNumber).toBe("LOT-ACTIVE-EARLY");
+    expect(unexpiredLots[1].lotNumber).toBe("LOT-ACTIVE-LATE");
+    expect(unexpiredLots[2].lotNumber).toBe("LOT-NO-EXPIRY");
+  });
+
+  it("strictly rejects expired lot if explicitly requested by user or approver", () => {
+    const now = new Date("2026-11-02T12:00:00Z");
+    const lotRecord = { lotNumber: "LOT-SPECIFIED-EXPIRED", expiryDate: new Date("2026-09-15T00:00:00Z") };
+    
+    const isExpired = Boolean(lotRecord.expiryDate && lotRecord.expiryDate < now);
+    expect(isExpired).toBe(true);
+
+    const checkLotValidity = (record: { expiryDate: Date | null }) => {
+      if (record.expiryDate && record.expiryDate < now) {
+        throw new Error("EXPIRED_LOT");
+      }
+      return true;
+    };
+
+    expect(() => checkLotValidity(lotRecord)).toThrow("EXPIRED_LOT");
+  });
 });
 

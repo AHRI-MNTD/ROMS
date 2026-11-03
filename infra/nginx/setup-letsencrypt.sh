@@ -20,7 +20,8 @@ fi
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CERTS_DIR="$DIR/certs"
-mkdir -p "$CERTS_DIR" /var/www/certbot
+WEBROOT_DIR="$DIR/certbot-webroot"
+mkdir -p "$CERTS_DIR" "$WEBROOT_DIR"
 
 echo "======================================================================"
 echo "🌐 Requesting Let's Encrypt Certificate for $DOMAIN..."
@@ -28,7 +29,7 @@ echo "======================================================================"
 
 # Run Certbot via docker or system certbot
 if command -v certbot &> /dev/null; then
-  certbot certonly --webroot -w /var/www/certbot \
+  certbot certonly --webroot -w "$WEBROOT_DIR" \
     -d "$DOMAIN" \
     --email "$EMAIL" \
     --agree-tos \
@@ -40,7 +41,7 @@ if command -v certbot &> /dev/null; then
 else
   echo "Using docker certbot/certbot container..."
   docker run -it --rm --name certbot \
-    -v "/var/www/certbot:/var/www/certbot" \
+    -v "$WEBROOT_DIR:/var/www/certbot" \
     -v "/etc/letsencrypt:/etc/letsencrypt" \
     certbot/certbot certonly --webroot -w /var/www/certbot \
     -d "$DOMAIN" \

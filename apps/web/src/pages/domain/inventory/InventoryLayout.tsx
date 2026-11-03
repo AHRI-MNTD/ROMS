@@ -27,11 +27,13 @@ export default function InventoryLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Fetch requests to calculate unseen approved request badge
+  // Fetch requests to calculate unseen approved request badge (bounded to approved & partial requests)
   const { data: persistedRequests } = useQuery({
-    queryKey: ["inventory-requests"],
+    queryKey: ["inventory-requests-approved-badge"],
     queryFn: async () => {
-      const resp = await apiClient.get("/domains/inventory/requests", { params: { all: "true" } });
+      const resp = await apiClient.get("/domains/inventory/requests", {
+        params: { status: "APPROVED,PARTIAL", all: "true" },
+      });
       return resp.data as { data: RequestReferenceRow[]; total: number };
     },
     refetchInterval: 30000,

@@ -24,6 +24,8 @@ pnpm-debug.log*
 # TLS & SSL certificates
 infra/nginx/certs/*
 !infra/nginx/certs/.gitkeep
+infra/nginx/certbot-webroot/*
+!infra/nginx/certbot-webroot/.gitkeep
 *.pem
 *.key
 *.crt

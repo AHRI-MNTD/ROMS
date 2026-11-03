@@ -215,18 +215,19 @@ export function isUserAuthorizedForApprovers(
   }
 
   // 2. Strict ID matching from [APPROVER_IDS:id1,id2]
-  if (user.id) {
-    const idMatch = approversString.match(/\[APPROVER_IDS:([^\]]+)\]/);
-    if (idMatch && idMatch[1]) {
-      const ids = idMatch[1].split(",").map((s) => s.trim());
-      if (ids.includes(user.id)) {
-        return true;
-      }
+  const idMatch = approversString.match(/\[APPROVER_IDS:([^\]]+)\]/);
+  if (idMatch && idMatch[1]) {
+    const ids = idMatch[1].split(",").map((s) => s.trim());
+    if (user.id && ids.includes(user.id)) {
+      return true;
     }
+    // Security Hardening: When a structured [APPROVER_IDS:...] list is specified,
+    // caller ID MUST be present in that list. Fail closed to prevent display-name spoofing.
+    return false;
   }
 
-  // 3. Exact matching on clean email or display name (no loose substring matching)
-  const cleaned = approversString.replace(/\[APPROVER_IDS:[^\]]+\]/, "").trim();
+  // 3. Fallback matching on clean email or display name ONLY for legacy records without [APPROVER_IDS:...]
+  const cleaned = approversString.trim();
   const tokens = cleaned.split(/[,/]| and /).map((s) => s.trim().toLowerCase()).filter(Boolean);
 
   const userEmail = (user.email ?? "").trim().toLowerCase();
@@ -588,10 +589,11 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
     }
   }
 
-  // 1. If `all=true` (or unpaged query without page parameter), return ALL matching records with NO artificial ceiling
+  // 1. If `all=true` (or unpaged query without page parameter), return matching records with a safe upper limit
   if (isAll && !hasExplicitPage) {
     const movements = await prisma.inventoryMovement.findMany({
       where,
+      take: 1000,
       include: {
         stockItem: {
           select: { id: true, sku: true, name: true, unit: true, category: true },
@@ -618,17 +620,47 @@ router.get("/requests", requireAuth, requirePermission("inventory:read"), async 
   }
 
   // 2. Batch-aware pagination:
-  // Find distinct batches matching filter, paginated by batches to prevent batch splitting across pages
-  const distinctBatches = await prisma.inventoryMovement.findMany({
+  // Count total distinct batches directly in PostgreSQL without loading all batch IDs into application memory
+  let totalBatchesCount = 0;
+  if (where.status && where.status.in && Array.isArray(where.status.in)) {
+    const res = await prisma.$queryRaw<Array<{ count: string | number | bigint }>>`
+      SELECT COUNT(DISTINCT "requestBatchId") as count 
+      FROM "InventoryMovement" 
+      WHERE "movementType" = 'CHECK_OUT' 
+        AND "requestBatchId" IS NOT NULL 
+        AND "status"::text IN (${Prisma.join(where.status.in)})
+    `;
+    totalBatchesCount = Number(res[0]?.count ?? 0);
+  } else if (where.status && typeof where.status === "string") {
+    const res = await prisma.$queryRaw<Array<{ count: string | number | bigint }>>`
+      SELECT COUNT(DISTINCT "requestBatchId") as count 
+      FROM "InventoryMovement" 
+      WHERE "movementType" = 'CHECK_OUT' 
+        AND "requestBatchId" IS NOT NULL 
+        AND "status"::text = ${where.status}
+    `;
+    totalBatchesCount = Number(res[0]?.count ?? 0);
+  } else {
+    const res = await prisma.$queryRaw<Array<{ count: string | number | bigint }>>`
+      SELECT COUNT(DISTINCT "requestBatchId") as count 
+      FROM "InventoryMovement" 
+      WHERE "movementType" = 'CHECK_OUT' 
+        AND "requestBatchId" IS NOT NULL
+    `;
+    totalBatchesCount = Number(res[0]?.count ?? 0);
+  }
+
+  const pagedBatches = await prisma.inventoryMovement.findMany({
     where,
-    select: { requestBatchId: true, createdAt: true },
+    select: { requestBatchId: true },
     distinct: ["requestBatchId"],
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * limit,
+    take: limit,
   });
 
-  const totalBatches = distinctBatches.length;
-  const pagedBatchIds = distinctBatches
-    .slice((page - 1) * limit, page * limit)
+  const totalBatches = totalBatchesCount;
+  const pagedBatchIds = pagedBatches
     .map((b) => b.requestBatchId)
     .filter((id): id is string => Boolean(id));
 
@@ -732,7 +764,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:request"), as
         where: {
           OR: [
             { code: { equals: projectFor, mode: "insensitive" } },
-            { title: { contains: projectFor, mode: "insensitive" } },
+            { title: { equals: projectFor, mode: "insensitive" } },
           ],
         },
       }),
@@ -1096,7 +1128,10 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
           }
         }
 
-        // Deduct approved quantity from stockItem with row locking
+        // Deduct approved quantity from stockItem with row locking and FEFO lot allocation
+        let allocatedLotNumber: string | null = existingMovement.lotNumber ?? null;
+        let allocatedExpiryDate: Date | null = existingMovement.expiryDate ?? null;
+
         const delta = quantity;
         if (delta > 0) {
           const stockItems = await tx.$queryRaw<any[]>(
@@ -1110,6 +1145,110 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
           const currentQuantity = Number(stockItem.quantity ?? 0);
           if (currentQuantity < delta) {
             throw new Error(`INSUFFICIENT_STOCK:${stockItem.name}`);
+          }
+
+          // Strict Lot balance verification & FEFO auto-allocation
+          if (allocatedLotNumber) {
+            // Verify specific lot balance if one was attached to the request
+            const [lotCheckIns, lotCheckOuts, lotRecord] = await Promise.all([
+              tx.inventoryMovement.aggregate({
+                where: { stockItemId: stockItem.id, lotNumber: allocatedLotNumber, movementType: "CHECK_IN" },
+                _sum: { quantity: true },
+              }),
+              tx.inventoryMovement.aggregate({
+                where: {
+                  stockItemId: stockItem.id,
+                  lotNumber: allocatedLotNumber,
+                  movementType: "CHECK_OUT",
+                  status: { in: ["APPROVED", "PARTIAL"] },
+                },
+                _sum: { quantity: true },
+              }),
+              tx.inventoryMovement.findFirst({
+                where: { stockItemId: stockItem.id, lotNumber: allocatedLotNumber, movementType: "CHECK_IN" },
+                select: { expiryDate: true },
+                orderBy: { occurredAt: "desc" },
+              }),
+            ]);
+            const totalLotIn = lotCheckIns._sum.quantity || 0;
+            const totalLotOut = lotCheckOuts._sum.quantity || 0;
+            const availableLotBalance = totalLotIn - totalLotOut;
+            if (totalLotIn === 0) {
+              throw new Error(`UNKNOWN_LOT:${stockItem.name} (Lot "${allocatedLotNumber}" has no check-in records)`);
+            }
+            if (delta > availableLotBalance) {
+              throw new Error(`INSUFFICIENT_LOT_BALANCE:${stockItem.name} (Lot "${allocatedLotNumber}" available: ${availableLotBalance}, requested: ${delta})`);
+            }
+            if (lotRecord?.expiryDate && lotRecord.expiryDate < new Date()) {
+              throw new Error(`EXPIRED_LOT:${stockItem.name} (Lot "${allocatedLotNumber}" expired on ${lotRecord.expiryDate.toISOString().slice(0, 10)})`);
+            }
+            if (lotRecord?.expiryDate) {
+              allocatedExpiryDate = lotRecord.expiryDate;
+            }
+          } else {
+            // FEFO auto-selection: find unexpired check-in lots ordered by expiryDate ASC
+            const now = new Date();
+            const checkInLots = await tx.inventoryMovement.findMany({
+              where: {
+                stockItemId: stockItem.id,
+                movementType: "CHECK_IN",
+                lotNumber: { not: null },
+                OR: [
+                  { expiryDate: null },
+                  { expiryDate: { gt: now } },
+                ],
+              },
+              select: { lotNumber: true, expiryDate: true },
+              orderBy: [{ expiryDate: "asc" }, { occurredAt: "asc" }],
+            });
+
+            const distinctLots: Array<{ lotNumber: string; expiryDate: Date | null }> = [];
+            const seen = new Set<string>();
+            for (const item of checkInLots) {
+              if (item.lotNumber && !seen.has(item.lotNumber)) {
+                seen.add(item.lotNumber);
+                distinctLots.push({ lotNumber: item.lotNumber, expiryDate: item.expiryDate });
+              }
+            }
+
+            let fefoLotSelected: { lotNumber: string; expiryDate: Date | null } | null = null;
+            for (const cand of distinctLots) {
+              const [candIn, candOut] = await Promise.all([
+                tx.inventoryMovement.aggregate({
+                  where: { stockItemId: stockItem.id, lotNumber: cand.lotNumber, movementType: "CHECK_IN" },
+                  _sum: { quantity: true },
+                }),
+                tx.inventoryMovement.aggregate({
+                  where: {
+                    stockItemId: stockItem.id,
+                    lotNumber: cand.lotNumber,
+                    movementType: "CHECK_OUT",
+                    status: { in: ["APPROVED", "PARTIAL"] },
+                  },
+                  _sum: { quantity: true },
+                }),
+              ]);
+              const lotBalance = (candIn._sum.quantity || 0) - (candOut._sum.quantity || 0);
+              if (lotBalance >= delta) {
+                fefoLotSelected = cand;
+                break;
+              }
+            }
+
+            if (distinctLots.length > 0 && !fefoLotSelected) {
+              throw new Error(`INSUFFICIENT_UNEXPIRED_LOT_BALANCE:${stockItem.name} (No single unexpired lot has sufficient balance of ${delta} units)`);
+            }
+
+            if (fefoLotSelected) {
+              allocatedLotNumber = fefoLotSelected.lotNumber;
+              allocatedExpiryDate = fefoLotSelected.expiryDate;
+            } else {
+              if (stockItem.expiryDate && stockItem.expiryDate < now) {
+                throw new Error(`EXPIRED_ITEM:${stockItem.name} (Item stock expired on ${stockItem.expiryDate.toISOString().slice(0, 10)})`);
+              }
+              allocatedLotNumber = stockItem.lotNumber || null;
+              allocatedExpiryDate = stockItem.expiryDate || null;
+            }
           }
 
           const nextQuantity = currentQuantity - delta;
@@ -1153,6 +1292,8 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
             approver: approverName,
             decisionAt: decisionTimestamp,
             remark: nextRemark,
+            lotNumber: allocatedLotNumber,
+            expiryDate: allocatedExpiryDate,
           },
         });
         if (updateResult.count === 0) {
@@ -1270,7 +1411,7 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
 
 router.get("/analytics", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const now = new Date();
-  const sixtyDaysAhead = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+  const ninetyDaysAhead = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
   const sixMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 6, 1));
   const project = String(req.query.project ?? "").trim();
 
@@ -1421,7 +1562,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
       .slice(0, 8);
 
     const expiringSoonItems = projectItems
-      .filter((r) => r.expiryDate && r.expiryDate >= now && r.expiryDate <= sixtyDaysAhead && r.quantity > 0)
+      .filter((r) => r.expiryDate && r.expiryDate >= now && r.expiryDate <= ninetyDaysAhead && r.quantity > 0)
       .sort((a, b) => (a.expiryDate?.getTime() ?? 0) - (b.expiryDate?.getTime() ?? 0))
       .slice(0, 10);
     const expiringSoonCount = expiringSoonItems.length;
@@ -1551,7 +1692,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
         expiryDate: {
           not: null,
           gte: now, // Lower bound: only items expiring in the future
-          lte: sixtyDaysAhead, // Upper bound: within 60 days
+          lte: ninetyDaysAhead, // Upper bound: within 90 days
         },
       },
       orderBy: { expiryDate: "asc" },
@@ -1580,7 +1721,7 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
         expiryDate: {
           not: null,
           gte: now,
-          lte: sixtyDaysAhead,
+          lte: ninetyDaysAhead,
         },
       },
     }),
@@ -1768,6 +1909,7 @@ export function getApproverForProjectFallback(project?: string | null): string {
   if (p.includes("ANOSTEP")) return "Assalif Demissew";
   if (p.includes("PVSTATEM") || p.includes("PVSERO")) return "Tilahun Ketema, Tadele Emiru";
   if (p.includes("CDC")) return "Assalif Demissew";
+  if (p.includes("GOV")) return "Assalif Demissew, Tegbar Getahun, Tadele Emiru";
   if (p.includes("DRIVAX")) return "Wakweya Chali";
   return "Assalif Demissew";
 }
@@ -1796,6 +1938,7 @@ export function isUserApproverForProject(
     if (name.includes("tilahun") && (userDisplayName.includes("tilahun") || userEmail.includes("tilahun"))) return true;
     if (name.includes("wakweya") && (userDisplayName.includes("wakweya") || userEmail.includes("wakeya") || userEmail.includes("wakweya"))) return true;
     if (name.includes("tadele") && (userDisplayName.includes("tadele") || userEmail.includes("tadele"))) return true;
+    if (name.includes("tegbar") && (userDisplayName.includes("tegbar") || userEmail.includes("tegbar"))) return true;
 
     const parts = name.split(/\s+/).filter(Boolean);
     if (parts.length > 0 && parts.every((p) => userDisplayName.includes(p) || userEmail.includes(p))) {
@@ -2432,7 +2575,7 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:check-ou
 
         if (suppliedLot) {
           // Verify lot balance
-          const [lotCheckIns, lotCheckOuts] = await Promise.all([
+          const [lotCheckIns, lotCheckOuts, lotRecord] = await Promise.all([
             tx.inventoryMovement.aggregate({
               where: { stockItemId, lotNumber: suppliedLot, movementType: "CHECK_IN" },
               _sum: { quantity: true },
@@ -2445,6 +2588,11 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:check-ou
                 status: { in: ["APPROVED", "PARTIAL"] },
               },
               _sum: { quantity: true },
+            }),
+            tx.inventoryMovement.findFirst({
+              where: { stockItemId, lotNumber: suppliedLot, movementType: "CHECK_IN" },
+              select: { expiryDate: true },
+              orderBy: { occurredAt: "desc" },
             }),
           ]);
 
@@ -2461,14 +2609,25 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:check-ou
           if (quantity > availableLotBalance) {
             throw new Error(`INSUFFICIENT_LOT_BALANCE:${existing.name} (Lot "${suppliedLot}" available: ${availableLotBalance}, requested: ${quantity})`);
           }
+
+          // If lot is expired, reject!
+          if (lotRecord?.expiryDate && lotRecord.expiryDate < new Date()) {
+            throw new Error(`EXPIRED_LOT:${existing.name} (Lot "${suppliedLot}" expired on ${lotRecord.expiryDate.toISOString().slice(0, 10)})`);
+          }
+
           finalLotNumber = suppliedLot;
         } else {
-          // FEFO auto-selection: find all check-in lots with active expiry dates ordered by expiryDate ASC
+          // FEFO auto-selection: find check-in lots with active (unexpired) expiry dates ordered by expiryDate ASC
+          const now = new Date();
           const checkInLots = await tx.inventoryMovement.findMany({
             where: {
               stockItemId,
               movementType: "CHECK_IN",
               lotNumber: { not: null },
+              OR: [
+                { expiryDate: null },
+                { expiryDate: { gt: now } },
+              ],
             },
             select: { lotNumber: true, expiryDate: true },
             orderBy: [{ expiryDate: "asc" }, { occurredAt: "asc" }],
@@ -2509,7 +2668,11 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:check-ou
           }
 
           if (distinctLots.length > 0 && !fefoLotSelected) {
-            throw new Error(`INSUFFICIENT_LOT_BALANCE:${existing.name} (No single lot has sufficient balance of ${quantity} units)`);
+            throw new Error(`INSUFFICIENT_UNEXPIRED_LOT_BALANCE:${existing.name} (No single unexpired lot has sufficient balance of ${quantity} units)`);
+          }
+
+          if (!fefoLotSelected && existing.expiryDate && existing.expiryDate < now) {
+            throw new Error(`EXPIRED_ITEM:${existing.name} (Item stock expired on ${existing.expiryDate.toISOString().slice(0, 10)})`);
           }
 
           finalLotNumber = fefoLotSelected || existing.lotNumber || null;
@@ -2702,26 +2865,123 @@ router.post("/bulk-checkin", requireAuth, requirePermission("inventory:check-in"
             },
           });
 
-          const movement = await movementTx.inventoryMovement.create({
-            data: {
-              requestBatchId: batchId,
-              stockItemId,
-              movementType: "CHECK_IN",
-              quantity,
-              requestedBy: req.user?.email ?? null,
-              destination: projectFor,
-              recipient: null,
-              projectFor,
-              status: "APPROVED",
-              lotNumber,
-              expiryDate: expiryDate ?? null,
-              remark,
-              occurredAt: dateReceived,
-            },
-          });
+          // Check if this item is settling an active inter-project loan
+          let settleReturnQty = 0;
+          let settledLoan = null;
+          const settleLoanId = toStringOrUndefined(cartItem.settleLoanId);
+
+          if (settleLoanId) {
+            const foundLoan = await tx.projectLoan.findUnique({
+              where: { id: settleLoanId },
+            });
+            if (foundLoan && foundLoan.status === "APPROVED") {
+              const approvedTotal = foundLoan.approvedQuantity || foundLoan.requestedQuantity;
+              const alreadyReturned = foundLoan.returnedQuantity || 0;
+              const remainingOwed = Math.max(0, approvedTotal - alreadyReturned);
+              const requestedReturn = Math.max(1, Math.floor(Number(cartItem.settleLoanQuantity) || remainingOwed));
+              settleReturnQty = Math.min(quantity, Math.min(remainingOwed, requestedReturn));
+
+              if (settleReturnQty > 0) {
+                const newReturnedTotal = alreadyReturned + settleReturnQty;
+                const isFullyReturned = newReturnedTotal >= approvedTotal;
+                settledLoan = await tx.projectLoan.update({
+                  where: { id: foundLoan.id },
+                  data: {
+                    status: isFullyReturned ? "RETURNED" : "APPROVED",
+                    returnedQuantity: newReturnedTotal,
+                    returnedAt: new Date(),
+                    returnedBy: (req.user as any)?.displayName || req.user?.email || "Check-In System",
+                    returnNotes: [
+                      foundLoan.returnNotes,
+                      `Returned ${settleReturnQty} via Check-In by ${projectFor} on ${new Date().toISOString().slice(0, 10)}`,
+                    ].filter(Boolean).join(" | "),
+                  },
+                });
+
+                await createAuditEntryTx(tx, {
+                  userId: req.user?.id,
+                  entityType: "ProjectLoan",
+                  entityId: foundLoan.id,
+                  action: "UPDATE",
+                  afterJson: {
+                    operation: "LOAN_SETTLED_VIA_CHECKIN",
+                    loanCode: foundLoan.loanCode,
+                    settledQuantity: settleReturnQty,
+                    newReturnedTotal,
+                    status: settledLoan.status,
+                    borrowerProject: foundLoan.borrowerProject,
+                    lenderProject: foundLoan.lenderProject,
+                    checkInProject: projectFor,
+                  },
+                });
+              }
+            }
+          }
+
+          // Create movements: allocate settleReturnQty to lender, and remainder (if any) to projectFor
+          if (settleReturnQty > 0 && settledLoan) {
+            const lenderMovement = await movementTx.inventoryMovement.create({
+              data: {
+                requestBatchId: batchId,
+                stockItemId,
+                movementType: "CHECK_IN",
+                quantity: settleReturnQty,
+                requestedBy: req.user?.email ?? null,
+                destination: settledLoan.lenderProject,
+                recipient: null,
+                projectFor: settledLoan.lenderProject,
+                status: "APPROVED",
+                lotNumber,
+                expiryDate: expiryDate ?? null,
+                remark: `Loan repayment from ${projectFor} (Loan: ${settledLoan.loanCode}) · ${remark}`,
+                occurredAt: dateReceived,
+              },
+            });
+            createdMovements.push({ ...lenderMovement, stockItem: updated });
+
+            const borrowerRemainingQty = quantity - settleReturnQty;
+            if (borrowerRemainingQty > 0) {
+              const borrowerMovement = await movementTx.inventoryMovement.create({
+                data: {
+                  requestBatchId: batchId,
+                  stockItemId,
+                  movementType: "CHECK_IN",
+                  quantity: borrowerRemainingQty,
+                  requestedBy: req.user?.email ?? null,
+                  destination: projectFor,
+                  recipient: null,
+                  projectFor,
+                  status: "APPROVED",
+                  lotNumber,
+                  expiryDate: expiryDate ?? null,
+                  remark,
+                  occurredAt: dateReceived,
+                },
+              });
+              createdMovements.push({ ...borrowerMovement, stockItem: updated });
+            }
+          } else {
+            const movement = await movementTx.inventoryMovement.create({
+              data: {
+                requestBatchId: batchId,
+                stockItemId,
+                movementType: "CHECK_IN",
+                quantity,
+                requestedBy: req.user?.email ?? null,
+                destination: projectFor,
+                recipient: null,
+                projectFor,
+                status: "APPROVED",
+                lotNumber,
+                expiryDate: expiryDate ?? null,
+                remark,
+                occurredAt: dateReceived,
+              },
+            });
+            createdMovements.push({ ...movement, stockItem: updated });
+          }
 
           updatedItems.push(updated);
-          createdMovements.push({ ...movement, stockItem: updated });
         } else {
           const sku = toStringOrUndefined(cartItem.sku);
           const name = toStringOrUndefined(cartItem.name) ?? toStringOrUndefined(cartItem.itemDescription);

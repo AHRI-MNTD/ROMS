@@ -157,7 +157,7 @@ export default function InventoryDashboardPage() {
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>
-                <span>📁 Scope:</span>
+                <span>Scope:</span>
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
@@ -223,31 +223,7 @@ export default function InventoryDashboardPage() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "11px", color: "var(--color-text-muted)" }}>
-              {selectedProject !== "ALL" ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--color-primary)", fontWeight: 700 }}>
-                  <span>🎯 Showing Project Telemetry for: <strong>{selectedProject}</strong></span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProject("ALL")}
-                    style={{
-                      background: "#fee2e2",
-                      border: "1px solid #fca5a5",
-                      color: "#b91c1c",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      fontWeight: 700,
-                      fontSize: "10px",
-                      padding: "1px 6px",
-                      marginLeft: 4,
-                    }}
-                    title="Reset to Overall Inventory"
-                  >
-                    Reset to Overall ✕
-                  </button>
-                </span>
-              ) : (
-                <span>Aggregated live metrics across all active lab projects</span>
-              )}
+              <span>Aggregated live metrics across all active lab projects</span>
             </div>
           </div>
 
@@ -399,11 +375,11 @@ export default function InventoryDashboardPage() {
             <div style={cardStyle("1px solid rgba(249,115,22,0.18)", expiringCardBackground)}>
               <div style={cardHeader("#c2410c", "rgba(249,115,22,0.1)")}>
                 <span>⏳ Expiring Soon Register {selectedProject !== "ALL" ? `(${selectedProject})` : ""}</span>
-                <span style={badge("#ffedd5", "#c2410c")}>Within 60 Days</span>
+                <span style={badge("#ffedd5", "#c2410c")}>Within 90 Days</span>
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
                 {expiringSoonItems.length === 0
-                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", fontSize: "10px", fontWeight: 700 }}>✅ No reagents expiring within 60 days.</div>
+                  ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", fontSize: "10px", fontWeight: 700 }}>✅ No reagents expiring within 90 days.</div>
                   : Array.from({ length: ROW_COUNT }, (_, i) => {
                     const item = expiringSoonItems[i];
                     if (!item) return <div key={i} style={rowBase}>{emptyCell}</div>;

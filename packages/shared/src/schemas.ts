@@ -194,6 +194,8 @@ export const BulkCheckInItemSchema = z.object({
   unitPrice: z.number().optional().nullable(),
   currency: z.string().optional().nullable(),
   totalPrice: z.number().optional().nullable(),
+  settleLoanId: z.string().optional().nullable(),
+  settleLoanQuantity: z.number().int().positive().optional().nullable(),
 });
 
 export const BulkCheckInSchema = z.object({

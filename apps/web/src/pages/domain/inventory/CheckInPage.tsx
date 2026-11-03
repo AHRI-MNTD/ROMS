@@ -188,6 +188,10 @@ export default function CheckInPage() {
   const [expiryDate, setExpiryDate] = React.useState<string>("");
   const [projects, setProjects] = React.useState<string[]>([]);
 
+  // Loan return settlement state
+  const [settleLoan, setSettleLoan] = React.useState(false);
+  const [settleQuantity, setSettleQuantity] = React.useState<number>(1);
+
   const [newSku, setNewSku] = React.useState("");
   const [newBarcode, setNewBarcode] = React.useState("");
   const [newName, setNewName] = React.useState("");
@@ -232,6 +236,10 @@ export default function CheckInPage() {
     expiryDate?: string;
     remark?: string;
     itemLabel: string;
+    settleLoanId?: string;
+    settleLoanCode?: string;
+    settleLoanLender?: string;
+    settleLoanQuantity?: number;
   }
   const [cart, setCart] = React.useState<CartItem[]>([]);
 
@@ -243,6 +251,10 @@ export default function CheckInPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
       await queryClient.invalidateQueries({ queryKey: ["inventory-checkin-movements"] });
+      await queryClient.invalidateQueries({ queryKey: ["active-project-loans"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-loans"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-loans-pending-count"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-analytics"] });
       setFeedback({
         type: "success",
         message: `Successfully checked in batch of ${cart.length} item(s).`,
@@ -302,6 +314,55 @@ export default function CheckInPage() {
     if (!selectedItem) return "";
     return [selectedItem.sku ?? "", selectedItem.name ?? ""].filter(Boolean).join(" - ");
   }, [selectedItem]);
+
+  // Fetch active approved loans for automated loan settlement at Check-In
+  const { data: activeLoansData } = useQuery({
+    queryKey: ["active-project-loans"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/loans", { params: { status: "APPROVED" } });
+      return (resp.data?.data || []) as Array<{
+        id: string;
+        loanCode: string;
+        stockItemId: string;
+        borrowerProject: string;
+        lenderProject: string;
+        requestedQuantity: number;
+        approvedQuantity: number | null;
+        returnedQuantity: number | null;
+        dueDate?: string | null;
+        stockItem?: { id: string; name: string; sku: string; unit: string };
+      }>;
+    },
+    staleTime: 30000,
+  });
+
+  const activeLoanForItem = React.useMemo(() => {
+    if (!selectedItem?.id || !projectFor.trim() || !activeLoansData) return null;
+    return (
+      activeLoansData.find(
+        (l) =>
+          l.stockItemId === selectedItem.id &&
+          l.borrowerProject.trim().toLowerCase() === projectFor.trim().toLowerCase()
+      ) ?? null
+    );
+  }, [selectedItem, projectFor, activeLoansData]);
+
+  // When active loan is detected, auto-enable settlement and set quantity
+  React.useEffect(() => {
+    if (activeLoanForItem) {
+      const approvedTotal = activeLoanForItem.approvedQuantity || activeLoanForItem.requestedQuantity;
+      const alreadyReturned = activeLoanForItem.returnedQuantity || 0;
+      const remainingOwed = Math.max(0, approvedTotal - alreadyReturned);
+      if (remainingOwed > 0) {
+        setSettleLoan(true);
+        setSettleQuantity(Math.min(checkInQty, remainingOwed));
+      } else {
+        setSettleLoan(false);
+      }
+    } else {
+      setSettleLoan(false);
+    }
+  }, [activeLoanForItem, checkInQty]);
 
   const selectedItemQuantity = Number(selectedItem?.quantity ?? 0);
 
@@ -742,6 +803,102 @@ export default function CheckInPage() {
               </span>
               <input value={note} onChange={(e) => setNote(e.target.value)} style={inputStyle} placeholder="Optional notes" />
             </label>
+
+            {/* ── Active Loan Settlement Banner & Auto-Fields ── */}
+            {activeLoanForItem && (() => {
+              const approvedTotal = activeLoanForItem.approvedQuantity || activeLoanForItem.requestedQuantity;
+              const alreadyReturned = activeLoanForItem.returnedQuantity || 0;
+              const remainingOwed = Math.max(0, approvedTotal - alreadyReturned);
+
+              return (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    padding: "12px 14px",
+                    borderRadius: 8,
+                    background: "linear-gradient(90deg, rgba(2, 132, 199, 0.08), rgba(2, 132, 199, 0.02))",
+                    border: "1.5px solid #0284c7",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    marginTop: 4,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: "18px" }}>🤝</span>
+                      <div>
+                        <div style={{ fontSize: "12px", fontWeight: 800, color: "#0369a1" }}>
+                          Active Inter-Project Loan Detected!
+                        </div>
+                        <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: 2 }}>
+                          <strong>{projectFor}</strong> currently owes <strong>{remainingOwed} {selectedItem?.unit || "units"}</strong> of this item to <strong>{activeLoanForItem.lenderProject}</strong> (Loan: <strong>{activeLoanForItem.loanCode}</strong>).
+                        </div>
+                      </div>
+                    </div>
+
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "11.5px", fontWeight: 700, color: "#0284c7", cursor: "pointer", background: "var(--color-surface)", padding: "4px 10px", borderRadius: 6, border: "1px solid #7dd3fc" }}>
+                      <input
+                        type="checkbox"
+                        checked={settleLoan}
+                        onChange={(e) => setSettleLoan(e.target.checked)}
+                        style={{ cursor: "pointer", accentColor: "#0284c7" }}
+                      />
+                      <span>Return & Settle Loan via this Check-In</span>
+                    </label>
+                  </div>
+
+                  {settleLoan && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, paddingTop: 8, borderTop: "1px dashed #7dd3fc" }}>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Loan Reference (Auto)</div>
+                        <input
+                          type="text"
+                          readOnly
+                          value={activeLoanForItem.loanCode}
+                          style={{ ...inputStyle, background: "var(--color-surface-offset)", fontWeight: 800, color: "var(--color-primary)", cursor: "not-allowed" }}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Lending Project (Credited)</div>
+                        <input
+                          type="text"
+                          readOnly
+                          value={activeLoanForItem.lenderProject}
+                          style={{ ...inputStyle, background: "var(--color-surface-offset)", fontWeight: 700, cursor: "not-allowed" }}
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>
+                          Quantity to Return to {activeLoanForItem.lenderProject} (Max: {Math.min(checkInQty, remainingOwed)})
+                        </div>
+                        <input
+                          type="number"
+                          min={1}
+                          max={Math.min(checkInQty, remainingOwed)}
+                          value={settleQuantity}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 1;
+                            setSettleQuantity(Math.max(1, Math.min(Math.min(checkInQty, remainingOwed), val)));
+                          }}
+                          style={{ ...inputStyle, borderColor: "#0284c7", fontWeight: 800, color: "#0369a1" }}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Remaining for {projectFor}</div>
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${Math.max(0, checkInQty - settleQuantity)} ${selectedItem?.unit || "units"}`}
+                          style={{ ...inputStyle, background: "var(--color-surface-offset)", fontWeight: 700, color: "var(--color-text-muted)", cursor: "not-allowed" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -987,6 +1144,7 @@ export default function CheckInPage() {
                   const uPrice = Number(unitPrice) || 0;
                   const tPrice = existingTotalPrice;
 
+                  const isSettling = settleLoan && Boolean(activeLoanForItem);
                   const newItem: CartItem = {
                     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                     mode: "existing",
@@ -1000,11 +1158,18 @@ export default function CheckInPage() {
                     expiryDate: expiryDate || undefined,
                     remark: note.trim() || undefined,
                     itemLabel: `${selectedItem.sku ?? ""} ${selectedItem.name ?? ""}`.trim(),
+                    settleLoanId: isSettling ? activeLoanForItem?.id : undefined,
+                    settleLoanCode: isSettling ? activeLoanForItem?.loanCode : undefined,
+                    settleLoanLender: isSettling ? activeLoanForItem?.lenderProject : undefined,
+                    settleLoanQuantity: isSettling ? settleQuantity : undefined,
                   };
                   setCart((prev) => [...prev, newItem]);
+                  const settleMsg = isSettling
+                    ? ` (includes return of ${settleQuantity} ${selectedItem.unit || "units"} to ${activeLoanForItem?.lenderProject} for ${activeLoanForItem?.loanCode})`
+                    : "";
                   setFeedback({
                     type: "success",
-                    message: `Added ${checkInQty} units of ${selectedItem.name} to batch.`,
+                    message: `Added ${checkInQty} units of ${selectedItem.name} to batch${settleMsg}.`,
                   });
                   setCheckInQty(1);
                   setUnitPrice(0);
@@ -1012,6 +1177,7 @@ export default function CheckInPage() {
                   setNote("");
                   setSelectedItemId("");
                   setSelectedItemQuery("");
+                  setSettleLoan(false);
                 } else {
                   // New Item Validation
                   const sku = newSku.trim();
@@ -1204,7 +1370,14 @@ export default function CheckInPage() {
                         <td style={cellStyle} title={item.totalPrice ? `${CURRENCY_SYMBOLS[item.currency] ?? item.currency} ${item.totalPrice.toFixed(2)}` : "—"}>
                           {item.totalPrice ? `${CURRENCY_SYMBOLS[item.currency] ?? item.currency} ${item.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
                         </td>
-                        <td style={cellStyle} title={item.projectFor}>{item.projectFor}</td>
+                        <td style={cellStyle} title={item.projectFor}>
+                          <div style={{ fontWeight: 650 }}>{item.projectFor}</div>
+                          {item.settleLoanCode && (
+                            <div style={{ fontSize: "8.5px", color: "#0284c7", fontWeight: 700, marginTop: 1 }}>
+                              🤝 Repays {item.settleLoanQuantity} to {item.settleLoanLender} ({item.settleLoanCode})
+                            </div>
+                          )}
+                        </td>
                         <td style={cellStyle} title={item.dateReceived}>{item.dateReceived}</td>
                         <td style={cellStyle} title={item.expiryDate || "—"}>{item.expiryDate || "—"}</td>
                         <td style={cellStyle} title={item.remark || "—"}>{item.remark || "—"}</td>
@@ -1278,6 +1451,8 @@ export default function CheckInPage() {
                         dateReceived: i.dateReceived,
                         expiryDate: i.expiryDate,
                         remark: [i.remark, i.unitPrice ? `Unit price: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${i.unitPrice.toFixed(2)}; Total: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${(i.totalPrice ?? 0).toFixed(2)}` : null].filter(Boolean).join(" · ") || undefined,
+                        settleLoanId: i.settleLoanId,
+                        settleLoanQuantity: i.settleLoanQuantity,
                       };
                     } else {
                       return {
@@ -1296,6 +1471,8 @@ export default function CheckInPage() {
                         dateReceived: i.dateReceived,
                         expiryDate: i.expiryDate,
                         remark: [i.remark, i.unitPrice ? `Unit price: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${i.unitPrice.toFixed(2)}; Total: ${CURRENCY_SYMBOLS[i.currency] ?? i.currency} ${(i.totalPrice ?? 0).toFixed(2)}` : null].filter(Boolean).join(" · ") || undefined,
+                        settleLoanId: i.settleLoanId,
+                        settleLoanQuantity: i.settleLoanQuantity,
                       };
                     }
                   });
