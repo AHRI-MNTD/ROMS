@@ -1,0 +1,56 @@
+import React from "react";
+import { ReagentCheckOutReferenceTable } from "./ReagentCheckOutReferenceTable";
+
+export default function ReagentCheckOutHistoryPage() {
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {/* Header Banner */}
+      <div
+        style={{
+          padding: 18,
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--color-primary-highlight)",
+          background: "var(--inventory-card-bg)",
+          boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "var(--color-primary-soft)",
+              color: "var(--color-primary)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 20,
+              flexShrink: 0,
+            }}
+          >
+            📤
+          </div>
+          <div>
+            <h2 style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
+              Reagent Check-Out History &amp; Disbursement Log
+            </h2>
+            <p style={{ fontSize: "11px", color: "var(--color-text-muted)", margin: "2px 0 0 0" }}>
+              Comprehensive audit log of all reagent disbursements, concentration deductions, research project allocations, and outgoing stock movements.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Shared Reagent Check-Out Reference Table */}
+      <ReagentCheckOutReferenceTable />
+    </div>
+  );
+}
+

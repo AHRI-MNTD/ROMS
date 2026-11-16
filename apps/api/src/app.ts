@@ -9,6 +9,7 @@ import { createServer } from "http";
 
 import { env } from "./env";
 import { logger } from "./utils/logger";
+import { requireAuth } from "./auth/auth.middleware";
 import { typeDefs } from "./graphql/schema";
 import { resolvers } from "./graphql/resolvers";
 
@@ -17,6 +18,7 @@ import catalogRouter from "./catalog/catalog.routes";
 import architectureRouter from "./architecture/architecture.routes";
 import biospecimenRouter from "./domains/biospecimen.routes";
 import inventoryRouter from "./domains/inventory.routes";
+import reagentRouter from "./domains/reagent.routes";
 import qmsRouter from "./domains/qms.routes";
 import labWorkflowRouter from "./domains/labWorkflow.routes";
 import dataManagementRouter from "./domains/dataManagement.routes";
@@ -61,6 +63,7 @@ export async function buildApp() {
   app.use(["/architecture", "/api/architecture"], architectureRouter);
   app.use(["/domains/biospecimen", "/api/domains/biospecimen"], biospecimenRouter);
   app.use(["/domains/inventory", "/api/domains/inventory"], inventoryRouter);
+  app.use(["/domains/reagent-inventory", "/api/domains/reagent-inventory"], reagentRouter);
   app.use(["/domains/qms", "/api/domains/qms"], qmsRouter);
   app.use(["/domains/lab-workflow", "/api/domains/lab-workflow"], labWorkflowRouter);
   app.use(["/domains/data-management", "/api/domains/data-management"], dataManagementRouter);
@@ -81,6 +84,7 @@ export async function buildApp() {
 
   app.use(
     "/graphql",
+    requireAuth,
     cors({ origin: allowedOrigins, credentials: true }),
     json(),
     expressMiddleware(apolloServer, {

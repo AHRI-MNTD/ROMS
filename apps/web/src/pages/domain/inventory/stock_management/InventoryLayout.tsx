@@ -1,9 +1,9 @@
 import React, { useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
-import { useAuth } from "../../../auth/useAuth";
-import { hasTabAccess } from "../../../auth/permissions";
+import { apiClient } from "../../../../api/client";
+import { useAuth } from "../../../../auth/useAuth";
+import { hasTabAccess } from "../../../../auth/permissions";
 import { RequestReferenceRow } from "./RequestReferenceTable";
 
 const tabs = [
@@ -196,6 +196,7 @@ export default function InventoryLayout() {
           overflowY: isOverview ? "hidden" : "auto",
           display: isOverview ? "flex" : "block",
           flexDirection: isOverview ? "column" : undefined,
+          background: "#ffffff",
         }}
       >
         {isCurrentPathAllowed ? (

@@ -152,11 +152,10 @@ describe("Auth Middleware RBAC & Granular Permissions", () => {
     expect(m5.wasNextCalled()).toBe(false);
     expect(m5.getStatus()).toBe(403);
 
-    // Check Out user is blocked from inventory:disburse
+    // Check Out user has inventory:disburse for physical handoff / issuing
     const m6 = createMockReqRes(checkOutUser, "PATCH", "/domains/inventory/requests/1/disburse");
     requirePermission("inventory:disburse")(m6.req, m6.res, m6.next);
-    expect(m6.wasNextCalled()).toBe(false);
-    expect(m6.getStatus()).toBe(403);
+    expect(m6.wasNextCalled()).toBe(true);
   });
 
   it("strictly enforces inventory:view-only mode and blocks write operations even for ADMIN role", () => {

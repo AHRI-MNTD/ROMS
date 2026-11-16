@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
+import { apiClient } from "../../../../api/client";
 
 export interface InventoryItem {
   id?: string;
@@ -31,6 +31,7 @@ interface UseInventoryDataOptions {
   all?: boolean;
   search?: string;
   category?: string;
+  project?: string;
   stockFilter?: "all" | "healthy" | "moderate" | "low" | "out";
   enabled?: boolean;
 }
@@ -41,11 +42,12 @@ export function useInventoryData(options?: UseInventoryDataOptions) {
   const all = options?.all ?? false;
   const search = options?.search?.trim() ?? "";
   const category = options?.category?.trim() ?? "all";
+  const project = options?.project?.trim() ?? "all";
   const stockFilter = options?.stockFilter ?? "all";
   const enabled = options?.enabled ?? true;
 
   return useQuery({
-    queryKey: ["inventory-list", page, pageSize, all, search, category, stockFilter],
+    queryKey: ["inventory-list", page, pageSize, all, search, category, project, stockFilter],
     enabled,
     queryFn: async () => {
       const resp = await apiClient.get("/domains/inventory", {
@@ -55,10 +57,44 @@ export function useInventoryData(options?: UseInventoryDataOptions) {
           pageSize,
           search: search || undefined,
           category: category !== "all" ? category : undefined,
+          project: project !== "all" ? project : undefined,
           stockFilter: stockFilter !== "all" ? stockFilter : undefined,
         },
       });
       return resp.data as InventoryListResult;
     },
+  });
+}
+
+export interface ProjectStockItem {
+  stockItemId: string;
+  project: string;
+  name: string;
+  sku: string;
+  unit: string;
+  category: string;
+  totalCheckIn: number;
+  totalCheckOut: number;
+  loanedOut: number;
+  loanedIn: number;
+  availableBalance: number;
+}
+
+export function useProjectStock(project?: string, stockItemId?: string) {
+  return useQuery({
+    queryKey: ["inventory-project-stock", project ?? "ALL", stockItemId ?? "ALL"],
+    queryFn: async () => {
+      const resp = await apiClient.get<{ data: ProjectStockItem[] }>("/domains/inventory/project-stock", {
+        params: {
+          project: project && project !== "ALL" ? project : undefined,
+          stockItemId: stockItemId && stockItemId !== "ALL" ? stockItemId : undefined,
+        },
+      });
+      const resData = resp.data as any;
+      if (Array.isArray(resData)) return resData as ProjectStockItem[];
+      if (Array.isArray(resData?.data)) return resData.data as ProjectStockItem[];
+      return [];
+    },
+    staleTime: 15000,
   });
 }

@@ -152,7 +152,9 @@ export function requirePermission(action: DomainAction) {
           } else if (right === "Check In") {
             mapped.push("inventory:check-in");
           } else if (right === "Check Out") {
-            mapped.push("inventory:check-out");
+            mapped.push("inventory:check-out", "inventory:disburse");
+          } else if (right === "Approved Requests") {
+            mapped.push("inventory:disburse");
           } else if (right === "Inventory Manager") {
             mapped.push(
               "inventory:write",
@@ -165,7 +167,32 @@ export function requirePermission(action: DomainAction) {
             );
           } else if (right === "Master Data") {
             mapped.push("inventory:manage");
+          } else if (right === "Reagent Inventory") {
+            mapped.push(
+              "inventory:reagent-read",
+              "inventory:reagent-request",
+              "inventory:reagent-check-in",
+              "inventory:reagent-check-out",
+              "inventory:reagent-approve",
+              "inventory:reagent-manage"
+            );
           }
+        }
+        return mapped;
+      }
+
+      if (domain === "reagent-inventory") {
+        mapped.push("inventory:reagent-read");
+        if (right === "Check In") {
+          mapped.push("inventory:reagent-check-in");
+        } else if (right === "Check Out") {
+          mapped.push("inventory:reagent-check-out", "inventory:reagent-approve");
+        } else if (right === "Request/s") {
+          mapped.push("inventory:reagent-request");
+        } else if (right === "Manage Requests" || right === "Approved Requests") {
+          mapped.push("inventory:reagent-approve", "inventory:reagent-manage");
+        } else if (right === "Master Data") {
+          mapped.push("inventory:reagent-manage");
         }
         return mapped;
       }

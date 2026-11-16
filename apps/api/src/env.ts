@@ -31,6 +31,15 @@ const EnvSchema = z.object({
     message: "Production deployment must set a strong, non-default JWT_SECRET of at least 32 characters.",
     path: ["JWT_SECRET"],
   }
+).refine(
+  (data) => {
+    if (data.NODE_ENV !== "production") return true;
+    return data.APP_URL.startsWith("https://") && !data.CORS_ORIGINS.split(",").some((origin) => origin.trim().startsWith("http://localhost"));
+  },
+  {
+    message: "Production APP_URL must use HTTPS and CORS_ORIGINS must not include localhost.",
+    path: ["APP_URL"],
+  }
 );
 
 const parsed = EnvSchema.safeParse(process.env);

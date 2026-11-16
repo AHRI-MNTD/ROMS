@@ -1,8 +1,8 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
-import logoAhri from "../../../assets/logo_ahri.png";
+import { apiClient } from "../../../../api/client";
+import logoAhri from "../../../../assets/logo_ahri.png";
 
 interface AnalyticsSummary {
   totalItems: number;

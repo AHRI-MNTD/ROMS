@@ -1,0 +1,1064 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import logoAhri from "../../../../assets/logo_ahri.png";
+import { useAuth } from "../../../../auth/useAuth";
+import { hasTabAccess } from "../../../../auth/permissions";
+
+export interface InventoryCard {
+  id: string;
+  title: string;
+  subtitle: string;
+  section: string;
+  rightRequired: string;
+  icon: React.ReactNode;
+  tone: string;
+  bullets: Array<{
+    label: string;
+    icon: React.ReactNode;
+  }>;
+}
+
+export default function InventoryLandingPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [restrictedModalCard, setRestrictedModalCard] = useState<InventoryCard | null>(null);
+
+  const userRolesStr = user?.roles?.join(", ") || "Normal User";
+
+  const cards: InventoryCard[] = [
+    // ═════════════════════════════════════════════════════════════════════════
+    // SECTION 1: OPERATIONS (Check-In, Check-Out, Request)
+    // ═════════════════════════════════════════════════════════════════════════
+    {
+      id: "check-in",
+      title: "Check-In",
+      subtitle: "Receiving, Batches, & Stock Entry",
+      section: "Operations",
+      rightRequired: "Check In / Check Out",
+      tone: "#0284c7",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0284c7" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Receive Reagents & Shipments",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0284c7" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25" />
+            </svg>
+          )
+        },
+        {
+          label: "Log Lot, Batches & Expiry",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0284c7" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Assign Storage & Freezer Bins",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0284c7" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" />
+            </svg>
+          )
+        },
+        {
+          label: "Update Item Quantities & Stock",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0284c7" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "check-out",
+      title: "Check-Out",
+      subtitle: "Disbursement & Usage Tracking",
+      section: "Operations",
+      rightRequired: "Check In / Check Out",
+      tone: "#ea580c",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#ea580c" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Disperse Consumed Supplies",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#ea580c" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25V9m12 0a2.25 2.25 0 0 1 2.25 2.25v6.75a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V11.25A2.25 2.25 0 0 1 3.75 9h16.5Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Assign Items to Projects & Labs",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#ea580c" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0A2.25 2.25 0 0 0 4.5 15h15a2.25 2.25 0 0 0 2.25-2.25m-19.5 0v.243a2.25 2.25 0 0 0 1.07 1.916l7.5 4.615a2.25 2.25 0 0 0 2.36 0l7.5-4.615a2.25 2.25 0 0 0 1.07-1.916V12.75" />
+            </svg>
+          )
+        },
+        {
+          label: "Track Staff & Purpose Logs",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#ea580c" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Auto-Deduct Live Balances",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#ea580c" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "requests",
+      title: "Request",
+      subtitle: "Requisitions, Forms, & Submissions",
+      section: "Operations",
+      rightRequired: "Request/s",
+      tone: "#16a34a",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#16a34a" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Submit Material Requisitions",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Specify Quantities & Urgency",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          )
+        },
+        {
+          label: "Track Real-Time Approval Status",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Review Requisition Submissions",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#16a34a" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // SECTION 2: AUDIT & REPORTING (Dashboard, Current Inv, Check-In Hist, Check-Out Hist, Analytics)
+    // Row 1 sits Dashboard, Current Inv, Check-In History; Row 2 wraps Check-Out History, Analytics
+    // ═════════════════════════════════════════════════════════════════════════
+    {
+      id: "dashboard",
+      title: "Dashboard",
+      subtitle: "Real-time Telemetry & Metrics",
+      section: "Audit & Reporting",
+      rightRequired: "Dashboard",
+      tone: "#0d9488",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0d9488" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.143 2.143L18 7.5" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Real-Time Stock Telemetry",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 0 5.814-5.518l2.74-1.22m0 0-3.94-1.22m3.94 1.22-1.22 3.94" />
+            </svg>
+          )
+        },
+        {
+          label: "Low Stock Alerts & Expirations",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          )
+        },
+        {
+          label: "Inventory Movement Logs",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "High-Level Inventory Metrics",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#0d9488" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "current-inventory",
+      title: "Current Inventory",
+      subtitle: "Reagent & Consumable Catalog",
+      section: "Audit & Reporting",
+      rightRequired: "Current Inventory",
+      tone: "#2563eb",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#2563eb" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Reagent & Consumable Catalog",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#2563eb" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Search Code, Lot & Location",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#2563eb" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Filter Storage & Expiry Status",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#2563eb" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Export Inventory Reports (CSV)",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#2563eb" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "check-in-history",
+      title: "Check-In History",
+      subtitle: "Audit Trail & Reference Log",
+      section: "Audit & Reporting",
+      rightRequired: "Check In / Out History",
+      tone: "#7c3aed",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#7c3aed" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Historical check-in audit trail",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7c3aed" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Reference log for incoming items",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7c3aed" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Trace incoming stock activity",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7c3aed" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Batch, lot, and expiry records",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#7c3aed" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "check-out-history",
+      title: "Check-Out History",
+      subtitle: "Disbursement Log & Reference Table",
+      section: "Audit & Reporting",
+      rightRequired: "Check In / Out History",
+      tone: "#d97706",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#d97706" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25V9m12 0a2.25 2.25 0 0 1 2.25 2.25v6.75a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V11.25A2.25 2.25 0 0 1 3.75 9h16.5Z" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Historical disbursement log",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#d97706" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25V9m12 0a2.25 2.25 0 0 1 2.25 2.25v6.75a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V11.25A2.25 2.25 0 0 1 3.75 9h16.5Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Project and lab allocations",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#d97706" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0A2.25 2.25 0 0 0 4.5 15h15a2.25 2.25 0 0 0 2.25-2.25m-19.5 0v.243a2.25 2.25 0 0 0 1.07 1.916l7.5 4.615a2.25 2.25 0 0 0 2.36 0l7.5-4.615a2.25 2.25 0 0 0 1.07-1.916V12.75" />
+            </svg>
+          )
+        },
+        {
+          label: "Outgoing stock traceability",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#d97706" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Chain-of-custody sign-off trail",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#d97706" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "analytics",
+      title: "Analytics",
+      subtitle: "Trends, Risk, & Consumption Insights",
+      section: "Audit & Reporting",
+      rightRequired: "Analytics",
+      tone: "#dc2626",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#dc2626" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 0 5.814-5.518l2.74-1.22m0 0-3.94-1.22m3.94 1.22-1.22 3.94" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Usage and demand trends",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dc2626" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 0 5.814-5.518l2.74-1.22m0 0-3.94-1.22m3.94 1.22-1.22 3.94" />
+            </svg>
+          )
+        },
+        {
+          label: "Stock risk and shortage signals",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dc2626" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          )
+        },
+        {
+          label: "Monthly movement reporting",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dc2626" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Replenishment rate forecasts",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#dc2626" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5" />
+            </svg>
+          )
+        }
+      ]
+    },
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // SECTION 3: ADMINISTRATION (Manager, Approved Requests, Project Loans, Master Data)
+    // ═════════════════════════════════════════════════════════════════════════
+    {
+      id: "inventory-manager",
+      title: "Manager",
+      subtitle: "Approvals, Adjustments, & Thresholds",
+      section: "Administration",
+      rightRequired: "Inventory Manager",
+      tone: "#b45309",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#b45309" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 12h9.75" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Approve Pending Requisitions",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#b45309" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Adjust Quantities & Fulfillment",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#b45309" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 12h9.75" />
+            </svg>
+          )
+        },
+        {
+          label: "Reorder Threshold Controls",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#b45309" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Oversee Restock Queues",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#b45309" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "approved-requests",
+      title: "Approved Requests",
+      subtitle: "Manager-Approved Requisitions",
+      section: "Administration",
+      rightRequired: "Check In / Check Out",
+      tone: "#059669",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#059669" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "View Manager Approved Items",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#059669" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Detailed Item & Requester Cards",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#059669" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-19.5 0A2.25 2.25 0 0 0 4.5 15h15a2.25 2.25 0 0 0 2.25-2.25" />
+            </svg>
+          )
+        },
+        {
+          label: "Item Handoff & Issue Controls",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#059669" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Disbursement & Fulfillment Records",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#059669" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "project-loans",
+      title: "Project Loans",
+      subtitle: "Inter-Project Borrowing & Transfers",
+      section: "Administration",
+      rightRequired: "Inventory Manager",
+      tone: "#4f46e5",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#4f46e5" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Borrow Stock Across Projects",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#4f46e5" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Lender Approval & Notification",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#4f46e5" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          )
+        },
+        {
+          label: "Track Loan Lifecycle & Status",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#4f46e5" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+          )
+        },
+        {
+          label: "Confirm Handoff & Return Log",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#4f46e5" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+            </svg>
+          )
+        }
+      ]
+    },
+    {
+      id: "master-data",
+      title: "Master Data",
+      subtitle: "Catalogs, Freezers, & Bins",
+      section: "Administration",
+      rightRequired: "Master Data",
+      tone: "#64748b",
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#64748b" style={{ width: 20, height: 20, flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" />
+        </svg>
+      ),
+      bullets: [
+        {
+          label: "Item Master Catalogs",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#64748b" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M3.75 4.5h16.5m-16.5 3.75h16.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Freezers, Shelves & Bins",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#64748b" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a3 3 0 0 0 3 3m13.5-3a3 3 0 0 0 3 3m-19.5-3v-6a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3v6" />
+            </svg>
+          )
+        },
+        {
+          label: "Categories & Approved Vendors",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#64748b" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6h1.5m-1.5 3h1.5m-1.5 3h1.5" />
+            </svg>
+          )
+        },
+        {
+          label: "Lookup Codes & Taxonomies",
+          icon: (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="#64748b" style={{ width: 15, height: 15, flexShrink: 0 }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+            </svg>
+          )
+        }
+      ]
+    }
+  ];
+
+  const isBetelhem = (user?.email ?? "").toLowerCase().trim() === "betelihemashagrie21@gmail.com" || (user?.displayName ?? "").toLowerCase().includes("betelhem ashagrie");
+
+  const visibleCards = React.useMemo(() => {
+    return cards.filter((card) => {
+      // Dedicated inventory worker Betelhem Ashagrie should not see standalone checkin/out history pages
+      if (isBetelhem && (card.id === "check-in-history" || card.id === "check-out-history")) {
+        return false;
+      }
+      return true;
+    });
+  }, [cards, isBetelhem]);
+
+  const groupedCards = React.useMemo(() => {
+    return visibleCards.reduce<Record<string, InventoryCard[]>>((groups, card) => {
+      (groups[card.section] ??= []).push(card);
+      return groups;
+    }, {});
+  }, [visibleCards]);
+
+  const orderedSections = ["Operations", "Audit & Reporting", "Administration"];
+
+  const statusBadgeStyle: React.CSSProperties = {
+    fontSize: 9.5,
+    fontWeight: 700,
+    padding: "3px 8px",
+    borderRadius: 999,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    border: "1px solid transparent",
+  };
+
+  const handleCardClick = (card: InventoryCard) => {
+    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions, user?.email);
+    if (isAllowed) {
+      navigate(`/domains/inventory/stock-management/${card.id}`);
+    } else {
+      setRestrictedModalCard(card);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        maxHeight: "100%",
+        minHeight: 0,
+        width: "100%",
+        maxWidth: 1400,
+        margin: "0 auto",
+        overflow: "hidden",
+        background: "#ffffff",
+      }}
+    >
+      {/* ── Fixed / Non-Scrollable Header Banner ── */}
+      <div
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          borderBottom: "1px solid var(--color-divider)",
+          width: "100%",
+          textAlign: "center",
+          paddingTop: 4,
+          paddingBottom: 16
+        }}
+      >
+        <img
+          src={logoAhri}
+          alt="AHRI Logo"
+          style={{
+            height: "54px",
+            width: "54px",
+            borderRadius: "50%",
+            objectFit: "cover",
+            marginBottom: "8px",
+            border: "1px solid var(--color-border, #cbd5e1)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)"
+          }}
+        />
+        <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.05em", color: "var(--color-primary, #0d9488)", textTransform: "uppercase" }}>
+          Research Operation Management System (ROMS)
+        </span>
+        <div style={{ margin: "4px 0" }} />
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: "22px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
+          Lab Inventory & Supply Chain
+        </h1>
+        <p style={{ fontSize: "12.5px", color: "var(--color-text-muted)", margin: "4px 0 0 0", maxWidth: "820px", lineHeight: "1.4" }}>
+          Centralized repository for laboratory stock tracking, item check in/out, material requisitions, manager approvals, and catalog data.
+        </p>
+      </div>
+
+      {/* ── Scrollable 3-Column SOP Process Cards Grid Container ── */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          paddingBottom: 24,
+          paddingRight: 4
+        }}
+      >
+        <div style={{ display: "grid", gap: 30, marginTop: 20 }}>
+          {orderedSections.map((sectionName) => {
+            const sectionCards = groupedCards[sectionName] ?? [];
+
+            if (sectionCards.length === 0) {
+              return null;
+            }
+
+            return (
+              <section key={sectionName} style={{ display: "grid", gap: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap", paddingLeft: 2 }}>
+                  <div>
+                    <div style={{ fontSize: "12px", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-primary, #0d9488)" }}>
+                      {sectionName}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: 3 }}>
+                      {sectionName === "Operations" && "Daily routines for receiving stock, disbursing supplies, and submitting requisitions."}
+                      {sectionName === "Audit & Reporting" && "Live telemetry dashboards, catalog stock, and check-in/out audit logs."}
+                      {sectionName === "Administration" && "Managerial approvals, handoff authorizations, project loans, and catalog master data."}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "11.5px", color: "var(--color-text-muted)" }}>
+                    {sectionCards.length} module{sectionCards.length === 1 ? "" : "s"}
+                  </div>
+                </div>
+
+                {/* 3-in-a-Row Grid with Responsive Mobile Fallback */}
+                <style>{`
+                  @media (max-width: 900px) {
+                    .inventory-cards-grid {
+                      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+                    }
+                  }
+                `}</style>
+                <div
+                  className="inventory-cards-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 16,
+                    width: "100%"
+                  }}
+                >
+                  {sectionCards.map((card) => {
+                    const isAllowed = hasTabAccess(user?.roles, "inventory", card.id, user?.permissions, user?.email);
+
+                    return (
+                      <div
+                        key={card.id}
+                        onClick={() => handleCardClick(card)}
+                        style={{
+                          background: `linear-gradient(160deg, #ffffff 45%, ${card.tone}14 100%)`,
+                          border: `1px solid ${card.tone}33`,
+                          borderRadius: "20px",
+                          padding: "24px 20px 20px",
+                          cursor: isAllowed ? "pointer" : "not-allowed",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.04)",
+                          minHeight: "270px",
+                          height: "295px",
+                          position: "relative"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-4px)";
+                          e.currentTarget.style.boxShadow = "0 12px 28px rgba(0, 0, 0, 0.08)";
+                          e.currentTarget.style.borderColor = card.tone;
+                          e.currentTarget.style.background = `linear-gradient(160deg, #ffffff 20%, ${card.tone}22 100%)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.04)";
+                          e.currentTarget.style.borderColor = `${card.tone}33`;
+                          e.currentTarget.style.background = `linear-gradient(160deg, #ffffff 45%, ${card.tone}14 100%)`;
+                        }}
+                        title={isAllowed ? card.title : `${card.title} is restricted. Click to view permission details.`}
+                      >
+                        {/* Header with Icon, Title, and Access Status Badge */}
+                        <div
+                          style={{
+                            borderBottom: "1px solid var(--color-border)",
+                            paddingBottom: "10px",
+                            marginBottom: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "8px",
+                            width: "100%"
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                            {card.icon}
+                            <h2
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: 800,
+                                color: "var(--color-text)",
+                                margin: 0,
+                                lineHeight: "1.3",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis"
+                              }}
+                            >
+                              {card.title}
+                            </h2>
+                          </div>
+
+                          {!isAllowed ? (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRestrictedModalCard(card);
+                              }}
+                              style={{
+                                background: "#fee2e2",
+                                color: "#991b1b",
+                                border: "1px solid #fca5a5",
+                                ...statusBadgeStyle,
+                                cursor: "pointer"
+                              }}
+                              title="Click to view permission details"
+                            >
+                              🔒 Restricted
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                background: "rgba(13, 148, 136, 0.12)",
+                                color: "var(--color-primary, #0d9488)",
+                                border: "1px solid rgba(13, 148, 136, 0.25)",
+                                ...statusBadgeStyle
+                              }}
+                            >
+                              ✓ Accessible
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Middle area with concise bullet points (Detail note/summary paragraph removed) */}
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                            justifyContent: "flex-start",
+                            paddingLeft: "4px"
+                          }}
+                        >
+                          {card.bullets.map((b, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                fontSize: "13px",
+                                color: "var(--color-text)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                lineHeight: "1.4"
+                              }}
+                            >
+                              {b.icon}
+                              <span style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {b.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Bottom area: divider line with subtitle & action chevron */}
+                        <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                          <div
+                            style={{
+                              height: "1px",
+                              background: "var(--color-border)",
+                              width: "100%"
+                            }}
+                          />
+                          <h3
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 600,
+                              color: "var(--color-text-muted)",
+                              margin: 0,
+                              lineHeight: "1.4",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between"
+                            }}
+                          >
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {card.subtitle}
+                            </span>
+                            <span style={{ fontSize: "13px", color: isAllowed ? card.tone : "#b91c1c", fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>
+                              {isAllowed ? "→" : "🔒"}
+                            </span>
+                          </h3>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Access Restricted Modal ── */}
+      {restrictedModalCard && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 16
+          }}
+          onClick={() => setRestrictedModalCard(null)}
+        >
+          <div
+            style={{
+              background: "var(--color-surface, #ffffff)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "18px",
+              width: "100%",
+              maxWidth: "520px",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.25)",
+              overflow: "hidden",
+              animation: "fadeIn 0.2s ease-out"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                background: "#fef2f2",
+                borderBottom: "1px solid #fecaca",
+                padding: "18px 24px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "#fee2e2",
+                  color: "#dc2626",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  flexShrink: 0
+                }}
+              >
+                ⚠️
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#991b1b" }}>
+                  Access Restricted
+                </h3>
+                <span style={{ fontSize: "12px", color: "#7f1d1d", fontWeight: 500 }}>
+                  You don't have access to this page
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ margin: 0, fontSize: "13.5px", color: "var(--color-text)", lineHeight: 1.55 }}>
+                You do not have permission to access the <strong>{restrictedModalCard.title}</strong> page.
+              </p>
+
+              <div
+                style={{
+                  background: "var(--color-surface-2, #f8fafc)",
+                  border: "1px solid var(--color-border, #e2e8f0)",
+                  borderRadius: "12px",
+                  padding: "14px 16px",
+                  fontSize: "12.5px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--color-text-muted)" }}>Target Module:</span>
+                  <strong style={{ color: "var(--color-text)" }}>{restrictedModalCard.title}</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--color-text-muted)" }}>Required Right:</span>
+                  <strong style={{ color: "#dc2626" }}>"{restrictedModalCard.rightRequired}"</strong>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--color-text-muted)" }}>Your Assigned Role(s):</span>
+                  <strong style={{ color: "var(--color-text)" }}>{userRolesStr}</strong>
+                </div>
+              </div>
+
+              <p style={{ margin: 0, fontSize: "12px", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+                Rights for all users are managed via the <strong>User Rights Control</strong> panel. If your workflow requires access to this function, please contact your ROMS Administrator or QA/Research Manager.
+              </p>
+            </div>
+
+            {/* Modal Actions */}
+            <div
+              style={{
+                padding: "14px 24px",
+                background: "var(--color-surface-2, #f8fafc)",
+                borderTop: "1px solid var(--color-border)",
+                display: "flex",
+                justifyContent: "flex-end"
+              }}
+            >
+              <button
+                onClick={() => setRestrictedModalCard(null)}
+                style={{
+                  background: "var(--color-primary, #0d9488)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "8px 20px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)"
+                }}
+              >
+                I Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -122,6 +122,24 @@ export const DOMAIN_CATALOG: readonly Domain[] = [
     ],
   },
   {
+    id: 11,
+    slug: "reagent-inventory",
+    emoji: "🧪",
+    name: "Reagent Inventory",
+    subfunctions: [
+      {
+        name: "Reagent Management",
+        tasks: [
+          "Track reagent concentrations, lots, expiry, and storage conditions",
+          "Submit assay-specific reagent requests with conditional fields",
+          "Approve, partially approve, reject, and hand off reagent requests",
+          "Monitor reagent availability and expected returns by project",
+          "Maintain reagent master data and storage locations",
+        ],
+      },
+    ],
+  },
+  {
     id: 3,
     slug: "qms",
     emoji: "📄",
@@ -465,64 +483,6 @@ export const DOMAIN_CATALOG: readonly Domain[] = [
           "Execute grant close-out: final financial reconciliation and reporting",
           "Archive grant financial records per institutional and funder retention policies",
           "Coordinate study financial close-out with regulatory and ethics wind-down",
-        ],
-      },
-    ],
-  },
-  {
-    id: 9,
-    slug: "participant",
-    emoji: "👥",
-    name: "Participant & Community Engagement",
-    subfunctions: [
-      {
-        name: "Recruitment & Screening",
-        tasks: [
-          "Develop and execute participant recruitment strategies per protocol",
-          "Screen potential participants against eligibility criteria",
-          "Maintain recruitment logs and enrolment tracking dashboards",
-          "Report enrolment rates and projections to study management teams",
-          "Manage referral networks and community outreach for participant identification",
-        ],
-      },
-      {
-        name: "Informed Consent",
-        tasks: [
-          "Conduct initial informed consent processes using approved consent forms",
-          "Document consent with participant signature, date, and witness details",
-          "Manage re-consent processes when protocol amendments affect participants",
-          "Record and action participant consent withdrawal requests",
-          "Implement special consent procedures for vulnerable populations (children, pregnant women)",
-        ],
-      },
-      {
-        name: "Scheduling & Retention",
-        tasks: [
-          "Schedule participant study visits, procedures, and follow-up appointments",
-          "Send visit reminders and manage appointment rescheduling",
-          "Track missed visits and implement retention strategies",
-          "Manage long-term follow-up cohort scheduling and contact maintenance",
-          "Record participant reimbursements and compensation payments",
-        ],
-      },
-      {
-        name: "Community Advisory Boards",
-        tasks: [
-          "Constitute and manage Community Advisory Board (CAB) membership",
-          "Coordinate CAB meeting schedules, agendas, and minute-taking",
-          "Present study progress updates and emerging findings to the CAB",
-          "Incorporate CAB feedback into study conduct and communication materials",
-          "Manage CAB member compensation, training, and engagement activities",
-        ],
-      },
-      {
-        name: "Privacy & Vulnerable Groups",
-        tasks: [
-          "Implement participant data de-identification and pseudonymisation procedures",
-          "Manage data access restrictions for sensitive participant information",
-          "Apply additional protections for vulnerable population subgroups",
-          "Communicate community benefit outcomes to stakeholders",
-          "Ensure participant privacy compliance with GDPR, POPIA, and applicable local laws",
         ],
       },
     ],

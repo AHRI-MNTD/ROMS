@@ -1,9 +1,9 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, getErrorMessage } from "../../../api/client";
-import { useAuth } from "../../../auth/useAuth";
+import { apiClient, getErrorMessage } from "../../../../api/client";
+import { useAuth } from "../../../../auth/useAuth";
 import { RequestReferenceTable, RequestReferenceRow } from "./RequestReferenceTable";
-import { isInventoryViewOnly } from "../../../auth/permissions";
+import { isInventoryViewOnly } from "../../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 export function getApproverForProject(project?: string | null): string {
@@ -376,9 +376,9 @@ export default function InventoryManagerPage() {
         style={{
           padding: 18,
           border: "1px solid var(--color-primary-highlight)",
-          borderRadius: 12,
+          borderRadius: "var(--radius)",
           background: "var(--inventory-card-bg)",
-          boxShadow: "0 4px 16px var(--color-accent-soft)",
+          boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >

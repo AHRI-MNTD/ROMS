@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { DOMAIN_CATALOG } from "@roms/shared";
 import { useAuth } from "../auth/useAuth";
 import { hasDomainAccess, isApprovedUser } from "../auth/permissions";
@@ -19,6 +19,10 @@ const topNav: NavItem[] = [
 
 export const Sidebar: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Check if a domain subfunction is currently selected (SecondarySidebar is active)
+  const isDomainActive = Boolean(location.pathname.match(/^\/domains\/([^/]+)/));
 
   // Main sidebar defaults to opened (expanded) when user gets to the system
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
@@ -43,12 +47,14 @@ export const Sidebar: React.FC = () => {
         width: isCollapsed ? 48 : 220,
         minWidth: isCollapsed ? 48 : 220,
         height: "100%",
-        background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface)",
-        borderRight: "1px solid var(--color-divider)",
+        background: isDomainActive
+          ? "linear-gradient(270deg, rgba(1, 105, 111, 0.16), rgba(1, 105, 111, 0.31))"
+          : "linear-gradient(270deg, rgba(1, 105, 111, 0), rgba(1, 105, 111, 0.31))",
+        borderRight: "none",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
-        transition: "width 0.2s ease, min-width 0.2s ease",
+        transition: "width 0.2s ease, min-width 0.2s ease, background 0.3s ease",
         position: "relative",
         zIndex: 100,
       }}
@@ -58,13 +64,15 @@ export const Sidebar: React.FC = () => {
       {/* ── Row 2: Main Sidebar Header with Collapse Toggle Button ── */}
       <div
         style={{
-          height: 40,
-          minHeight: 40,
+          height: 34,
+          minHeight: 34,
           boxSizing: "border-box",
-          padding: isCollapsed ? "0 6px" : "0 10px",
+          padding: isCollapsed ? "0 4px" : "0 8px",
           display: "flex",
           alignItems: "center",
-          borderBottom: "1px solid var(--color-divider)",
+          borderBottom: "1px solid rgb(1, 105, 111)",
+          borderRight: "1px solid rgb(1, 105, 111)",
+          background: "rgba(1, 105, 111, 0.05)",
           flexShrink: 0,
         }}
       >
@@ -80,11 +88,11 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <span
               style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.07em",
+                fontSize: "10.5px",
+                fontWeight: 800,
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                color: "var(--color-text-muted)",
+                color: "rgb(1, 105, 111)",
               }}
             >
               Navigation
@@ -95,12 +103,12 @@ export const Sidebar: React.FC = () => {
             title={isCollapsed ? "Expand sidebar (view menu list)" : "Collapse sidebar (maximize screen space)"}
             aria-label={isCollapsed ? "Expand main menu" : "Collapse main menu"}
             style={{
-              width: 26,
-              height: 26,
+              width: 24,
+              height: 24,
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--color-border)",
-              background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
-              color: "var(--color-text-muted)",
+              border: "1px solid rgba(1, 105, 111, 0.3)",
+              background: "rgba(1, 105, 111, 0.08)",
+              color: "rgb(1, 105, 111)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -109,17 +117,15 @@ export const Sidebar: React.FC = () => {
               transition: "background 0.15s, color 0.15s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--color-primary-highlight)";
-              e.currentTarget.style.color = "var(--color-primary)";
+              e.currentTarget.style.background = "rgba(1, 105, 111, 0.2)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)";
-              e.currentTarget.style.color = "var(--color-text-muted)";
+              e.currentTarget.style.background = "rgba(1, 105, 111, 0.08)";
             }}
           >
             <svg
-              width="14"
-              height="14"
+              width="13"
+              height="13"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -137,18 +143,18 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", borderRight: "1px solid rgb(1, 105, 111)" }}>
         {/* Main nav */}
-        <div style={{ padding: isCollapsed ? "2px" : "4px 8px" }}>
+        <div style={{ padding: isCollapsed ? "3px" : "3px 6px" }}>
           {!isCollapsed && (
             <div
               style={{
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
+                fontSize: "10.5px",
+                fontWeight: 800,
                 letterSpacing: "0.09em",
                 textTransform: "uppercase",
-                color: "var(--color-text-faint)",
-                padding: "4px 8px 8px",
+                color: "rgb(1, 105, 111)",
+                padding: "3px 6px 2px",
               }}
             >
               Main
@@ -165,51 +171,46 @@ export const Sidebar: React.FC = () => {
                   setIsCollapsed(true);
                 }
               }}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
+              className={({ isActive }) => `sidebar-nav-link${isCollapsed ? " collapsed" : ""}${isActive ? " active" : ""}`}
+              style={{
                 justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: isCollapsed ? 0 : 7,
-                padding: isCollapsed ? "4px 0" : "5px 9px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "12px",
-                color: isActive ? "var(--color-primary)" : "var(--color-text)",
-                background: isActive ? "var(--color-primary-highlight)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
+                gap: isCollapsed ? 0 : 8,
+                padding: isCollapsed ? "4px 0" : "4.5px 8px",
                 textDecoration: "none",
-                marginBottom: 1,
-                transition: "background 0.12s",
-              })}
+              }}
             >
               <span
+                className="sidebar-nav-icon"
                 style={{
-                  fontSize: "0.85rem",
-                  width: 22,
-                  height: 22,
+                  fontSize: "0.82rem",
+                  width: 21,
+                  height: 21,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  borderRadius: "5px",
+                  background: "rgba(1, 105, 111, 0.06)",
                   flexShrink: 0,
                 }}
               >
                 {item.icon}
               </span>
-              {!isCollapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>}
             </NavLink>
           ))}
         </div>
 
         {/* Domain navigation */}
-        <div style={{ padding: isCollapsed ? "2px" : "4px 8px 10px" }}>
+        <div style={{ padding: isCollapsed ? "3px" : "3px 6px 4px" }}>
           {!isCollapsed && (
             <div
               style={{
-                fontSize: "var(--fs-xs)",
-                fontWeight: 700,
+                fontSize: "10.5px",
+                fontWeight: 800,
                 letterSpacing: "0.09em",
                 textTransform: "uppercase",
-                color: "var(--color-text-faint)",
-                padding: "4px 8px 8px",
+                color: "rgb(1, 105, 111)",
+                padding: "4px 6px 2px",
               }}
             >
               Domains
@@ -225,32 +226,25 @@ export const Sidebar: React.FC = () => {
                   setIsCollapsed(true);
                 }
               }}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
+              className={({ isActive }) => `sidebar-nav-link${isCollapsed ? " collapsed" : ""}${isActive ? " active" : ""}`}
+              style={{
                 justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: isCollapsed ? 0 : 7,
-                padding: isCollapsed ? "4px 0" : "5px 9px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "12px",
-                color: isActive ? "var(--color-primary)" : "var(--color-text)",
-                background: isActive ? "var(--color-primary-highlight)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
+                gap: isCollapsed ? 0 : 8,
+                padding: isCollapsed ? "4px 0" : "4.5px 8px",
                 textDecoration: "none",
-                marginBottom: 1,
-                transition: "background 0.12s",
-              })}
+              }}
             >
               <span
+                className="sidebar-nav-icon"
                 style={{
-                  fontSize: "0.75rem",
-                  width: 22,
-                  height: 22,
+                  fontSize: "0.78rem",
+                  width: 21,
+                  height: 21,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
-                  borderRadius: "var(--radius-sm)",
+                  background: "rgba(1, 105, 111, 0.06)",
+                  borderRadius: "5px",
                   flexShrink: 0,
                 }}
               >
@@ -263,7 +257,7 @@ export const Sidebar: React.FC = () => {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    lineHeight: 1.3,
+                    lineHeight: 1.25,
                   }}
                 >
                   {domain.name}
@@ -280,32 +274,25 @@ export const Sidebar: React.FC = () => {
                   setIsCollapsed(true);
                 }
               }}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
+              className={({ isActive }) => `sidebar-nav-link${isCollapsed ? " collapsed" : ""}${isActive ? " active" : ""}`}
+              style={{
                 justifyContent: isCollapsed ? "center" : "flex-start",
-                gap: isCollapsed ? 0 : 7,
-                padding: isCollapsed ? "4px 0" : "5px 9px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "12px",
-                color: isActive ? "var(--color-primary)" : "var(--color-text)",
-                background: isActive ? "var(--color-primary-highlight)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
+                gap: isCollapsed ? 0 : 8,
+                padding: isCollapsed ? "4px 0" : "4.5px 8px",
                 textDecoration: "none",
-                marginBottom: 1,
-                transition: "background 0.12s",
-              })}
+              }}
             >
               <span
+                className="sidebar-nav-icon"
                 style={{
-                  fontSize: "0.75rem",
-                  width: 22,
-                  height: 22,
+                  fontSize: "0.78rem",
+                  width: 21,
+                  height: 21,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
-                  borderRadius: "var(--radius-sm)",
+                  background: "rgba(1, 105, 111, 0.06)",
+                  borderRadius: "5px",
                   flexShrink: 0,
                 }}
               >
@@ -318,7 +305,7 @@ export const Sidebar: React.FC = () => {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
-                    lineHeight: 1.3,
+                    lineHeight: 1.25,
                   }}
                 >
                   User Right Control

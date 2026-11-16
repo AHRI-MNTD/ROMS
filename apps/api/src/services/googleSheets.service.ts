@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { google } from "googleapis";
 import { logger } from "../utils/logger";
 
@@ -55,8 +57,33 @@ export class GoogleSheetsSyncService {
   private static init(): boolean {
     if (this.sheets) return true;
 
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+    let email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    let privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+
+    // Check optional JSON key files if environment variables are not directly provided
+    const candidateFiles = [
+      process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE,
+      process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      path.resolve(process.cwd(), "google-service-account.json"),
+      path.resolve(process.cwd(), "service-account.json"),
+      path.resolve(process.cwd(), "../../google-service-account.json"),
+    ].filter(Boolean) as string[];
+
+    for (const file of candidateFiles) {
+      if (fs.existsSync(file)) {
+        try {
+          const content = JSON.parse(fs.readFileSync(file, "utf-8"));
+          if (content.client_email && content.private_key) {
+            email = content.client_email;
+            privateKey = content.private_key;
+            log.info(`[GoogleSheetsSync] Loaded service account credentials from ${file}`);
+            break;
+          }
+        } catch (err) {
+          log.warn(`[GoogleSheetsSync] Failed to parse credentials from ${file}`);
+        }
+      }
+    }
 
     if (!email || !privateKey) {
       log.info("[GoogleSheetsSync] Google Sheets service credentials not configured. Running in local-only mode.");

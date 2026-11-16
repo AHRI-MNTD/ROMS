@@ -1,1 +1,1 @@
-export { default } from "./inventory/InventoryLayout";
+export { default } from "./inventory/stock_management/InventoryLayout";

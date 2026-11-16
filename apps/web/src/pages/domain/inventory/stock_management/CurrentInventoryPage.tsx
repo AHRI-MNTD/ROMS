@@ -1,8 +1,8 @@
 import React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useInventoryData } from "./useInventoryData";
-import { useAuth } from "../../../auth/useAuth";
-import { apiClient, getErrorMessage } from "../../../api/client";
+import { useAuth } from "../../../../auth/useAuth";
+import { apiClient, getErrorMessage } from "../../../../api/client";
 
 export type StockFilter = "all" | "healthy" | "moderate" | "low" | "out";
 
@@ -342,6 +342,7 @@ export default function CurrentInventoryPage() {
 
   const [searchTerm, setSearchTerm] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
+  const [projectFilter, setProjectFilter] = React.useState<string>("all");
   const [stockFilter, setStockFilter] = React.useState<StockFilter>("all");
 
   const [expandedRowIds, setExpandedRowIds] = React.useState<Set<string>>(new Set());
@@ -480,6 +481,7 @@ export default function CurrentInventoryPage() {
     pageSize,
     search: normalizedSearch,
     category: categoryFilter,
+    project: projectFilter,
     stockFilter,
   });
 
@@ -501,10 +503,23 @@ export default function CurrentInventoryPage() {
     },
   });
 
+  const { data: projectsList } = useQuery({
+    queryKey: ["inventory-projects-list"],
+    queryFn: async () => {
+      const resp = await apiClient.get("/domains/inventory/master-data", { params: { pageSize: 500 } });
+      const pSet = new Set<string>();
+      (resp.data?.data ?? []).forEach((row: any) => {
+        if (row.project?.trim()) pSet.add(row.project.trim());
+      });
+      return Array.from(pSet).sort();
+    },
+  });
+
   const exportInventoryQuery = useInventoryData({
     all: true,
     search: normalizedSearch,
     category: categoryFilter,
+    project: projectFilter,
     stockFilter,
     enabled: false,
   });
@@ -535,7 +550,7 @@ export default function CurrentInventoryPage() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [searchTerm, categoryFilter, stockFilter]);
+  }, [searchTerm, categoryFilter, projectFilter, stockFilter]);
 
   const handleExportCSV = async () => {
     if (!isSuperAdmin) return;
@@ -602,13 +617,12 @@ export default function CurrentInventoryPage() {
   };
 
   const panelStyle: React.CSSProperties = {
-    border: "1px solid rgba(1, 105, 111, 0.12)",
-    borderRadius: 12,
-    background: isDarkMode
-      ? "var(--color-surface)"
-      : "linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,248,245,0.9))",
-    boxShadow: "0 10px 24px rgba(16, 24, 40, 0.05)",
-    backdropFilter: "blur(10px)",
+    padding: 18,
+    borderRadius: "var(--radius)",
+    border: "1px solid var(--color-primary-highlight)",
+    background: "var(--inventory-card-bg)",
+    boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
   const toolbarButtonStyle: React.CSSProperties = {
@@ -659,7 +673,7 @@ export default function CurrentInventoryPage() {
           </button>
         </div>
       )}
-      <div style={{ ...panelStyle, padding: "8px 12px" }}>
+      <div style={panelStyle}>
         <div className="inventory-toolbar">
           <div className="inventory-toolbar-left">
             {/* Summary stat badges */}
@@ -739,6 +753,16 @@ export default function CurrentInventoryPage() {
               {(categoriesList ?? []).map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
+                </option>
+              ))}
+            </select>
+
+            {/* Filter by Project */}
+            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} style={toolbarButtonStyle}>
+              <option value="all">All Projects</option>
+              {(projectsList ?? []).map((p) => (
+                <option key={p} value={p}>
+                  {p}
                 </option>
               ))}
             </select>

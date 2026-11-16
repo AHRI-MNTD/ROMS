@@ -1,9 +1,12 @@
 node_modules/
 **/node_modules/
 
-# Environment
+# Environment & Secrets
 .env
 .env.*
+*service-account*.json
+google-service-account*.json
+*credentials*.json
 
 # Build outputs
 dist/

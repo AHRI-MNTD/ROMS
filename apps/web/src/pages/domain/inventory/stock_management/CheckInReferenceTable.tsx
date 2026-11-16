@@ -1,13 +1,13 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
+import { apiClient } from "../../../../api/client";
 
-export function CheckOutReferenceTable() {
-  const { data: checkOutMovementsData, isLoading } = useQuery({
-    queryKey: ["inventory-checkout-movements"],
+export function CheckInReferenceTable() {
+  const { data: checkInMovementsData, isLoading } = useQuery({
+    queryKey: ["inventory-checkin-movements"],
     queryFn: async () => {
       const resp = await apiClient.get("/domains/inventory/movements", {
-        params: { type: "CHECK_OUT", limit: 50 },
+        params: { type: "CHECK_IN", limit: 50 },
       });
       return resp.data as { data: any[]; total: number };
     },
@@ -21,37 +21,36 @@ export function CheckOutReferenceTable() {
   const historyPageSize = 15;
 
   const historyCategories = React.useMemo(() => {
-    if (!checkOutMovementsData?.data) return [];
+    if (!checkInMovementsData?.data) return [];
     const cats = new Set<string>();
-    checkOutMovementsData.data.forEach((row) => {
+    checkInMovementsData.data.forEach((row) => {
       const cat = row.stockItem?.category || "General";
       cats.add(cat);
     });
     return Array.from(cats).sort();
-  }, [checkOutMovementsData]);
+  }, [checkInMovementsData]);
 
   const historyProjects = React.useMemo(() => {
-    if (!checkOutMovementsData?.data) return [];
+    if (!checkInMovementsData?.data) return [];
     const projs = new Set<string>();
-    checkOutMovementsData.data.forEach((row) => {
+    checkInMovementsData.data.forEach((row) => {
       const proj = row.projectFor;
       if (proj && proj.trim()) {
         projs.add(proj.trim());
       }
     });
     return Array.from(projs).sort();
-  }, [checkOutMovementsData]);
+  }, [checkInMovementsData]);
 
   const filteredAndSortedMovements = React.useMemo(() => {
-    if (!checkOutMovementsData?.data) return [];
+    if (!checkInMovementsData?.data) return [];
 
-    let result = checkOutMovementsData.data.filter((row) => {
+    let result = checkInMovementsData.data.filter((row) => {
       const sku = (row.stockItem?.sku ?? "").toLowerCase();
       const name = (row.stockItem?.name ?? "").toLowerCase();
       const category = (row.stockItem?.category ?? "General").toLowerCase();
       const project = (row.projectFor ?? "").toLowerCase();
       const remark = (row.remark ?? "").toLowerCase();
-      const requested = (row.requestedBy ?? "").toLowerCase();
       const query = searchQuery.trim().toLowerCase();
 
       const matchesSearch =
@@ -60,8 +59,7 @@ export function CheckOutReferenceTable() {
         name.includes(query) ||
         category.includes(query) ||
         project.includes(query) ||
-        remark.includes(query) ||
-        requested.includes(query);
+        remark.includes(query);
 
       const matchesCategory =
         categoryFilter === "all" ||
@@ -99,12 +97,6 @@ export function CheckOutReferenceTable() {
       if (sortBy === "category-desc") {
         return (b.stockItem?.category ?? "General").localeCompare(a.stockItem?.category ?? "General");
       }
-      if (sortBy === "recipient-asc") {
-        return (a.requestedBy ?? "").localeCompare(b.requestedBy ?? "");
-      }
-      if (sortBy === "recipient-desc") {
-        return (b.requestedBy ?? "").localeCompare(a.requestedBy ?? "");
-      }
       if (sortBy === "project-asc") {
         return (a.projectFor ?? "").localeCompare(b.projectFor ?? "");
       }
@@ -115,7 +107,7 @@ export function CheckOutReferenceTable() {
     });
 
     return result;
-  }, [checkOutMovementsData, searchQuery, categoryFilter, projectFilter, sortBy]);
+  }, [checkInMovementsData, searchQuery, categoryFilter, projectFilter, sortBy]);
 
   const historyTotalPages = Math.max(1, Math.ceil(filteredAndSortedMovements.length / historyPageSize));
   const historyPagedRows = filteredAndSortedMovements.slice(
@@ -154,7 +146,7 @@ export function CheckOutReferenceTable() {
           }}
         >
           <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text)" }}>
-            Check-Out History
+            Check-In History
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <input
@@ -233,8 +225,6 @@ export function CheckOutReferenceTable() {
               <option value="qty-asc">Quantity (Low to High)</option>
               <option value="category-asc">Category (A-Z)</option>
               <option value="category-desc">Category (Z-A)</option>
-              <option value="recipient-asc">Recipient (A-Z)</option>
-              <option value="recipient-desc">Recipient (Z-A)</option>
               <option value="project-asc">Project (A-Z)</option>
               <option value="project-desc">Project (Z-A)</option>
             </select>
@@ -256,13 +246,14 @@ export function CheckOutReferenceTable() {
               <col style={{ width: "9%" }} />
               <col style={{ width: "18%" }} />
               <col style={{ width: "6%" }} />
-              <col style={{ width: "6%" }} />
-              <col style={{ width: "8%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "5%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "10%" }} />
               <col style={{ width: "10%" }} />
               <col style={{ width: "8%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "14%" }} />
+              <col style={{ width: "8%" }} />
+              <col style={{ width: "12%" }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>
@@ -288,6 +279,9 @@ export function CheckOutReferenceTable() {
                       <th style={thStyle} title="Item_Description">
                         Description
                       </th>
+                      <th style={thStyle} title="Mode">
+                        Mode
+                      </th>
                       <th style={thStyle} title="Quantity">
                         Qty
                       </th>
@@ -300,14 +294,14 @@ export function CheckOutReferenceTable() {
                       <th style={thStyle} title="Category">
                         Category
                       </th>
-                      <th style={thStyle} title="Date Requested">
-                        Requested
-                      </th>
-                      <th style={thStyle} title="Requested By">
-                        Recipient
-                      </th>
-                      <th style={thStyle} title="Project For">
+                      <th style={thStyle} title="Project">
                         Project
+                      </th>
+                      <th style={thStyle} title="Date_Received">
+                        Received
+                      </th>
+                      <th style={thStyle} title="Expiry_Date">
+                        Expiry
                       </th>
                       <th style={thStyle} title="Remark">
                         Remark
@@ -320,14 +314,14 @@ export function CheckOutReferenceTable() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={11} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
-                    Loading check-out history...
+                  <td colSpan={12} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)", textAlign: "center" }}>
+                    Loading check-in history...
                   </td>
                 </tr>
               ) : historyPagedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)" }}>
-                    No check-out history records available.
+                  <td colSpan={12} style={{ padding: "10px", fontSize: "10px", color: "var(--color-text-muted)" }}>
+                    No check-in history records available.
                   </td>
                 </tr>
               ) : (
@@ -345,9 +339,9 @@ export function CheckOutReferenceTable() {
                   const unitVal = row.stockItem?.unit ?? "units";
                   const unitDescVal = `${row.stockItem?.unit ?? "units"} per pack`;
                   const catVal = row.stockItem?.category ?? "General";
-                  const dateReqVal = new Date(row.occurredAt).toLocaleDateString();
-                  const reqByVal = row.requestedBy ?? "—";
                   const projVal = row.projectFor ?? "—";
+                  const recDate = new Date(row.occurredAt).toLocaleDateString();
+                  const expDate = row.stockItem?.expiryDate ? new Date(row.stockItem.expiryDate).toLocaleDateString() : "—";
                   const remarkVal = row.remark ?? "—";
 
                   return (
@@ -361,6 +355,9 @@ export function CheckOutReferenceTable() {
                       <td style={cellStyle} title={descVal}>
                         {descVal}
                       </td>
+                      <td style={cellStyle}>
+                        {row.remark && row.remark.includes("Opening stock") ? "New" : "Existing"}
+                      </td>
                       <td style={cellStyle}>{row.quantity}</td>
                       <td style={cellStyle} title={unitVal}>
                         {unitVal}
@@ -371,14 +368,14 @@ export function CheckOutReferenceTable() {
                       <td style={cellStyle} title={catVal}>
                         {catVal}
                       </td>
-                      <td style={cellStyle} title={dateReqVal}>
-                        {dateReqVal}
-                      </td>
-                      <td style={cellStyle} title={reqByVal}>
-                        {reqByVal}
-                      </td>
                       <td style={cellStyle} title={projVal}>
                         {projVal}
+                      </td>
+                      <td style={cellStyle} title={recDate}>
+                        {recDate}
+                      </td>
+                      <td style={cellStyle} title={expDate}>
+                        {expDate}
                       </td>
                       <td style={cellStyle} title={remarkVal}>
                         {remarkVal}

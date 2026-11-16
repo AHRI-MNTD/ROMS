@@ -8,20 +8,32 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const ArchitecturePage = lazy(() => import("./pages/ArchitecturePage"));
 const OperationsPage = lazy(() => import("./pages/OperationsPage"));
 const BiospecimenPage = lazy(() => import("./pages/domain/BiospecimenPage"));
-const InventoryLayout = lazy(() => import("./pages/domain/inventory/InventoryLayout"));
-const InventoryLandingPage = lazy(() => import("./pages/domain/inventory/InventoryLandingPage"));
-const InventoryDashboardPage = lazy(() => import("./pages/domain/inventory/InventoryDashboardPage"));
-const CurrentInventoryPage = lazy(() => import("./pages/domain/inventory/CurrentInventoryPage"));
-const CheckInPage = lazy(() => import("./pages/domain/inventory/CheckInPage"));
-const CheckInHistoryPage = lazy(() => import("./pages/domain/inventory/CheckInHistoryPage"));
-const CheckOutPage = lazy(() => import("./pages/domain/inventory/CheckOutPage"));
-const CheckOutHistoryPage = lazy(() => import("./pages/domain/inventory/CheckOutHistoryPage"));
-const RequestsPage = lazy(() => import("./pages/domain/inventory/RequestsPage"));
-const ApprovedRequestsPage = lazy(() => import("./pages/domain/inventory/ApprovedRequestsPage"));
-const ProjectLoansPage = lazy(() => import("./pages/domain/inventory/ProjectLoansPage"));
-const InventoryManagerPage = lazy(() => import("./pages/domain/inventory/InventoryManagerPage"));
-const AnalyticsPage = lazy(() => import("./pages/domain/inventory/AnalyticsPage"));
-const MasterDataPage = lazy(() => import("./pages/domain/inventory/MasterDataPage"));
+const InventoryLayout = lazy(() => import("./pages/domain/inventory/stock_management/InventoryLayout"));
+const InventoryLandingPage = lazy(() => import("./pages/domain/inventory/stock_management/InventoryLandingPage"));
+const InventoryDashboardPage = lazy(() => import("./pages/domain/inventory/stock_management/InventoryDashboardPage"));
+const CurrentInventoryPage = lazy(() => import("./pages/domain/inventory/stock_management/CurrentInventoryPage"));
+const CheckInPage = lazy(() => import("./pages/domain/inventory/stock_management/CheckInPage"));
+const CheckInHistoryPage = lazy(() => import("./pages/domain/inventory/stock_management/CheckInHistoryPage"));
+const CheckOutPage = lazy(() => import("./pages/domain/inventory/stock_management/CheckOutPage"));
+const CheckOutHistoryPage = lazy(() => import("./pages/domain/inventory/stock_management/CheckOutHistoryPage"));
+const RequestsPage = lazy(() => import("./pages/domain/inventory/stock_management/RequestsPage"));
+const ApprovedRequestsPage = lazy(() => import("./pages/domain/inventory/stock_management/ApprovedRequestsPage"));
+const ProjectLoansPage = lazy(() => import("./pages/domain/inventory/stock_management/ProjectLoansPage"));
+const InventoryManagerPage = lazy(() => import("./pages/domain/inventory/stock_management/InventoryManagerPage"));
+const AnalyticsPage = lazy(() => import("./pages/domain/inventory/stock_management/AnalyticsPage"));
+const MasterDataPage = lazy(() => import("./pages/domain/inventory/stock_management/MasterDataPage"));
+const ReagentInventoryLayout = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentInventoryLayout"));
+const ReagentOverviewPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentOverviewPage"));
+const ReagentDashboardPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentDashboardPage"));
+const ReagentCurrentInventoryPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentCurrentInventoryPage"));
+const ReagentCheckInPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentCheckInPage"));
+const ReagentCheckInHistoryPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentCheckInHistoryPage"));
+const ReagentCheckOutPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentCheckOutPage"));
+const ReagentCheckOutHistoryPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentCheckOutHistoryPage"));
+const ReagentRequestPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentRequestPage"));
+const ReagentManageRequestsPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentManageRequestsPage"));
+const ReagentApprovedRequestsPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentApprovedRequestsPage"));
+const ReagentMasterDataPage = lazy(() => import("./pages/domain/inventory/Ragent_managment/ReagentMasterDataPage"));
 const QMSLayout = lazy(() => import("./pages/domain/qms/QMSLayout"));
 const QMSPage = lazy(() => import("./pages/domain/qms/QMSPage"));
 const CreateSOPPage = lazy(() => import("./pages/domain/qms/CreateSOPPage"));
@@ -87,6 +99,37 @@ export const routes: RouteObject[] = [
               { path: "inventory-manager", element: <InventoryManagerPage /> },
               { path: "analytics", element: <AnalyticsPage /> },
               { path: "master-data", element: <MasterDataPage /> },
+            ],
+          },
+          {
+            path: "reagent-inventory/*",
+            element: <Navigate to="/domains/reagent-inventory/reagent-management" replace />,
+          },
+          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
+        ],
+      },
+
+      // Reagent Inventory
+      {
+        path: "domains/reagent-inventory",
+        children: [
+          { index: true, element: <Navigate to="/domains/reagent-inventory/reagent-management" replace /> },
+          {
+            path: "reagent-management",
+            element: <ReagentInventoryLayout />,
+            children: [
+              { index: true, element: <Navigate to="/domains/reagent-inventory/reagent-management/overview" replace /> },
+              { path: "overview", element: <ReagentOverviewPage /> },
+              { path: "dashboard", element: <ReagentDashboardPage /> },
+              { path: "current-inventory", element: <ReagentCurrentInventoryPage /> },
+              { path: "check-in", element: <ReagentCheckInPage /> },
+              { path: "check-in-history", element: <ReagentCheckInHistoryPage /> },
+              { path: "check-out", element: <ReagentCheckOutPage /> },
+              { path: "check-out-history", element: <ReagentCheckOutHistoryPage /> },
+              { path: "requests", element: <ReagentRequestPage /> },
+              { path: "manage-requests", element: <ReagentManageRequestsPage /> },
+              { path: "approved-requests", element: <ReagentApprovedRequestsPage /> },
+              { path: "master-data", element: <ReagentMasterDataPage /> },
             ],
           },
           { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
@@ -179,16 +222,6 @@ export const routes: RouteObject[] = [
         ],
       },
       
-      // Participant & Community Engagement
-      {
-        path: "domains/participant",
-        children: [
-          { index: true, element: <Navigate to="/domains/participant/recruitment-screening" replace /> },
-          { path: "recruitment-screening", element: <ParticipantPage /> },
-          { path: ":subfunctionSlug", element: <SubfunctionPlaceholderPage /> },
-        ],
-      },
-      
       // Regulatory, Ethics & Compliance
       {
         path: "domains/regulatory",
@@ -203,4 +236,3 @@ export const routes: RouteObject[] = [
     ],
   },
 ];
-

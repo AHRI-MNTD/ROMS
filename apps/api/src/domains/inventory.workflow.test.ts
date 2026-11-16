@@ -101,16 +101,26 @@ describe("Inventory Granular Workflow & Route Guards", () => {
   });
 
   it("enforces inventory:disburse for physical handoff", () => {
+    const checkInOnlyUser = {
+      id: "u_ci",
+      email: "ci@roms.dev",
+      roles: [],
+      permissions: ["inventory:Check In"],
+    };
+    const { req, res, next, getStatus, wasNextCalled } = createMockReqRes(checkInOnlyUser, "PATCH", "/domains/inventory/requests/1/disburse");
+    requirePermission("inventory:disburse")(req, res, next);
+    expect(wasNextCalled()).toBe(false);
+    expect(getStatus()).toBe(403);
+
     const checkOutUser = {
       id: "u_co",
       email: "co@roms.dev",
       roles: [],
       permissions: ["inventory:Check Out"],
     };
-    const { req, res, next, getStatus, wasNextCalled } = createMockReqRes(checkOutUser, "PATCH", "/domains/inventory/requests/1/disburse");
-    requirePermission("inventory:disburse")(req, res, next);
-    expect(wasNextCalled()).toBe(false);
-    expect(getStatus()).toBe(403);
+    const m2 = createMockReqRes(checkOutUser, "PATCH", "/domains/inventory/requests/1/disburse");
+    requirePermission("inventory:disburse")(m2.req, m2.res, m2.next);
+    expect(m2.wasNextCalled()).toBe(true);
 
     const researchAdmin = {
       id: "u_ra",
@@ -118,9 +128,9 @@ describe("Inventory Granular Workflow & Route Guards", () => {
       roles: [Role.RESEARCH_ADMIN],
       permissions: [],
     };
-    const m2 = createMockReqRes(researchAdmin, "PATCH", "/domains/inventory/requests/1/disburse");
-    requirePermission("inventory:disburse")(m2.req, m2.res, m2.next);
-    expect(m2.wasNextCalled()).toBe(true);
+    const m3 = createMockReqRes(researchAdmin, "PATCH", "/domains/inventory/requests/1/disburse");
+    requirePermission("inventory:disburse")(m3.req, m3.res, m3.next);
+    expect(m3.wasNextCalled()).toBe(true);
   });
 
   it("strictly distinguishes exact project assignment from substring fragments", () => {

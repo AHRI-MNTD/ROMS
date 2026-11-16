@@ -1,11 +1,11 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, getErrorMessage } from "../../../api/client";
-import { useInventoryData } from "./useInventoryData";
-import { useAuth } from "../../../auth/useAuth";
+import { apiClient, getErrorMessage } from "../../../../api/client";
+import { useInventoryData, useProjectStock } from "./useInventoryData";
+import { useAuth } from "../../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { CheckOutReferenceTable } from "./CheckOutReferenceTable";
-import { isInventoryViewOnly } from "../../../auth/permissions";
+import { isInventoryViewOnly } from "../../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 interface LabelOverrides {
@@ -53,6 +53,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-project-stock"] });
       await queryClient.invalidateQueries({ queryKey: ["inventory-checkout-movements"] });
       setFeedback({
         type: "success",
@@ -70,9 +71,25 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
   const [projects, setProjects] = React.useState<string[]>([]);
   const [staffMembers, setStaffMembers] = React.useState<string[]>([]);
 
+  // Fetch real-time project stock holding balances
+  const { data: projectStockList = [] } = useProjectStock();
+
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
-  const currentQty = Number(selectedItem?.quantity ?? 0);
-  const projectedBalance = Math.max(0, currentQty - Math.max(0, checkOutQty));
+  const facilityStock = Number(selectedItem?.quantity ?? 0);
+  const currentQty = facilityStock;
+
+  const projectStock = React.useMemo(() => {
+    if (!selectedItem?.id || !projectFor.trim()) return 0;
+    const match = projectStockList.find(
+      (ps) =>
+        ps.stockItemId === selectedItem.id &&
+        ps.project.trim().toLowerCase() === projectFor.trim().toLowerCase()
+    );
+    return match ? Number(match.availableBalance ?? 0) : 0;
+  }, [selectedItem?.id, projectFor, projectStockList]);
+
+  const projectProjectedBalance = projectStock - Math.max(0, checkOutQty);
+  const projectedBalance = Math.max(0, facilityStock - Math.max(0, checkOutQty));
 
   React.useEffect(() => {
     if (!selectedItemQuery.trim()) {
@@ -189,6 +206,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
     },
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-project-stock"] });
 
       setFeedback({
         type: "success",
@@ -245,7 +263,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           borderRadius: "var(--radius)",
           border: "1px solid var(--color-primary-highlight)",
           background: "var(--inventory-card-bg)",
-          boxShadow: "0 4px 16px var(--color-accent-soft)",
+          boxShadow: "0 4px 16px rgb(37 147 153 / 65%)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
@@ -388,22 +406,63 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           </label>
         </div>
 
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 8 }}>
           <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Current Stock</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? currentQty : "—"}</div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Project Stock ({projectFor || "Selected"})</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: selectedItem ? (projectStock > 0 ? "#166534" : "#b45309") : "var(--color-text)", fontWeight: 800 }}>
+              {selectedItem ? `${projectStock} ${selectedItem.unit || "units"}` : "—"}
+            </div>
           </div>
           <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Projected Balance</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: checkOutQty > currentQty ? "#b91c1c" : "var(--color-text)", fontWeight: 700 }}>{selectedItem ? projectedBalance : "—"}</div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Project Projected Balance</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: !selectedItem ? "var(--color-text-muted)" : projectProjectedBalance < 0 ? "#b45309" : "#166534", fontWeight: 800 }}>
+              {selectedItem ? `${projectProjectedBalance} ${selectedItem.unit || "units"}` : "—"}
+            </div>
           </div>
           <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Validation</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: !selectedItem ? "var(--color-text-muted)" : checkOutQty > currentQty ? "#b91c1c" : "#166534", fontWeight: 700 }}>
-              {!selectedItem ? "Select item" : checkOutQty > currentQty ? "Exceeds stock" : "Valid"}
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Total Facility Stock</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 800 }}>
+              {selectedItem ? `${facilityStock} ${selectedItem.unit || "units"}` : "—"}
+            </div>
+          </div>
+          <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Validation</div>
+            <div style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              color: !selectedItem
+                ? "var(--color-text-muted)"
+                : checkOutQty <= 0
+                ? "#b91c1c"
+                : checkOutQty > facilityStock
+                ? "#b91c1c"
+                : checkOutQty > projectStock
+                ? "#b45309"
+                : "#166534",
+            }}>
+              {!selectedItem
+                ? "Select item"
+                : checkOutQty <= 0
+                ? "Enter quantity"
+                : checkOutQty > facilityStock
+                ? "❌ Exceeds Facility Stock"
+                : checkOutQty > projectStock
+                ? `⚠️ Exceeds ${projectFor} (${projectStock} available)`
+                : `✓ Covered by ${projectFor}`}
             </div>
           </div>
         </div>
+
+        {selectedItem && checkOutQty > projectStock && checkOutQty <= facilityStock && (
+          <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "#fffbeb", border: "1px solid #fde68a", fontSize: "11px", color: "#92400e", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>💡 <strong>Project Allocation Notice:</strong> Project <strong>{projectFor}</strong> has <strong>{projectStock}</strong> available in its stock allocation. Checking out <strong>{checkOutQty}</strong> draws from other project or general facility holdings ({facilityStock} total physical stock in warehouse) and may require Inter-Project Loan documentation.</span>
+          </div>
+        )}
+        {selectedItem && checkOutQty > facilityStock && (
+          <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "#fef2f2", border: "1px solid #fecaca", fontSize: "11px", color: "#b91c1c", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>⛔ <strong>Physical Inventory Shortage:</strong> The check-out quantity ({checkOutQty}) exceeds total physical warehouse stock ({facilityStock} {selectedItem.unit || "units"}).</span>
+          </div>
+        )}
 
         <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -424,8 +483,8 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
                   setFeedback({ type: "error", message: "Quantity must be greater than zero." });
                   return;
                 }
-                if (checkOutQty > currentQty) {
-                  setFeedback({ type: "error", message: "Quantity cannot exceed current stock." });
+                if (checkOutQty > facilityStock) {
+                  setFeedback({ type: "error", message: `Quantity cannot exceed total facility stock (${facilityStock} ${selectedItem.unit || "units"}).` });
                   return;
                 }
                 if (!projectFor.trim()) {

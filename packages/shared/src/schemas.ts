@@ -24,6 +24,16 @@ export const CreateSampleSchema = z.object({
 
 export type CreateSampleInput = z.infer<typeof CreateSampleSchema>;
 
+export const UpdateSampleSchema = z
+  .object({
+    status: SampleStatusSchema.optional(),
+    notes: z.string().max(2000).optional(),
+    storageLocationId: z.string().cuid().nullable().optional(),
+  })
+  .strict();
+
+export type UpdateSampleInput = z.infer<typeof UpdateSampleSchema>;
+
 // ─── QMS / SOP ────────────────────────────────────────────────────────────────
 
 export const SOPStatusSchema = z.enum(["DRAFT", "REVIEW", "APPROVED", "RETIRED"]);
@@ -222,6 +232,68 @@ export const CreateInventoryRequestSchema = z.object({
 });
 
 export type CreateInventoryRequestInput = z.infer<typeof CreateInventoryRequestSchema>;
+
+export const ReagentStorageConditionSchema = z.enum(["80", "20", "2-8", "Ambient"]);
+export const ReagentAssayTypeSchema = z.enum([
+  "Sequencing primers", "Enzymes", "RNA extruction Magmax kit", "Genotyping Pf", "Mag Max", "qPCR",
+  "Sequensing", "leshimaniasis", "G6PD Primer", "RFLP drug Resistance primers", "unknowns",
+  "plasmid and probe", "Digital PCR", "Parasite PvPf Genotyping Primers", "Immunoassay",
+  "Recieved from CDC", "nPCR", "Purification (DNA/RNA)", "RT-qPCR", "Primers",
+  "Conventional PCR", "DNA ladder", "Mosquito Id",
+]);
+
+export const ReagentCheckInSchema = z.object({
+  reagentCode: z.string().min(1).max(64),
+  description: z.string().min(2).max(500),
+  assayType: ReagentAssayTypeSchema,
+  reagentType: z.string().max(128).optional().nullable(),
+  concentration: z.string().max(128).optional().nullable(),
+  concentrationValue: z.number().nonnegative(),
+  concentrationUnit: z.string().max(32).optional().nullable(),
+  quantity: z.number().nonnegative().optional().nullable(),
+  quantityUnit: z.string().max(32).optional().nullable(),
+  volume: z.number().nonnegative().optional().nullable(),
+  volumeUnit: z.string().max(32).optional().nullable(),
+  lotNumber: z.string().max(128).optional().nullable(),
+  expiryDate: z.coerce.date().optional().nullable(),
+  storageCondition: ReagentStorageConditionSchema,
+  location: z.string().max(255).optional().nullable(),
+  receivedFrom: z.string().max(255).optional().nullable(),
+  minThreshold: z.number().nonnegative().default(0),
+});
+
+export const ReagentCheckoutSchema = z.object({
+  reagentItemId: z.string().min(1),
+  concentration: z.number().positive(),
+  numberOfVill: z.number().int().positive().optional(),
+  expectedReturn: z.number().nonnegative().optional(),
+  projectFor: z.string().max(128).optional().nullable(),
+  requestedFor: z.string().max(128).optional().nullable(),
+  remark: z.string().max(500).optional().nullable(),
+});
+
+export const ReagentRequestSchema = z.object({
+  reagentItemId: z.string().min(1).optional().nullable(),
+  assayType: ReagentAssayTypeSchema,
+  reagentType: z.string().max(128).optional().nullable(),
+  projectFor: z.string().max(128),
+  concentration: z.number().positive(),
+  concentrationUnit: z.string().max(32).optional().nullable(),
+  numberOfVill: z.number().int().positive().optional(),
+  expectedReturn: z.number().nonnegative().optional(),
+  requestedFor: z.string().max(128).optional().nullable(),
+  additionalFields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  remark: z.string().max(500).optional().nullable(),
+});
+
+export const ReagentDecisionSchema = z.object({
+  items: z.array(z.object({
+    requestId: z.string().min(1),
+    status: z.enum(["APPROVED", "PARTIAL", "REJECTED"]),
+    approvedConcentration: z.number().nonnegative().optional(),
+    remark: z.string().max(500).optional().nullable(),
+  })).min(1),
+});
 
 export const InventoryDecisionItemSchema = z.object({
   movementId: z.string().min(1),

@@ -82,22 +82,6 @@ pnpm dev
 
 ---
 
-## Default Demo Credentials
-
-Password for all accounts: `password123`
-
-| Name | Email | Role |
-|---|---|---|
-| Alice Mwangi | scientist@roms.dev | LAB_SCIENTIST |
-| Brian Okonkwo | datamanager@roms.dev | DATA_MANAGER |
-| Carol Nzinga | admin@roms.dev | RESEARCH_ADMIN |
-| Dr. David Asante | pi@roms.dev | PRINCIPAL_INVESTIGATOR |
-| Eve Diallo | qa@roms.dev | QA_OFFICER |
-| Frank Mensah | community@roms.dev | COMMUNITY_ENGAGEMENT |
-| Grace Abubakar | sysadmin@roms.dev | ADMIN |
-
----
-
 ## Domain Endpoint Table
 
 | Domain | Slug | REST Base Path |

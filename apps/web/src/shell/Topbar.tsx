@@ -531,8 +531,9 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ isCollapsed }) => 
     <header style={{
       height: "44.5px",
       minHeight: "44.5px",
-      background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-bg)",
-      borderBottom: "1px solid var(--color-divider)",
+      background: "linear-gradient(360deg, rgba(1, 105, 111, 0), rgba(1, 105, 111, 0.31))",
+      borderBottom: "1px solid rgb(1, 105, 111)",
+      borderRight: "none",
       display: "flex",
       alignItems: "center",
       justifyContent: isCollapsed ? "center" : "flex-start",
@@ -541,19 +542,19 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({ isCollapsed }) => 
       flexShrink: 0,
       zIndex: 100,
       boxSizing: "border-box",
-      width: "calc(100% + 1px)",
-      marginRight: "-1px",
+      width: "100%",
     }}>
       {/* AHRI logo - ALWAYS VISIBLE */}
       <div
         title="AHRI - ROMS"
         style={{
-          width: 30, height: 30,
+          width: 28, height: 28,
           borderRadius: "50%",
-          border: "1.5px solid var(--color-primary)",
-          background: "var(--color-primary-highlight)",
+          border: "1.5px solid rgb(1, 105, 111)",
+          background: "rgba(1, 105, 111, 0.15)",
           overflow: "hidden",
           flexShrink: 0,
+          boxShadow: "0 2px 6px rgba(1, 105, 111, 0.2)",
         }}
       >
         <img
@@ -604,8 +605,10 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ isCollapsed }) =
       {/* Profile row at sidebar bottom */}
       <div
         style={{
-          borderTop: "1px solid var(--color-divider)",
-          padding: isCollapsed ? "8px 6px" : "8px 10px",
+          borderTop: "1px solid rgb(1, 105, 111)",
+          borderRight: "1px solid rgb(1, 105, 111)",
+          background: "rgba(1, 105, 111, 0.04)",
+          padding: isCollapsed ? "3px 4px" : "4px 8px",
           flexShrink: 0,
           position: "relative",
         }}
@@ -619,47 +622,60 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({ isCollapsed }) =
               width: "100%",
               display: "flex",
               alignItems: "center",
-              gap: isCollapsed ? 0 : 9,
+              gap: isCollapsed ? 0 : 8,
               justifyContent: isCollapsed ? "center" : "flex-start",
-              padding: isCollapsed ? "5px 0" : "6px 8px",
+              padding: isCollapsed ? "3px 0" : "3px 6px",
               borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: showDropdown ? "var(--color-primary-highlight)" : "transparent",
+              border: "1px solid transparent",
+              background: showDropdown ? "rgba(1, 105, 111, 0.16)" : "transparent",
               cursor: "pointer",
-              transition: "background 0.14s",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
-            onMouseEnter={(e) => { if (!showDropdown) e.currentTarget.style.background = "var(--color-surface-offset)"; }}
-            onMouseLeave={(e) => { if (!showDropdown) e.currentTarget.style.background = "transparent"; }}
+            onMouseEnter={(e) => {
+              if (!showDropdown) {
+                e.currentTarget.style.background = "rgba(1, 105, 111, 0.12)";
+                e.currentTarget.style.borderColor = "rgba(1, 105, 111, 0.3)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!showDropdown) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "transparent";
+              }
+            }}
           >
             {/* Avatar circle */}
             <div
               style={{
-                width: 28, height: 28,
+                width: 25, height: 25,
                 borderRadius: "50%",
-                background: "var(--color-primary)",
+                background: "rgb(1, 105, 111)",
                 color: "#fff",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
-                border: `2px solid ${showDropdown ? "var(--color-primary-hover)" : "transparent"}`,
+                border: `2px solid ${showDropdown ? "#2dd4bf" : "transparent"}`,
+                boxShadow: "0 2px 6px rgba(1, 105, 111, 0.25)",
                 transition: "border-color 0.15s",
               }}
             >
-              <UserPersonIcon size={15} />
+              <UserPersonIcon size={13} />
             </div>
             {/* Name + role (only when expanded) */}
             {!isCollapsed && (
               <div style={{ minWidth: 0, textAlign: "left", flex: 1 }}>
                 <div style={{
-                  fontSize: "var(--fs-xs)", fontWeight: 700,
+                  fontSize: "11px", fontWeight: 700,
                   color: "var(--color-text)",
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  lineHeight: 1.2,
                 }}>
                   {user.displayName}
                 </div>
                 <div style={{
-                  fontSize: "var(--fs-xxs)",
+                  fontSize: "10px",
                   color: "var(--color-text-muted)",
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  lineHeight: 1.2,
                 }}>
                   {user.roles[0]?.replace(/_/g, " ") ?? ""}
                 </div>

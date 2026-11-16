@@ -1,11 +1,11 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, getErrorMessage } from "../../../api/client";
-import { useInventoryData } from "./useInventoryData";
-import { useAuth } from "../../../auth/useAuth";
+import { apiClient, getErrorMessage } from "../../../../api/client";
+import { useInventoryData, useProjectStock } from "./useInventoryData";
+import { useAuth } from "../../../../auth/useAuth";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { RequestReferenceTable } from "./RequestReferenceTable";
-import { isInventoryViewOnly } from "../../../auth/permissions";
+import { isInventoryViewOnly } from "../../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 interface MasterDataComboboxProps {
@@ -246,9 +246,25 @@ export default function RequestsPage() {
     setApprover(getApproverForProject(project));
   }, [project]);
 
+  // Fetch real-time project stock holding balances
+  const { data: projectStockList = [] } = useProjectStock();
+
   const selectedItem = React.useMemo(() => (data?.data ?? []).find((item) => item.id === selectedItemId), [data?.data, selectedItemId]);
-  const currentQty = Number(selectedItem?.quantity ?? 0);
-  const projectedBalance = Math.max(0, currentQty - Math.max(0, requestQty));
+  const facilityStock = Number(selectedItem?.quantity ?? 0);
+  const currentQty = facilityStock;
+
+  const projectStock = React.useMemo(() => {
+    if (!selectedItem?.id || !project.trim()) return 0;
+    const match = projectStockList.find(
+      (ps) =>
+        ps.stockItemId === selectedItem.id &&
+        ps.project.trim().toLowerCase() === project.trim().toLowerCase()
+    );
+    return match ? Number(match.availableBalance ?? 0) : 0;
+  }, [selectedItem?.id, project, projectStockList]);
+
+  const projectProjectedBalance = projectStock - Math.max(0, requestQty);
+  const projectedBalance = Math.max(0, facilityStock - Math.max(0, requestQty));
 
   React.useEffect(() => {
     if (!selectedItemQuery.trim()) {
@@ -324,6 +340,7 @@ export default function RequestsPage() {
       setFeedback({ type: "success", message: `Submitted request(s) for review.` });
       queryClient.invalidateQueries({ queryKey: ["inventory-requests"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory-project-stock"] });
       setCartItems([]);
       setRequestQty(1);
       setUnitDescription("");
@@ -351,7 +368,7 @@ export default function RequestsPage() {
           borderRadius: "var(--radius)",
           border: "1px solid var(--color-primary-highlight)",
           background: "var(--inventory-card-bg)",
-          boxShadow: "0 4px 16px var(--color-accent-soft)",
+          boxShadow: "0 4px 16px rgb(37 147 153 / 65%)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
@@ -568,22 +585,63 @@ export default function RequestsPage() {
           </label>
         </div>
 
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 8 }}>
           <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Current Stock</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? currentQty : "—"}</div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Project Stock ({project || "Selected"})</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: selectedItem ? (projectStock > 0 ? "#166534" : "#b45309") : "var(--color-text)", fontWeight: 800 }}>
+              {selectedItem ? `${projectStock} ${selectedItem.unit || "units"}` : "—"}
+            </div>
           </div>
           <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Projected Balance</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: requestQty > currentQty ? "#b91c1c" : "var(--color-text)", fontWeight: 700 }}>{selectedItem ? projectedBalance : "—"}</div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Project Projected Balance</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: !selectedItem ? "var(--color-text-muted)" : projectProjectedBalance < 0 ? "#b45309" : "#166534", fontWeight: 800 }}>
+              {selectedItem ? `${projectProjectedBalance} ${selectedItem.unit || "units"}` : "—"}
+            </div>
           </div>
           <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Validation</div>
-            <div style={{ fontSize: "var(--fs-sm)", color: !selectedItem ? "var(--color-text-muted)" : requestQty > currentQty ? "#b45309" : "#166534", fontWeight: 700 }}>
-              {!selectedItem ? "Select item" : requestQty > currentQty ? "⚠ Exceeds stock" : "Valid"}
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Total Facility Stock</div>
+            <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 800 }}>
+              {selectedItem ? `${facilityStock} ${selectedItem.unit || "units"}` : "—"}
+            </div>
+          </div>
+          <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Validation</div>
+            <div style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              color: !selectedItem
+                ? "var(--color-text-muted)"
+                : requestQty <= 0
+                ? "#b91c1c"
+                : requestQty > facilityStock
+                ? "#b91c1c"
+                : requestQty > projectStock
+                ? "#b45309"
+                : "#166534",
+            }}>
+              {!selectedItem
+                ? "Select item"
+                : requestQty <= 0
+                ? "Enter quantity"
+                : requestQty > facilityStock
+                ? "❌ Exceeds Facility Stock"
+                : requestQty > projectStock
+                ? `⚠️ Exceeds ${project} (${projectStock} available)`
+                : `✓ Covered by ${project}`}
             </div>
           </div>
         </div>
+
+        {selectedItem && requestQty > projectStock && requestQty <= facilityStock && (
+          <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "#fffbeb", border: "1px solid #fde68a", fontSize: "11px", color: "#92400e", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>💡 <strong>Project Stock Notice:</strong> Project <strong>{project}</strong> has <strong>{projectStock}</strong> available in its allocation. Requesting <strong>{requestQty}</strong> will draw from other project/general holdings ({facilityStock} total physical stock available) and may require Inter-Project Loan approval.</span>
+          </div>
+        )}
+        {selectedItem && requestQty > facilityStock && (
+          <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 6, background: "#fef2f2", border: "1px solid #fecaca", fontSize: "11px", color: "#b91c1c", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>⛔ <strong>Physical Inventory Shortage:</strong> The requested quantity ({requestQty}) exceeds the total physical stock in the warehouse ({facilityStock} {selectedItem.unit || "units"}).</span>
+          </div>
+        )}
 
         <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>
@@ -602,6 +660,10 @@ export default function RequestsPage() {
                 }
                 if (!Number.isFinite(requestQty) || requestQty <= 0) {
                   setFeedback({ type: 'error', message: 'Quantity must be > 0.' });
+                  return;
+                }
+                if (requestQty > facilityStock) {
+                  setFeedback({ type: 'error', message: `Cannot request ${requestQty}. Total warehouse inventory only has ${facilityStock} ${selectedItem.unit || "units"}.` });
                   return;
                 }
                 if (!project.trim()) {

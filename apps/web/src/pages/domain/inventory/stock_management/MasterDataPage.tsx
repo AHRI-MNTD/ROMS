@@ -1,6 +1,6 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../../../api/client";
+import { apiClient } from "../../../../api/client";
 
 interface InventoryMasterDataRow {
   id: string;
@@ -196,10 +196,10 @@ export default function MasterDataPage() {
       <div
         style={{
           padding: 18,
-          borderRadius: 12,
+          borderRadius: "var(--radius)",
           border: "1px solid var(--color-primary-highlight)",
           background: "var(--inventory-card-bg)",
-          boxShadow: "0 4px 16px var(--color-accent-soft)",
+          boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >

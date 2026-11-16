@@ -1,17 +1,18 @@
 import React from "react";
-import { CheckOutReferenceTable } from "./CheckOutReferenceTable";
+import { CheckInReferenceTable } from "./CheckInReferenceTable";
 
-export default function CheckOutHistoryPage() {
+export default function CheckInHistoryPage() {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* Header Banner */}
       <div
         style={{
-          padding: "16px 20px",
+          padding: 18,
           borderRadius: "var(--radius)",
           border: "1px solid var(--color-primary-highlight)",
           background: "var(--inventory-card-bg)",
-          boxShadow: "0 4px 16px var(--color-accent-soft)",
+          boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -34,21 +35,21 @@ export default function CheckOutHistoryPage() {
               flexShrink: 0,
             }}
           >
-            📤
+            📥
           </div>
           <div>
             <h2 style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-text)", margin: 0 }}>
-              Check-Out History & Disbursement Log
+              Check-In History & Reference Log
             </h2>
             <p style={{ fontSize: "11px", color: "var(--color-text-muted)", margin: "2px 0 0 0" }}>
-              Comprehensive audit log of all item disbursements, project allocations, and outgoing stock movements.
+              Comprehensive audit trail of all incoming laboratory stock entries and reagent check-in movements.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Shared Check-Out Reference Table */}
-      <CheckOutReferenceTable />
+      {/* Shared Check-In Reference Table */}
+      <CheckInReferenceTable />
     </div>
   );
 }

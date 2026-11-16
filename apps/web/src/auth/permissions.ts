@@ -4,6 +4,7 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   LAB_SCIENTIST: {
     biospecimen: ["Dashboard", "Sample Collection", "Processing"],
     inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests"],
+    "reagent-inventory": ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s"],
     "lab-workflow": ["Dashboard", "Protocols", "Experiments"],
     "data-management": ["Dashboard"],
     qms: ["Dashboard", "Author"],
@@ -11,18 +12,18 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   DATA_MANAGER: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard", "Current Inventory"],
+    "reagent-inventory": ["Dashboard", "Current Inventory"],
     qms: ["Dashboard"],
-    participant: ["Dashboard", "Participants"],
     regulatory: ["Dashboard"],
     "data-management": ["Dashboard", "Studies", "Metadata", "Exports"],
   },
   RESEARCH_ADMIN: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data"],
+    "reagent-inventory": ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Manage Requests", "Approved Requests", "Master Data"],
     qms: ["Dashboard", "Author", "Quality Officer", "Audits", "CAPA"],
     hr: ["Dashboard", "Profiles"],
     finance: ["Dashboard", "Grants", "Budgets"],
-    participant: ["Dashboard"],
     regulatory: ["Dashboard", "Compliance Register"],
     "data-management": ["Dashboard", "Studies"],
     infrastructure: ["Dashboard"],
@@ -30,29 +31,28 @@ export const ROLE_SEEDS: Record<string, Record<string, string[]>> = {
   PRINCIPAL_INVESTIGATOR: {
     biospecimen: ["Dashboard", "Retrieval"],
     inventory: ["Dashboard"],
+    "reagent-inventory": ["Dashboard", "Current Inventory", "Request/s", "Manage Requests", "Approved Requests"],
     qms: ["Dashboard", "Authorizer", "Audits"],
     "lab-workflow": ["Dashboard", "Runs"],
     "data-management": ["Dashboard", "Studies", "Analytics"],
     hr: ["Dashboard"],
     finance: ["Dashboard"],
-    participant: ["Dashboard", "Participants"],
     regulatory: ["Dashboard", "Approvals"],
     infrastructure: ["Dashboard"],
   },
   QA_OFFICER: {
     biospecimen: ["Dashboard"],
     inventory: ["Dashboard"],
+    "reagent-inventory": ["Dashboard", "Current Inventory"],
     qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA"],
     "lab-workflow": ["Dashboard"],
     "data-management": ["Dashboard"],
     hr: ["Dashboard"],
     finance: ["Dashboard"],
-    participant: ["Dashboard"],
     regulatory: ["Dashboard", "Compliance Register", "Reporting"],
     infrastructure: ["Dashboard"],
   },
   COMMUNITY_ENGAGEMENT: {
-    participant: ["Dashboard", "Participants", "Engagement"],
     "data-management": ["Dashboard"],
     regulatory: ["Dashboard"],
     hr: ["Dashboard"],
@@ -117,12 +117,8 @@ export const SUBFUNCTION_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "sub-awards-contracts": "Expenses",
     "compliance-close-out": "Analytics",
   },
-  participant: {
-    "recruitment-screening": "Participants",
-    "informed-consent": "Consent",
-    "scheduling-retention": "Visits",
-    "community-advisory-boards": "Engagement",
-    "privacy-vulnerable-groups": "Follow-up",
+  "reagent-inventory": {
+    "reagent-management": "Dashboard",
   },
   regulatory: {
     "ethics-submissions": "Ethics Review",
@@ -148,6 +144,19 @@ export const TAB_RIGHTS_MAP: Record<string, Record<string, string>> = {
     "project-loans": "Inventory Manager",
     "inventory-manager": "Inventory Manager",
     "analytics": "Analytics",
+    "master-data": "Master Data",
+  },
+  "reagent-inventory": {
+    "overview": "Dashboard",
+    "dashboard": "Dashboard",
+    "current-inventory": "Current Inventory",
+    "check-in": "Check In",
+    "check-in-history": "Check In History",
+    "check-out": "Check Out",
+    "check-out-history": "Check Out History",
+    "requests": "Request/s",
+    "manage-requests": "Manage Requests",
+    "approved-requests": "Approved Requests",
     "master-data": "Master Data",
   },
   qms: {
@@ -189,13 +198,13 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
         const DOMAIN_RIGHTS: Record<string, string[]> = {
           biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
           inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data", "View-Only"],
+          "reagent-inventory": ["Dashboard", "Current Inventory", "Check In", "Check Out", "Check In History", "Check Out History", "Request/s", "Manage Requests", "Approved Requests", "Master Data", "View-Only"],
           qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
           "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
           "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
           infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
           hr: ["Dashboard", "Profiles", "Personnel Registration", "Onboarding", "Leave", "Performance", "Analytics"],
           finance: ["Dashboard", "Grants", "Budgets", "Expenses", "Approvals", "Reports", "Analytics"],
-          participant: ["Dashboard", "Participants", "Consent", "Visits", "Engagement", "Follow-up", "Analytics"],
           regulatory: ["Dashboard", "Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting", "Analytics"],
         };
         for (const domain of DOMAIN_CATALOG) {
@@ -219,13 +228,13 @@ export function getUserRights(roles: string[] | undefined, permissions?: string[
     const DOMAIN_RIGHTS: Record<string, string[]> = {
       biospecimen: ["Dashboard", "Sample Collection", "Processing", "Storage", "Retrieval", "Disposal", "Analytics"],
       inventory: ["Dashboard", "Current Inventory", "Check In", "Check Out", "Request/s", "Approved Requests", "Inventory Manager", "Master Data", "View-Only"],
+      "reagent-inventory": ["Dashboard", "Current Inventory", "Check In", "Check Out", "Check In History", "Check Out History", "Request/s", "Manage Requests", "Approved Requests", "Master Data", "View-Only"],
       qms: ["Dashboard", "Author", "Quality Officer", "Authorizer", "Audits", "CAPA", "Training"],
       "lab-workflow": ["Dashboard", "Protocols", "Experiments", "Runs", "Instruments", "Reports", "Analytics"],
       "data-management": ["Dashboard", "Studies", "Metadata", "Data Dictionary", "Exports", "Integrations", "Analytics"],
       infrastructure: ["Dashboard", "Services", "Servers", "Monitoring", "Incidents", "Integrations", "Analytics"],
       hr: ["Dashboard", "Profiles", "Personnel Registration", "Onboarding", "Leave", "Performance", "Analytics"],
       finance: ["Dashboard", "Grants", "Budgets", "Expenses", "Approvals", "Reports", "Analytics"],
-      participant: ["Dashboard", "Participants", "Consent", "Visits", "Engagement", "Follow-up", "Analytics"],
       regulatory: ["Dashboard", "Ethics Review", "Approvals", "Compliance Register", "Incidents", "Reporting", "Analytics"],
     };
     for (const domain of DOMAIN_CATALOG) {
@@ -285,6 +294,13 @@ export function isInventoryViewOnly(roles?: string[], permissions?: string[]): b
   return permissions?.some((p) => p.toLowerCase() === "inventory:view-only") ?? false;
 }
 
+export function isReagentViewOnly(roles?: string[], permissions?: string[]): boolean {
+  if (roles?.some((r) => ["ADMIN", "RESEARCH_ADMIN"].includes(r)) || permissions?.includes("admin:all")) {
+    return false;
+  }
+  return permissions?.some((p) => p.toLowerCase() === "reagent-inventory:view-only") ?? false;
+}
+
 export function isInventoryWorker(userEmail?: string | null): boolean {
   if (!userEmail) return false;
   const email = userEmail.toLowerCase().trim();
@@ -342,6 +358,23 @@ export function hasTabAccess(
           return true;
         }
         return false;
+      }
+    }
+
+    if (domainSlug === "reagent-inventory") {
+      const rights = getUserRights(roles, permissions);
+      const reagentRights = rights["reagent-inventory"];
+      if (tabSlug === "check-in-history" && (reagentRights?.has("Check In") || reagentRights?.has("Check In History"))) {
+        return true;
+      }
+      if (tabSlug === "check-out-history" && (reagentRights?.has("Check Out") || reagentRights?.has("Check Out History"))) {
+        return true;
+      }
+      if (tabSlug === "manage-requests" && (reagentRights?.has("Manage Requests") || roles?.includes("ADMIN") || roles?.includes("RESEARCH_ADMIN"))) {
+        return true;
+      }
+      if (tabSlug === "approved-requests" && (reagentRights?.has("Approved Requests") || reagentRights?.has("Manage Requests") || roles?.includes("ADMIN") || roles?.includes("RESEARCH_ADMIN"))) {
+        return true;
       }
     }
 

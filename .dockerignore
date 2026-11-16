@@ -16,6 +16,11 @@
 **/compose*
 **/Dockerfile*
 **/node_modules
+**/infra/nginx/certs
+**/*.pem
+**/*.key
+**/*.crt
+**/*.srl
 **/npm-debug.log
 **/obj
 **/secrets.dev.yaml

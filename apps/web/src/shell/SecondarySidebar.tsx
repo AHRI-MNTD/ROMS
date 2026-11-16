@@ -46,8 +46,8 @@ export const SecondarySidebar: React.FC = () => {
       style={{
         width: isCollapsed ? 44 : 220,
         minWidth: isCollapsed ? 44 : 220,
-        background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface)",
-        borderRight: "1px solid var(--color-divider)",
+        background: "linear-gradient(270deg, rgba(1, 105, 111, 0), rgba(1, 105, 111, 0.16))",
+        borderRight: "none",
         display: "flex",
         flexDirection: "column",
         flexShrink: 0,
@@ -56,33 +56,32 @@ export const SecondarySidebar: React.FC = () => {
         zIndex: 10,
       }}
     >
-      {/* ── Row 1: Topbar spacer matching 44.5px SidebarHeader ── */}
+      {/* ── Row 1: Topbar spacer matching 44.5px SidebarHeader & NavBar (NO right border & completely empty) ── */}
       <div
         style={{
           height: "44.5px",
           minHeight: "44.5px",
-          borderBottom: "1px solid var(--color-divider)",
-          borderRight: "1px solid var(--color-divider)",
-          background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-bg)",
+          borderBottom: "1px solid rgb(1, 105, 111)",
+          borderRight: "none",
+          background: "linear-gradient(360deg, rgba(1, 105, 111, 0), rgba(1, 105, 111, 0.31))",
           flexShrink: 0,
           boxSizing: "border-box",
-          width: "calc(100% + 1px)",
-          marginRight: "-1px",
-          position: "relative",
-          zIndex: 100,
+          width: "100%",
         }}
       />
 
-      {/* ── Row 2: Secondary Sidebar Header with Collapse Toggle Button ── */}
+      {/* ── Row 2: Secondary Sidebar Header with Domain Title & Collapse Toggle Button ── */}
       <div
         style={{
-          height: 40,
-          minHeight: 40,
+          height: 34,
+          minHeight: 34,
           boxSizing: "border-box",
-          padding: isCollapsed ? "0 6px" : "0 10px",
+          padding: isCollapsed ? "0 6px" : "0 8px",
           display: "flex",
           alignItems: "center",
-          borderBottom: "1px solid var(--color-divider)",
+          borderBottom: "1px solid rgb(1, 105, 111)",
+          borderRight: "1px solid rgb(1, 105, 111)",
+          background: "rgba(1, 105, 111, 0.03)",
           flexShrink: 0,
         }}
       >
@@ -96,15 +95,15 @@ export const SecondarySidebar: React.FC = () => {
           }}
         >
           {!isCollapsed && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
-              <span style={{ fontSize: "1.05rem", flexShrink: 0 }}>{domain.emoji}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: "0.95rem", flexShrink: 0 }}>{domain.emoji}</span>
               <span
                 style={{
                   fontSize: "11px",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   letterSpacing: "0.05em",
                   textTransform: "uppercase",
-                  color: "var(--color-text-muted)",
+                  color: "rgb(1, 105, 111)",
                   lineHeight: 1.2,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
@@ -123,12 +122,12 @@ export const SecondarySidebar: React.FC = () => {
             title={isCollapsed ? "Expand sidebar (view domain menus)" : "Collapse sidebar (maximize screen space)"}
             aria-label={isCollapsed ? "Expand secondary menu" : "Collapse secondary menu"}
             style={{
-              width: 26,
-              height: 26,
+              width: 24,
+              height: 24,
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--color-border)",
-              background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
-              color: "var(--color-text-muted)",
+              border: "1px solid rgba(1, 105, 111, 0.3)",
+              background: "rgba(1, 105, 111, 0.08)",
+              color: "rgb(1, 105, 111)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -137,17 +136,15 @@ export const SecondarySidebar: React.FC = () => {
               transition: "background 0.15s, color 0.15s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--color-primary-highlight)";
-              e.currentTarget.style.color = "var(--color-primary)";
+              e.currentTarget.style.background = "rgba(1, 105, 111, 0.2)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)";
-              e.currentTarget.style.color = "var(--color-text-muted)";
+              e.currentTarget.style.background = "rgba(1, 105, 111, 0.08)";
             }}
           >
             <svg
-              width="14"
-              height="14"
+              width="13"
+              height="13"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -166,7 +163,7 @@ export const SecondarySidebar: React.FC = () => {
       </div>
 
       {/* ── Subfunctions Navigation Items ── */}
-      <div style={{ padding: isCollapsed ? "4px 4px" : "4px 8px", display: "flex", flexDirection: "column", gap: 4, overflowY: "auto", overflowX: "hidden", flex: 1, minHeight: 0 }}>
+      <div style={{ padding: isCollapsed ? "3px" : "4px 6px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", overflowX: "hidden", flex: 1, minHeight: 0, borderRight: "1px solid rgb(1, 105, 111)" }}>
         {accessibleSubfunctions.map((sub, idx) => {
           const subSlug = slugify(sub.name);
           const path = `/domains/${domain.slug}/${subSlug}`;
@@ -182,40 +179,33 @@ export const SecondarySidebar: React.FC = () => {
                 }
               }}
               title={isCollapsed ? `${idx + 1}. ${sub.name}` : undefined}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
+              className={({ isActive }) => `sec-sidebar-nav-link${isCollapsed ? " collapsed" : ""}${isActive ? " active" : ""}`}
+              style={{
                 justifyContent: isCollapsed ? "center" : "flex-start",
-                padding: isCollapsed ? "7px 0" : "6px 9px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "12px",
-                color: isActive ? "var(--color-primary)" : "var(--color-text)",
-                background: isActive ? "var(--color-primary-highlight)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
+                padding: isCollapsed ? "5px 0" : "5px 8px",
                 textDecoration: "none",
-                transition: "background 0.12s, color 0.12s",
-              })}
+              }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 7, width: isCollapsed ? "auto" : "100%" }}>
                 <span
+                  className="sec-nav-num"
                   style={{
                     fontSize: "10px",
                     fontWeight: 700,
-                    width: 22,
-                    height: 22,
+                    width: 20,
+                    height: 20,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: isCollapsed ? "var(--inventory-card-bg)" : "var(--color-surface-offset)",
-                    borderRadius: "var(--radius-sm)",
-                    opacity: 0.9,
+                    background: "rgba(1, 105, 111, 0.08)",
+                    borderRadius: "5px",
                     flexShrink: 0,
                   }}
                 >
                   {idx + 1}
                 </span>
                 {!isCollapsed && (
-                  <span style={{ flex: 1, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span style={{ flex: 1, lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {sub.name}
                   </span>
                 )}

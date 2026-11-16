@@ -71,10 +71,10 @@
 :root,
 [data-theme="light"] {
   /* Operations HTML naming */
-  --app-content-bg: #ffffff;
-  --color-bg: #f7f6f2;
+  --color-bg: #ffffff;
   --color-surface: #f9f8f5;
   --color-surface-2: #ffffff;
+  --app-content-bg: #ffffff;
   --color-surface-offset: #f0eeea;
   --color-border: #b8b5ad;
   --color-divider: #99958c;
@@ -91,10 +91,10 @@
   /* Inventory Domain Palette Tokens */
   --inventory-card-bg: linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%);
   --inventory-hero-bg: linear-gradient(135deg, rgba(1, 105, 111, 0.08) 0%, rgba(1, 105, 111, 0.03) 100%);
-  --inventory-new-item-card-bg: linear-gradient(180deg, #ffffff 0%, #f1f6fb 100%);
-  --inventory-new-item-border: #9bb9da;
-  --inventory-new-item-input-bg: #fbfdff;
-  --inventory-new-item-input-border: #bfd1ea;
+  --inventory-new-item-card-bg: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+  --inventory-new-item-border: #96daf9;
+  --inventory-new-item-input-bg: #ffffff;
+  --inventory-new-item-input-border: #96daf9;
 
   /* C4 HTML naming (alias to same palette) */
   --bg: var(--color-bg);
@@ -131,7 +131,6 @@
 /* ── Dark theme ─────────────────────────────────────────────────────────────── */
 [data-theme="dark"] {
   /* Operations HTML naming */
-  --app-content-bg: #141312;
   --color-bg: #141312;
   --color-surface: #1a1917;
   --color-surface-2: #1f1e1c;
@@ -151,10 +150,10 @@
   /* Inventory Domain Palette Tokens */
   --inventory-card-bg: linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-primary-soft) 100%);
   --inventory-hero-bg: linear-gradient(135deg, rgba(79, 152, 163, 0.15) 0%, rgba(79, 152, 163, 0.05) 100%);
-  --inventory-new-item-card-bg: linear-gradient(180deg, #111827 0%, #10243a 100%);
-  --inventory-new-item-border: #375a7f;
-  --inventory-new-item-input-bg: #172233;
-  --inventory-new-item-input-border: #4f6f95;
+  --inventory-new-item-card-bg: linear-gradient(180deg, #0f172a 0%, #0c2a38 100%);
+  --inventory-new-item-border: #0369a1;
+  --inventory-new-item-input-bg: #1e293b;
+  --inventory-new-item-input-border: #0284c7;
 
   /* C4 HTML naming (aliases) */
   --bg: var(--color-bg);
@@ -207,8 +206,11 @@ body {
   font-family: var(--font-body);
   font-size: var(--fs-base);
   color: var(--color-text);
-  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="dark"] body {
+  background: var(--color-bg);
 }
 
 button {
@@ -559,13 +561,13 @@ a:hover {
   height: 44.5px;
   min-height: 44.5px;
   box-sizing: border-box;
-  background: var(--inventory-card-bg);
+  background: linear-gradient(360deg, rgba(1, 105, 111, 0), rgba(1, 105, 111, 0.31));
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   padding: 0 20px;
-  border-bottom: 1px solid var(--color-divider);
+  border-bottom: 1px solid rgb(1, 105, 111);
   flex-shrink: 0;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -602,11 +604,11 @@ a:hover {
   letter-spacing: 0.01em;
   cursor: pointer;
   white-space: nowrap;
-  text-decoration: none;
+  text-decoration: none !important;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   opacity: 0.92;
   flex-shrink: 0;
@@ -614,15 +616,18 @@ a:hover {
 
 .inventory-nav-link.active,
 .domain-nav-link.active {
-  border: 1px solid var(--color-divider);
-  border-bottom: 1px solid var(--app-content-bg);
-  background: var(--app-content-bg);
+  border: 1px solid rgb(1, 105, 111);
+  border-bottom: 1px solid #ffffff;
+  background: #ffffff;
   color: var(--color-primary);
   font-weight: 700;
   font-size: 13px;
   border-radius: 20px 20px 0 0;
   opacity: 1;
   z-index: 2;
+  transform: none;
+  box-shadow: none;
+  text-decoration: none !important;
 }
 
 /* Continuous separator line: Divider + left arc + rectangle (20px 20px 0 0) + right arc + divider */
@@ -644,20 +649,20 @@ a:hover {
 .inventory-nav-link.active::before,
 .domain-nav-link.active::before {
   left: -10px;
-  border-right: 1px solid var(--color-divider);
-  border-bottom: 1px solid var(--color-divider);
+  border-right: 1px solid rgb(1, 105, 111);
+  border-bottom: 1px solid rgb(1, 105, 111);
   border-bottom-right-radius: 10px;
-  box-shadow: 3px 3px 0 2px var(--app-content-bg);
+  box-shadow: 3px 3px 0 2px #ffffff;
 }
 
 /* Right fillet arc connecting active tab right border seamlessly into divider line */
 .inventory-nav-link.active::after,
 .domain-nav-link.active::after {
   right: -10px;
-  border-left: 1px solid var(--color-divider);
-  border-bottom: 1px solid var(--color-divider);
+  border-left: 1px solid rgb(1, 105, 111);
+  border-bottom: 1px solid rgb(1, 105, 111);
   border-bottom-left-radius: 10px;
-  box-shadow: -3px 3px 0 2px var(--app-content-bg);
+  box-shadow: -3px 3px 0 2px #ffffff;
 }
 
 .inventory-nav-link .nav-icon,
@@ -667,6 +672,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .inventory-nav-link .nav-text,
@@ -675,25 +681,218 @@ a:hover {
   vertical-align: middle;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none !important;
 }
 
 .inventory-nav-link:hover,
 .domain-nav-link:hover {
-  color: var(--color-text-muted);
-  background: rgba(0, 0, 0, 0.04);
+  color: rgb(1, 105, 111);
+  background: rgba(1, 105, 111, 0.09);
+  border: 1px solid rgba(1, 105, 111, 0.35);
+  border-bottom: 1px solid transparent;
+  border-radius: 14px 14px 0 0;
   opacity: 1;
-  text-decoration: none;
+  text-decoration: none !important;
+  transform: translateY(-1.5px);
+  box-shadow: 0 -2px 8px rgba(1, 105, 111, 0.12);
+}
+
+.inventory-nav-link:hover .nav-icon,
+.domain-nav-link:hover .nav-icon {
+  transform: scale(1.12);
 }
 
 [data-theme="dark"] .inventory-nav-link:hover,
 [data-theme="dark"] .domain-nav-link:hover {
-  background: rgba(255, 255, 255, 0.06);
+  color: #2dd4bf;
+  background: rgba(1, 105, 111, 0.22);
+  border-color: rgba(45, 212, 191, 0.4);
+  border-bottom-color: transparent;
+  box-shadow: 0 -2px 10px rgba(45, 212, 191, 0.15);
+  text-decoration: none !important;
 }
 
 .inventory-nav-link.active:hover,
 .domain-nav-link.active:hover {
-  background: var(--app-content-bg);
+  background: #ffffff;
   color: var(--color-primary);
+  border: 1px solid rgb(1, 105, 111);
+  border-bottom: 1px solid #ffffff;
+  transform: none;
+  box-shadow: none;
+  text-decoration: none !important;
+}
+
+.inventory-nav-link.active:hover .nav-icon,
+.domain-nav-link.active:hover .nav-icon {
+  transform: none;
+}
+
+/* ── Main & Secondary Sidebar Styling & Hover Interactions ───────────────── */
+.sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  font-size: 12.5px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text);
+  margin-bottom: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.sidebar-nav-link:hover {
+  background: rgba(1, 105, 111, 0.10);
+  border: 1px solid rgba(1, 105, 111, 0.35);
+  color: rgb(1, 105, 111);
+  font-weight: 600;
+  transform: translateX(4px);
+  box-shadow: 0 2px 10px rgba(1, 105, 111, 0.12);
+  text-decoration: none !important;
+}
+
+.sidebar-nav-link.collapsed:hover {
+  transform: scale(1.08);
+}
+
+.sidebar-nav-link .sidebar-nav-icon {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-nav-link:hover .sidebar-nav-icon {
+  transform: scale(1.15);
+  background: rgba(1, 105, 111, 0.18) !important;
+  color: rgb(1, 105, 111);
+}
+
+.sidebar-nav-link.active {
+  background: rgba(1, 105, 111, 0.16);
+  border: 1px solid rgb(1, 105, 111);
+  color: rgb(1, 105, 111);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(1, 105, 111, 0.15);
+}
+
+.sidebar-nav-link.active:hover {
+  background: rgba(1, 105, 111, 0.22);
+  transform: translateX(4px);
+  box-shadow: 0 3px 12px rgba(1, 105, 111, 0.2);
+}
+
+.sidebar-nav-link.collapsed.active:hover {
+  transform: scale(1.08);
+}
+
+[data-theme="dark"] .sidebar-nav-link:hover {
+  background: rgba(1, 105, 111, 0.24);
+  border-color: rgba(45, 212, 191, 0.45);
+  color: #2dd4bf;
+  box-shadow: 0 2px 10px rgba(45, 212, 191, 0.16);
+}
+
+[data-theme="dark"] .sidebar-nav-link.active {
+  background: rgba(1, 105, 111, 0.35);
+  border-color: #2dd4bf;
+  color: #2dd4bf;
+}
+
+.sec-sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text);
+  margin-bottom: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.sec-sidebar-nav-link:hover {
+  background: rgba(1, 105, 111, 0.10);
+  border: 1px solid rgba(1, 105, 111, 0.35);
+  color: rgb(1, 105, 111);
+  font-weight: 600;
+  transform: translateX(4px);
+  box-shadow: 0 2px 10px rgba(1, 105, 111, 0.12);
+  text-decoration: none !important;
+}
+
+/* Explicitly disable underline on all sidebar and domain nav links and their children */
+a.sidebar-nav-link,
+a.sidebar-nav-link:hover,
+a.sidebar-nav-link:focus,
+a.sidebar-nav-link:active,
+a.sidebar-nav-link *,
+a.sec-sidebar-nav-link,
+a.sec-sidebar-nav-link:hover,
+a.sec-sidebar-nav-link:focus,
+a.sec-sidebar-nav-link:active,
+a.sec-sidebar-nav-link *,
+a.domain-nav-link,
+a.domain-nav-link:hover,
+a.domain-nav-link:focus,
+a.domain-nav-link:active,
+a.domain-nav-link *,
+a.inventory-nav-link,
+a.inventory-nav-link:hover,
+a.inventory-nav-link:focus,
+a.inventory-nav-link:active,
+a.inventory-nav-link * {
+  text-decoration: none !important;
+}
+
+.sec-sidebar-nav-link.collapsed:hover {
+  transform: scale(1.08);
+}
+
+.sec-sidebar-nav-link .sec-nav-num {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease;
+}
+
+.sec-sidebar-nav-link:hover .sec-nav-num {
+  transform: scale(1.15);
+  background: rgba(1, 105, 111, 0.2) !important;
+  color: rgb(1, 105, 111);
+}
+
+.sec-sidebar-nav-link.active {
+  background: rgba(1, 105, 111, 0.16);
+  border: 1px solid rgb(1, 105, 111);
+  color: rgb(1, 105, 111);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(1, 105, 111, 0.15);
+}
+
+.sec-sidebar-nav-link.active:hover {
+  background: rgba(1, 105, 111, 0.22);
+  transform: translateX(4px);
+  box-shadow: 0 3px 12px rgba(1, 105, 111, 0.2);
+}
+
+.sec-sidebar-nav-link.collapsed.active:hover {
+  transform: scale(1.08);
+}
+
+[data-theme="dark"] .sec-sidebar-nav-link:hover {
+  background: rgba(1, 105, 111, 0.24);
+  border-color: rgba(45, 212, 191, 0.45);
+  color: #2dd4bf;
+  box-shadow: 0 2px 10px rgba(45, 212, 191, 0.16);
+}
+
+[data-theme="dark"] .sec-sidebar-nav-link.active {
+  background: rgba(1, 105, 111, 0.35);
+  border-color: #2dd4bf;
+  color: #2dd4bf;
 }
 
 /* PC/Desktop dashboard grid: 6 columns */
@@ -805,9 +1004,9 @@ a:hover {
 
   .inventory-nav-link.active,
   .domain-nav-link.active {
-    border-color: var(--color-primary);
-    border-bottom-color: var(--app-content-bg);
-    background: var(--app-content-bg);
+    border-color: rgb(1, 105, 111);
+    border-bottom-color: var(--color-primary);
+    background: var(--color-primary-highlight);
   }
 
   .inventory-nav-link.active::before,

@@ -1,11 +1,11 @@
 import React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient, getErrorMessage } from "../../../api/client";
-import { useInventoryData } from "./useInventoryData";
+import { apiClient, getErrorMessage } from "../../../../api/client";
+import { useInventoryData, useProjectStock } from "./useInventoryData";
 import { InventoryItemSelect } from "./InventoryItemSelect";
 import { CheckInReferenceTable } from "./CheckInReferenceTable";
-import { useAuth } from "../../../auth/useAuth";
-import { isInventoryViewOnly } from "../../../auth/permissions";
+import { useAuth } from "../../../../auth/useAuth";
+import { isInventoryViewOnly } from "../../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 type CheckInMode = "existing" | "new";
@@ -177,6 +177,7 @@ export default function CheckInPage() {
   const { data, isLoading, error } = useInventoryData({ page: 1, pageSize: 200 });
 
   const [mode, setMode] = React.useState<CheckInMode>("existing");
+  const [hoveredMode, setHoveredMode] = React.useState<CheckInMode | null>(null);
   const [selectedItemId, setSelectedItemId] = React.useState("");
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkInQty, setCheckInQty] = React.useState(1);
@@ -250,6 +251,7 @@ export default function CheckInPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["inventory-project-stock"] });
       await queryClient.invalidateQueries({ queryKey: ["inventory-checkin-movements"] });
       await queryClient.invalidateQueries({ queryKey: ["active-project-loans"] });
       await queryClient.invalidateQueries({ queryKey: ["inventory-loans"] });
@@ -314,6 +316,19 @@ export default function CheckInPage() {
     if (!selectedItem) return "";
     return [selectedItem.sku ?? "", selectedItem.name ?? ""].filter(Boolean).join(" - ");
   }, [selectedItem]);
+
+  // Fetch real-time project stock holding balances for project-level validation
+  const { data: projectStockList = [] } = useProjectStock();
+
+  const projectStock = React.useMemo(() => {
+    if (!selectedItem?.id || !projectFor.trim()) return 0;
+    const match = projectStockList.find(
+      (ps) =>
+        ps.stockItemId === selectedItem.id &&
+        ps.project.trim().toLowerCase() === projectFor.trim().toLowerCase()
+    );
+    return match ? Number(match.availableBalance ?? 0) : 0;
+  }, [selectedItem?.id, projectFor, projectStockList]);
 
   // Fetch active approved loans for automated loan settlement at Check-In
   const { data: activeLoansData } = useQuery({
@@ -479,8 +494,8 @@ export default function CheckInPage() {
           borderRadius: "var(--radius)",
           border: isExisting ? "1px solid var(--color-primary-highlight)" : "1px solid var(--inventory-new-item-border)",
           background: isExisting ? "var(--inventory-card-bg)" : "var(--inventory-new-item-card-bg)",
-          boxShadow: isExisting ? "0 4px 16px var(--color-accent-soft)" : "0 4px 20px rgba(14, 165, 233, 0.15)",
-          transition: "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxShadow: "0 4px 16px rgb(37 147 153 / 65%)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
         {/* Mode Switcher */}
@@ -499,20 +514,35 @@ export default function CheckInPage() {
           <button
             type="button"
             onClick={() => setMode("existing")}
+            onMouseEnter={() => setHoveredMode("existing")}
+            onMouseLeave={() => setHoveredMode(null)}
             style={{
               padding: "10px 14px",
               borderRadius: 7,
-              border: isExisting ? "1px solid var(--color-primary)" : "1px solid transparent",
-              background: isExisting ? "var(--color-surface-2)" : "transparent",
-              color: isExisting ? "var(--color-text)" : "var(--color-text-muted)",
-              fontWeight: isExisting ? 700 : 500,
+              border: isExisting
+                ? "1px solid var(--color-primary)"
+                : hoveredMode === "existing"
+                ? "1px dashed var(--color-primary)"
+                : "1px solid transparent",
+              background: isExisting
+                ? "var(--color-surface-2)"
+                : hoveredMode === "existing"
+                ? "var(--color-primary-soft, rgba(1, 105, 111, 0.08))"
+                : "transparent",
+              color: isExisting || hoveredMode === "existing" ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: isExisting || hoveredMode === "existing" ? 700 : 500,
               fontSize: "var(--fs-xs)",
               display: "flex",
               alignItems: "center",
               gap: 10,
               cursor: "pointer",
-              transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: isExisting ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+              transform: !isExisting && hoveredMode === "existing" ? "translateY(-1px)" : "translateY(0)",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: isExisting
+                ? "0 2px 8px rgba(0,0,0,0.08)"
+                : hoveredMode === "existing"
+                ? "0 3px 10px rgba(1, 105, 111, 0.12)"
+                : "none",
             }}
           >
             <div
@@ -520,12 +550,17 @@ export default function CheckInPage() {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: isExisting ? "var(--color-primary-soft)" : "var(--color-surface-offset)",
-                color: isExisting ? "var(--color-primary)" : "var(--color-text-muted)",
+                background: isExisting
+                  ? "var(--color-primary-soft)"
+                  : hoveredMode === "existing"
+                  ? "var(--color-primary-soft)"
+                  : "var(--color-surface-offset)",
+                color: isExisting || hoveredMode === "existing" ? "var(--color-primary)" : "var(--color-text-muted)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                transition: "all 0.2s ease",
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -537,7 +572,7 @@ export default function CheckInPage() {
             <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontWeight: 700, fontSize: "12px" }}>Existing Item</span>
-                {isExisting && (
+                {isExisting ? (
                   <span
                     style={{
                       fontSize: "9px",
@@ -552,7 +587,23 @@ export default function CheckInPage() {
                   >
                     Active Mode
                   </span>
-                )}
+                ) : hoveredMode === "existing" ? (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      padding: "1px 7px",
+                      borderRadius: 10,
+                      background: "var(--color-primary-soft)",
+                      color: "var(--color-primary)",
+                      fontWeight: 700,
+                      letterSpacing: "0.03em",
+                      textTransform: "uppercase",
+                      border: "1px dashed var(--color-primary-highlight)",
+                    }}
+                  >
+                    Click to Switch ↵
+                  </span>
+                ) : null}
               </div>
               <div
                 style={{
@@ -565,7 +616,7 @@ export default function CheckInPage() {
                   marginTop: 2,
                 }}
               >
-                Select item from inventory catalog & add quantity
+                Select item from inventory catalog &amp; add quantity
               </div>
             </div>
           </button>
@@ -573,20 +624,35 @@ export default function CheckInPage() {
           <button
             type="button"
             onClick={() => setMode("new")}
+            onMouseEnter={() => setHoveredMode("new")}
+            onMouseLeave={() => setHoveredMode(null)}
             style={{
               padding: "10px 14px",
               borderRadius: 7,
-              border: !isExisting ? "1px solid #0284c7" : "1px solid transparent",
-              background: !isExisting ? "var(--color-surface-2)" : "transparent",
-              color: !isExisting ? "var(--color-text)" : "var(--color-text-muted)",
-              fontWeight: !isExisting ? 700 : 500,
+              border: !isExisting
+                ? "1px solid #0284c7"
+                : hoveredMode === "new"
+                ? "1px dashed #0284c7"
+                : "1px solid transparent",
+              background: !isExisting
+                ? "var(--color-surface-2)"
+                : hoveredMode === "new"
+                ? "rgba(2, 132, 199, 0.08)"
+                : "transparent",
+              color: !isExisting || hoveredMode === "new" ? "var(--color-text)" : "var(--color-text-muted)",
+              fontWeight: !isExisting || hoveredMode === "new" ? 700 : 500,
               fontSize: "var(--fs-xs)",
               display: "flex",
               alignItems: "center",
               gap: 10,
               cursor: "pointer",
-              transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: !isExisting ? "0 2px 8px rgba(14, 165, 233, 0.15)" : "none",
+              transform: isExisting && hoveredMode === "new" ? "translateY(-1px)" : "translateY(0)",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: !isExisting
+                ? "0 2px 8px rgba(14, 165, 233, 0.15)"
+                : hoveredMode === "new"
+                ? "0 3px 10px rgba(2, 132, 199, 0.12)"
+                : "none",
             }}
           >
             <div
@@ -594,12 +660,17 @@ export default function CheckInPage() {
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                background: !isExisting ? "rgba(14, 165, 233, 0.12)" : "var(--color-surface-offset)",
-                color: !isExisting ? "#0284c7" : "var(--color-text-muted)",
+                background: !isExisting
+                  ? "rgba(14, 165, 233, 0.12)"
+                  : hoveredMode === "new"
+                  ? "rgba(2, 132, 199, 0.12)"
+                  : "var(--color-surface-offset)",
+                color: !isExisting || hoveredMode === "new" ? "#0284c7" : "var(--color-text-muted)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                transition: "all 0.2s ease",
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -611,7 +682,7 @@ export default function CheckInPage() {
             <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontWeight: 700, fontSize: "12px" }}>New Item</span>
-                {!isExisting && (
+                {!isExisting ? (
                   <span
                     style={{
                       fontSize: "9px",
@@ -626,7 +697,23 @@ export default function CheckInPage() {
                   >
                     Active Mode
                   </span>
-                )}
+                ) : hoveredMode === "new" ? (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      padding: "1px 7px",
+                      borderRadius: 10,
+                      background: "rgba(2, 132, 199, 0.12)",
+                      color: "#0284c7",
+                      fontWeight: 700,
+                      letterSpacing: "0.03em",
+                      textTransform: "uppercase",
+                      border: "1px dashed rgba(2, 132, 199, 0.4)",
+                    }}
+                  >
+                    Click to Switch ↵
+                  </span>
+                ) : null}
               </div>
               <div
                 style={{
@@ -1091,21 +1178,29 @@ export default function CheckInPage() {
         )}
 
         {mode === "existing" && (
-          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-            <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Current Stock</div>
-              <div style={{ fontSize: "var(--fs-md)", color: "var(--color-text)", fontWeight: 700 }}>{selectedItem ? selectedItemQuantity : "—"}</div>
-            </div>
-            <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Projected Balance</div>
-              <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : checkInQty <= 0 ? "#b91c1c" : "var(--color-text)", fontWeight: 700 }}>
-                {selectedItem ? selectedItemQuantity + Math.max(0, checkInQty) : "—"}
+          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 8 }}>
+            <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Project Stock ({projectFor || "Selected"})</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: selectedItem ? (projectStock > 0 ? "#166534" : "#b45309") : "var(--color-text)", fontWeight: 800 }}>
+                {selectedItem ? `${projectStock} ${selectedItem.unit || "units"}` : "—"}
               </div>
             </div>
-            <div style={{ padding: "10px 12px", border: "1px solid var(--color-border)", borderRadius: "var(--radius-sm)", background: "var(--color-surface)" }}>
-              <div style={{ fontSize: "var(--fs-xs)", color: "var(--color-text-muted)" }}>Validation</div>
-              <div style={{ fontSize: "var(--fs-md)", color: !selectedItem ? "var(--color-text-muted)" : checkInQty <= 0 ? "#b91c1c" : "#166534", fontWeight: 700 }}>
-                {!selectedItem ? "Select item" : checkInQty <= 0 ? "Enter quantity" : "Valid"}
+            <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Project Projected Balance</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: !selectedItem ? "var(--color-text-muted)" : checkInQty <= 0 ? "#b91c1c" : "#166534", fontWeight: 800 }}>
+                {selectedItem ? `${projectStock + Math.max(0, checkInQty)} ${selectedItem.unit || "units"}` : "—"}
+              </div>
+            </div>
+            <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Total Facility Stock</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--color-text)", fontWeight: 800 }}>
+                {selectedItem ? `${selectedItemQuantity} → ${selectedItemQuantity + Math.max(0, checkInQty)} ${selectedItem.unit || "units"}` : "—"}
+              </div>
+            </div>
+            <div style={{ padding: "8px 10px", border: "1px solid var(--color-border)", borderRadius: "6px", background: "var(--color-surface)" }}>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 600 }}>Validation</div>
+              <div style={{ fontSize: "11px", color: !selectedItem ? "var(--color-text-muted)" : checkInQty <= 0 ? "#b91c1c" : "#166534", fontWeight: 800 }}>
+                {!selectedItem ? "Select item" : checkInQty <= 0 ? "Enter quantity" : `✓ Valid (Adds to ${projectFor})`}
               </div>
             </div>
           </div>

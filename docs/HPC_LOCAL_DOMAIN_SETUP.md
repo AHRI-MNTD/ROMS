@@ -119,3 +119,18 @@ To make client browsers trust the certificate automatically:
 | MinIO Storage | `9000` | `http://roms.hpc.local/storage/` | Document & Blob Storage |
 | MinIO Console | `9002` | `http://roms.hpc.local:9002` | Admin Storage Console |
 | MQTT Broker | `1883` | `http://roms.hpc.local:1883` | IoT / Lab Instrument Stream |
+
+## 4. Production MQTT credentials
+
+The production Compose file disables anonymous MQTT access. Before starting production,
+create a Mosquitto password file on the deployment host and set its absolute path in the
+production environment:
+
+```bash
+mosquitto_passwd -c /secure/roms/mosquitto.pass roms-iot
+chmod 600 /secure/roms/mosquitto.pass
+echo 'MQTT_PASSWORD_FILE=/secure/roms/mosquitto.pass' >> .env.production
+```
+
+Configure each simulator or instrument with the same broker username and its own password.
+Do not use the development `infra/mosquitto/mosquitto.conf` in production.

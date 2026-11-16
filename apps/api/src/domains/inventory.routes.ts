@@ -346,6 +346,7 @@ router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Re
   const all = String(req.query.all ?? "").toLowerCase() === "true";
   const search = String(req.query.search ?? "").trim();
   const category = String(req.query.category ?? "").trim();
+  const project = String(req.query.project ?? "").trim();
   const stockFilter = String(req.query.stockFilter ?? "all").toLowerCase();
   const filterClauses: Prisma.Sql[] = [];
 
@@ -362,6 +363,13 @@ router.get("/", requireAuth, requirePermission("inventory:read"), async (req: Re
 
   if (category.length > 0 && category.toLowerCase() !== "all") {
     filterClauses.push(Prisma.sql`category ILIKE ${category}`);
+  }
+
+  if (project.length > 0 && project.toLowerCase() !== "all") {
+    filterClauses.push(Prisma.sql`id IN (
+      SELECT DISTINCT "stockItemId" FROM "InventoryMovement"
+      WHERE ("projectFor" ILIKE ${project} OR "destination" ILIKE ${project})
+    )`);
   }
 
   const pctCalcSql = Prisma.sql`(CASE WHEN "checkInTotal" > 0 THEN ("quantity"::float / "checkInTotal") * 100 WHEN "quantity" > 0 THEN 100 ELSE 0 END)`;
@@ -1952,8 +1960,12 @@ export function isUserApproverForProject(
 // GET /domains/inventory/project-stock - Get real-time stock balance held by each project
 router.get("/project-stock", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const project = String(req.query.project ?? "").trim();
+  const stockItemId = String(req.query.stockItemId ?? "").trim();
 
   const whereMovements: any = {};
+  if (stockItemId) {
+    whereMovements.stockItemId = stockItemId;
+  }
   if (project && project !== "ALL") {
     whereMovements.OR = [
       { projectFor: { equals: project, mode: "insensitive" } },
@@ -1971,7 +1983,10 @@ router.get("/project-stock", requireAuth, requirePermission("inventory:read"), a
       },
     }),
     prisma.projectLoan.findMany({
-      where: { status: "APPROVED" },
+      where: {
+        status: "APPROVED",
+        ...(stockItemId ? { stockItemId } : {}),
+      },
     }),
   ]);
 
@@ -1990,8 +2005,8 @@ router.get("/project-stock", requireAuth, requirePermission("inventory:read"), a
   }>();
 
   for (const m of movements) {
-    const proj = (m.projectFor || m.destination || "ROMS Inventory").trim();
-    if (!proj || proj === "ROMS Inventory") continue;
+    const rawProj = (m.projectFor || m.destination || "").trim();
+    const proj = rawProj || "General Stock";
     if (project && project !== "ALL" && proj.toLowerCase() !== project.toLowerCase()) continue;
 
     const key = `${m.stockItemId}__${proj}`;
@@ -2018,6 +2033,7 @@ router.get("/project-stock", requireAuth, requirePermission("inventory:read"), a
   }
 
   for (const l of activeLoans) {
+    if (stockItemId && l.stockItemId !== stockItemId) continue;
     const lenderKey = `${l.stockItemId}__${l.lenderProject}`;
     if (map.has(lenderKey)) {
       const cur = map.get(lenderKey)!;

@@ -328,6 +328,96 @@ model InventoryMasterData {
   @@index([staff])
 }
 
+model ReagentItem {
+  id                         String   @id @default(cuid())
+  reagentCode                String   @unique
+  description                String
+  assayType                  String
+  reagentType                String?
+  concentration              String?
+  availableConcentration     Float    @default(0)
+  initialConcentration       Float    @default(0)
+  issuedConcentration        Float    @default(0)
+  expectedReturnConcentration Float    @default(0)
+  concentrationUnit          String?
+  quantity                   Float?
+  quantityUnit               String?
+  volume                     Float?
+  volumeUnit                 String?
+  lotNumber                  String?
+  expiryDate                 DateTime?
+  storageCondition           String
+  location                   String?
+  receivedFrom               String?
+  minThreshold               Float    @default(0)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  movements ReagentMovement[]
+  requests  ReagentRequest[]
+
+  @@index([assayType])
+  @@index([reagentType])
+  @@index([expiryDate])
+  @@index([storageCondition])
+}
+
+model ReagentMovement {
+  id                    String   @id @default(cuid())
+  reagentItemId         String
+  reagentItem           ReagentItem @relation(fields: [reagentItemId], references: [id], onDelete: Restrict)
+  movementType          String
+  concentration         Float
+  numberOfVill          Int?
+  expectedReturn        Float?
+  projectFor            String?
+  requestedBy           String?
+  recipient             String?
+  status                String   @default("APPROVED")
+  lotNumber             String?
+  expiryDate            DateTime?
+  remark                String?
+  occurredAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+
+  @@index([reagentItemId])
+  @@index([movementType])
+  @@index([status])
+  @@index([occurredAt])
+}
+
+model ReagentRequest {
+  id                    String   @id @default(cuid())
+  requestBatchId        String
+  reagentItemId         String?
+  assayType             String
+  reagentType           String?
+  projectFor            String?
+  concentration         Float?
+  concentrationUnit     String?
+  numberOfVill          Int?
+  requestedBy           String
+  requestedFor          String?
+  additionalFields      Json?
+  requestedConcentration Float
+  approvedConcentration  Float   @default(0)
+  expectedReturn        Float?
+  status                String   @default("PENDING")
+  approver              String?
+  decisionAt            DateTime?
+  disbursedAt           DateTime?
+  remark                String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  reagentItem ReagentItem? @relation(fields: [reagentItemId], references: [id], onDelete: Restrict)
+
+  @@index([requestBatchId])
+  @@index([status])
+  @@index([assayType])
+  @@index([requestedBy])
+}
+
 // ─── 3. QMS / SOPs ────────────────────────────────────────────────────────────
 
 enum SOPStatus {

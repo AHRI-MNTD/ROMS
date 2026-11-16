@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient, getErrorMessage } from "../../../api/client";
-import { useAuth } from "../../../auth/useAuth";
+import { apiClient, getErrorMessage } from "../../../../api/client";
+import { useAuth } from "../../../../auth/useAuth";
 import { isUserAssignedApprover, getApproverForProject } from "./InventoryManagerPage";
-import { isInventoryViewOnly, hasTabAccess } from "../../../auth/permissions";
+import { isInventoryViewOnly, hasTabAccess } from "../../../../auth/permissions";
 import { ViewOnlyBanner } from "./ViewOnlyBanner";
 
 export interface ProjectLoanRecord {
@@ -89,6 +89,7 @@ export default function ProjectLoansPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [hoveredKpi, setHoveredKpi] = useState<string | null>(null);
 
   // View & Modal States
   const [isRequestView, setIsRequestView] = useState(false);
@@ -677,10 +678,12 @@ export default function ProjectLoansPage() {
           alignItems: "center",
           flexWrap: "wrap",
           gap: 12,
-          padding: "14px 18px",
-          background: cardBackground,
-          borderRadius: 12,
-          border: borderStyle,
+          padding: 18,
+          borderRadius: "var(--radius)",
+          border: "1px solid var(--color-primary-highlight)",
+          background: "var(--inventory-card-bg)",
+          boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
         <div>
@@ -1297,34 +1300,95 @@ export default function ProjectLoansPage() {
         <>
 
 
-          {/* ── Summary KPI Bar ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+          {/* ── Summary KPI Bar (Subtle near-white gradient with interactive hover action) ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
             {[
-              { label: "Total Loan Requests", value: stats.total, color: "var(--color-primary)", icon: "📋" },
-              { label: "Pending Reviews", value: stats.pending, color: "#d97706", icon: "⏳", alert: stats.pending > 0 },
-              { label: "Active Loans", value: stats.active, color: "#0284c7", icon: "🤝" },
-              { label: "Completed Returns", value: stats.returned, color: "#16a34a", icon: "✅" },
-              { label: "Rejected Requests", value: stats.rejected, color: "#dc2626", icon: "❌" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  padding: "10px 14px",
-                  background: cardBackground,
-                  borderRadius: 10,
-                  border: item.alert ? `1.5px solid ${item.color}` : borderStyle,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "10.5px", color: "var(--color-text-muted)", fontWeight: 600 }}>{item.label}</div>
-                  <div style={{ fontSize: "18px", fontWeight: 800, color: item.color, marginTop: 2 }}>{item.value}</div>
+              { id: "total", label: "Total Loan Requests", value: stats.total, color: "#0284c7", icon: "📋", filterVal: "ALL" },
+              { id: "pending", label: "Pending Reviews", value: stats.pending, color: "#d97706", icon: "⏳", alert: stats.pending > 0, filterVal: "PENDING" },
+              { id: "active", label: "Active Loans", value: stats.active, color: "#0d9488", icon: "🤝", filterVal: "ACCEPTED" },
+              { id: "returned", label: "Completed Returns", value: stats.returned, color: "#16a34a", icon: "✅", filterVal: "RETURNED" },
+              { id: "rejected", label: "Rejected Requests", value: stats.rejected, color: "#dc2626", icon: "❌", filterVal: "REJECTED" },
+            ].map((item) => {
+              const isSelected = statusFilter === item.filterVal;
+              const isHovered = hoveredKpi === item.id;
+
+              const background = isDarkMode
+                ? isSelected
+                  ? `linear-gradient(145deg, ${item.color}26 0%, #0c1524 100%)`
+                  : isHovered
+                    ? `linear-gradient(145deg, ${item.color}18 0%, #0f1a2e 100%)`
+                    : "linear-gradient(145deg, #182234 0%, #0f172a 100%)"
+                : isSelected
+                  ? `linear-gradient(145deg, #ffffff 30%, ${item.color}18 100%)`
+                  : isHovered
+                    ? `linear-gradient(145deg, #ffffff 35%, ${item.color}12 100%)`
+                    : `linear-gradient(145deg, #ffffff 50%, ${item.color}0a 100%)`;
+
+              const border = isSelected
+                ? `1.5px solid ${item.color}`
+                : isHovered
+                  ? `1px solid ${item.color}66`
+                  : item.alert
+                    ? `1.5px solid ${item.color}88`
+                    : isDarkMode
+                      ? "1px solid rgba(255, 255, 255, 0.08)"
+                      : "1px solid var(--color-border)";
+
+              const boxShadow = isHovered
+                ? `0 6px 18px rgba(0, 0, 0, 0.08), 0 0 0 1px ${item.color}22`
+                : isSelected
+                  ? `0 4px 14px ${item.color}22`
+                  : "0 2px 6px rgba(0, 0, 0, 0.03)";
+
+              return (
+                <div
+                  key={item.label}
+                  onClick={() => setStatusFilter(item.filterVal)}
+                  onMouseEnter={() => setHoveredKpi(item.id)}
+                  onMouseLeave={() => setHoveredKpi(null)}
+                  style={{
+                    padding: "10px 14px",
+                    background,
+                    borderRadius: 10,
+                    border,
+                    boxShadow,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    transform: isHovered ? "translateY(-3px)" : "translateY(0)",
+                    cursor: "pointer",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    position: "relative",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: "10.5px",
+                        color: isSelected || isHovered ? item.color : "var(--color-text-muted)",
+                        fontWeight: 700,
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "18px",
+                        fontWeight: 800,
+                        color: item.color,
+                        marginTop: 2,
+                      }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 20, opacity: isHovered || isSelected ? 1 : 0.85, transition: "opacity 0.2s ease" }}>
+                    {item.icon}
+                  </div>
                 </div>
-                <div style={{ fontSize: 20, opacity: 0.85 }}>{item.icon}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* ── Dedicated Action Section for Pending Incoming Requests ── */}
@@ -1341,7 +1405,7 @@ export default function ProjectLoansPage() {
               <div
                 style={{
                   padding: "10px 16px",
-                  background: isDarkMode ? "rgba(1, 105, 111, 0.2)" : "linear-gradient(90deg, rgb(1 105 111 / 0%), #01696f4f)",
+                  background: isDarkMode ? "rgba(1, 105, 111, 0.2)" : "rgba(255, 255, 255, 1)",
                   borderBottom: "1px solid #01696f",
                   display: "flex",
                   justifyContent: "space-between",
