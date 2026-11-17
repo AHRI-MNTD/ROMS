@@ -432,43 +432,106 @@ router.get("/equipment", requireAuth, requirePermission("inventory:read"), async
 
 router.get("/master-data", requireAuth, requirePermission("inventory:read"), async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
-  const pageSize = parseInt(req.query.pageSize as string) || 50;
-  const search = String(req.query.search ?? "").trim();
+  const pageSize = parseInt(req.query.pageSize as string) || 20;
+  const search = String(req.query.search ?? "").trim().toLowerCase();
 
-  const where = search
-    ? {
-        OR: [
-          { category: { contains: search, mode: "insensitive" as const } },
-          { unit: { contains: search, mode: "insensitive" as const } },
-          { project: { contains: search, mode: "insensitive" as const } },
-          { staff: { contains: search, mode: "insensitive" as const } },
-        ],
-      }
-    : undefined;
+  const allRows = await inventoryPrisma.inventoryMasterData.findMany();
 
-  const [data, total, allRows] = await Promise.all([
-    inventoryPrisma.inventoryMasterData.findMany({
-      where,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      orderBy: [{ category: "asc" }, { unit: "asc" }, { project: "asc" }, { staff: "asc" }],
-    }),
-    inventoryPrisma.inventoryMasterData.count({ where }),
-    inventoryPrisma.inventoryMasterData.findMany({
-      where,
-      select: { category: true, unit: true, project: true, staff: true },
-    }),
-  ]);
+  // Build unique non-empty sorted lists for each of the 4 columns
+  const categoriesMap = new Map<string, string>(); // val -> id
+  const unitsMap = new Map<string, string>();
+  const projectsMap = new Map<string, string>();
+  const staffMap = new Map<string, string>();
+
+  allRows.forEach((r) => {
+    if (r.category && r.category.trim() && r.category.trim() !== "-") {
+      const v = r.category.trim();
+      if (!categoriesMap.has(v)) categoriesMap.set(v, r.id);
+    }
+    if (r.unit && r.unit.trim() && r.unit.trim() !== "-") {
+      const v = r.unit.trim();
+      if (!unitsMap.has(v)) unitsMap.set(v, r.id);
+    }
+    if (r.project && r.project.trim() && r.project.trim() !== "-") {
+      const v = r.project.trim();
+      if (!projectsMap.has(v)) projectsMap.set(v, r.id);
+    }
+    if (r.staff && r.staff.trim() && r.staff.trim() !== "-") {
+      const v = r.staff.trim();
+      if (!staffMap.has(v)) staffMap.set(v, r.id);
+    }
+  });
+
+  let sortedCategories = Array.from(categoriesMap.entries())
+    .map(([val, id]) => ({ val, id }))
+    .sort((a, b) => a.val.localeCompare(b.val, undefined, { sensitivity: "base" }));
+
+  let sortedUnits = Array.from(unitsMap.entries())
+    .map(([val, id]) => ({ val, id }))
+    .sort((a, b) => a.val.localeCompare(b.val, undefined, { sensitivity: "base" }));
+
+  let sortedProjects = Array.from(projectsMap.entries())
+    .map(([val, id]) => ({ val, id }))
+    .sort((a, b) => a.val.localeCompare(b.val, undefined, { sensitivity: "base" }));
+
+  let sortedStaff = Array.from(staffMap.entries())
+    .map(([val, id]) => ({ val, id }))
+    .sort((a, b) => a.val.localeCompare(b.val, undefined, { sensitivity: "base" }));
+
+  if (search) {
+    sortedCategories = sortedCategories.filter((c) => c.val.toLowerCase().includes(search));
+    sortedUnits = sortedUnits.filter((u) => u.val.toLowerCase().includes(search));
+    sortedProjects = sortedProjects.filter((p) => p.val.toLowerCase().includes(search));
+    sortedStaff = sortedStaff.filter((s) => s.val.toLowerCase().includes(search));
+  }
+
+  const maxTotal = Math.max(
+    sortedCategories.length,
+    sortedUnits.length,
+    sortedProjects.length,
+    sortedStaff.length
+  );
+
+  const startIdx = (page - 1) * pageSize;
+  const pageRows = [];
+
+  for (let i = 0; i < pageSize; i++) {
+    const idx = startIdx + i;
+    if (idx >= maxTotal) break;
+
+    const cat = sortedCategories[idx];
+    const unt = sortedUnits[idx];
+    const prj = sortedProjects[idx];
+    const stf = sortedStaff[idx];
+
+    pageRows.push({
+      id: cat?.id || unt?.id || prj?.id || stf?.id || `idx-${idx}`,
+      category: cat?.val || "",
+      categoryId: cat?.id || null,
+      unit: unt?.val || "",
+      unitId: unt?.id || null,
+      project: prj?.val || "",
+      projectId: prj?.id || null,
+      staff: stf?.val || "",
+      staffId: stf?.id || null,
+    });
+  }
 
   const summary = {
-    rows: allRows.length,
-    categories: new Set(allRows.map((row) => row.category).filter(Boolean)).size,
-    units: new Set(allRows.map((row) => row.unit).filter(Boolean)).size,
-    projects: new Set(allRows.map((row) => row.project).filter((v) => Boolean(v))).size,
-    staff: new Set(allRows.map((row) => row.staff).filter((v) => Boolean(v))).size,
+    rows: maxTotal,
+    categories: categoriesMap.size,
+    units: unitsMap.size,
+    projects: projectsMap.size,
+    staff: staffMap.size,
   };
 
-  res.json({ data, total, page, pageSize, summary });
+  res.json({
+    data: pageRows,
+    total: maxTotal,
+    page,
+    pageSize,
+    summary,
+  });
 });
 
 router.get("/master-data/projects", requireAuth, requirePermission("inventory:read"), async (_req: Request, res: Response) => {

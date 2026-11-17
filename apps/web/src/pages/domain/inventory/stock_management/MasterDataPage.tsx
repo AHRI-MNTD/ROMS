@@ -139,21 +139,23 @@ export default function MasterDataPage() {
     });
   };
 
-  const handleStartEdit = (row: InventoryMasterDataRow) => {
-    setEditingId(row.id);
-    setEditCategory(row.category);
-    setEditUnit(row.unit);
-    setEditProject(row.project || "");
-    setEditStaff(row.staff || "");
+  const handleStartEdit = (entry: any, key?: string) => {
+    const targetId = (key && entry[`${key}Id`]) || entry.id;
+    setEditingId(targetId);
+    setEditCategory(entry.category || "");
+    setEditUnit(entry.unit || "");
+    setEditProject(entry.project || "");
+    setEditStaff(entry.staff || "");
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
   };
 
-  const handleSaveEdit = (id: string) => {
+  const handleSaveEdit = (entry: any, key?: string) => {
+    const targetId = (key && entry[`${key}Id`]) || entry.id;
     updateMutation.mutate({
-      id,
+      id: targetId,
       payload: {
         category: editCategory.trim(),
         unit: editUnit.trim(),
@@ -163,9 +165,11 @@ export default function MasterDataPage() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this master data record? This may affect inventory forms referencing it.")) {
-      deleteMutation.mutate(id);
+  const handleDelete = (entry: any, key?: string) => {
+    const targetId = (key && entry[`${key}Id`]) || entry.id;
+    const val = (key && entry[key]) || entry.name || "this record";
+    if (window.confirm(`Are you sure you want to delete "${val}"? This may affect inventory forms referencing it.`)) {
+      deleteMutation.mutate(targetId);
     }
   };
 
@@ -581,12 +585,15 @@ export default function MasterDataPage() {
                           <td colSpan={3} style={{ padding: "6px 8px", fontSize: "10px", color: "var(--color-text-muted)" }}>—</td>
                         </tr>
                       ) : (
-                        entries.map((entry, idx) => {
-                          const isEditing = editingId === entry.id;
+                        entries.map((entry: any, idx) => {
+                          const targetId = entry[`${c.key}Id`] || entry.id;
+                          const isEditing = editingId === targetId;
                           const cellVal = String(entry[c.key] ?? "");
                           return (
-                            <tr key={entry.id} style={{ borderBottom: "1px solid var(--color-divider)", height: 32, background: isEditing ? "rgba(1,105,111,0.04)" : "none" }}>
-                              <td style={{ padding: "4px 6px 4px 8px", fontSize: "10px", color: "var(--color-text-faint)", textAlign: "right", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{idx + 1}</td>
+                            <tr key={`${c.key}-${targetId}-${idx}`} style={{ borderBottom: "1px solid var(--color-divider)", height: 32, background: isEditing ? "rgba(1,105,111,0.04)" : "none" }}>
+                              <td style={{ padding: "4px 6px 4px 8px", fontSize: "10px", color: "var(--color-text-faint)", textAlign: "right", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {(page - 1) * pageSize + idx + 1}
+                              </td>
                               <td style={{ padding: "4px 8px", verticalAlign: "middle", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {isEditing ? (
                                   <input
@@ -603,13 +610,13 @@ export default function MasterDataPage() {
                               <td style={{ padding: "4px 6px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap" }}>
                                 {isEditing ? (
                                   <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
-                                    <button onClick={() => handleSaveEdit(entry.id)} disabled={updateMutation.isPending} style={{ background: "none", border: "none", color: "#16a34a", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Save">✔️</button>
+                                    <button onClick={() => handleSaveEdit(entry, c.key)} disabled={updateMutation.isPending} style={{ background: "none", border: "none", color: "#16a34a", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Save">✔️</button>
                                     <button onClick={handleCancelEdit} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Cancel">❌</button>
                                   </div>
                                 ) : (
                                   <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
-                                    <button onClick={() => handleStartEdit(entry)} style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Edit record">✏️</button>
-                                    <button onClick={() => handleDelete(entry.id)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Delete record">🗑️</button>
+                                    <button onClick={() => handleStartEdit(entry, c.key)} style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Edit record">✏️</button>
+                                    <button onClick={() => handleDelete(entry, c.key)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px", padding: 0 }} title="Delete record">🗑️</button>
                                   </div>
                                 )}
                               </td>

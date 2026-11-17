@@ -5,6 +5,63 @@ import { logger } from "../utils/logger";
 
 const log = logger || console;
 
+function parseCleanNumber(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  const str = String(val).replace(/,/g, "").replace(/%/g, "").trim();
+  if (!str) return 0;
+  const match = str.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return 0;
+  const num = parseFloat(match[0]);
+  return Number.isFinite(num) ? Math.round(num) : 0;
+}
+
+function parseCleanDate(val: unknown): Date {
+  if (!val) return new Date();
+  const str = String(val).trim();
+  if (!str) return new Date();
+
+  // Excel serial date code
+  if (typeof val === "number" || /^\d{5}$/.test(str)) {
+    const num = typeof val === "number" ? val : parseInt(str, 10);
+    if (num > 20000 && num < 70000) {
+      const utcDays = num - 25569;
+      const utcValue = utcDays * 86400 * 1000;
+      const d = new Date(utcValue);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+
+  // Format: "2027" or "2028"
+  if (/^\d{4}$/.test(str)) {
+    return new Date(`${str}-12-31T23:59:59.000Z`);
+  }
+
+  // Format: "MM-YYYY" (e.g. "02-2027", "09-2027")
+  const mmyyyy = str.match(/^(\d{1,2})-(\d{4})$/);
+  if (mmyyyy) {
+    const month = parseInt(mmyyyy[1], 10);
+    const year = parseInt(mmyyyy[2], 10);
+    const lastDay = new Date(year, month, 0).getDate();
+    return new Date(Date.UTC(year, month - 1, lastDay, 23, 59, 59));
+  }
+
+  // Format: "M/D/YYYY" (e.g. "5/6/2026", "5/15/2026")
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    const month = parseInt(mdy[1], 10);
+    const day = parseInt(mdy[2], 10);
+    const year = parseInt(mdy[3], 10);
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  }
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 1990 && parsed.getFullYear() <= 2100) {
+    return parsed;
+  }
+
+  return new Date();
+}
+
 export interface SyncMovementPayload {
   id?: string;
   stockItemSku: string;
@@ -354,10 +411,10 @@ export class GoogleSheetsSyncService {
 
         const category = row[2]?.trim() || "General";
         const unit = row[3]?.trim() || "units";
-        const checkInTotal = parseInt(row[4], 10) || 0;
-        const checkOutTotal = parseInt(row[5], 10) || 0;
-        const quantity = parseInt(row[6], 10) || 0;
-        const minThreshold = parseInt(row[7], 10) || 5;
+        const checkInTotal = parseCleanNumber(row[4]);
+        const checkOutTotal = parseCleanNumber(row[5]);
+        const quantity = parseCleanNumber(row[6]);
+        const minThreshold = parseCleanNumber(row[7]) || 5;
 
         await prismaClient.stockItem.upsert({
           where: { sku },
@@ -400,7 +457,7 @@ export class GoogleSheetsSyncService {
           const name = row[2]?.trim();
           if (!sku || !name) continue;
 
-          const quantity = parseInt(row[3], 10) || 0;
+          const quantity = parseCleanNumber(row[3]);
           if (quantity <= 0) continue;
 
           let stockItem = await prismaClient.stockItem.findUnique({ where: { sku } });
@@ -419,7 +476,7 @@ export class GoogleSheetsSyncService {
           }
 
           const dateStr = row[8]?.trim();
-          const occurredAt = dateStr && !isNaN(Date.parse(dateStr)) ? new Date(dateStr) : new Date();
+          const occurredAt = parseCleanDate(dateStr);
           const projectFor = row[7]?.trim() || "ROMS Inventory";
           const rowRemark = row[10]?.trim() || "Synced from Google Sheets Check-in";
           const syncIdTag = `[GSHEET_ROW:Check-in:${i}:${sku}:${quantity}:${dateStr || ""}]`;
@@ -467,7 +524,7 @@ export class GoogleSheetsSyncService {
           const name = row[2]?.trim();
           if (!sku || !name) continue;
 
-          const quantity = parseInt(row[3], 10) || 0;
+          const quantity = parseCleanNumber(row[3]);
           if (quantity <= 0) continue;
 
           let stockItem = await prismaClient.stockItem.findUnique({ where: { sku } });
@@ -486,7 +543,7 @@ export class GoogleSheetsSyncService {
           }
 
           const dateStr = row[7]?.trim();
-          const occurredAt = dateStr && !isNaN(Date.parse(dateStr)) ? new Date(dateStr) : new Date();
+          const occurredAt = parseCleanDate(dateStr);
           const requestedBy = row[8]?.trim() || "Google Sheets Sync";
           const projectFor = row[9]?.trim() || "ROMS Inventory";
           const rowRemark = row[10]?.trim() || "Synced from Google Sheets Check-out";
