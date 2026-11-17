@@ -418,12 +418,14 @@ export class GoogleSheetsSyncService {
   public static async pullAll(prismaClient: any): Promise<SyncPullResult> {
     const hasCreds = this.init();
     if (!hasCreds) {
-      if (process.env.NODE_ENV === "production") {
-        log.error(new Error("Google Sheets credentials absent in production"), "[GoogleSheetsSync] Cannot pull data: Google Sheets credentials are missing in production mode.");
-        throw new Error("Google Sheets sync credentials are not configured in production mode.");
-      }
-      log.info("[GoogleSheetsSync] Credentials not configured. Running local CSV fallback sync.");
-      return await this.syncFromLocalCsvs(prismaClient);
+      log.warn("[GoogleSheetsSync] Google Sheets credentials not configured. Pull skipped.");
+      return {
+        importedStockItems: 0,
+        importedCheckIns: 0,
+        importedCheckOuts: 0,
+        importedMasterData: 0,
+        source: "local_csv",
+      };
     }
 
     try {
@@ -672,162 +674,16 @@ export class GoogleSheetsSyncService {
   }
 
   /**
-   * Local CSV sync fallback when Google credentials are not configured.
+   * Local CSV sync deprecated - ROMS PostgreSQL database is the authoritative source of truth.
    */
-  private static async syncFromLocalCsvs(prismaClient: any): Promise<SyncPullResult> {
-    try {
-      const fs = require("fs");
-      const path = require("path");
-
-      const parseCsvLine = (line: string): string[] => {
-        const result: string[] = [];
-        let current = "";
-        let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = "";
-          } else {
-            current += char;
-          }
-        }
-        result.push(current);
-        return result;
-      };
-
-      const parseNumber = (val: string) => {
-        if (!val) return 0;
-        const cleaned = val.replace(/,/g, "").replace(/%/g, "").trim();
-        const num = parseInt(cleaned, 10);
-        return isNaN(num) ? 0 : num;
-      };
-
-      let importedStockItems = 0;
-      let importedCheckIns = 0;
-      let importedCheckOuts = 0;
-      let importedMasterData = 0;
-
-      // 1. Current Inventory CSV
-      const currPaths = [
-        path.resolve(process.cwd(), "MNTD Inventory Management 2026 - Current Inventory.csv"),
-        path.resolve(process.cwd(), "../../MNTD Inventory Management 2026 - Current Inventory.csv"),
-        path.resolve(__dirname, "../../../../MNTD Inventory Management 2026 - Current Inventory.csv"),
-      ];
-      const currCsvPath = currPaths.find((p: string) => fs.existsSync(p));
-
-      if (currCsvPath) {
-        const csvText = fs.readFileSync(currCsvPath, "utf-8").replace(/^\uFEFF/, "");
-        const lines = csvText.split(/\r?\n/).map((l: string) => l.trimEnd()).filter((l: string) => l.trim().length > 0);
-        if (lines.length > 1) {
-          const headers = parseCsvLine(lines[0]).map((h: string) => h.trim());
-          for (let i = 1; i < lines.length; i++) {
-            const cells = parseCsvLine(lines[i]);
-            const row: Record<string, string> = {};
-            headers.forEach((h, idx) => { row[h] = (cells[idx] ?? "").trim(); });
-
-            const sku = row["Code_No"] || row["SKU"];
-            const name = row["Item_Description"] || row["Name"];
-            if (!sku || !name) continue;
-
-            const quantity = parseNumber(row["Balance"] || row["Quantity"] || "0");
-            const checkInTotal = parseNumber(row["Check-in total"] || "0");
-            const checkOutTotal = parseNumber(row["Check-out total"] || "0");
-            const category = row["Category"] || "General";
-            const unit = row["Unit"] || "units";
-
-            await prismaClient.stockItem.upsert({
-              where: { sku },
-              update: {
-                name,
-                category,
-                unit,
-                checkInTotal,
-                checkOutTotal,
-                quantity,
-              },
-              create: {
-                sku,
-                barcode: sku,
-                name,
-                category,
-                unit,
-                checkInTotal,
-                checkOutTotal,
-                quantity,
-                minThreshold: 5,
-                balancePercent: checkInTotal > 0 ? Math.round((quantity / checkInTotal) * 100) : 100,
-              },
-            });
-            importedStockItems++;
-          }
-        }
-      }
-
-      // 2. Master Data CSV
-      const masterPaths = [
-        path.resolve(process.cwd(), "BOMS_Inventory_Master_Data.csv"),
-        path.resolve(process.cwd(), "../../BOMS_Inventory_Master_Data.csv"),
-        path.resolve(__dirname, "../../../../BOMS_Inventory_Master_Data.csv"),
-      ];
-      const masterCsvPath = masterPaths.find((p: string) => fs.existsSync(p));
-
-      if (masterCsvPath) {
-        const csvText = fs.readFileSync(masterCsvPath, "utf-8").replace(/^\uFEFF/, "");
-        const lines = csvText.split(/\r?\n/).map((l: string) => l.trimEnd()).filter((l: string) => l.trim().length > 0);
-        if (lines.length > 1) {
-          const headers = parseCsvLine(lines[0]).map((h: string) => h.trim());
-          for (let i = 1; i < lines.length; i++) {
-            const cells = parseCsvLine(lines[i]);
-            const cat = cells[0]?.trim();
-            const un = cells[1]?.trim();
-            const proj = cells[2]?.trim();
-            const st = cells[3]?.trim();
-
-            if (cat || un || proj || st) {
-              const existing = await prismaClient.inventoryMasterData.findFirst({
-                where: {
-                  category: cat || "General",
-                  unit: un || "units",
-                  project: proj || null,
-                  staff: st || null,
-                },
-              });
-              if (!existing) {
-                await prismaClient.inventoryMasterData.create({
-                  data: {
-                    category: cat || "General",
-                    unit: un || "units",
-                    project: proj || null,
-                    staff: st || null,
-                  },
-                });
-                importedMasterData++;
-              }
-            }
-          }
-        }
-      }
-
-      return {
-        importedStockItems,
-        importedCheckIns,
-        importedCheckOuts,
-        importedMasterData,
-        source: "local_csv",
-      };
-    } catch (err) {
-      log.error(err as Error, "[GoogleSheetsSync] Local CSV fallback parser failed");
-      return {
-        importedStockItems: 0,
-        importedCheckIns: 0,
-        importedCheckOuts: 0,
-        importedMasterData: 0,
-        source: "local_csv",
-      };
-    }
+  private static async syncFromLocalCsvs(_prismaClient: any): Promise<SyncPullResult> {
+    return {
+      importedStockItems: 0,
+      importedCheckIns: 0,
+      importedCheckOuts: 0,
+      importedMasterData: 0,
+      source: "local_csv",
+    };
   }
 }
 

@@ -76,7 +76,8 @@ async function main() {
 
   const csvPath = csvPaths.find((p) => fs.existsSync(p));
   if (!csvPath) {
-    throw new Error('MNTD Staff-duty station_merged.csv not found!');
+    console.log('MNTD Staff-duty station_merged.csv not found; skipping staff CSV import.');
+    return;
   }
 
   console.log(`Reading CSV from: ${csvPath}`);

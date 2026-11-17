@@ -132,6 +132,9 @@ function toTitleCase(str: string): string {
 }
 
 function readCsvRows<T = Record<string, string>>(filePath: string): T[] {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
   const wb = XLSX.readFile(filePath, { raw: false });
   return XLSX.utils.sheet_to_json<T>(wb.Sheets[wb.SheetNames[0]], { defval: "" });
 }

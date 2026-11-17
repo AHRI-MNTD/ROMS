@@ -140,7 +140,7 @@ function readInventoryMasterCsv(): InventoryMasterCsvRow[] {
 
   const csvPath = candidatePaths.find((p) => fs.existsSync(p));
   if (!csvPath) {
-    throw new Error("BOMS_Inventory_Master_Data.csv was not found. Expected at repository root.");
+    return [];
   }
 
   const csvContent = fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, "");
@@ -225,7 +225,7 @@ function readCurrentInventoryCsv(): CurrentInventoryCsvRow[] {
 
   const csvPath = candidatePaths.find((p) => fs.existsSync(p));
   if (!csvPath) {
-    throw new Error("MNTD Inventory Management 2026 - Current Inventory.csv was not found. Expected at repository root.");
+    return [];
   }
 
   const rows = parseCsvFile(fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""))
@@ -260,7 +260,7 @@ function readCheckInCsv(): CheckInCsvRow[] {
 
   const csvPath = candidatePaths.find((p) => fs.existsSync(p));
   if (!csvPath) {
-    throw new Error("MNTD Inventory Management 2026 - Check-in.csv was not found. Expected at repository root.");
+    return [];
   }
 
   const rows = parseCsvFile(fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""));
@@ -299,7 +299,7 @@ function readCheckOutCsv(): CheckOutCsvRow[] {
 
   const csvPath = candidatePaths.find((p) => fs.existsSync(p));
   if (!csvPath) {
-    throw new Error("MNTD Inventory Management 2026 - Check-out.csv was not found. Expected at repository root.");
+    return [];
   }
 
   const rows = parseCsvFile(fs.readFileSync(csvPath, "utf-8").replace(/^\uFEFF/, ""));
@@ -855,33 +855,17 @@ async function main() {
     },
   });
 
-  // ─── Inventory master data (CSV) ─────────────────────────────────────────
-  const masterRows = readInventoryMasterCsv();
+  // ─── Inventory master data & Stock items ─────────────────────────────────
   const inventoryMasterData = prisma as PrismaClient & {
     inventoryMasterData: {
+      count: () => Promise<number>;
       deleteMany: () => Promise<unknown>;
       createMany: (args: { data: InventoryMasterCsvRow[] }) => Promise<unknown>;
     };
   };
-
-  await inventoryMasterData.inventoryMasterData.deleteMany();
-  if (masterRows.length > 0) {
-    await inventoryMasterData.inventoryMasterData.createMany({
-      data: masterRows,
-    });
-  }
-  console.log(`✅ Imported ${masterRows.length} inventory master-data rows from CSV`);
-
-  const currentInventoryRows = readCurrentInventoryCsv();
-  const checkInRows = readCheckInCsv();
-  const checkOutRows = readCheckOutCsv();
-  const currentInventoryItems = buildCurrentInventorySeedRows(currentInventoryRows);
-  const currentInventoryKeySet = new Set(currentInventoryRows.map((row) => normalizeInventoryKey(`${row.codeNo}|${row.itemDescription}`)));
-  const extraInventoryItems = buildAdditionalCurrentInventorySeedRows(currentInventoryRows, checkInRows, currentInventoryKeySet);
-  const stockItems = [...currentInventoryItems, ...extraInventoryItems];
-
   const stockPrisma = prisma as PrismaClient & {
     stockItem: {
+      count: () => Promise<number>;
       deleteMany: () => Promise<unknown>;
       createMany: (args: {
         data: SeededCurrentInventoryStockItem[];
@@ -890,60 +874,82 @@ async function main() {
     };
   };
 
-  await stockPrisma.stockItem.deleteMany();
-  if (stockItems.length > 0) {
-    await stockPrisma.stockItem.createMany({
-      data: stockItems,
-      skipDuplicates: true,
-    });
+  const existingMasterCount = await inventoryMasterData.inventoryMasterData.count();
+  const existingStockCount = await stockPrisma.stockItem.count();
+
+  if (existingStockCount > 0 || existingMasterCount > 0) {
+    console.log(`ℹ️ Existing inventory preserved in DB (${existingStockCount} stock items, ${existingMasterCount} master data records). Skipping CSV re-seed.`);
+  } else {
+    const masterRows = readInventoryMasterCsv();
+    if (masterRows.length > 0) {
+      await inventoryMasterData.inventoryMasterData.createMany({
+        data: masterRows,
+      });
+      console.log(`✅ Imported ${masterRows.length} inventory master-data rows from CSV`);
+    }
+
+    const currentInventoryRows = readCurrentInventoryCsv();
+    const checkInRows = readCheckInCsv();
+    const checkOutRows = readCheckOutCsv();
+    const currentInventoryItems = buildCurrentInventorySeedRows(currentInventoryRows);
+    const currentInventoryKeySet = new Set(currentInventoryRows.map((row) => normalizeInventoryKey(`${row.codeNo}|${row.itemDescription}`)));
+    const extraInventoryItems = buildAdditionalCurrentInventorySeedRows(currentInventoryRows, checkInRows, currentInventoryKeySet);
+    const stockItems = [...currentInventoryItems, ...extraInventoryItems];
+
+    if (stockItems.length > 0) {
+      await stockPrisma.stockItem.createMany({
+        data: stockItems,
+        skipDuplicates: true,
+      });
+      console.log(`✅ Seeded ${stockItems.length} current inventory stock items from CSV`);
+
+      const seededStockRecords: Array<{ id: string; sku: string; sourceCode: string | null; name: string; category: string | null }> = await stockPrisma.stockItem.findMany({
+        where: {
+          OR: stockItems.map((item) => ({
+            sku: item.sku,
+          })),
+        },
+        select: { id: true, sku: true, sourceCode: true, name: true, category: true },
+      });
+      const stockIdBySku = new Map(seededStockRecords.map((row) => [row.sku, row.id] as [string, string]));
+      const stockIdBySourceCode = new Map(seededStockRecords.filter((row) => row.sourceCode).map((row) => [row.sourceCode as string, row.id] as [string, string]));
+      const seededMovements = buildMovementSeedRows(
+        seededStockRecords.map((row) => ({
+          sku: row.sku,
+          sourceCode: row.sourceCode ?? row.sku,
+          name: row.name,
+          category: row.category ?? undefined,
+          unit: "units",
+        })),
+        checkInRows,
+        checkOutRows,
+      )
+        .map((movement) => ({
+          ...movement,
+          stockItemId: stockIdBySku.get(movement.sku) ?? stockIdBySourceCode.get(movement.sku),
+        }))
+        .filter((movement): movement is SeededStockMovementRecord => Boolean(movement.stockItemId));
+
+      const movementPrisma = prisma as PrismaClient & {
+        inventoryMovement: {
+          deleteMany: () => Promise<unknown>;
+          createMany: (args: { data: SeededStockMovementRecord[] }) => Promise<unknown>;
+        };
+      };
+
+      if (seededMovements.length > 0) {
+        await movementPrisma.inventoryMovement.createMany({
+          data: seededMovements.map((movement) =>
+            Object.fromEntries(
+              Object.entries(movement)
+                .filter(([key, value]) => key !== "sku" && value !== undefined)
+            ) as SeededStockMovementRecord
+          ),
+        });
+        console.log(`✅ Seeded ${seededMovements.length} inventory movement records from CSV`);
+      }
+    }
   }
-  console.log(`✅ Seeded ${stockItems.length} current inventory stock items from CSV`);
-
-  const seededStockRecords: Array<{ id: string; sku: string; sourceCode: string | null; name: string; category: string | null }> = await stockPrisma.stockItem.findMany({
-    where: {
-      OR: stockItems.map((item) => ({
-        sku: item.sku,
-      })),
-    },
-    select: { id: true, sku: true, sourceCode: true, name: true, category: true },
-  });
-  const stockIdBySku = new Map(seededStockRecords.map((row) => [row.sku, row.id] as [string, string]));
-  const stockIdBySourceCode = new Map(seededStockRecords.filter((row) => row.sourceCode).map((row) => [row.sourceCode as string, row.id] as [string, string]));
-  const seededMovements = buildMovementSeedRows(
-    seededStockRecords.map((row) => ({
-      sku: row.sku,
-      sourceCode: row.sourceCode ?? row.sku,
-      name: row.name,
-      category: row.category ?? undefined,
-      unit: "units",
-    })),
-    checkInRows,
-    checkOutRows,
-  )
-    .map((movement) => ({
-      ...movement,
-      stockItemId: stockIdBySku.get(movement.sku) ?? stockIdBySourceCode.get(movement.sku),
-    }))
-    .filter((movement): movement is SeededStockMovementRecord => Boolean(movement.stockItemId));
-
-  const movementPrisma = prisma as PrismaClient & {
-    inventoryMovement: {
-      deleteMany: () => Promise<unknown>;
-      createMany: (args: { data: SeededStockMovementRecord[] }) => Promise<unknown>;
-    };
-  };
-
-  if (seededMovements.length > 0) {
-    await movementPrisma.inventoryMovement.createMany({
-      data: seededMovements.map((movement) =>
-        Object.fromEntries(
-          Object.entries(movement)
-            .filter(([key, value]) => key !== "sku" && value !== undefined)
-        ) as SeededStockMovementRecord
-      ),
-    });
-  }
-  console.log(`✅ Seeded ${seededMovements.length} inventory movement records from CSV`);
 
   // ─── SOPs ─────────────────────────────────────────────────────────────────
   const sop1 = await prisma.sOP.upsert({
