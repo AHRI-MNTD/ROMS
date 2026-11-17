@@ -164,7 +164,66 @@ export default function ReagentCurrentInventoryPage() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* ── Page Header Banner ── */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 12,
+          padding: "12px 16px",
+          background: "var(--inventory-hero-bg, var(--color-surface))",
+          border: "1px solid var(--color-primary-highlight)",
+          borderRadius: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: "var(--color-primary-soft)",
+              color: "var(--color-primary)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+              flexShrink: 0,
+            }}
+          >
+            🧪
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h1 style={{ margin: 0, fontSize: "14px", fontWeight: 800, color: "var(--color-text)" }}>
+                Current Reagent Inventory (Concentration-Based)
+              </h1>
+              <span
+                style={{
+                  fontSize: "9px",
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  border: "1px solid var(--color-primary-highlight)",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Reagents & Assay Catalog
+              </span>
+            </div>
+            <p style={{ margin: "2px 0 0 0", fontSize: "11px", color: "var(--color-text-muted)" }}>
+              Detailed visibility into reagent codes, descriptions, available vs issued concentrations, storage temperatures, and expected returns.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Top Metric Cards (Mirroring CurrentInventoryPage) ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
         {/* Total Reagents Catalog */}
@@ -275,31 +334,41 @@ export default function ReagentCurrentInventoryPage() {
         </div>
       </div>
 
-      {/* ── Table Controls & Filters Card ── */}
+      {/* ── Main Inventory Table Card with Integrated Header Toolbar ── */}
       <div
         style={{
-          padding: 18,
-          borderRadius: "var(--radius)",
-          border: "1px solid var(--color-primary-highlight)",
-          background: "var(--inventory-card-bg)",
-          boxShadow: "0 4px 16px rgba(37, 147, 153, 0.50)",
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          background: "var(--color-surface)",
+          border: "1px solid var(--color-border)",
+          borderRadius: 12,
+          padding: 16,
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
           display: "flex",
           flexDirection: "column",
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "var(--color-text)" }}>
-              🧪 Current Reagent Inventory (Concentration-Based)
-            </h2>
-            <p style={{ margin: "2px 0 0 0", fontSize: "11.5px", color: "var(--color-text-muted)" }}>
-              Detailed visibility into reagent codes, descriptions, available vs issued concentrations, storage temperatures, and expected returns.
-            </p>
-          </div>
+        {/* Toolbar: Counter, Export CSV, Search, and Filters */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--color-text)" }}>
+                Reagent Inventory
+              </span>
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "var(--color-primary-soft)",
+                  color: "var(--color-primary)",
+                  border: "1px solid var(--color-primary-highlight)",
+                }}
+              >
+                Showing {filteredItems.length} of {allItems.length}
+              </span>
+            </div>
 
-          <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               onClick={handleExportCSV}
@@ -308,120 +377,109 @@ export default function ReagentCurrentInventoryPage() {
                 alignItems: "center",
                 gap: 5,
                 padding: "6px 12px",
-                fontSize: "11.5px",
+                fontSize: "11px",
                 fontWeight: 700,
                 borderRadius: 6,
                 border: "1px solid var(--color-border)",
                 background: "var(--color-surface-2)",
                 color: "var(--color-text)",
                 cursor: "pointer",
+                transition: "all 0.15s ease",
               }}
             >
               📥 Export CSV ({filteredItems.length})
             </button>
           </div>
+
+          {/* Filter Row */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              type="text"
+              placeholder="Search code, reagent description, lot, or location…"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                padding: "6px 10px",
+                fontSize: "11.5px",
+                borderRadius: 6,
+                border: "1px solid var(--color-border)",
+                background: "var(--color-surface-2)",
+                color: "var(--color-text)",
+                minWidth: 260,
+                flex: 1,
+              }}
+            />
+
+            <select
+              value={assayFilter}
+              onChange={(e) => {
+                setAssayFilter(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                padding: "6px 10px",
+                fontSize: "11.5px",
+                borderRadius: 6,
+                border: "1px solid var(--color-border)",
+                background: "var(--color-surface-2)",
+                color: "var(--color-text)",
+              }}
+            >
+              <option value="ALL">All 23 Assays</option>
+              {assayList.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={storageFilter}
+              onChange={(e) => {
+                setStorageFilter(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                padding: "6px 10px",
+                fontSize: "11.5px",
+                borderRadius: 6,
+                border: "1px solid var(--color-border)",
+                background: "var(--color-surface-2)",
+                color: "var(--color-text)",
+              }}
+            >
+              <option value="ALL">All Storage Conditions</option>
+              <option value="-80°C">-80°C Ultra-Low</option>
+              <option value="-20°C">-20°C Freezer</option>
+              <option value="2-8°C">2-8°C Refrigerator</option>
+              <option value="Ambient">Ambient Room Temp</option>
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                padding: "6px 10px",
+                fontSize: "11.5px",
+                borderRadius: 6,
+                border: "1px solid var(--color-border)",
+                background: "var(--color-surface-2)",
+                color: "var(--color-text)",
+              }}
+            >
+              <option value="ALL">All Health States</option>
+              <option value="HEALTHY">Healthy Stock</option>
+              <option value="LOW">Low Concentration Alert</option>
+              <option value="EXPIRED">Expired Lots</option>
+            </select>
+          </div>
         </div>
-
-        {/* Filter Row */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <input
-            type="text"
-            placeholder="Search code, reagent description, lot, or location…"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "5px 10px",
-              fontSize: "11.5px",
-              borderRadius: 6,
-              border: "1px solid var(--color-border)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-              minWidth: 260,
-              flex: 1,
-            }}
-          />
-
-          <select
-            value={assayFilter}
-            onChange={(e) => {
-              setAssayFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "5px 8px",
-              fontSize: "11.5px",
-              borderRadius: 6,
-              border: "1px solid var(--color-border)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-            }}
-          >
-            <option value="ALL">All 23 Assays</option>
-            {assayList.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={storageFilter}
-            onChange={(e) => {
-              setStorageFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "5px 8px",
-              fontSize: "11.5px",
-              borderRadius: 6,
-              border: "1px solid var(--color-border)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-            }}
-          >
-            <option value="ALL">All Storage Conditions</option>
-            <option value="-80°C">-80°C Ultra-Low</option>
-            <option value="-20°C">-20°C Freezer</option>
-            <option value="2-8°C">2-8°C Refrigerator</option>
-            <option value="Ambient">Ambient Room Temp</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{
-              padding: "5px 8px",
-              fontSize: "11.5px",
-              borderRadius: 6,
-              border: "1px solid var(--color-border)",
-              background: "var(--color-surface-2)",
-              color: "var(--color-text)",
-            }}
-          >
-            <option value="ALL">All Health States</option>
-            <option value="HEALTHY">Healthy Stock</option>
-            <option value="LOW">Low Concentration Alert</option>
-            <option value="EXPIRED">Expired Lots</option>
-          </select>
-        </div>
-      </div>
-
-      {/* ── Main Inventory Table (Horizontal Scrollable) ── */}
-      <div
-        style={{
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          borderRadius: 12,
-          padding: 16,
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-        }}
-      >
         <div style={{ overflowX: "auto", border: "1px solid var(--color-border)", borderRadius: 8 }}>
           <table style={{ width: "100%", minWidth: 1100, borderCollapse: "collapse", fontSize: "11.5px" }}>
             <thead>
