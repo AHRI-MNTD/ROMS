@@ -53,7 +53,7 @@ export default function MasterDataPage() {
       const resp = await apiClient.post<{ message?: string }>("/domains/inventory/google-sheets/sync", {});
       setFormFeedback({
         type: "success",
-        message: resp.data.message || "Successfully synchronized with Google Sheets!",
+        message: resp.data.message || "Successfully backed up inventory to Google Sheets!",
       });
       await queryClient.invalidateQueries({ queryKey: ["inventory-master-data"] });
     } catch (err: any) {
@@ -281,7 +281,7 @@ export default function MasterDataPage() {
                 transition: "all 0.2s ease",
               }}
             >
-              {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}
+              {isSyncing ? "⏳ Backing up..." : "☁️ Backup to Google Sheets"}
             </button>
             <button
               onClick={() => {

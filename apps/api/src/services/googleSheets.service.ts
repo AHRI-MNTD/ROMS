@@ -190,7 +190,7 @@ export class GoogleSheetsSyncService {
           movement.unit || "units",
           movement.unitDescription || `${movement.unit || "units"} per pack`,
           movement.category || "General",
-          movement.projectFor || "ROMS Inventory",
+          movement.projectFor || "MNTD",
           dateStr,
           expiryStr,
           movement.remark || ""
@@ -217,7 +217,7 @@ export class GoogleSheetsSyncService {
           movement.category || "General",
           dateStr,
           movement.requestedBy || "System User",
-          movement.projectFor || "ROMS Inventory",
+          movement.projectFor || "MNTD",
           movement.remark || ""
         ]];
 
@@ -370,6 +370,41 @@ export class GoogleSheetsSyncService {
   }
 
   /**
+   * Pushes a full authoritative backup of ROMS inventory to Google Sheets.
+   * ROMS is the primary source of truth; this mirrors all current stock items to the spreadsheet.
+   */
+  public static async pushFullBackup(prismaClient: any): Promise<{ backedUpItems: number }> {
+    if (!this.init()) {
+      throw new Error("Google Sheets credentials not configured. Running in local-only mode.");
+    }
+
+    const items = await prismaClient.stockItem.findMany({
+      orderBy: { sku: "asc" },
+    });
+
+    const currentInventoryValues = items.map((item: any) => [
+      item.sku,
+      item.name,
+      item.category || "General",
+      item.unit || "units",
+      item.checkInTotal,
+      item.checkOutTotal,
+      item.quantity,
+      item.checkInTotal > 0 ? `${Math.round((item.quantity / item.checkInTotal) * 100)}%` : "0%",
+    ]);
+
+    await this.sheets.spreadsheets.values.update({
+      spreadsheetId: this.spreadsheetId,
+      range: `'Current Inventory'!A2:H${currentInventoryValues.length + 1}`,
+      valueInputOption: "RAW",
+      requestBody: { values: currentInventoryValues },
+    });
+
+    log.info(`[GoogleSheetsSync] Backed up ${items.length} items to Google Sheets Current Inventory.`);
+    return { backedUpItems: items.length };
+  }
+
+  /**
    * Alias for pullAll, returning imported stock item count.
    */
   public static async pullStockItems(prismaClient: any): Promise<{ imported: number; source: "google" | "local_csv" }> {
@@ -477,7 +512,7 @@ export class GoogleSheetsSyncService {
 
           const dateStr = row[8]?.trim();
           const occurredAt = parseCleanDate(dateStr);
-          const projectFor = row[7]?.trim() || "ROMS Inventory";
+          const projectFor = row[7]?.trim() || "MNTD";
           const rowRemark = row[10]?.trim() || "Synced from Google Sheets Check-in";
           const syncIdTag = `[GSHEET_ROW:Check-in:${i}:${sku}:${quantity}:${dateStr || ""}]`;
 
@@ -545,7 +580,7 @@ export class GoogleSheetsSyncService {
           const dateStr = row[7]?.trim();
           const occurredAt = parseCleanDate(dateStr);
           const requestedBy = row[8]?.trim() || "Google Sheets Sync";
-          const projectFor = row[9]?.trim() || "ROMS Inventory";
+          const projectFor = row[9]?.trim() || "MNTD";
           const rowRemark = row[10]?.trim() || "Synced from Google Sheets Check-out";
           const syncIdTag = `[GSHEET_ROW:Check-out:${i}:${sku}:${quantity}:${dateStr || ""}]`;
 

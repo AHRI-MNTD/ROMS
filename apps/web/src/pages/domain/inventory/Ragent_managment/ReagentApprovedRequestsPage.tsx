@@ -348,7 +348,7 @@ export default function ReagentApprovedRequestsPage() {
                 {[
                   ["Requested By", selectedRequest.requestedBy || "—"],
                   ["Recipient (Requested For)", selectedRequest.requestedFor || selectedRequest.requestedBy || "—"],
-                  ["Target Research Project", selectedRequest.projectFor || "ROMS Inventory"],
+                  ["Target Research Project", selectedRequest.projectFor || "MNTD"],
                   ["Assay Type / Protocol", selectedRequest.assayType],
                   ["Reagent Type / Category", selectedRequest.reagentType || "Standard Chemical/Enzyme"],
                   ["Date Requested", new Date(selectedRequest.createdAt).toLocaleDateString()],

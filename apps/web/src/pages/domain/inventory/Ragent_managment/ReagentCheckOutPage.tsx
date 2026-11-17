@@ -39,13 +39,13 @@ export default function ReagentCheckOutPage() {
   const [checkOutConcentration, setCheckOutConcentration] = useState<number | "">(10);
   const [numberOfVill, setNumberOfVill] = useState<number | "">(1);
   const [expectedReturn, setExpectedReturn] = useState<number | "">("");
-  const [projectFor, setProjectFor] = useState<string>("ROMS Inventory");
+  const [projectFor, setProjectFor] = useState<string>("MNTD");
   const [requestedFor, setRequestedFor] = useState<string>(user?.displayName || "Lab Technician");
   const [remark, setRemark] = useState<string>("");
 
   // Projects and staff lists from Master Data
   const [projects, setProjects] = useState<string[]>([
-    "ROMS Inventory",
+    "MNTD",
     "TES Project",
     "VECTOR Project",
     "PARASITE Project",

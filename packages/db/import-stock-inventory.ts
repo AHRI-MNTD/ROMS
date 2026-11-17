@@ -62,6 +62,65 @@ function parseCleanDate(val: unknown): Date | null {
   return null;
 }
 
+const AUTHORITATIVE_PROJECTS = [
+  "ACHIDES",
+  "AnoSTEP",
+  "CDC",
+  "ColGo",
+  "Dessicate",
+  "DRIVAX",
+  "EMAGEN",
+  "Gov't",
+  "HAMMS",
+  "INDIE",
+  "INDIE2",
+  "MNTD",
+  "OptiVivax",
+  "Preg",
+  "PvGam",
+  "PvSTATEM",
+  "PvTBI",
+  "PvTrans",
+  "StephBio",
+  "StephColonoy",
+  "TES2021",
+  "TES2023",
+  "TMDA",
+  "UrbanMalaria",
+  "VISPA",
+] as const;
+
+function normalizeProject(raw: unknown): string {
+  if (!raw) return "MNTD";
+  const str = String(raw).trim();
+  if (!str) return "MNTD";
+
+  if ((AUTHORITATIVE_PROJECTS as readonly string[]).includes(str)) {
+    return str;
+  }
+
+  const lower = str.toLowerCase();
+  if (lower === "anostep") return "AnoSTEP";
+  if (lower === "drivax") return "DRIVAX";
+  if (lower === "pvstatem") return "PvSTATEM";
+  if (lower.includes("pvstatem")) return "PvSTATEM";
+  if (lower.includes("anostep")) return "AnoSTEP";
+  if (lower === "gevernment" || lower === "government" || lower === "gov't" || lower === "govt") return "Gov't";
+  if (lower.includes("hamms")) return "HAMMS";
+  if (lower.includes("cdc")) return "CDC";
+  if (lower === "optivivax") return "OptiVivax";
+  if (lower === "tes2021") return "TES2021";
+  if (lower === "tes2023") return "TES2023";
+  if (lower === "urbanmalaria") return "UrbanMalaria";
+  if (lower === "stephbio") return "StephBio";
+  if (lower === "stephcolonoy" || lower === "stephcolony") return "StephColonoy";
+
+  const match = AUTHORITATIVE_PROJECTS.find((p) => p.toLowerCase() === lower);
+  if (match) return match;
+
+  return "MNTD";
+}
+
 function toTitleCase(str: string): string {
   if (!str) return "";
   return str
@@ -164,13 +223,13 @@ async function main() {
 
   // 1. Sync & Seed Master Data
   console.log("\n📦 Step 1: Synchronizing Master Data (Categories, Units, Projects, Personnel)...");
-  const projectsSet = new Set<string>();
+  // Projects are strictly restricted to the 25 official institutional projects
+  const projectsSet = new Set<string>(AUTHORITATIVE_PROJECTS);
   const categoriesSet = new Set<string>();
   const unitsSet = new Set<string>();
   const staffSet = new Set<string>();
 
   masterRows.forEach((r) => {
-    if (r.Projects?.trim()) projectsSet.add(r.Projects.trim());
     if (r.Categories?.trim()) categoriesSet.add(r.Categories.trim());
     if (r.Units?.trim()) unitsSet.add(r.Units.trim());
     if (r.Staff?.trim()) staffSet.add(toTitleCase(r.Staff.trim()));
@@ -178,28 +237,16 @@ async function main() {
 
   staffDutyRows.forEach((r) => {
     if (r.Name?.trim()) staffSet.add(toTitleCase(r.Name.trim()));
-    if (r["Project Paid"]?.trim()) {
-      r["Project Paid"].split(",").forEach((p: string) => {
-        const cleanP = p.replace(/&/g, "").trim();
-        if (cleanP) projectsSet.add(cleanP);
-      });
-    }
   });
 
   checkInRows.forEach((r) => {
-    if (r.Project?.trim()) projectsSet.add(r.Project.trim());
     if (r.Category?.trim()) categoriesSet.add(r.Category.trim());
     if (r.Unit?.trim()) unitsSet.add(r.Unit.trim());
   });
 
   checkOutRows.forEach((r) => {
-    if (r.Project_For?.trim()) projectsSet.add(r.Project_For.trim());
     if (r.Requested_By?.trim()) staffSet.add(toTitleCase(r.Requested_By.trim()));
   });
-
-  // Ensure "Gov't" is explicitly present
-  projectsSet.add("Gov't");
-  projectsSet.add("ROMS Inventory");
 
   const maxLen = Math.max(projectsSet.size, categoriesSet.size, unitsSet.size, staffSet.size);
   const pArr = Array.from(projectsSet).sort();
@@ -256,7 +303,7 @@ async function main() {
     const barcode = (row.Barcode || code).trim();
     const category = (row.Category || "General").trim() || "General";
     const unit = (row.Unit || "units").trim() || "units";
-    const project = (row.Project || "ROMS Inventory").trim() || "ROMS Inventory";
+    const project = normalizeProject(row.Project);
     const qtyIn = parseCleanNumber(row.Quantity);
     const dateReceived = parseCleanDate(row.Date_Received) || new Date("2026-05-15T10:00:00.000Z");
     const expiryDate = parseCleanDate(row.Expiry_Date);
@@ -337,7 +384,7 @@ async function main() {
     const requestedBy = toTitleCase(row.Requested_By || "Staff Member");
     // If Project_For is blank, inherit the item's owning project (e.g. AnoSTEP, TMDA)
     const rawProj = (row.Project_For || "").trim();
-    const project = rawProj || item.owningProject || "ROMS Inventory";
+    const project = normalizeProject(rawProj || item.owningProject);
     const remark = (row.Remark || "").trim() || "Initial disbursement";
 
     await prisma.inventoryMovement.create({

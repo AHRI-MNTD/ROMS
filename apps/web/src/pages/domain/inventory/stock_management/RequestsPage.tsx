@@ -218,8 +218,8 @@ export default function RequestsPage() {
   const [requestedBy, setRequestedBy] = React.useState("");
   const [requestedFor, setRequestedFor] = React.useState("");
   const [requestDate, setRequestDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [project, setProject] = React.useState("ROMS Inventory");
-  const [approver, setApprover] = React.useState(() => getApproverForProject("ROMS Inventory"));
+  const [project, setProject] = React.useState("MNTD");
+  const [approver, setApprover] = React.useState(() => getApproverForProject("MNTD"));
   const [team, setTeam] = React.useState("");
 
   const [feedback, setFeedback] = React.useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -295,7 +295,7 @@ export default function RequestsPage() {
         const staffList = Array.from(new Set(rows.map((row) => String(row.staff ?? "").trim()).filter((v) => v.length > 0)));
         setProjects(projectList);
         setStaffMembers(staffList);
-        setProject(projectList[0] ?? "ROMS Inventory");
+        setProject(projectList[0] ?? "MNTD");
         setRequestedBy(staffList[0] ?? "");
       })
       .catch(() => { });

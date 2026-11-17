@@ -291,7 +291,7 @@ function mapMovementToRequestRow(movement: InventoryMovementRecord) {
   const stockItem = movement.stockItem;
   const requestedQuantity = Number(movement.requestedQuantity ?? movement.quantity ?? 0);
   const acceptedQuantity = Number(movement.quantity ?? 0);
-  const projectFor = movement.projectFor ?? "ROMS Inventory";
+  const projectFor = movement.projectFor ?? "MNTD";
 
   let itemUnit = stockItem?.unit ?? "units";
   if (movement.remark && movement.remark.includes("[Unit: ")) {
@@ -815,7 +815,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:request"), as
   const user = req.user!;
   const requestedBy = user.email || (user as any)?.displayName || "authenticated_user";
   const userDisplayName = (user as any)?.displayName || user.email || "";
-  const projectFor = toStringOrUndefined(project) ?? "ROMS Inventory";
+  const projectFor = toStringOrUndefined(project) ?? "MNTD";
 
   const userRoles = (user.roles || []) as string[];
   const userPerms = (user.permissions || []) as string[];
@@ -826,7 +826,7 @@ router.post("/requests", requireAuth, requirePermission("inventory:request"), as
     userPerms.includes("inventory:manage");
 
   // Validate requester project against trusted database assignment source
-  if (projectFor !== "ROMS Inventory") {
+  if (projectFor !== "MNTD") {
     const [masterProject, studyProject] = await Promise.all([
       prisma.inventoryMasterData.findFirst({
         where: { project: { equals: projectFor, mode: "insensitive" } },
@@ -1168,7 +1168,7 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
         }
 
         // Invariant 3: Independently authorize user for THIS item's project & approver
-        const itemProject = existingMovement.projectFor || "ROMS Inventory";
+        const itemProject = existingMovement.projectFor || "MNTD";
         const assignedApprover = existingMovement.approver || "ROMS Administrator";
         const isItemAuthorized = isUserAuthorizedForApprovers(userForAuth as any, assignedApprover, itemProject);
         if (!isItemAuthorized) {
@@ -1417,7 +1417,7 @@ router.post("/request-decisions", requireAuth, requirePermission("inventory:appr
     if (approvedMovements.length > 0) {
       const managerName = userDisplayName || user?.email || "Inventory Manager";
       const inventoryWorkerEmail = env.INVENTORY_DISPATCH_EMAIL || "betelihemashagrie21@gmail.com";
-      const primaryProject = approvedMovements[0]?.projectFor || "ROMS Inventory";
+      const primaryProject = approvedMovements[0]?.projectFor || "MNTD";
       const requestedBy = approvedMovements[0]?.requestedBy;
       const requesterEmail = requestedBy && requestedBy.includes("@") ? requestedBy.trim() : null;
 
@@ -1945,25 +1945,20 @@ router.get("/analytics", requireAuth, requirePermission("inventory:read"), async
   });
 });
 
-// POST /google-sheets/sync - Sync inventory with Google Sheets
+// POST /google-sheets/sync - Backup ROMS inventory to Google Sheets backup
 router.post("/google-sheets/sync", requireAuth, requireRole(Role.ADMIN, Role.RESEARCH_ADMIN), async (req, res) => {
   try {
-    const result = await GoogleSheetsSyncService.pullAll(prisma);
+    const result = await GoogleSheetsSyncService.pushFullBackup(prisma);
     res.json({
       success: true,
-      message: `Successfully synchronized inventory with ${result.source === "google" ? "Google Sheets" : "local fallback CSVs"}. (Stock Items: ${result.importedStockItems}, Check-ins: ${result.importedCheckIns}, Check-outs: ${result.importedCheckOuts}, Master Data: ${result.importedMasterData})`,
-      importedCount: result.importedStockItems,
-      importedStockItems: result.importedStockItems,
-      importedCheckIns: result.importedCheckIns,
-      importedCheckOuts: result.importedCheckOuts,
-      importedMasterData: result.importedMasterData,
-      source: result.source,
+      message: `Successfully backed up ROMS inventory to Google Sheets (${result.backedUpItems} items backed up).`,
+      backedUpItems: result.backedUpItems,
     });
   } catch (error: any) {
     logger.error(error);
     res.status(500).json({
       code: "SYNC_ERROR",
-      message: error.message || "Failed to sync with Google Sheets.",
+      message: error.message || "Failed to backup to Google Sheets.",
     });
   }
 });
@@ -2540,7 +2535,7 @@ router.post("/", requireAuth, requirePermission("inventory:manage"), auditMutati
   }
   const { dateReceived: parsedDateReceived, ...stockItemData } = parsed.data;
   // enforce projectFor exists in master-data
-  const projectForValue = String(req.body.projectFor ?? "ROMS Inventory").trim();
+  const projectForValue = String(req.body.projectFor ?? "MNTD").trim();
   if (projectForValue.length > 0) {
     const found = await prisma.inventoryMasterData.findFirst({ where: { project: projectForValue } });
     if (!found) {
@@ -2565,7 +2560,7 @@ router.post("/", requireAuth, requirePermission("inventory:manage"), auditMutati
           movementType: "CHECK_IN",
           quantity: createdItem.quantity,
           requestedBy: req.user?.email ?? null,
-          projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
+          projectFor: String(req.body.projectFor ?? "MNTD"),
           lotNumber: stockItemData.lotNumber ?? null,
           expiryDate: stockItemData.expiryDate ?? null,
           status: String(req.body.status ?? "APPROVED") as "APPROVED" | "PENDING" | "REJECTED",
@@ -2788,9 +2783,9 @@ router.post("/bulk-checkout", requireAuth, requirePermission("inventory:check-ou
             movementType: "CHECK_OUT",
             quantity: quantity,
             requestedBy: req.user?.email ?? null,
-            destination: String(projectFor ?? "ROMS Inventory"),
+            destination: String(projectFor ?? "MNTD"),
             recipient: String(staffName ?? "").trim() || null,
-            projectFor: String(projectFor ?? "ROMS Inventory"),
+            projectFor: String(projectFor ?? "MNTD"),
             lotNumber: finalLotNumber || existing.lotNumber || null,
             status: "APPROVED",
             remark: String(remark ?? "Bulk checkout"),
@@ -2893,7 +2888,7 @@ router.post("/bulk-checkin", requireAuth, requirePermission("inventory:check-in"
           throw new Error("INVALID_MODE");
         }
 
-        const projectFor = toStringOrUndefined(cartItem.projectFor) ?? "ROMS Inventory";
+        const projectFor = toStringOrUndefined(cartItem.projectFor) ?? "MNTD";
         const foundProject = await tx.inventoryMasterData.findFirst({ where: { project: projectFor } });
         if (!foundProject) {
           throw new Error("INVALID_PROJECT");
@@ -3317,9 +3312,9 @@ router.patch("/:id", requireAuth, requirePermission("inventory:manage"), auditMu
             movementType: difference > 0 ? "CHECK_IN" : "CHECK_OUT",
             quantity: Math.abs(difference),
             requestedBy: req.user?.email ?? null,
-            destination: String(req.body.destination ?? req.body.projectFor ?? "ROMS Inventory"),
+            destination: String(req.body.destination ?? req.body.projectFor ?? "MNTD"),
             recipient: String(req.body.recipient ?? "").trim() || null,
-            projectFor: String(req.body.projectFor ?? "ROMS Inventory"),
+            projectFor: String(req.body.projectFor ?? "MNTD"),
             status: "APPROVED",
             remark: String(req.body.remark ?? req.body.note ?? (difference > 0 ? "Stock increased" : "Stock decreased")),
             occurredAt: toDateOrUndefined(req.body.dateReceived ?? req.body.dateFiled) ?? new Date(),

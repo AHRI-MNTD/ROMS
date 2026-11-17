@@ -28,7 +28,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
   const [selectedItemId, setSelectedItemId] = React.useState("");
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
   const [checkOutQty, setCheckOutQty] = React.useState(1);
-  const [projectFor, setProjectFor] = React.useState("ROMS Inventory");
+  const [projectFor, setProjectFor] = React.useState("MNTD");
   const [dateRequested, setDateRequested] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [requestedBy, setRequestedBy] = React.useState("");
   const [note, setNote] = React.useState("");
@@ -133,7 +133,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         category,
         dateRequested: new Date().toISOString().slice(0, 10),
         requestedBy: user?.displayName ?? user?.email ?? "Unknown User",
-        projectFor: "ROMS Inventory",
+        projectFor: "MNTD",
         remark: isOutOfStock ? "Out of stock" : isLowStock ? "Low stock" : item.lotNumber ? `Lot: ${item.lotNumber}` : "In stock",
       };
     });
@@ -150,7 +150,7 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
         const staffList = Array.from(new Set(rows.map((row) => String(row.staff ?? "").trim()).filter((value): value is string => value.length > 0)));
         setProjects(projectList);
         setStaffMembers(staffList);
-        setProjectFor(projectList[0] ?? "ROMS Inventory");
+        setProjectFor(projectList[0] ?? "MNTD");
         setRequestedBy(staffList[0] ?? "");
       })
       .catch(() => { });

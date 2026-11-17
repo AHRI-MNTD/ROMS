@@ -94,7 +94,7 @@ export default function ReagentMasterDataPage() {
   const projects = useMemo(() => {
     return (
       projectsData ?? [
-        "ROMS Inventory",
+        "MNTD",
         "TES Project",
         "VECTOR Project",
         "PARASITE Project",

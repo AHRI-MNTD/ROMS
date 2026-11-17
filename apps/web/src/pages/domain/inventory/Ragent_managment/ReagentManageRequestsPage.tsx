@@ -304,7 +304,7 @@ export default function ReagentManageRequestsPage() {
             >
               {[
                 ["Assay Protocol", detailModalRequest.assayType],
-                ["Target Research Project", detailModalRequest.projectFor || "ROMS Inventory"],
+                ["Target Research Project", detailModalRequest.projectFor || "MNTD"],
                 ["Requested By", detailModalRequest.requestedBy || "—"],
                 ["Recipient (Requested For)", detailModalRequest.requestedFor || detailModalRequest.requestedBy || "—"],
                 ["Reagent Type", detailModalRequest.reagentType || "Standard"],

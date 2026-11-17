@@ -379,7 +379,7 @@ function buildSeededStockMovements(stockItems: SeededStockItem[], masterRows: In
     const checkOutTotal = item.quantity === 0 ? (hash % 12) + 1 : Math.max(0, Math.floor(item.quantity * ((hash % 35) + 10) / 100));
     const checkInTotal = item.quantity + checkOutTotal;
     const requestedBy = master?.staff ?? "Seeded Inventory Clerk";
-    const projectFor = master?.project ?? "ROMS Inventory";
+    const projectFor = master?.project ?? "MNTD";
 
     return [
       {

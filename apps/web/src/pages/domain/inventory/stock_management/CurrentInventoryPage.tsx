@@ -175,7 +175,7 @@ function ItemMovementDetailsPanel({ item }: { item: any }) {
                           +{m.quantity}
                         </td>
                         <td style={miniTdStyle}>{item.unit || "units"}</td>
-                        <td style={miniTdStyle}>{m.projectFor || m.destination || "ROMS Inventory"}</td>
+                        <td style={miniTdStyle}>{m.projectFor || m.destination || "MNTD"}</td>
                         <td style={miniTdStyle}>{m.requestedBy || "System Admin"}</td>
                         <td style={miniTdStyle}>{m.lotNumber || item.lotNumber || "—"}</td>
                         <td style={miniTdStyle}>
@@ -462,7 +462,7 @@ export default function CurrentInventoryPage() {
       const resp = await apiClient.post<{ message?: string }>("/domains/inventory/google-sheets/sync", {});
       setFeedback({
         type: "success",
-        message: resp.data.message || "Successfully synchronized inventory with Google Sheets!",
+        message: resp.data.message || "Successfully backed up inventory to Google Sheets!",
       });
       await queryClient.invalidateQueries({ queryKey: ["inventory-list"] });
     } catch (err: any) {
@@ -740,7 +740,7 @@ export default function CurrentInventoryPage() {
                   transition: "all 0.2s ease",
                 }}
               >
-                {isSyncing ? "⏳ Syncing..." : "🔄 Sync Google Sheets"}
+                {isSyncing ? "⏳ Backing up..." : "☁️ Backup to Google Sheets"}
               </button>
             )}
           </div>

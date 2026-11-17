@@ -46,7 +46,7 @@ export default function ReagentRequestPage() {
   // Form states
   const [assayType, setAssayType] = useState<string>(ASSAY_TYPES[0]);
   const [reagentType, setReagentType] = useState<string>("Primer and probe");
-  const [projectFor, setProjectFor] = useState<string>("ROMS Inventory");
+  const [projectFor, setProjectFor] = useState<string>("MNTD");
   const [concentration, setConcentration] = useState<number | "">(10);
   const [concentrationUnit, setConcentrationUnit] = useState<string>("µM");
   const [numberOfVill, setNumberOfVill] = useState<number | "">(1);
@@ -60,7 +60,7 @@ export default function ReagentRequestPage() {
 
   // Master projects list
   const [projects, setProjects] = useState<string[]>([
-    "ROMS Inventory",
+    "MNTD",
     "TES Project",
     "VECTOR Project",
     "PARASITE Project",
