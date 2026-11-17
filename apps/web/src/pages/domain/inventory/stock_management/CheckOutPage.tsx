@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getErrorMessage } from "../../../../api/client";
 import { useInventoryData, useProjectStock } from "./useInventoryData";
@@ -20,10 +21,23 @@ interface CheckOutPageProps {
 }
 
 export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps = {}) {
+  const navigate = useNavigate();
   const user = useAuth((state) => state.user);
   const isViewOnly = isInventoryViewOnly(user?.roles, user?.permissions);
   const queryClient = useQueryClient();
   const { data, isLoading, error } = useInventoryData({ all: true });
+
+  const [hasAcknowledgedGuidance, setHasAcknowledgedGuidance] = React.useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem("roms_checkout_guidance_acknowledged") === "true";
+  });
+  const [showGuidanceModal, setShowGuidanceModal] = React.useState(false);
+
+  const triggerGuidance = () => {
+    if (!hasAcknowledgedGuidance) {
+      setShowGuidanceModal(true);
+    }
+  };
 
   const [selectedItemId, setSelectedItemId] = React.useState("");
   const [selectedItemQuery, setSelectedItemQuery] = React.useState("");
@@ -234,29 +248,145 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           description="You have view-only access to inspect the Check-Out workflow and disbursement history. Submitting checkout requests is disabled."
         />
       )}
-      {/* Operational Notice: Direct Walk-in vs. Approved Requests */}
-      <div
-        style={{
-          padding: "10px 14px",
-          borderRadius: 8,
-          background: "rgba(2, 132, 199, 0.08)",
-          border: "1px solid rgba(2, 132, 199, 0.25)",
-          color: "var(--color-text)",
-          fontSize: "11px",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10,
-          lineHeight: 1.5,
-        }}
-      >
-        <span style={{ fontSize: "16px", marginTop: "-1px" }}>ℹ️</span>
-        <div>
-          <strong style={{ color: "#0284c7" }}>Operational Guidance: Direct Walk-In Disbursements Only</strong>
-          <p style={{ margin: "2px 0 0 0", color: "var(--color-text-muted)" }}>
-            This screen is reserved for immediate, over-the-counter stock withdrawals. If lab staff already submitted an institutional material request that was approved by a manager, the stock has <strong>already been deducted</strong> upon approval. Please fulfill and hand over approved requests via the <strong>Approved Requests</strong> tab to avoid double-deducting inventory balances.
-          </p>
+      {/* Operational Guidance Modal Overlay (Direct Walk-In Disbursements) */}
+      {showGuidanceModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setHasAcknowledgedGuidance(true);
+              sessionStorage.setItem("roms_checkout_guidance_acknowledged", "true");
+              setShowGuidanceModal(false);
+            }
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 490,
+              width: "100%",
+              background: "var(--color-surface)",
+              borderRadius: 12,
+              border: "1px solid var(--color-border)",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.3)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 20px",
+                background: "linear-gradient(135deg, rgba(2, 132, 199, 0.12), rgba(14, 165, 233, 0.04))",
+                borderBottom: "1px solid var(--color-border)",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: "rgba(2, 132, 199, 0.15)",
+                  color: "#0284c7",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                  flexShrink: 0,
+                }}
+              >
+                ℹ️
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: "14px", color: "var(--color-text)" }}>
+                  Operational Guidance
+                </div>
+                <div style={{ fontSize: "11px", color: "#0284c7", fontWeight: 600 }}>
+                  Direct Walk-In Disbursements Only
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "18px 20px", fontSize: "12px", lineHeight: 1.6, color: "var(--color-text)" }}>
+              <p style={{ margin: "0 0 12px 0", color: "var(--color-text-muted)" }}>
+                This screen is reserved for <strong>immediate, over-the-counter stock withdrawals</strong>.
+              </p>
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  background: "rgba(2, 132, 199, 0.08)",
+                  border: "1px solid rgba(2, 132, 199, 0.25)",
+                  color: "var(--color-text)",
+                  fontSize: "11.5px",
+                  lineHeight: 1.5,
+                }}
+              >
+                💡 If lab staff already submitted an institutional material request that was approved by a manager, the stock has <strong>already been deducted</strong> upon approval. Please fulfill and hand over approved requests via the <strong>Approved Requests</strong> tab to avoid double-deducting inventory balances.
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "var(--color-surface-2, rgba(0,0,0,0.02))",
+                borderTop: "1px solid var(--color-border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => navigate("../approved-requests")}
+                style={{
+                  padding: "7px 14px",
+                  borderRadius: 6,
+                  fontSize: "11.5px",
+                  fontWeight: 600,
+                  border: "1px solid var(--color-border)",
+                  background: "var(--color-surface)",
+                  color: "var(--color-text-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                Go to Approved Requests
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHasAcknowledgedGuidance(true);
+                  sessionStorage.setItem("roms_checkout_guidance_acknowledged", "true");
+                  setShowGuidanceModal(false);
+                }}
+                style={{
+                  padding: "7px 18px",
+                  borderRadius: 6,
+                  fontSize: "11.5px",
+                  fontWeight: 700,
+                  border: "none",
+                  background: "#0284c7",
+                  color: "#ffffff",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(2, 132, 199, 0.3)",
+                }}
+              >
+                Proceed, I Know
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
       <div
         style={{
           padding: 18,
@@ -339,7 +469,12 @@ export default function CheckOutPage({ mode, labelOverrides }: CheckOutPageProps
           </div>
         )}
 
-        <div className="anim" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+        <div
+          className="anim"
+          onFocusCapture={triggerGuidance}
+          onClickCapture={triggerGuidance}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}
+        >
           <InventoryItemSelect
             label="Select Item"
             items={data?.data ?? []}

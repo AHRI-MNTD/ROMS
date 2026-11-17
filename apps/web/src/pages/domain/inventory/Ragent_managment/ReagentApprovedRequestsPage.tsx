@@ -933,27 +933,27 @@ export default function ReagentApprovedRequestsPage() {
                           </td>
                           <td style={{ padding: "8px 10px", textAlign: "center" }}>
                             <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedRequest(req);
-                                }}
-                                style={{
-                                  padding: "4px 8px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                  borderRadius: 5,
-                                  border: "1px solid var(--color-border)",
-                                  background: "var(--color-surface)",
-                                  color: "var(--color-primary)",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                👁️ View
-                              </button>
-
-                              {!isDisbursed && (
+                              {isDisbursed ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedRequest(req);
+                                  }}
+                                  style={{
+                                    padding: "4px 8px",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    borderRadius: 5,
+                                    border: "1px solid var(--color-border)",
+                                    background: "var(--color-surface)",
+                                    color: "var(--color-primary)",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  👁️ View
+                                </button>
+                              ) : (
                                 <button
                                   type="button"
                                   disabled={disburseMutation.isPending}
@@ -962,7 +962,7 @@ export default function ReagentApprovedRequestsPage() {
                                     handleDisburse(req);
                                   }}
                                   style={{
-                                    padding: "4px 10px",
+                                    padding: "4px 12px",
                                     fontSize: "11px",
                                     fontWeight: 700,
                                     borderRadius: 5,
